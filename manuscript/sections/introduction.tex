@@ -1,0 +1,26 @@
+\section{Introduction}
+
+Designing a protein that displays a target epitope in its native conformation is a route
+to immunogens and binders that recapitulate a known antibody contact. We test the
+RFdiffusion3 $\rightarrow$ ProteinMPNN $\rightarrow$ AlphaFold3 pipeline against two
+questions.
+
+\paragraph{Backbone geometry vs.\ sequence distribution (DP3 set).}
+An RFdiffusion3-only pipeline passes AlphaFold3 validation far less often than Lawson's
+RFdiffusion1 + ProteinMPNN baseline. The competing explanations are that RFdiffusion3
+produces poorer \emph{backbone geometry}, or that its \emph{sequences} are
+out-of-distribution for AlphaFold3. Re-sequencing the RFdiffusion3 backbones with
+ProteinMPNN (trained on the inverse-folding task, sharing AlphaFold3's natural-PDB
+distribution) isolates the two: if RFD3+MPNN approaches the baseline pass rate, the
+sequence-distribution hypothesis is supported. The four-filter definitions and run
+layout are recorded in \texttt{docs/README\_v2\_original.md}.
+
+\paragraph{Scaffolding without an antibody (12-mer set).}
+Many targets have no known antibody, so there is no antibody-clash filter. We instead
+scaffold tiled 12-residue epitopes and judge antibody \emph{accessibility} with a
+native-antigen-aware cylinder surrogate (Section~\ref{sec:methods}): it asks whether
+non-epitope scaffold residues intrude into the volume an approaching antibody would
+occupy, while excusing residues that merely sit where the native antigen already sits.
+
+A single config-driven composite scorer (Section~\ref{sec:methods}) ranks designs in
+both settings, differing only by which accessibility term it uses.

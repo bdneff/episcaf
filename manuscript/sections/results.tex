@@ -1,0 +1,61 @@
+\section{Results}\label{sec:results}
+
+\emph{All numbers below are the current findings and are regenerated from \texttt{results/};
+the figure-generating commands are recorded in \texttt{figures/FIGURES.md}. Values still
+to be re-confirmed from a committed \texttt{results/} table are marked \texttt{[regen]}.}
+
+\subsection{12-mer epitopes pass more often than DP3 epitopes}
+Using epitope-chunk RMSD $< \SI{2.5}{\angstrom}$ as a common bar, the tiled 12-mer
+antigens all pass more often than the pooled DP3 / antibody set:
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+set & pass rate & median epitope RMSD (\si{\angstrom}) \\
+\midrule
+DP3 / mAb (pooled) & 30.0\% & 5.0 \\
+6M0J               & 47.0\% & 2.65 \\
+1D2K               & 60.2\% & 1.85 \\
+4WAT               & 84.4\% & 0.43 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+Even the hardest 12-mer antigen (6M0J) clears the bar more often than DP3. Re-running the
+scorer's gate over the full 12-mer set reproduces this: \num{54539} of \num{82712} designs
+pass ($\approx 65.9\%$ pooled), consistent with the per-antigen rates above. The full
+distribution comparison is in Fig.~\ref{fig:passrates}.
+
+\begin{figure}[h]\centering
+\figorbox{dp3_vs_12mer_ungated.png}{0.95}
+\caption{Ungated metric distributions, DP3 vs.\ the three 12-mer antigens, with
+per-row $n$ and the ``\% $<2.5$'' pass rate annotated. \texttt{[regen]}}
+\label{fig:passrates}
+\end{figure}
+
+\paragraph{Caveats (important for interpretation).}
+The 12-mer epitope is a single contiguous 12-residue stretch, whereas DP3 epitopes are
+larger and often multi-island, so 12-mer RMSD/PAE are mechanically lower in part by
+\emph{definition}; the pooled DP3 30\% also averages over heterogeneous epitopes. The
+clean control is to stratify \emph{within} DP3 by island count/size
+(Section~\ref{sec:open}). Cylinder counts are also not comparable across sets: 12-mer
+cylinder medians (\textasciitilde31--32) exceed DP3 (\textasciitilde21) mainly because the
+longer scaffolds place more C$\alpha$ atoms in a fixed cylinder --- a scaffold-size
+artifact, not more clashing. As a sanity check, the DP3 cylinder median ($\approx 21$)
+tracks its real \texttt{af3\_n\_clash\_res} median ($\approx 19$).
+
+\subsection{The native-aware carve removes false-positive penalties}
+Among truly clash-free designs, excluding scaffold residues that sit in native-occupied
+space lowers the cylinder count and, in particular, cuts the heavily-penalized
+high-count tail, while barely changing genuinely clashing designs. The communication
+framing for the result: \emph{\textasciitilde730 designs the antibody accepts were being
+penalized for residues sitting where the native antigen already sits --- they no longer
+are.} See Fig.~\ref{fig:fp}.
+
+\begin{figure}[h]\centering
+\figorbox{fp_reduction.png}{0.8}
+\caption{Distribution shift from the native-aware carve among clash-free designs.
+\texttt{[regen via episcaf\_analysis/viz/plot\_fp\_reduction.py]}}
+\label{fig:fp}
+\end{figure}

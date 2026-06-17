@@ -1,0 +1,52 @@
+\section{Methods}\label{sec:methods}
+
+\subsection{Pipeline}
+RFdiffusion3 generates scaffold backbones around the epitope; ProteinMPNN re-sequences
+them; AlphaFold3 predicts the structure single-sequence (\texttt{--norun\_data\_pipeline},
+one diffusion sample, seed~1). Per-design metrics are computed from the AlphaFold3
+prediction against the designed structure. Generation code is in \texttt{episcaf\_pipeline/};
+metrics/scoring/viz in \texttt{episcaf\_analysis/}.
+
+\subsection{Four-filter ground truth (DP3 set)}
+A design passes when all four hold: overall backbone RMSD $\le \SI{2}{\angstrom}$;
+epitope-chunk RMSD $\le \SI{1}{\angstrom}$; mean predicted aligned error $< 5$; and zero
+antibody residues within \SI{4}{\angstrom} of non-epitope scaffold residues
+(\texttt{af3\_n\_clash\_res}). Clash detection Kabsch-aligns the AlphaFold3 epitope onto
+the true epitope, then checks non-epitope scaffold heavy atoms against antibody atoms.
+
+\subsection{Native-antigen-aware cylinder surrogate (12-mer set)}
+With no antibody available, we approximate the occluded volume with a cylinder fitted to
+the epitope. The epitope C$\alpha$ atoms define a plane by SVD; the outward normal (the
+antibody approach direction) orients a cylinder of radius \SI{16}{\angstrom}, height
+\SI{40}{\angstrom}, offset \SI{-4}{\angstrom}. We count non-epitope scaffold C$\alpha$
+atoms inside the cylinder. The \emph{native-aware} variant excludes scaffold atoms within
+a short distance of a native-antigen heavy atom --- i.e.\ residues sitting where the
+native antigen already sits, which a real antibody tolerates. The geometry core is
+\texttt{episcaf\_analysis/native\_cylinder\_core.py} (self-tested).
+
+\subsection{Composite scorer}
+One config-driven scorer (\texttt{episcaf\_analysis/score.py}) ranks designs:
+(i)~\textbf{gate} on epitope-chunk RMSD; (ii)~transform each metric to a
+``higher-is-better'' score within a scope (pooled, or per antigen); (iii)~\textbf{weighted
+sum}; (iv)~keep the \textbf{top-$k$ per epitope}. Each metric is one input with its own
+activation (percentile / min--max / z-score / sigmoid), so the model is a single-layer
+perceptron with hand-set weights --- ``feed-forward, no backprop''. The dials live in
+\texttt{episcaf\_analysis/presets.py}:
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+metric & weight & accessibility term \\
+\midrule
+epitope-chunk RMSD & 0.35 & --- \\
+epitope PAE        & 0.25 & --- \\
+overall RMSD       & 0.15 & --- \\
+accessibility      & 0.25 & \texttt{cylinder\_native\_aware} (12-mer) / \texttt{cylinder\_ca\_clashes} (DP3) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+The 12-mer preset scores per antigen and keeps top-5 per epitope; the DP3 preset scores
+pooled and keeps top-15. Weights are a starting point; Section~\ref{sec:open} describes
+fitting them to the DP3 \texttt{is\_pass} label.

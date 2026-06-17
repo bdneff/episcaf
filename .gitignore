@@ -1,4 +1,4 @@
-# data & runs (live on /tgen_labs, never in git)
+# ---- data & big outputs (live on /tgen_labs, never in git) ----
 runs/
 run_12mer_scaffolding/
 datasets/
@@ -14,16 +14,26 @@ err_out_files/
 *.npz
 *.h5
 
-# slurm / build artifacts
+# ---- slurm ----
 *.out
 *.err
 slurm-*
 
-# figures (regenerate from episcaf_analysis/viz)
+# ---- figures default-ignored; manuscript figures are re-included below ----
 *.png
 *.pdf
 
-# python / cruft
+# ---- LaTeX build artifacts ----
+*.aux
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.toc
+manuscript/*.log
+
+# ---- python / cruft ----
 __pycache__/
 *.pyc
 *.egg-info/
@@ -31,3 +41,21 @@ __pycache__/
 tmp/
 *.point
 *history.txt
+
+# ============================================================
+# Tracked exceptions (these ARE committed despite the rules above)
+# ============================================================
+# small derived results that figures/manuscript depend on
+!results/
+!results/README.md
+!results/.gitkeep
+!results/*.csv
+!results/*.tsv
+!results/*.json
+# the living manuscript: its figures and the built PDF
+!manuscript/figures/
+!manuscript/figures/.gitkeep
+!manuscript/figures/FIGURES.md
+!manuscript/figures/*.png
+!manuscript/figures/*.pdf
+!manuscript/main.pdf

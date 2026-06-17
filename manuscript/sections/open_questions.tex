@@ -1,0 +1,23 @@
+\section{Open questions and next steps}\label{sec:open}
+
+\begin{enumerate}
+\item \textbf{Within-DP3 island stratification (the clean control).} Split the DP3 set by
+epitope island count and size and recompute pass rates, to separate the
+``contiguous-12 is easier'' confound from a real scaffolding-difficulty effect. Needs the
+per-epitope island metadata in \texttt{datasets/dp2.parquet}.
+
+\item \textbf{Learn the scorer weights.} The DP3 set carries the four-filter
+\texttt{is\_pass} label. Fit a logistic regression of the transformed metrics on
+\texttt{is\_pass} to replace the hand-set weights, then transfer them to the 12-mer
+preset where no label exists.
+
+\item \textbf{Confirm the canonical DP3 metrics builder.} Determine whether
+\texttt{compute\_metrics\_mpnn.py} (currently archived) is the live RFD3+MPNN metrics
+producer and promote it into \texttt{episcaf\_analysis/} if so (see \texttt{docs/MIGRATION.md}).
+
+\item \textbf{Validate the DP3 scoring path} end-to-end with \texttt{--preset antibody},
+confirming \texttt{cylinder\_ca\_clashes} is the correct accessibility column there.
+
+\item \textbf{Finish the 12-mer AlphaFold3 data migration} and verify landing counts
+against the manifest.
+\end{enumerate}
