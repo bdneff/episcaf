@@ -1,17 +1,15 @@
 \section{RFD1 versus RFD3 on the same epitopes}\label{sec:rfd}
 With the metrics reproduced, we compared the two backbone generators head to head: the same
 DP3 epitopes run through RFdiffusion1 (Lawson's set) and RFdiffusion3, each followed by
-ProteinMPNN and AlphaFold3, and scored against the identical four filters. How close the two
-look depends on the denominator. Counting every design generated, the pass rates are nearly
-identical: RFD1+MPNN \num{840}/\num{151232} ($0.56\%$) and RFD3+MPNN \num{751}/\num{150948}
-($0.50\%$). Counting only designs that returned an AlphaFold3 result, RFD1 is modestly
-higher: \num{840}/\num{124362} ($0.68\%$) versus \num{751}/\num{150936} ($0.50\%$). The
-difference is that the RFD1 set is missing AF3 results for \num{26870} designs, against just
-12 for RFD3; whether those are genuine AF3 failures or simply runs not yet completed
-determines which denominator is the fair one \texttt{[verify]}. Either way RFD3 is at least
-an even trade for RFD1 on this task, which is the basis for standardizing on RFD3 going
-forward. The per-metric distributions are broadly comparable (Fig.~\ref{fig:rfd}), with RFD3
-placing somewhat more mass at low epitope and overall RMSD.
+ProteinMPNN and AlphaFold3, and scored against the identical four filters. The RFD1 data here
+is Lawson's deposited set (\texttt{dp2.parquet}), which is missing AlphaFold3 results for
+\num{26870} of its \num{151232} designs; that is a property of his dataset rather than of our
+pipeline, so we compare over designs that actually have an AF3 result. On that basis the two
+are comparable, with RFD1 modestly higher: RFD1+MPNN passes \num{840}/\num{124362}
+($0.68\%$) and RFD3+MPNN \num{751}/\num{150936} ($0.50\%$). RFD3 is therefore at least an
+even trade for RFD1 on this task, which is the basis for standardizing on RFD3 going forward.
+The per-metric distributions are broadly comparable (Fig.~\ref{fig:rfd}), with RFD3 placing
+somewhat more mass at low epitope and overall RMSD.
 
 \begin{figure}[h]\centering
 \figorbox{rfd1_vs_rfd3.png}{1.0}

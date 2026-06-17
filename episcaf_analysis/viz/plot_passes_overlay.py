@@ -63,20 +63,23 @@ for r,(name,alld,passd,color,hasab) in enumerate(rows):
         lo,hi=xlim[key]; e=edges(key,lo,hi)
         xa=np.clip(num(alld[key]).dropna().values,lo,hi)
         xp=np.clip(num(passd[key]).dropna().values,lo,hi) if key in passd else np.array([])
-        ax.hist(xa,bins=e,color="#cfcfcf",log=True,label="all designs")          # full population
+        ax.hist(xa,bins=e,color="#cfcfcf")                       # all designs, LEFT axis (counts)
+        ax.set_xlim(lo,hi); ax.tick_params(axis='x',labelsize=7); ax.tick_params(axis='y',labelsize=6)
+        ax.locator_params(axis='y',nbins=3)
         if len(xp):
-            ax.hist(xp,bins=e,histtype="stepfilled",color=color,alpha=0.55,log=True,label="passes")
-            ax.hist(xp,bins=e,histtype="step",color=color,lw=1.6,log=True)
-            ax.axvline(np.median(xp),ls="--",color=color,lw=1.2)
-        ax.set_xlim(lo,hi); ax.tick_params(labelsize=8)
-        ax.set_ylim(bottom=0.7)
-        if r==0 and c==0: ax.legend(frameon=False,fontsize=8,loc="upper right")
+            ax2=ax.twinx()                                       # passes, RIGHT axis (counts), colored
+            ax2.hist(xp,bins=e,color=color,alpha=0.55)
+            ax2.hist(xp,bins=e,histtype="step",color=color,lw=1.4)
+            ax2.axvline(np.median(xp),ls="--",color=color,lw=1.1)
+            ax2.set_xlim(lo,hi); ax2.locator_params(axis='y',nbins=3)
+            ax2.tick_params(axis='y',colors=color,labelsize=6)
+            ax2.spines['right'].set_color(color)
         if r==0: ax.set_title(label,fontsize=12,fontweight="bold")
         if c==0:
             ax.set_ylabel(f"{name}\nall n={len(alld):,}\npass n={len(passd):,}",color=color,
                           fontweight="bold",rotation=0,ha="right",va="center",labelpad=46,fontsize=10)
-fig.suptitle("Full population (grey) vs passing designs (color), actual counts on a log y-axis; "
-             "dashed line = median of passes\n"
+fig.suptitle("All designs (grey, LEFT axis) vs passing designs (color, RIGHT colored axis); "
+             "both true counts, dashed line = median of passes\n"
              "DP3 passes = four-filter; DP4 passes = top-3 per epitope",
              fontsize=13,fontweight="bold")
 fig.tight_layout(rect=[0.03,0,1,0.95])
