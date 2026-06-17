@@ -59,3 +59,6 @@ tmp/
 !manuscript/figures/*.png
 !manuscript/figures/*.pdf
 !manuscript/main.pdf
+
+# macOS
+.DS_Store

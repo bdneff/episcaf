@@ -3,21 +3,38 @@
 \begin{enumerate}
 \item \textbf{Within-DP3 island stratification (the clean control).} Split the DP3 set by
 epitope island count and size and recompute pass rates, to separate the
-``contiguous-12 is easier'' confound from a real scaffolding-difficulty effect. Needs the
-per-epitope island metadata in \texttt{datasets/dp2.parquet}.
+``contiguous-12 is easier'' confound from a real scaffolding-difficulty effect. This needs
+the per-epitope island metadata in \texttt{datasets/dp2.parquet}.
+
+\item \textbf{Per-metric transform: percentile/rank versus sigmoid (undecided).} The
+composite currently maps each metric to a percentile within its population, so a design's
+score depends on the cohort it is ranked against and is not comparable across runs. A
+sigmoid transform (with a fixed midpoint and slope $k$ per metric) would instead give a
+population-independent, absolute saturating score, answering ``how good is this overall RMSD
+on its own merits'' rather than ``relative to this batch''. The scorer already supports both
+(\texttt{transform=sigmoid} in \texttt{presets.py}); the open question is which should be
+the default, and how to set each metric's midpoint and $k$. I am leaving this unresolved
+until we see whether absolute scores transfer better across antigens.
 
 \item \textbf{Learn the scorer weights.} The DP3 set carries the four-filter
 \texttt{is\_pass} label. Fit a logistic regression of the transformed metrics on
-\texttt{is\_pass} to replace the hand-set weights, then transfer them to the 12-mer
-preset where no label exists.
+\texttt{is\_pass} to replace the hand-set weights, then transfer them to the 12-mer preset
+where no label exists. This and the transform choice above are the two halves of turning the
+hand-set perceptron into a fitted one.
 
 \item \textbf{Confirm the canonical DP3 metrics builder.} Determine whether
 \texttt{compute\_metrics\_mpnn.py} (currently archived) is the live RFD3+MPNN metrics
-producer and promote it into \texttt{episcaf\_analysis/} if so (see \texttt{docs/MIGRATION.md}).
+producer, and promote it into \texttt{episcaf\_analysis/} if so (see \texttt{docs/MIGRATION.md}).
 
 \item \textbf{Validate the DP3 scoring path} end-to-end with \texttt{--preset antibody},
 confirming \texttt{cylinder\_ca\_clashes} is the correct accessibility column there.
 
 \item \textbf{Finish the 12-mer AlphaFold3 data migration} and verify landing counts
 against the manifest.
+
+\item \textbf{Quantify crystal-gap dropouts.} Pull the cluster pre-filter status counts to
+report, per antigen, how many tiles were dropped as \texttt{crystal\_epi\_incomplete}
+(epitope residues unresolved in the deposited crystal; Section~\ref{sec:noab}). This turns
+the recorded mechanism into a verified number, and tells us whether any intended antigen was
+effectively un-scorable from gaps alone.
 \end{enumerate}
