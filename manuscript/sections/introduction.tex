@@ -1,21 +1,25 @@
-\section{Motivation: scaffolding conformational epitopes}\label{sec:intro}
+\section{Motivation: scaffolding B-cell epitopes}\label{sec:intro}
 
 \subsection{Why scaffold epitopes}
-Antibodies recognize their antigens through epitopes defined by three-dimensional geometry.
-Many of the most interesting epitopes are discontinuous in sequence but contiguous in
-space: the residues an antibody contacts are scattered along the antigen sequence yet fold
-together into a single surface patch. This is precisely the kind of target that linear
-methods cannot represent. High-throughput serology platforms such as PepSeq tile an antigen
-into short, overlapping linear peptides, which works well for continuous, sequence-local
-epitopes. A linear peptide, however, cannot reconstitute a surface assembled from
-sequence-distant residues, and it discards the native conformation the antibody evolved to
-recognize, so conformational and discontinuous epitopes fall through the gaps of linear
-tiling.
+This project is about \emph{B-cell epitopes}: the regions of an antigen that an antibody
+recognizes. Antibodies recognize these regions through their three-dimensional geometry,
+and many of the most interesting B-cell epitopes are discontinuous in sequence but
+contiguous in space, meaning the contacted residues are scattered along the antigen
+sequence yet fold together into a single surface patch. This is precisely the kind of
+target that linear methods cannot represent. High-throughput serology platforms such as
+PepSeq tile an antigen into short, overlapping linear peptides, which works well for
+continuous, sequence-local epitopes. A linear peptide, however, cannot reconstitute a
+surface assembled from sequence-distant residues, and it discards the native conformation
+the antibody evolved to recognize.
 
-The aim of this project (``episcaf'') is to close that gap. We take an antibody epitope
-defined by its native three-dimensional geometry and build a folded, assay-ready protein
-that displays the epitope the way it sits on the antigen. The longer-term goal is to extend
-PepSeq-style high-throughput assays beyond linear peptides to conformational epitopes.
+The central question of this project is whether \emph{scaffolding} an epitope produces a
+stronger, cleaner binding signal in the PepSeq assay than linear tiling does. By embedding
+the epitope residues in a folded protein, we can hold them in the conformation the antibody
+actually sees, and we can present distinct epitopes as separable, individually testable
+designs. If that conformational presentation matters, scaffolded designs should bind their
+cognate antibodies more reliably than the corresponding linear peptides. The longer-term
+goal is to extend PepSeq-style high-throughput assays beyond linear peptides to
+conformational, discontinuous epitopes.
 
 \subsection{The approach}
 We extract the epitope, meaning the residues an antibody contacts, from an antibody:antigen
@@ -35,43 +39,50 @@ or more \emph{islands}, the spatially contiguous runs of epitope residues in
 three-dimensional space. This distinction matters because it predicts difficulty.
 Single-island patches can be enforced locally and tend to scaffold well, whereas
 multi-island patches require preserving the relative position and orientation of spatially
-separated regions, which is much harder.
+separated regions, which is much harder. A concrete failure makes the point: PDB
+\texttt{2XQB}, patch \texttt{0P}, is a 56-residue epitope split across two separated
+islands, and across 2{,}624 RFdiffusion trials zero designs passed the downstream filters.
+Because this $0\%$ rate persists over thousands of attempts, it reads as a robust
+computational failure rather than undersampling. The cause appears procedural: contigs (the
+constraints RFdiffusion is given) enforce epitope residue identity and ordering, but they
+do not strongly constrain the distances and orientations \emph{between} islands, so the
+model can satisfy the contig and still lose the geometry an antibody needs.
 
-A concrete failure makes the point. PDB \texttt{2XQB}, patch \texttt{0P}, is a 56-residue
-epitope split across two separated islands. Across 2{,}624 RFdiffusion trials, zero designs
-passed the downstream structural filters. Because this $0\%$ success rate persists over
-thousands of attempts, it reads as a robust computational failure rather than
-undersampling. The cause appears procedural: contigs (the constraints RFdiffusion is given)
-enforce epitope residue identity and ordering, but they do not strongly constrain the
-distances and orientations \emph{between} islands, so the model can satisfy the contig and
-still lose the geometry an antibody needs. Single-island, compact patches run through the
-identical pipeline and filters do produce passing designs, and the
-\texttt{designFilterRates} summary shows success rates that correlate strongly with epitope
-topology, particularly the number of islands.
-
-\subsection{Two regimes: with and without a known antibody}
-The project runs in two settings that differ in what ``correct'' can be measured against.
+\subsection{Two design pools: DP3 and DP4}
+The project runs in two settings that differ in how much we know about the antibody.
 \begin{itemize}
-  \item \textbf{Known-antibody (the ``DP3'' set).} When the antigen has a solved antibody
-  complex, we have a ground truth: a design is good if its epitope is held in place and the
-  scaffold does not collide with where the antibody must bind. This gives the four-filter
-  pass definition used throughout (Section~\ref{sec:methods}).
-  \item \textbf{No-antibody (the tiled 12-mer set).} Most targets have no solved antibody,
-  so there is nothing to clash against. Here we tile the antigen into 12-residue epitopes
-  and replace the antibody-clash filter with a native-antigen-aware accessibility surrogate
-  (Section~\ref{sec:methods}) that asks whether scaffold mass intrudes into the volume an
-  approaching antibody would need.
+  \item \textbf{DP3 (known antibody).} When the antigen has a solved antibody complex, we
+  know the exact epitope and we have a ground truth for ``good'': the design must hold the
+  epitope in place and must not place scaffold mass where the antibody has to bind. This is
+  the setting where we have already run designs through the assay and seen some success, and
+  it is where the question of scaffolded-versus-linear signal is most directly testable.
+  \item \textbf{DP4 (tiled 12-mers, no known antibody).} For most antigens we have no solved
+  antibody, so we do not know where the epitope is. Here we instead tile the antigen
+  sequence into overlapping 12-residue windows, stepping by two residues at a time, and
+  scaffold each window. The aim is to cover the antigen densely enough to catch whatever
+  the real epitopes turn out to be.
 \end{itemize}
-A single, config-driven composite scorer ranks designs in both regimes, differing only in
-which accessibility term it uses.
+
+\subsection{Why a cylinder: the antibody-clash filter without an antibody}
+One of the strictest filters in the DP3 setting concerns antibody accessibility. We
+superimpose the design's epitope region onto the native antigen, place the real antibody
+where it sits in the crystal complex, and count scaffold residues that clash into the
+antibody. Any design with a clash count above zero is rejected, because scaffold mass in
+the antibody's path would block the very binding event we are trying to recreate. This
+filter is only available for DP3, where a real antibody exists. For DP4 there is no
+antibody to clash against, so we cannot apply it directly. The native-antigen-aware cylinder
+surrogate (Section~\ref{sec:noab}) is our attempt to recover this filter without an
+antibody: it approximates the volume an approaching antibody would occupy and asks whether
+scaffold mass intrudes into it. A single, config-driven composite scorer ranks designs in
+both pools, differing only in which accessibility term it uses.
 
 \subsection{How the rest of this log reads}
 The sections that follow are in the order the work happened. We start by reproducing
-Lawson's workflow and confirming that our reimplementation of the metrics matches his
-(Section~\ref{sec:methods}). We then turn to the filtering, where the original global
-metrics bias selection toward rigid, well-ordered folds, and show how decomposing them into
-epitope- and scaffold-specific terms widens the designable space
-(Section~\ref{sec:filtering}). From there we build a composite score that selects the best
-designs per epitope (Section~\ref{sec:composite}), and finally extend everything to
-antigens with no known antibody using the native-aware cylinder surrogate
-(Section~\ref{sec:noab}). Each step motivates the next.
+Lawson's workflow and confirming that our reimplementation of the metrics matches his, then
+compare the RFdiffusion1 and RFdiffusion3 design sets directly (Section~\ref{sec:methods},
+Section~\ref{sec:rfd}). We then turn to the filtering, where the original global metrics
+bias selection toward rigid, well-ordered folds, and show how decomposing them widens the
+designable space (Section~\ref{sec:filtering}). From there we build a composite score that
+selects the best designs per epitope (Section~\ref{sec:composite}), and finally extend
+everything to DP4 using the native-aware cylinder surrogate (Section~\ref{sec:noab}). Each
+step motivates the next.
