@@ -11,6 +11,7 @@ command so anyone (or Claude Code) can reproduce it.
 | `fp_selectivity.png` | `episcaf_analysis/viz/plot_fp_reduction.py` | same, `--mode selectivity --out manuscript/figures/fp_selectivity` |
 | `rfd1_vs_rfd3.png` | `episcaf_analysis/viz/plot_rfd1_vs_rfd3.py` | `python episcaf_analysis/viz/plot_rfd1_vs_rfd3.py` |
 | `passes_overlay.png` | `episcaf_analysis/viz/plot_passes_overlay.py` | `python episcaf_analysis/viz/plot_passes_overlay.py` |
+| `passes_per_epitope.png` | `episcaf_analysis/viz/plot_passes_per_epitope.py` | `python episcaf_analysis/viz/plot_passes_per_epitope.py` |
 
 **`fp_reduction` inputs:** DP3 table `metrics_native_cyl.csv` (cols `af3_n_clash_res`, `cylinder_ca_clashes`, `cylinder_native_aware`), produced on Gemini by `scripts/add_native_cylinder.py --exclude_dist 1.0`. Verified result: among 3,186 clash-free designs, heavily-penalized (cylinder ≥ 10) dropped 1,112 → 384 (728 false positives removed).
 
