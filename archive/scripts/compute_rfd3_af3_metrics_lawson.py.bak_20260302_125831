@@ -1,0 +1,235 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import re
+from pathlib import Path
+from typing import Dict, Tuple, List
+
+import numpy as np
+import pandas as pd
+
+# Reuse Lawson helpers (already in scripts/lawson_rmsd.py)
+from lawson_rmsd import (
+    read_gemmi_structure,
+    get_chainA,
+    chain_seq_1letter,
+    find_subseq_allowX,
+    gemmi_bb_positions,
+    gemmi_bb_positions_for_resindices,
+    rmsd_superpose,
+)
+
+TOK_RE  = re.compile(r"^([0-9a-fA-F]{32})")
+PRED_RE = re.compile(r"_0_model_([0-7])\b", re.IGNORECASE)
+
+def index_rfd3_outputs(rfd3_out_dir: Path) -> Dict[Tuple[str,int], Path]:
+    """
+    Map (tok, pred) -> rfd3 cif(.gz) path
+    Expected filename contains tok at start and '_0_model_<pred>' near end.
+    """
+    idx: Dict[Tuple[str,int], Path] = {}
+    for p in rfd3_out_dir.iterdir():
+        if not p.is_file():
+            continue
+        name = p.name
+        mt = TOK_RE.match(name)
+        mp = PRED_RE.search(name)
+        if not (mt and mp):
+            continue
+        tok = mt.group(1).lower()
+        pred = int(mp.group(1))
+        # prefer .cif.gz / .cif, ignore json
+        if name.endswith(".cif.gz") or name.endswith(".cif"):
+            idx[(tok, pred)] = p
+    return idx
+
+def index_af3_outputs(af3_out_dir: Path) -> Dict[Tuple[str,int], Path]:
+    """
+    Map (tok, pred) -> af3 model cif path
+    Expected directory name contains tok at start and '_0_model_<pred>'
+    and contains '<dirname>_model.cif'.
+    """
+    idx: Dict[Tuple[str,int], Path] = {}
+    for d in af3_out_dir.iterdir():
+        if not d.is_dir():
+            continue
+        mt = TOK_RE.match(d.name)
+        mp = PRED_RE.search(d.name)
+        if not (mt and mp):
+            continue
+        tok = mt.group(1).lower()
+        pred = int(mp.group(1))
+        cif = d / f"{d.name}_model.cif"
+        if cif.exists():
+            idx[(tok, pred)] = cif
+    return idx
+
+def overall_rmsd_rfd3_vs_af3_window(rfd3_cif: Path, af3_cif: Path) -> Tuple[float, int, int]:
+    """
+    Lawson-style:
+      - read RFD3 chain A sequence
+      - find it as a subsequence inside AF3 chain A (allowing X in AF3)
+      - compute backbone RMSD after superposition on matched window
+    Returns (rmsd, af3_start, af3_end) where start/end are 0-based residue indices into AF3 chain A.
+    """
+    st_r = read_gemmi_structure(rfd3_cif)
+    st_a = read_gemmi_structure(af3_cif)
+    ch_r = get_chainA(st_r)
+    ch_a = get_chainA(st_a)
+
+    rfd3_seq = chain_seq_1letter(ch_r)
+    af3_seq  = chain_seq_1letter(ch_a)
+
+    start = find_subseq_allowX(af3_seq, rfd3_seq)
+    if start < 0:
+        raise ValueError("Could not locate RFD3 chain A sequence inside AF3 chain A sequence.")
+    end = start + len(rfd3_seq)
+
+    P = gemmi_bb_positions(ch_r, 0, len(rfd3_seq))
+    Q = gemmi_bb_positions(ch_a, start, end)
+    return rmsd_superpose(P, Q), int(start), int(end)
+
+def epitope_chunk_rmsd_rfd3_vs_af3(
+    rfd3_cif: Path,
+    af3_cif: Path,
+    rfd3_ris0: List[int],
+    af3_ris0: List[int],
+) -> float:
+    """
+    Lawson-style:
+      - positions are backbone atoms for specified 0-based residue indices into chain A.
+      - RMSD after superposition (same as Lawson's rmsd_superpose).
+    """
+    st_r = read_gemmi_structure(rfd3_cif)
+    st_a = read_gemmi_structure(af3_cif)
+    ch_r = get_chainA(st_r)
+    ch_a = get_chainA(st_a)
+
+    P = gemmi_bb_positions_for_resindices(ch_r, rfd3_ris0)
+    Q = gemmi_bb_positions_for_resindices(ch_a, af3_ris0)
+    return rmsd_superpose(P, Q)
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--run_dir", required=True, help="Run dir (contains 02_rfd3/outputs and 03_af3/outputs)")
+    ap.add_argument("--dp2_parquet", required=True, help="dp2 parquet, or a subset parquet filtered to toks in this run")
+    ap.add_argument("--out_csv", required=True, help="Output CSV")
+    ap.add_argument("--pred_max", type=int, default=8, help="Number of preds per tok (default 8)")
+    ap.add_argument("--limit", type=int, default=0, help="If >0, limit base rows (debug)")
+    ap.add_argument("--progress_every", type=int, default=200, help="Print progress every N toks")
+    args = ap.parse_args()
+
+    run_dir = Path(args.run_dir).resolve()
+    dp2_path = Path(args.dp2_parquet).resolve()
+    out_csv = Path(args.out_csv).resolve()
+    out_csv.parent.mkdir(parents=True, exist_ok=True)
+
+    rfd3_out = run_dir / "02_rfd3" / "outputs"
+    af3_out  = run_dir / "03_af3" / "outputs"
+    if not rfd3_out.exists():
+        raise SystemExit(f"Missing: {rfd3_out}")
+    if not af3_out.exists():
+        raise SystemExit(f"Missing: {af3_out}")
+
+    # index actual produced files
+    rfd3_idx = index_rfd3_outputs(rfd3_out)
+    af3_idx  = index_af3_outputs(af3_out)
+    print(f"[lawson-metrics] RFD3 index entries: {len(rfd3_idx):,}")
+    print(f"[lawson-metrics] AF3  index entries: {len(af3_idx):,}")
+
+    dp2 = pd.read_parquet(dp2_path)
+
+    # Required columns for epitope chunk RMSD:
+    required = [
+        "assay_scaffolded_epitope_id",
+        "id",
+        "scaffolded_epitope_chunk_resindices",
+        "assay_scaffolded_epitope_chunk_resindices",
+    ]
+    missing = [c for c in required if c not in dp2.columns]
+    if missing:
+        raise SystemExit(f"dp2 missing required cols: {missing}")
+
+    dp2["assay_scaffolded_epitope_id"] = dp2["assay_scaffolded_epitope_id"].astype(str).str.lower()
+
+    # One row per tok (base design); then we expand over pred in [0, pred_max)
+    base = dp2.drop_duplicates(subset=["assay_scaffolded_epitope_id"]).copy()
+    if args.limit and args.limit > 0:
+        base = base.head(args.limit).copy()
+
+    print(f"[lawson-metrics] base toks: {len(base):,}")
+
+    rows = []
+    missing_pairs = 0
+    seqmatch_fail = 0
+    epi_fail = 0
+
+    toks = base["assay_scaffolded_epitope_id"].tolist()
+
+    for ti, tok in enumerate(toks, start=1):
+        r0 = base.loc[base["assay_scaffolded_epitope_id"] == tok].iloc[0]
+        pid = str(r0["id"])
+
+        # 0-based residue indices into chain A for epitope chunk
+        rfd3_ris0 = list(r0["scaffolded_epitope_chunk_resindices"])
+        af3_ris0  = list(r0["assay_scaffolded_epitope_chunk_resindices"])
+
+        for pred in range(int(args.pred_max)):
+            row = {
+                "id": pid,
+                "assay_scaffolded_epitope_id": tok,
+                "pred": int(pred),
+                "rfd3_path": None,
+                "af3_path": None,
+                "overall_rmsd": np.nan,
+                "af3_window_start": np.nan,
+                "af3_window_end": np.nan,
+                "epitope_chunk_rmsd_vs_rfd3": np.nan,
+                "status": "ok",
+            }
+
+            rfd3_path = rfd3_idx.get((tok, pred))
+            af3_path  = af3_idx.get((tok, pred))
+            if rfd3_path is None or af3_path is None:
+                row["status"] = "missing_pair"
+                missing_pairs += 1
+                rows.append(row)
+                continue
+
+            row["rfd3_path"] = str(rfd3_path)
+            row["af3_path"]  = str(af3_path)
+
+            try:
+                overall, ws, we = overall_rmsd_rfd3_vs_af3_window(rfd3_path, af3_path)
+                row["overall_rmsd"] = float(overall)
+                row["af3_window_start"] = int(ws)
+                row["af3_window_end"]   = int(we)
+            except Exception:
+                row["status"] = "seqmatch_fail"
+                seqmatch_fail += 1
+                rows.append(row)
+                continue
+
+            try:
+                epi = epitope_chunk_rmsd_rfd3_vs_af3(rfd3_path, af3_path, rfd3_ris0, af3_ris0)
+                row["epitope_chunk_rmsd_vs_rfd3"] = float(epi)
+            except Exception:
+                row["status"] = "epi_fail"
+                epi_fail += 1
+
+            rows.append(row)
+
+        if args.progress_every > 0 and (ti % args.progress_every == 0):
+            print(f"[progress] toks {ti}/{len(toks)} | missing_pairs={missing_pairs} seqmatch_fail={seqmatch_fail} epi_fail={epi_fail}")
+
+    out = pd.DataFrame(rows)
+    out.to_csv(out_csv, index=False)
+
+    print(f"[lawson-metrics] wrote rows: {len(out):,} -> {out_csv}")
+    print(f"[lawson-metrics] missing_pairs: {missing_pairs:,}")
+    print(f"[lawson-metrics] seqmatch_fail: {seqmatch_fail:,}")
+    print(f"[lawson-metrics] epi_fail: {epi_fail:,}")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,311 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import math
+from pathlib import Path
+from typing import Any, List, Optional, Tuple
+
+import numpy as np
+
+def select_residues_by_resid(u, segid, resid_list):
+    if not resid_list:
+        return u.residues[[]]
+    sel = f"segid {segid} and resid " + " ".join(map(str, resid_list))
+    return u.select_atoms(sel).residues
+
+import pandas as pd
+import MDAnalysis as mda
+from MDAnalysis.lib.distances import distance_array
+import gemmi
+
+
+DP2_NEEDED = [
+  "assay_scaffolded_epitope_id",
+  "assay_scaffolded_epitope_chunk_resindices",
+  "epitope_chunk_resindices",
+  "epitope_chunk_rmsd_vs_mpnn",
+  "overall_rmsd",
+  "mean_pae",
+]
+
+def parse_index_list(x: Any) -> List[int]:
+    if x is None:
+        return []
+    if isinstance(x, float) and math.isnan(x):
+        return []
+    if isinstance(x, (list, tuple, np.ndarray)):
+        return [int(i) for i in x]
+    s = str(x).strip().replace("[", "").replace("]", "").replace(",", " ")
+    out = []
+    for tok in s.split():
+        try:
+            out.append(int(tok))
+        except ValueError:
+            pass
+    return out
+
+
+def kabsch_fit(P: np.ndarray, Q: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Returns (R, t) such that P_fit = (P @ R) + t best aligns to Q (least squares).
+    P, Q: (N,3)
+    """
+    Pc = P - P.mean(axis=0)
+    Qc = Q - Q.mean(axis=0)
+    C = Pc.T @ Qc
+    V, _, Wt = np.linalg.svd(C)
+    d = np.sign(np.linalg.det(V @ Wt))
+    D = np.diag([1.0, 1.0, d])
+    R = V @ D @ Wt
+    t = Q.mean(axis=0) - (P.mean(axis=0) @ R)
+    return R, t
+
+
+def sel_chain_or_segid(u: mda.Universe, chain_letters: List[str]) -> mda.core.groups.AtomGroup:
+    seg_sel = " or ".join([f"segid {c}" for c in chain_letters])
+    ag = u.select_atoms(seg_sel)
+    if len(ag) > 0:
+        return ag
+    ch_sel = " or ".join([f"chainid {c}" for c in chain_letters])
+    return u.select_atoms(ch_sel)
+
+
+def pick_antibody_atoms(true_u: mda.Universe) -> mda.core.groups.AtomGroup:
+    # Prefer B/C if present
+    ab = sel_chain_or_segid(true_u, ["B", "C"]).select_atoms("protein and not name H*")
+    if len(ab) > 0:
+        return ab
+    # Fallback: everything protein not chain/segid A
+    return true_u.select_atoms("protein and not (segid A or chainid A) and not name H*")
+
+
+def gemmi_load_cif(path: Path) -> gemmi.Structure:
+    doc = gemmi.cif.read(str(path))
+    return gemmi.make_structure_from_block(doc.sole_block())
+
+
+def gemmi_chain(struct: gemmi.Structure, chain_id: str = "A") -> gemmi.Chain:
+    model = struct[0]
+    for ch in model:
+        if ch.name == chain_id:
+            return ch
+    # fallback first chain
+    return model[0]
+
+
+def gemmi_chain_residues(chain: gemmi.Chain) -> List[gemmi.Residue]:
+    return [r for r in chain]
+
+
+def gemmi_res_ca(res: gemmi.Residue) -> Optional[np.ndarray]:
+    a = res.find_atom("CA", altloc="*")
+    if not a:
+        return None
+    p = a.pos
+    return np.array([p.x, p.y, p.z], dtype=float)
+
+
+def gemmi_res_heavy_coords(res: gemmi.Residue) -> np.ndarray:
+    coords = []
+    for a in res:
+        if a.element.name == "H":
+            continue
+        p = a.pos
+        coords.append([p.x, p.y, p.z])
+    return np.array(coords, dtype=float) if coords else np.zeros((0, 3), dtype=float)
+
+
+def compute_af3_clash_resindices(
+    af3_cif: Path,
+    true_pdb: Path,
+    af3_chunk_resindices: List[int],   # indices in AF3 chain A residue list (0-based)
+    true_chunk_resindices: List[int],  # indices in TRUE chain A residue list (0-based)
+    cutoff: float = 4.0,
+) -> Optional[List[int]]:
+    # True complex via MDAnalysis
+    true_u = mda.Universe(str(true_pdb))
+    true_ag = sel_chain_or_segid(true_u, ["A"])
+    if len(true_ag) == 0:
+        return None
+    true_ag_res = true_ag.residues
+
+    ab_atoms = pick_antibody_atoms(true_u)
+    if len(ab_atoms) == 0:
+        return None
+    ab_pos = ab_atoms.positions
+
+    # AF3 scaffold via gemmi
+    st = gemmi_load_cif(af3_cif)
+    chA = gemmi_chain(st, "A")
+    af3_res = gemmi_chain_residues(chA)
+
+    # bounds
+    if not af3_chunk_resindices or not true_chunk_resindices:
+        return None
+    if max(af3_chunk_resindices) >= len(af3_res) or max(true_chunk_resindices) >= len(true_ag_res):
+        return None
+
+    # Build paired CA sets for alignment
+    P_list = []
+    Q_list = []
+    for i_af3, i_true in zip(af3_chunk_resindices, true_chunk_resindices):
+        caP = gemmi_res_ca(af3_res[i_af3])
+        caQ_ag = true_ag_res[i_true].atoms.select_atoms("name CA and not name H*")
+        if caP is None or len(caQ_ag) != 1:
+            continue
+        P_list.append(caP)
+        Q_list.append(caQ_ag.positions[0])
+
+    if len(P_list) < 3:
+        return None
+
+    P = np.vstack(P_list)  # AF3 CA
+    Q = np.vstack(Q_list)  # True CA
+
+    R, t = kabsch_fit(P, Q)
+
+    # Unintended residues: AF3 chain A residues excluding chunk
+    mask = np.zeros(len(af3_res), dtype=bool)
+    mask[np.array(af3_chunk_resindices, dtype=int)] = True
+    unintended_idx = np.where(~mask)[0]
+    if unintended_idx.size == 0:
+        return []
+
+    clashing = []
+    for i in unintended_idx:
+        heavy = gemmi_res_heavy_coords(af3_res[i])
+        if heavy.shape[0] == 0:
+            continue
+        # transform AF3 heavy atoms into true frame
+        heavy_fit = (heavy @ R) + t
+        d = distance_array(heavy_fit, ab_pos)
+        if np.any(d < cutoff):
+            clashing.append(int(i))  # AF3 chain-A residue index (0-based within chain A)
+    return clashing
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--metrics_csv", required=True)
+    ap.add_argument("--dp2_parquet", default="datasets/dp2.parquet")
+    ap.add_argument("--true_dir", required=True)
+    ap.add_argument("--out_csv", required=True)
+    ap.add_argument("--limit", type=int, default=0)
+    args = ap.parse_args()
+
+    print("[add_clash_metrics] starting")
+    print("[add_clash_metrics] metrics_csv:", args.metrics_csv)
+    print("[add_clash_metrics] dp2_parquet:", args.dp2_parquet)
+    print("[add_clash_metrics] true_dir:", args.true_dir)
+    print("[add_clash_metrics] out_csv:", args.out_csv)
+
+    metrics = pd.read_csv(args.metrics_csv)
+    dp2 = pd.read_parquet(args.dp2_parquet)
+
+    missing = [c for c in DP2_NEEDED if c not in dp2.columns]
+    if missing:
+        raise SystemExit(f"dp2.parquet missing required columns: {missing}")
+
+    if "id" not in metrics.columns:
+        raise SystemExit("metrics CSV must contain column 'id' (to find <id>.pdb in true_dir)")
+    if "af3_path" not in metrics.columns:
+        raise SystemExit("metrics CSV must contain column 'af3_path'")
+
+    dp2["assay_scaffolded_epitope_id"] = dp2["assay_scaffolded_epitope_id"].astype(str).str.lower()
+    metrics["assay_scaffolded_epitope_id"] = metrics["assay_scaffolded_epitope_id"].astype(str).str.lower()
+
+    m = metrics.merge(dp2[DP2_NEEDED], on="assay_scaffolded_epitope_id", how="left")
+
+    if args.limit and args.limit > 0:
+        m = m.head(args.limit).copy()
+
+    true_dir = Path(args.true_dir)
+
+    out_clash, out_has, out_n = [], [], []
+
+    n_total = len(m)
+    n_eligible = 0
+    n_computed = 0
+
+    fail_no_af3 = 0
+    fail_no_true = 0
+    fail_bad_chunk = 0
+    fail_compute_none = 0
+    fail_exception = 0
+
+    printed = 0
+
+    for _, row in m.iterrows():
+        af3_path = row.get("af3_path")
+        pid = row.get("id")
+
+        if pd.isna(af3_path) or pd.isna(pid):
+            fail_no_af3 += 1
+            out_clash.append(None); out_has.append(None); out_n.append(None)
+            continue
+
+        af3_cif = Path(str(af3_path))
+        true_pdb = true_dir / f"{pid}.pdb"
+
+        if not af3_cif.exists():
+            fail_no_af3 += 1
+            out_clash.append(None); out_has.append(None); out_n.append(None)
+            continue
+
+        if not true_pdb.exists():
+            fail_no_true += 1
+            out_clash.append(None); out_has.append(None); out_n.append(None)
+            continue
+
+        af3_ris = parse_index_list(row.get("assay_scaffolded_epitope_chunk_resindices"))
+        true_ris = parse_index_list(row.get("epitope_chunk_resindices"))
+        if len(af3_ris) < 3 or len(true_ris) < 3:
+            fail_bad_chunk += 1
+            out_clash.append(None); out_has.append(None); out_n.append(None)
+            continue
+
+        n_eligible += 1
+        try:
+            l = compute_af3_clash_resindices(af3_cif, true_pdb, af3_ris, true_ris)
+        except Exception as e:
+            fail_exception += 1
+            l = None
+            if printed < 3:
+                printed += 1
+                print("[add_clash_metrics] EXAMPLE EXCEPTION:", repr(e))
+                print("  af3:", af3_cif)
+                print("  true:", true_pdb)
+
+        if l is None:
+            fail_compute_none += 1
+            out_clash.append(None); out_has.append(None); out_n.append(None)
+        else:
+            n_computed += 1
+            out_clash.append(l)
+            out_has.append(len(l) > 0)
+            out_n.append(len(l))
+
+    m["af3_clash_resindices"] = out_clash
+    m["af3_has_clash"] = out_has
+    m["af3_n_clash_res"] = out_n
+
+    out_csv = Path(args.out_csv)
+    out_csv.parent.mkdir(parents=True, exist_ok=True)
+    m.to_csv(out_csv, index=False)
+
+    print(f"[add_clash_metrics] Rows total: {n_total:,}")
+    print(f"[add_clash_metrics] Rows eligible (af3 cif + true pdb + chunk indices): {n_eligible:,}")
+    print(f"[add_clash_metrics] Rows computed: {n_computed:,}")
+    print("[add_clash_metrics] Fail breakdown:")
+    print(f"  no/missing af3 or id: {fail_no_af3:,}")
+    print(f"  missing true pdb: {fail_no_true:,}")
+    print(f"  bad chunk indices: {fail_bad_chunk:,}")
+    print(f"  compute returned None: {fail_compute_none:,}")
+    print(f"  exceptions: {fail_exception:,}")
+    print(f"[add_clash_metrics] Wrote: {out_csv}")
+
+
+if __name__ == "__main__":
+    main()

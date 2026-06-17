@@ -1,0 +1,7 @@
+pandas>=2.0
+numpy>=1.23
+pyarrow>=14.0
+scipy>=1.10
+gemmi>=0.6
+MDAnalysis>=2.6
+matplotlib>=3.7

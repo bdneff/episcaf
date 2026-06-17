@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "episcaf"
+version = "0.2.0"
+description = "Epitope scaffolding pipeline + scoring/analysis (RFD3 + ProteinMPNN + AlphaFold3)"
+requires-python = ">=3.10"
+dependencies = [
+  "pandas>=2.0", "numpy>=1.23", "pyarrow>=14.0",
+  "scipy>=1.10", "gemmi>=0.6", "MDAnalysis>=2.6", "matplotlib>=3.7",
+]
+
+[tool.setuptools]
+packages = ["episcaf_pipeline", "episcaf_analysis", "episcaf_analysis.viz"]

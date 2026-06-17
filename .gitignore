@@ -1,0 +1,33 @@
+# data & runs (live on /tgen_labs, never in git)
+runs/
+run_12mer_scaffolding/
+datasets/
+logs/
+err_out_files/
+*.csv
+*.parquet
+*.cif
+*.cif.gz
+*.pdb
+*.pdb.gz
+*.npy
+*.npz
+*.h5
+
+# slurm / build artifacts
+*.out
+*.err
+slurm-*
+
+# figures (regenerate from episcaf_analysis/viz)
+*.png
+*.pdf
+
+# python / cruft
+__pycache__/
+*.pyc
+*.egg-info/
+.ipynb_checkpoints/
+tmp/
+*.point
+*history.txt
