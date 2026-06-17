@@ -44,11 +44,15 @@ This comparison is not yet apples-to-apples. The 12-mer epitope is a single cont
 12-residue stretch, whereas DP3 epitopes are larger and often multi-island, so 12-mer
 RMSD/PAE are mechanically lower in part by definition, and the pooled DP3 30\% also averages
 over heterogeneous epitopes. The clean control is to stratify within DP3 by island count
-and size (Section~\ref{sec:open}). Cylinder counts are likewise not comparable across sets.
-The 12-mer cylinder medians ($\sim$31--32) exceed DP3 ($\sim$21) mainly because the longer
-scaffolds place more C$\alpha$ atoms in a fixed cylinder, a scaffold-size artifact rather
-than more clashing. As a sanity check, the DP3 cylinder median ($\approx 21$) tracks its
-real \texttt{af3\_n\_clash\_res} median ($\approx 19$).
+and size (Section~\ref{sec:open}). Cylinder counts are likewise not comparable across sets as
+absolute numbers. The 12-mer cylinder medians ($\sim$31--32) exceed DP3 ($\sim$21) largely
+because the designs are a fixed length ($\sim$104 residues) while the 12-mer epitope is small
+(12 residues): that leaves $\sim$91 non-epitope scaffold residues whose C$\alpha$ atoms can
+fall in the fixed cylinder, versus fewer for DP3's larger epitopes. It is a scaffold-mass
+artifact rather than more genuine clashing, which is why the score applies the native-aware
+carve and ranks the cylinder per antigen rather than against an absolute cutoff. As a sanity
+check, the DP3 cylinder median ($\approx 21$) tracks its real \texttt{af3\_n\_clash\_res}
+median ($\approx 19$).
 
 \section{Composite scoring and per-epitope selection}\label{sec:composite}
 Decomposed metrics give more knobs, which raised the next question: how to combine them into
@@ -134,11 +138,19 @@ composite score. On every geometry and confidence metric the passing designs con
 where expected: low RMSD, low PAE, and high pTM. The cylinder column is the informative one.
 The passing DP3 designs, which we know the antibody accepts, sit at low cylinder counts
 (median near 10), whereas the DP4 top-3 sit higher (medians near 25--30). This is the same
-scaffold-size effect noted earlier rather than a sign that the DP4 designs are worse: the
-cylinder reads higher on the longer 12-mer scaffolds even among the designs we would pick.
+scaffold-mass effect noted earlier rather than a sign that the DP4 designs are worse: with a
+12-residue epitope on a $\sim$104-residue design, more non-epitope scaffold mass can fall in
+the fixed cylinder even among the designs we would pick.
 It is a direct argument for leaning on the native-aware carve and per-antigen scoring rather
 than an absolute cylinder cutoff shared across sets, and the comparison gives us a concrete
 reference for what a tolerable cylinder count looks like (the DP3 passing range).
+
+The cylinder earns this role. On DP3, where the true antibody clash is known, the cylinder
+predicts clash-free designs (\texttt{af3\_n\_clash\_res}=0) with AUC $0.93$
+(\texttt{cylinder\_native\_aware} $0.935$, slightly better than the plain count $0.924$;
+clash-free vs clashing medians 5 vs 22). It is therefore a strong stand-in for the filter we
+lose on DP4, and the native-aware carve helps the ranking, not just the optics
+(\texttt{episcaf\_analysis/cylinder\_surrogate\_auc.py}).
 
 \begin{figure}[h]\centering
 \figorbox{passes_overlay.png}{1.0}
