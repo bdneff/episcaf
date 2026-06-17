@@ -63,21 +63,19 @@ for r,(name,alld,passd,color,hasab) in enumerate(rows):
         lo,hi=xlim[key]; e=edges(key,lo,hi)
         xa=np.clip(num(alld[key]).dropna().values,lo,hi)
         xp=np.clip(num(passd[key]).dropna().values,lo,hi) if key in passd else np.array([])
-        ax.hist(xa,bins=e,color="#cccccc",label="all (counts)")     # full population, actual counts
+        ax.hist(xa,bins=e,color="#cfcfcf",log=True,label="all designs")          # full population
         if len(xp):
-            ax.axvline(np.median(xp),ls="--",color=color,lw=1.3)    # where passes center
-            # zoomed inset: the accepted distribution's own shape + counts
-            axins=ax.inset_axes([0.50,0.52,0.47,0.45])
-            axins.hist(xp,bins=e,color=color)
-            axins.set_xlim(lo,hi); axins.tick_params(labelsize=6, length=2)
-            axins.set_yticks([axins.get_ylim()[1]])
-            axins.set_title(f"passes (n={len(xp):,})",fontsize=7,color=color,pad=1)
+            ax.hist(xp,bins=e,histtype="stepfilled",color=color,alpha=0.55,log=True,label="passes")
+            ax.hist(xp,bins=e,histtype="step",color=color,lw=1.6,log=True)
+            ax.axvline(np.median(xp),ls="--",color=color,lw=1.2)
         ax.set_xlim(lo,hi); ax.tick_params(labelsize=8)
+        ax.set_ylim(bottom=0.7)
+        if r==0 and c==0: ax.legend(frameon=False,fontsize=8,loc="upper right")
         if r==0: ax.set_title(label,fontsize=12,fontweight="bold")
         if c==0:
             ax.set_ylabel(f"{name}\nall n={len(alld):,}\npass n={len(passd):,}",color=color,
                           fontweight="bold",rotation=0,ha="right",va="center",labelpad=46,fontsize=10)
-fig.suptitle("Full population (grey, actual counts) with passing designs as a zoomed inset; "
+fig.suptitle("Full population (grey) vs passing designs (color), actual counts on a log y-axis; "
              "dashed line = median of passes\n"
              "DP3 passes = four-filter; DP4 passes = top-3 per epitope",
              fontsize=13,fontweight="bold")
