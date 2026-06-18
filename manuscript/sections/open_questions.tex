@@ -1,10 +1,12 @@
 \section{Open questions and next steps}\label{sec:open}
 
 \begin{enumerate}
-\item \textbf{Within-DP3 island stratification (the clean control).} Split the DP3 set by
-epitope island count and size and recompute pass rates, to separate the
-``contiguous-12 is easier'' confound from a real scaffolding-difficulty effect. This needs
-the per-epitope island metadata in \texttt{datasets/dp2.parquet}.
+\item \textbf{Within-DP3 island stratification (the clean control).} We have split by island
+count (Section~\ref{sec:islands}): single-island designs are distributionally easier on every
+metric. What remains is to split by island \emph{size}, since the single-island epitopes are
+also shorter on average, to separate the ``contiguous-12 is easier'' confound from a real
+scaffolding-difficulty effect. The per-epitope island metadata is in \texttt{dp2.parquet}
+(\texttt{epitope\_chunks}, \texttt{contig\_string}).
 
 \item \textbf{Move to a sigmoid transform (planned).} The composite currently maps each
 metric to a percentile within its population, which is non-differentiable and
