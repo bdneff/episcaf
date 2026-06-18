@@ -25,6 +25,14 @@ antibody residues within \SI{4}{\angstrom} of non-epitope scaffold residues
 true epitope, then checks non-epitope scaffold heavy atoms against antibody atoms. The
 antibody coordinates always come from the AbDb crystal structure, not from AlphaFold3.
 
+We summarize a design protocol by its empirical pass rate. If a protocol produces $N$
+designs $s_i$ and $f(s_i)=1$ when design $i$ clears all four filters (and $0$ otherwise),
+\begin{equation}\label{eq:passrate}
+\hat P_{\text{pass}} \;=\; \frac{1}{N}\sum_{i=1}^{N}\mathbf{1}\!\left[f(s_i)=1\right].
+\end{equation}
+This is just the fraction of designs that pass, and it is the quantity we compare between
+protocols and report per epitope.
+
 \subsection{Decomposed metrics}\label{sec:decomp}
 The two continuous filters, overall RMSD and mean PAE, treat the epitope and the scaffold
 as a single unit. We split each into epitope- and scaffold-specific terms (epitope RMSD,
@@ -36,23 +44,44 @@ Selection over the four metrics is organized as a $2\times2$ of strict and relax
 thresholds on (epitope, scaffold), with a flexible/flexible arm as a negative control.
 
 \subsection{Native-antigen-aware cylinder surrogate (12-mer set)}
-With no antibody available, we approximate the occluded volume with a cylinder fitted to
-the epitope. The epitope C$\alpha$ atoms define a plane by SVD, and the outward normal (the
-antibody approach direction) orients a cylinder of radius \SI{16}{\angstrom}, height
-\SI{40}{\angstrom}, and offset \SI{-4}{\angstrom}. We count the non-epitope scaffold
-C$\alpha$ atoms inside the cylinder. The native-aware variant excludes scaffold atoms within
-a short distance of a native-antigen heavy atom, i.e.\ residues sitting where the native
-antigen already sits, which a real antibody tolerates. The geometry core is
-\texttt{episcaf\_analysis/native\_cylinder\_core.py} (self-tested).
+With no antibody available, we approximate the volume an antibody would occupy with a
+cylinder fitted to the epitope. The epitope C$\alpha$ coordinates $\{x_j\}_{j=1}^{m}$ define
+a plane: the centroid is $c=\tfrac{1}{m}\sum_j x_j$, and the plane normal $\hat n$ is the
+smallest-variance singular vector of the centered coordinates $\{x_j-c\}$ (the antibody
+approach direction), oriented to point away from the antigen body. The cylinder base is
+$b = c + d_0\,\hat n$ with offset $d_0=\SI{-4}{\angstrom}$. A scaffold C$\alpha$ at position
+$p$ lies inside the cylinder when, writing $v=p-b$, its axial and radial coordinates satisfy
+\begin{equation}\label{eq:cyl}
+0 \;\le\; v\cdot\hat n \;\le\; H
+\qquad\text{and}\qquad
+\bigl\lVert\, v-(v\cdot\hat n)\,\hat n \,\bigr\rVert \;\le\; R,
+\end{equation}
+with height $H=\SI{40}{\angstrom}$ and radius $R=\SI{16}{\angstrom}$. The plain count is the
+number of non-epitope scaffold C$\alpha$ satisfying~\eqref{eq:cyl}; the native-aware count
+additionally drops any such atom within \SI{1}{\angstrom} of a native-antigen heavy atom,
+i.e.\ sitting where the native antigen already sits, which a real antibody tolerates. The
+geometry core is \texttt{episcaf\_analysis/native\_cylinder\_core.py} (self-tested).
 
 \subsection{Composite scorer}
 One config-driven scorer (\texttt{episcaf\_analysis/score.py}) ranks designs in four steps:
 (i)~\textbf{gate} on epitope-chunk RMSD; (ii)~transform each metric to a higher-is-better
 score within a scope (pooled, or per antigen); (iii)~\textbf{weighted sum}; and (iv)~keep
-the \textbf{top-$k$ per epitope}. Each metric is one input with its own activation
-(percentile, min-max, z-score, or sigmoid), so the model is effectively a single-layer
-perceptron with hand-set weights, feed-forward and without backpropagation. The dials live
-in \texttt{episcaf\_analysis/presets.py}:
+the \textbf{top-$k$ per epitope}. Concretely, each design $d$ receives a score
+\begin{equation}\label{eq:score}
+S(d) \;=\; \sum_{m} w_m\,\varphi_m\!\bigl(x_m(d)\bigr),
+\end{equation}
+a weighted sum over metrics $m$ of a per-metric activation $\varphi_m$ that maps the raw
+value $x_m$ to a higher-is-better score. With $\varphi$ a percentile the score is rank-based
+and depends on the cohort; with a sigmoid,
+\begin{equation}\label{eq:sigmoid}
+\varphi(x) \;=\; \frac{1}{1+\exp\!\bigl(s\,k\,(x-x_0)\bigr)},
+\qquad s=+1\ \text{if lower is better (else } -1),
+\end{equation}
+it is an absolute, saturating score with a tunable midpoint $x_0$ and steepness $k$. In this
+form the scorer is literally a single-layer perceptron with hand-set weights (feed-forward,
+no backpropagation): the activations are the per-metric nonlinearities, the $w_m$ are the
+weights, and ``fitting'' it (Section~\ref{sec:open}) means learning the $w_m$ (and the
+$x_0,k$) from data. The dials live in \texttt{episcaf\_analysis/presets.py}:
 
 \begin{center}
 \begin{tabular}{lc}

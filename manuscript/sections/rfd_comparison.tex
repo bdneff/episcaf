@@ -11,6 +11,13 @@ even trade for RFD1 on this task, which is the basis for standardizing on RFD3 g
 The per-metric distributions are broadly comparable (Fig.~\ref{fig:rfd}), with RFD3 placing
 somewhat more mass at low epitope and overall RMSD.
 
+It helps to frame what is actually being compared. Each protocol samples sequences from a
+backbone-conditioned distribution $p(s\mid b)$ and is judged by the same pass rate
+(Eq.~\ref{eq:passrate}), so a difference in $\hat P_{\text{pass}}$ reflects a difference in
+those sequence distributions over comparable backbones. ProteinMPNN optimizes $p(s\mid b)$
+directly through its inverse-folding objective, whereas RFD3 produces it only as a by-product
+of all-atom denoising; that the two land so close is the substantive result.
+
 \begin{figure}[h]\centering
 \figorbox{rfd1_vs_rfd3.png}{1.0}
 \caption{RFD1+MPNN (blue, filled) versus RFD3+MPNN (red, outline) on the same DP3 epitopes,
