@@ -1,0 +1,64 @@
+\section{Preprocessing: tiling antigens into assay constructs}\label{sec:tiling}
+The no-antibody (DP4) work starts before any design is generated, by turning an antigen into
+a set of short peptide constructs to scaffold. Two things drive how we do this.
+
+First, RFD3 needs an input crystal structure. The contig tells RFD3 which residues to hold
+fixed while it builds a scaffold around them, so those residues have to exist in a PDB. We
+therefore tile the \emph{PDB-resolved} sequence (the residues actually present in the
+structure), not the deposited FASTA. 6M0J is the clearest case: its FASTA starts 14 residues
+before the crystal (chain E begins at residue 333, which is position 15 in the FASTA), so we
+drop those 14 and tile the 223-residue resolved region. 1D2K (392) and 4WAT (402) match
+their full chains.
+
+Second, the constructs have to match the linear-epitope assay. Each tile is placed at the
+C-terminus of a constant 73-residue construct: a glycine--serine filler followed by the
+ENLYFQGA protease site. Because the prefix is constant, every member is synthesized at a
+constant length (103 residues for a 30-mer), and the protease site cleaves it down to the
+bare tile at the end, which is what the assay reads.
+
+\subsection{General tiling utility}
+The tiling step is a single utility (\texttt{episcaf\_pipeline/tile\_fasta.py}) so we can
+point it at any target. It takes a sequence source (a FASTA, or the \texttt{antigen\_seq}
+column of a ledger such as \texttt{dp2.parquet}), a window length, and a step, and writes the
+assay library in the DP2 annotated format (\texttt{library\_member}, \texttt{sequence},
+\texttt{category}, \texttt{model}, \texttt{designedSequence}, \texttt{designedSequenceLength},
+\texttt{design\_ID}, \texttt{target}). Windows are placed at the chosen step; when the last
+window stops short of the C-terminus, we add one final window so the C-terminal residues are
+still covered. We pinned the utility to what was already run: re-tiling 1D2K, 4WAT, and 6M0J
+at a 12-residue window and step 2 reproduces the existing 12-mer library exactly (191, 196,
+and 107 tiles, every tile and full construct identical).
+
+\subsection{Tiled 12-mers, and tiled 30-mers as linear controls}
+The existing set tiles three antigens into 12-mers. The next category is tiled 30-mers,
+which serve as the \emph{linear controls}: unscaffolded constructs (model \texttt{(none)})
+that present the bare peptide, exactly what the scaffolded designs are meant to beat. For
+those we tile all 59 mAb-target antigens (sequences taken directly from \texttt{dp2.parquet})
+plus the three tiled antigens, at a 30-residue window and step 6.
+
+\subsection{Why the design count is not (tiles $\times$ top-$k$)}
+A natural expectation is that taking the top $k$ designs per epitope gives $k$ times the
+number of tiles. It does not, and the gap is informative. Each tile is one epitope that RFD3
+scaffolds into many designs (seeds $\times$ ProteinMPNN sequences), which are then
+AlphaFold3-validated and gated; we keep at most $k$ per epitope, so the selected total is
+$\sum_{\text{epitopes}} \min(k, n_{\text{gated}})$. In practice the per-epitope yield is not
+the bottleneck: every epitope that survives has well over $k$ designs (median $\sim$190
+scored). The shortfall is whole epitopes that drop out, because a tile whose residues are
+unresolved in the crystal cannot be aligned to the native antigen and is discarded at scoring
+(\texttt{crystal\_epi\_incomplete}). Table~\ref{tab:tilecount} shows this for top-5 selection.
+
+\begin{table}[h]\centering
+\begin{tabular}{lcccc}
+\toprule
+antigen & tiles & epitopes lost (crystal) & epitopes kept & top-5 designs \\
+\midrule
+1D2K & 191 & 0  & 191 & 951 \\
+6M0J & 107 & 15 & 92  & 450 \\
+4WAT & 196 & 40 & 156 & 780 \\
+\bottomrule
+\end{tabular}
+\caption{Selected designs track (epitopes kept)$\,\times\,5$, not (tiles)$\,\times\,5$.
+1D2K loses no epitopes; 6M0J and 4WAT lose 15 and 40 tiles to unresolved crystal regions.
+The small residuals (951 vs 955, 450 vs 460) are epitopes with fewer than 5 designs clearing
+the \SI{2.5}{\angstrom} gate.}
+\label{tab:tilecount}
+\end{table}
