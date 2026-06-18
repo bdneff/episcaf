@@ -71,10 +71,20 @@ def read_parquet_records(path: Path, id_col: str, seq_col: str, dedupe: bool):
         yield str(r[id_col]), str(r[seq_col])
 
 
-def tile_sequence(seq: str, mer: int, step: int):
-    """Yield (start_1indexed, tile) overlapping windows; remainder < step is dropped."""
+def tile_sequence(seq: str, mer: int, step: int, include_cterm: bool = True):
+    """Yield (start_1indexed, tile) overlapping windows.
+    If include_cterm and the last regular window does not reach the C-terminus, append a
+    final window ending at the C-terminus (covers the trailing residues), matching the
+    convention in the existing 6M0J 12-mer library."""
     L = len(seq)
+    if L < mer:
+        return
+    last = None
     for i in range(0, L - mer + 1, step):
+        yield i + 1, seq[i:i + mer]
+        last = i
+    if include_cterm and last is not None and last + mer < L:
+        i = L - mer
         yield i + 1, seq[i:i + mer]
 
 
@@ -97,6 +107,8 @@ def main():
     ap.add_argument("--start-id", type=int, default=1)
     ap.add_argument("--construct-prefix", default=CONSTRUCT_PREFIX,
                     help="set to empty string to emit bare tiles (no construct)")
+    ap.add_argument("--no-cterm", action="store_true",
+                    help="do not add a final C-terminal coverage tile")
     args = ap.parse_args()
 
     records = (read_parquet_records(args.parquet, args.id_col, args.seq_col, args.dedupe)
@@ -109,7 +121,7 @@ def main():
         if len(seq) < args.mer:
             print(f"[warn] {rid}: length {len(seq)} < mer {args.mer}, skipped")
             continue
-        for start, tile in tile_sequence(seq, args.mer, args.step):
+        for start, tile in tile_sequence(seq, args.mer, args.step, include_cterm=not args.no_cterm):
             rows.append(dict(
                 library_member=f"{args.id_prefix}_{n}",
                 sequence=args.construct_prefix + tile,
