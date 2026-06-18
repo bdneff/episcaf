@@ -5,8 +5,8 @@ This project is about \emph{B-cell epitopes}: the regions of an antigen that an 
 recognizes. Antibodies recognize these regions through their three-dimensional geometry,
 and many of the most interesting B-cell epitopes are discontinuous in sequence but
 contiguous in space, meaning the contacted residues are scattered along the antigen
-sequence yet fold together into a single surface patch. This is precisely the kind of
-target that linear methods cannot represent. High-throughput serology platforms such as
+sequence yet fold together into a single surface patch. Linear methods cannot represent
+this. High-throughput serology platforms such as
 PepSeq tile an antigen into short, overlapping linear peptides, which works well for
 continuous, sequence-local epitopes. A linear peptide, however, cannot reconstitute a
 surface assembled from sequence-distant residues, and it discards the native conformation
@@ -42,8 +42,8 @@ multi-island patches require preserving the relative position and orientation of
 separated regions, which is much harder. A concrete failure makes the point: PDB
 \texttt{2XQB}, patch \texttt{0P}, is a 56-residue epitope split across two separated
 islands, and across 2{,}624 RFdiffusion trials zero designs passed the downstream filters.
-Because this $0\%$ rate persists over thousands of attempts, it reads as a robust
-computational failure rather than undersampling. The cause appears procedural: contigs (the
+Because this $0\%$ rate holds over thousands of attempts, it looks like a real
+computational failure, not undersampling. The cause appears procedural: contigs (the
 constraints RFdiffusion is given) enforce epitope residue identity and ordering, but they
 do not strongly constrain the distances and orientations \emph{between} islands, so the
 model can satisfy the contig and still lose the geometry an antibody needs.
@@ -78,9 +78,10 @@ both pools, differing only in which accessibility term it uses.
 
 \subsection{How the rest of this log reads}
 The sections that follow are in the order the work happened. We start by reproducing
-Lawson's workflow and confirming that our reimplementation of the metrics matches his, then
-compare the RFdiffusion1 and RFdiffusion3 design sets directly (Section~\ref{sec:methods},
-Section~\ref{sec:rfd}). We then turn to the filtering, where the original global metrics
+Lawson's workflow and confirming our metrics match his (Section~\ref{sec:methods}), cover how
+we tile antigens into assay constructs (Section~\ref{sec:tiling}), and compare the
+RFdiffusion1 and RFdiffusion3 design sets directly (Section~\ref{sec:rfd}). We then turn to
+the filtering, where the original global metrics
 bias selection toward rigid, well-ordered folds, and show how decomposing them widens the
 designable space (Section~\ref{sec:filtering}). From there we build a composite score that
 selects the best designs per epitope (Section~\ref{sec:composite}), and finally extend

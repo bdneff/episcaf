@@ -8,15 +8,15 @@ pipeline, so we compare over designs that actually have an AF3 result. On that b
 are comparable, with RFD1 modestly higher: RFD1+MPNN passes \num{840}/\num{124362}
 ($0.68\%$) and RFD3+MPNN \num{751}/\num{150936} ($0.50\%$). RFD3 is therefore at least an
 even trade for RFD1 on this task, which is the basis for standardizing on RFD3 going forward.
-The per-metric distributions are broadly comparable (Fig.~\ref{fig:rfd}), with RFD3 placing
-somewhat more mass at low epitope and overall RMSD.
+The per-metric distributions are comparable (Fig.~\ref{fig:rfd}), though RFD3 puts a bit more
+mass at low epitope and overall RMSD.
 
-It helps to frame what is actually being compared. Each protocol samples sequences from a
+We are really comparing two sequence distributions. Each protocol samples sequences from a
 backbone-conditioned distribution $p(s\mid b)$ and is judged by the same pass rate
-(Eq.~\ref{eq:passrate}), so a difference in $\hat P_{\text{pass}}$ reflects a difference in
-those sequence distributions over comparable backbones. ProteinMPNN optimizes $p(s\mid b)$
-directly through its inverse-folding objective, whereas RFD3 produces it only as a by-product
-of all-atom denoising; that the two land so close is the substantive result.
+(Eq.~\ref{eq:passrate}), so a difference in $\hat P_{\text{pass}}$ comes from a difference in
+those distributions over comparable backbones. ProteinMPNN optimizes $p(s\mid b)$ directly
+through its inverse-folding objective, while RFD3 produces it only as a by-product of all-atom
+denoising. The two landing this close is the result worth keeping.
 
 \begin{figure}[h]\centering
 \figorbox{rfd1_vs_rfd3.png}{1.0}
@@ -35,7 +35,7 @@ account for the large majority. RFD3 spreads its \num{751} passes across more ta
 with at least one pass, versus 10 for RFD1), and its per-target leaders are different
 (\texttt{4xwo\_5P}, \texttt{8pww\_0P}, and \texttt{8db4\_0P} all pass well under RFD3 but
 barely or not at all under RFD1). For a library meant to cover many epitopes, that broader
-coverage is arguably more useful than a similar total concentrated on one target.
+coverage is more useful than a similar total piled onto one target.
 
 \begin{figure}[h]\centering
 \figorbox{passes_per_epitope.png}{1.0}

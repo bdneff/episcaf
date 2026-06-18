@@ -37,9 +37,9 @@ confirming \texttt{cylinder\_ca\_clashes} is the correct accessibility column th
 \item \textbf{Finish the 12-mer AlphaFold3 data migration} and verify landing counts
 against the manifest.
 
-\item \textbf{Quantify crystal-gap dropouts.} Pull the cluster pre-filter status counts to
-report, per antigen, how many tiles were dropped as \texttt{crystal\_epi\_incomplete}
-(epitope residues unresolved in the deposited crystal; Section~\ref{sec:noab}). This turns
-the recorded mechanism into a verified number, and tells us whether any intended antigen was
-effectively un-scorable from gaps alone.
+\item \textbf{Pin down the crystal-gap dropouts.} We can already count them locally: 6M0J and
+4WAT lose 15 and 40 tiles to unresolved crystal regions (Table~\ref{tab:tilecount}). What is
+left is to confirm these against the cluster pre-filter status (the explicit
+\texttt{crystal\_epi\_incomplete} entries) and to check whether the lost tiles fall in
+contiguous runs, i.e.\ whether whole regions go un-scorable from gaps.
 \end{enumerate}
