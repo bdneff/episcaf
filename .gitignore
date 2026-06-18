@@ -59,6 +59,11 @@ tmp/
 !manuscript/figures/*.png
 !manuscript/figures/*.pdf
 !manuscript/main.pdf
+# canonical inputs and shipped assay libraries (small; deliverables + provenance)
+# note: *.parquet stays ignored even under data/ (dp2.parquet is external, see data/README.md)
+!data/**/*.csv
+!data/**/*.fasta
+!data/**/*.pdb
 
 # macOS
 .DS_Store
