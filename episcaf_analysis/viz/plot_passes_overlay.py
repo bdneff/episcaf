@@ -33,7 +33,8 @@ ispass = ((num(dp3.epitope_chunk_rmsd)<=1)&(num(dp3.overall_rmsd)<=2)
 m12 = pd.read_csv(DP4, low_memory=False)
 top3 = pd.read_csv(DP4TOP, low_memory=False); top3 = top3[num(top3.rank_in_epitope)<=3]
 
-COLS=[("epitope_chunk_rmsd","Epitope RMSD (A)"),("epitope_pae","Epitope PAE"),
+COLS=[("epitope_chunk_rmsd","Epitope RMSD (A)"),("mean_pae","Mean PAE\n(global, filter)"),
+      ("epitope_pae","Epitope PAE\n(composite)"),
       ("overall_rmsd","Overall RMSD (A)"),("ptm","pTM"),
       ("af3_n_clash_res","AF3 clashing res\n(real antibody)"),("cylinder_ca_clashes","Cylinder clashes")]
 rows=[("DP3 mAb", dp3, dp3[ispass], "#c0392b", True)]
@@ -52,7 +53,7 @@ def edges(key,lo,hi):
     if key=="ptm": return np.linspace(lo,hi,26)
     return np.linspace(lo,hi,40)
 
-fig,axes=plt.subplots(len(rows),len(COLS),figsize=(21,12))
+fig,axes=plt.subplots(len(rows),len(COLS),figsize=(24,12))
 for r,(name,alld,passd,color,hasab) in enumerate(rows):
     for c,(key,label) in enumerate(COLS):
         ax=axes[r,c]
