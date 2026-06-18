@@ -12,8 +12,11 @@ command so anyone (or Claude Code) can reproduce it.
 | `rfd1_vs_rfd3.png` | `episcaf_analysis/viz/plot_rfd1_vs_rfd3.py` | `python episcaf_analysis/viz/plot_rfd1_vs_rfd3.py` |
 | `passes_overlay.png` | `episcaf_analysis/viz/plot_passes_overlay.py` | `python episcaf_analysis/viz/plot_passes_overlay.py` |
 | `passes_per_epitope.png` | `episcaf_analysis/viz/plot_passes_per_epitope.py` | `python episcaf_analysis/viz/plot_passes_per_epitope.py` |
+| `island_split_metrics.png` | `episcaf_analysis/viz/plot_island_split.py` | `python episcaf_analysis/viz/plot_island_split.py` |
 
 **`fp_reduction` inputs:** DP3 table `metrics_native_cyl.csv` (cols `af3_n_clash_res`, `cylinder_ca_clashes`, `cylinder_native_aware`), produced on Gemini by `scripts/add_native_cylinder.py --exclude_dist 1.0`. Verified result: among 3,186 clash-free designs, heavily-penalized (cylinder ≥ 10) dropped 1,112 → 384 (728 false positives removed).
+
+**`island_split_metrics.png`** — DP3 (RFD1+MPNN, `dp2.parquet`) four-filter metric distributions split by epitope island count (`epitope_chunks` 1 vs 2), density-normalized (N is uneven: 549 single-island vs 123,813 two-island designs with an AF3 result). Single-island designs sit at better values on every metric (median epitope RMSD 2.22 vs 3.86 Å, mean PAE 9.5 vs 11.9), yet the binary four-filter pass rate is lower (0.36% vs 0.68%) because the two-island rate is dominated by the outlier `7ox3_0P`. Source is the external `dp2.parquet` (see `data/README.md`).
 
 ## Notes
 - **`dp3_vs_12mer_ungated.png`** — 4×6 density-histogram grid, DP3 mAb vs tiled 12mers
