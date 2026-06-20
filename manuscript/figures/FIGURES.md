@@ -18,6 +18,14 @@ command so anyone (or Claude Code) can reproduce it.
 
 **`island_split_metrics.png`** — DP3 (RFD1+MPNN, `dp2.parquet`) four-filter metric distributions split by epitope island count (`epitope_chunks` 1 vs 2), density-normalized (N is uneven: 549 single-island vs 123,813 two-island designs with an AF3 result). Single-island designs sit at better values on every metric (median epitope RMSD 2.22 vs 3.86 Å, mean PAE 9.5 vs 11.9), yet the binary four-filter pass rate is lower (0.36% vs 0.68%) because the two-island rate is dominated by the outlier `7ox3_0P`. Source is the external `dp2.parquet` (see `data/README.md`).
 
+## Tables (generated, \input by the manuscript)
+
+| table file | script | command |
+|------------|--------|---------|
+| `tables/dual_island_targets.tex` (+ `results/dual_island_targets.csv`) | `episcaf_analysis/dual_island_targets.py` | `python3 episcaf_analysis/dual_island_targets.py --dp2 ../known_antigen/analysis/full_run/dp2.parquet --out results/dual_island_targets.csv --tex manuscript/tables/dual_island_targets.tex` |
+
+**`tables/dual_island_targets.tex`** (Table `tab:dualisland`, §`sec:perisland`) — the per-island design targets for John's dual-island run. From `dp2.parquet`, the 46 `epitope_chunks==2` mAb epitopes; an *island* = one contig `A`-segment, *island size* = its residue span. Each epitope contributes its islands as individual scaffolding targets; size-1 islands are skipped (can't be presented alone) but the partner island is still designed. Verified counts: 46 epitopes, 92 islands, **87 scaffolded** (size≥2) → 87 targets → 435 designs at top-5/island; **5 size-1 islands skipped** (one each in `2h32_0P`, `3q1s_0P`, `6o9i_0P`, `7a3t_0P`, `7tzh_0P`). Build the PDF with `tectonic main.tex` (not latexmk in this env).
+
 ## Notes
 - **`dp3_vs_12mer_ungated.png`** — 4×6 density-histogram grid, DP3 mAb vs tiled 12mers
   (1D2K/4WAT/6M0J) over epitope RMSD, epitope PAE, overall RMSD, pTM, AF3 clashing res
