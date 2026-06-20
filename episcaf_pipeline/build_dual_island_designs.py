@@ -23,8 +23,9 @@ per-epitope antigen PDB (`<id>.pdb`, configs.paths ABDB_CLEANED_PDB_DIR) still r
 stage02 keeps them all.
 
 Run size: 87 islands x V x 8 RFD3 x 8 MPNN = 5,568*V designs. Default V=20 -> 1,740 contigs,
-111,360 designs (order of Lawson's 151k DP3 set). The RFD3 step is 1,740 x 8 seeds = 13,920
-array tasks (submit in chunks under SLURM MaxArraySize; the driver does this).
+111,360 designs (order of Lawson's 151k DP3 set). RFD3 emits 8 backbones per task
+(n_batches=1), so the 8/contig depth is ONE task per contig -> 1,740 RFD3 array tasks (use
+stage02 --seeds 0 --reps 1; NOT 8 seeds, which would 8x over-generate).
 
 Decisions baked in (flag if they change):
   - Total length 103 (PepSeq max). Lawson's native dual-island contigs were 104; the change

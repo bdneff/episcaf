@@ -180,8 +180,9 @@ geometry --- which we name here rather than leave implicit. With $V$ variants th
 \end{equation}
 We use $V=\num{20}$, giving $\num{1740}$ contigs and $\num{111360}$ designs --- the order of
 the previous DP3 set ($V\approx\num{27}$ would reach its full $\sim\!\num{150000}$). $V$ is the
-\texttt{--variants} dial of \texttt{episcaf\_pipeline/build\_dual\_island\_designs.py}. The
-RFD3 step is then \num{1740} contigs $\times\,\num{8}$ seeds $=\num{13920}$ array tasks,
-submitted in chunks under the cluster's \texttt{MaxArraySize}.
+\texttt{--variants} dial of \texttt{episcaf\_pipeline/build\_dual\_island\_designs.py}. Each
+RFdiffusion3 task emits \num{8} backbones (\texttt{n\_batches=1}), so the \num{8}-per-contig
+depth is one task, not eight: the RFD3 step is \num{1740} array tasks (one per contig), each
+yielding \num{8} backbones that ProteinMPNN then re-sequences \num{8} ways.
 
 \input{tables/dual_island_targets}

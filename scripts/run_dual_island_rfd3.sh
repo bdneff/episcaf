@@ -15,9 +15,10 @@ cd "$(dirname "$0")/.."   # repo root
 
 # --- knobs ---------------------------------------------------------------------------------
 RUN_DIR="${1:-runs/dual_island_rfd3}"
-# 8 RFD3 designs per island-contig = the established protocol (8 designs/contig). Array size
-# is 87 islands x (#seeds x reps). Default: 8 seeds x 1 rep = 696 tasks.
-SEEDS="${SEEDS:-0,1,2,3,4,5,6,7}"
+# RFD3 emits 8 backbones per task (n_batches=1) -- that IS the established 8-designs/contig
+# depth, so we want ONE task per contig, not 8 seeds. Array size = #contigs x (#seeds x reps);
+# with the V=20 ledger that is 1,740 contigs x 1 x 1 = 1,740 tasks (each making 8 backbones).
+SEEDS="${SEEDS:-0}"
 REPS="${REPS:-1}"
 # Per-epitope antigen PDBs (named <id>.pdb). configs.paths ABDB_CLEANED_PDB_DIR.
 PDB_DIR="${PDB_DIR:-/tgen_labs/altin/alphafold3/workspace/episcaf-experiments/data/abdb/complex_pdbfiles/cleaned}"
