@@ -6,26 +6,29 @@ Design principles:
 - Each run is a *snapshot* + generated artifacts in a standard layout.
 - Stages are deterministic and parameterized by (dataset, run_dir).
 
+Stage numbers match the run-dir layout they produce:
+  00_input -> 01_design -> 02_rfd3 -> 03_mpnn -> 04_af3 -> 05_analysis
+(03_mpnn is driven by scripts/stage03_mpnn_*.py using cluster ProteinMPNN tooling.)
+
 Typical usage:
 
-  # Create a new run (copies dataset into run/00_input/)
+  # init: copy dataset into run/00_input/
   python -m episcaf_pipeline init --dataset datasets/dp2.parquet --run_dir runs/run_20260220_120000
 
-  # Compile expanded contigs (adds seeds/reps + contig_rfd3)
-  python -m episcaf_pipeline stage02 --run_dir runs/run_... --seeds 0,1,2,3 --reps 1
+  # stage01: compile expanded contigs into 01_design (adds seeds/reps + contig_rfd3)
+  python -m episcaf_pipeline stage01 --run_dir runs/run_... --seeds 0,1,2,3 --reps 1
 
-  # Emit RFD3 JSONs
-  python -m episcaf_pipeline stage03 --run_dir runs/run_... --input_pdb /abs/path/to/antigen_clean.pdb
+  # stage02: emit RFD3 JSONs into 02_rfd3
+  python -m episcaf_pipeline stage02 --run_dir runs/run_... --input_pdb /abs/path/to/antigen_clean.pdb
 
-  # Run RFD3 + AF3 via your cluster tools (sbatch templates in episcaf_pipeline/hpc/sbatch)
-
-  # Emit AF3 JSONs from RFD3 outputs
+  # run RFD3, then 03_mpnn (scripts/), then:
+  # stage04: emit AF3 JSONs into 04_af3
   python -m episcaf_pipeline stage04 --run_dir runs/run_...
 
-  # Analyze RMSD (requires gemmi + MDAnalysis)
+  # stage05: analyze RMSD into 05_analysis (requires gemmi + MDAnalysis)
   python -m episcaf_pipeline stage05 --run_dir runs/run_...
 
-  # Or do everything up to emitting inputs:
+  # or init + stage01 + stage02 in one shot:
   python -m episcaf_pipeline prep --dataset datasets/dp2.parquet --run_dir runs/run_... --input_pdb ... --seeds 0,1,2,3 --reps 1
 
 """
@@ -38,8 +41,8 @@ from pathlib import Path
 
 from episcaf_pipeline.utils import setup_logging
 from episcaf_pipeline.paths import ensure_run_layout, RunPaths
-from episcaf_pipeline.stages.stage02_compile_contigs import CompileContigsArgs, compile_contigs
-from episcaf_pipeline.stages.stage03_emit_rfd3_inputs import EmitRFD3Args, emit_rfd3_inputs
+from episcaf_pipeline.stages.stage01_compile_contigs import CompileContigsArgs, compile_contigs
+from episcaf_pipeline.stages.stage02_emit_rfd3_inputs import EmitRFD3Args, emit_rfd3_inputs
 from episcaf_pipeline.stages.stage04_emit_af3_jsons import EmitAF3Args, emit_af3_jsons
 from episcaf_pipeline.stages.stage05_rmsd_vs_af3 import RMSDArgs, run_rmsd_vs_af3
 
@@ -61,13 +64,13 @@ def cmd_init(args: argparse.Namespace) -> None:
     print(f"  dataset snapshot: {out}")
 
 
-def cmd_stage02(args: argparse.Namespace) -> None:
+def cmd_stage01(args: argparse.Namespace) -> None:
     rp = ensure_run_layout(Path(args.run_dir))
     in_parquet = rp.input_dir / "designs.parquet"
-    if args.in_parquet:
+    if getattr(args, "in_parquet", ""):
         in_parquet = Path(args.in_parquet).expanduser().resolve()
     out_parquet = rp.contigs_parquet
-    if args.out_parquet:
+    if getattr(args, "out_parquet", ""):
         out_parquet = Path(args.out_parquet).expanduser().resolve()
 
     compile_contigs(CompileContigsArgs(
@@ -80,10 +83,10 @@ def cmd_stage02(args: argparse.Namespace) -> None:
     print(f"Wrote contigs: {out_parquet}")
 
 
-def cmd_stage03(args: argparse.Namespace) -> None:
+def cmd_stage02(args: argparse.Namespace) -> None:
     rp = ensure_run_layout(Path(args.run_dir))
     contigs = rp.contigs_parquet
-    if args.contigs_parquet:
+    if getattr(args, "contigs_parquet", ""):
         contigs = Path(args.contigs_parquet).expanduser().resolve()
 
     emit_rfd3_inputs(EmitRFD3Args(
@@ -133,10 +136,10 @@ def cmd_stage05(args: argparse.Namespace) -> None:
 
 
 def cmd_prep(args: argparse.Namespace) -> None:
-    # init + stage02 + stage03
+    # init + stage01 (contigs) + stage02 (rfd3 inputs)
     cmd_init(args)
+    cmd_stage01(args)
     cmd_stage02(args)
-    cmd_stage03(args)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -150,26 +153,28 @@ def build_parser() -> argparse.ArgumentParser:
     ap_init.add_argument("--force", action="store_true", help="Overwrite existing 00_input/designs.parquet")
     ap_init.set_defaults(func=cmd_init)
 
-    ap_s2 = sub.add_parser("stage02", help="Compile expanded contigs table (adds design_id, seeds, reps)")
-    ap_s2.add_argument("--run_dir", required=True)
-    ap_s2.add_argument("--in_parquet", default="", help="Optional override of input parquet (default: run/00_input/designs.parquet)")
-    ap_s2.add_argument("--out_parquet", default="", help="Optional override of output parquet")
-    ap_s2.add_argument("--seeds", default="0")
-    ap_s2.add_argument("--reps", default=1, type=int)
-    ap_s2.add_argument("--max_rows", default=0, type=int)
-    ap_s2.set_defaults(func=cmd_stage02)
+    ap_s1 = sub.add_parser("stage01", help="Compile expanded contigs table into 01_design (adds design_id, seeds, reps)")
+    ap_s1.add_argument("--run_dir", required=True)
+    ap_s1.add_argument("--in_parquet", default="", help="Optional override of input parquet (default: run/00_input/designs.parquet)")
+    ap_s1.add_argument("--out_parquet", default="", help="Optional override of output parquet")
+    ap_s1.add_argument("--seeds", default="0")
+    ap_s1.add_argument("--reps", default=1, type=int)
+    ap_s1.add_argument("--max_rows", default=0, type=int)
+    ap_s1.set_defaults(func=cmd_stage01)
 
-    ap_s3 = sub.add_parser("stage03", help="Emit RFD3 JSON inputs + manifest")
-    ap_s3.add_argument("--run_dir", required=True)
-    ap_s3.add_argument("--contigs_parquet", default="", help="Optional override of contigs parquet")
-    mx = ap_s3.add_mutually_exclusive_group(required=True)
+    ap_s2 = sub.add_parser("stage02", help="Emit RFD3 JSON inputs + manifest into 02_rfd3")
+    ap_s2.add_argument("--run_dir", required=True)
+    ap_s2.add_argument("--contigs_parquet", default="", help="Optional override of contigs parquet")
+    mx = ap_s2.add_mutually_exclusive_group(required=True)
     mx.add_argument("--input_pdb", default="", help="Single cleaned antigen-only PDB used by RFD3 (toy runs)")
     mx.add_argument("--pdb_dir", default="", help="Directory of cleaned antigen-only PDBs; per-row PDB is <id>.pdb")
-    ap_s3.add_argument("--dump_trajectory", action="store_true")
-    ap_s3.add_argument("--no_prevalidate", action="store_true")
-    ap_s3.set_defaults(func=cmd_stage03)
+    ap_s2.add_argument("--dump_trajectory", action="store_true")
+    ap_s2.add_argument("--no_prevalidate", action="store_true")
+    ap_s2.set_defaults(func=cmd_stage02)
 
-    ap_s4 = sub.add_parser("stage04", help="Emit AF3 JSON inputs from RFD3 outputs + manifest")
+    # stage03 = MPNN lives in scripts/ (stage03_mpnn_*.py; uses cluster ProteinMPNN tooling)
+
+    ap_s4 = sub.add_parser("stage04", help="Emit AF3 JSON inputs from RFD3 outputs into 04_af3 (RFD3-direct; no MPNN)")
     ap_s4.add_argument("--run_dir", required=True)
     ap_s4.add_argument("--seed", type=int, default=42)
     ap_s4.add_argument("--limit", type=int, default=0)
@@ -181,7 +186,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap_s5.add_argument("--verbose", action="store_true")
     ap_s5.set_defaults(func=cmd_stage05)
 
-    ap_prep = sub.add_parser("prep", help="init + stage02 + stage03 (prepare run for RFD3 generation)")
+    ap_prep = sub.add_parser("prep", help="init + stage01 + stage02 (prepare run for RFD3 generation)")
     ap_prep.add_argument("--dataset", required=True)
     ap_prep.add_argument("--run_dir", required=True)
     ap_prep.add_argument("--force", action="store_true")

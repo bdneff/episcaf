@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-02_submit_mpnn.py
+stage03_mpnn_submit.py
 
-Splits fixed PDBs into batches and submits a SLURM array job to run
-dl_interface_design.py (ProteinMPNN) on each batch.
+Splits the FIXED backbone PDBs (03_mpnn/fixed_pdbs) into batches and submits a SLURM array
+job to run dl_interface_design.py (ProteinMPNN) on each batch, writing designed PDBs to
+03_mpnn/mpnn_pdbs.
 
-Usage (run after 01_rfd3_cif_to_fixed_pdb.sh completes):
-    python scripts/02_submit_mpnn.py \
-        --fixed_pdb_dir runs/run_rfd3_mpnn/01_fixed_pdbs \
-        --outdir        runs/run_rfd3_mpnn/02_mpnn_pdbs \
+Usage (run after stage03_mpnn_fixed_pdbs.py completes):
+    python scripts/stage03_mpnn_submit.py \
+        --fixed_pdb_dir runs/<run>/03_mpnn/fixed_pdbs \
+        --outdir        runs/<run>/03_mpnn/mpnn_pdbs \
         --batch_size    500 \
         --dry_run       # omit to actually submit
 """
@@ -29,8 +30,7 @@ SBATCH_TEMPLATE = """\
 #SBATCH --mem=16G
 #SBATCH --gres=gpu:1
 #SBATCH --time=2:00:00
-#SBATCH --output=logs/rfd3_mpnn/02_mpnn/batch_{batch_id:04d}_%j.log
-#SBATCH --chdir=/home/bneff/rfd3/repo_refactored
+#SBATCH --output=mpnn_batch_{batch_id:04d}_%A.out
 
 mkdir -p {outdir}
 
@@ -52,13 +52,12 @@ def main():
                         help="Print sbatch scripts without submitting")
     args = parser.parse_args()
 
-    fixed_pdb_dir = Path(args.fixed_pdb_dir)
-    outdir        = Path(args.outdir)
-    batch_dir     = Path("runs/run_rfd3_mpnn/02_mpnn_batches")
-    log_dir       = Path("logs/rfd3_mpnn/02_mpnn")
+    fixed_pdb_dir = Path(args.fixed_pdb_dir).resolve()
+    outdir        = Path(args.outdir).resolve()
+    # batch staging lives under the same run dir as outdir (no hardcoded run name)
+    batch_dir     = outdir.parent / "02_mpnn_batches"
 
     batch_dir.mkdir(parents=True, exist_ok=True)
-    log_dir.mkdir(parents=True, exist_ok=True)
 
     # collect all fixed PDBs
     all_pdbs = sorted(fixed_pdb_dir.glob("*_fixed.pdb"))

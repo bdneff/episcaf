@@ -15,9 +15,11 @@ class RunPaths:
     @property
     def rfd3_dir(self) -> Path: return self.run_dir / "02_rfd3"
     @property
-    def af3_dir(self) -> Path: return self.run_dir / "03_af3"
+    def mpnn_dir(self) -> Path: return self.run_dir / "03_mpnn"
     @property
-    def analysis_dir(self) -> Path: return self.run_dir / "04_analysis"
+    def af3_dir(self) -> Path: return self.run_dir / "04_af3"
+    @property
+    def analysis_dir(self) -> Path: return self.run_dir / "05_analysis"
 
     # stage-specific subdirs/files
     @property
@@ -31,6 +33,13 @@ class RunPaths:
     def rfd3_outputs_dir(self) -> Path: return self.rfd3_dir / "outputs"
     @property
     def rfd3_logs_dir(self) -> Path: return self.rfd3_dir / "logs"
+
+    @property
+    def mpnn_fixed_dir(self) -> Path: return self.mpnn_dir / "fixed_pdbs"
+    @property
+    def mpnn_pdbs_dir(self) -> Path: return self.mpnn_dir / "mpnn_pdbs"
+    @property
+    def mpnn_batches_dir(self) -> Path: return self.mpnn_dir / "batches"
 
     @property
     def af3_inputs_dir(self) -> Path: return self.af3_dir / "inputs"
@@ -50,8 +59,10 @@ class RunPaths:
 def ensure_run_layout(run_dir: Path) -> RunPaths:
     run_dir = Path(run_dir).resolve()
     rp = RunPaths(run_dir)
-    for d in [rp.input_dir, rp.design_dir, rp.rfd3_dir, rp.af3_dir, rp.analysis_dir,
+    for d in [rp.input_dir, rp.design_dir, rp.rfd3_dir, rp.mpnn_dir, rp.af3_dir,
+              rp.analysis_dir,
               rp.rfd3_inputs_dir, rp.rfd3_outputs_dir, rp.rfd3_logs_dir,
+              rp.mpnn_fixed_dir, rp.mpnn_pdbs_dir, rp.mpnn_batches_dir,
               rp.af3_inputs_dir, rp.af3_outputs_dir, rp.af3_logs_dir]:
         d.mkdir(parents=True, exist_ok=True)
     return rp

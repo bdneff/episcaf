@@ -674,7 +674,7 @@ def run_validate(args: argparse.Namespace) -> None:
 def run_metrics(args: argparse.Namespace) -> None:
     run_dir  = Path(args.run_dir).resolve()
     rfd3_root = run_dir / "02_rfd3" / "outputs"
-    af3_root  = run_dir / "03_af3" / "outputs"
+    af3_root  = run_dir / "04_af3" / "outputs"
     true_dir  = Path(args.true_dir).resolve()
 
     dp2 = pd.read_parquet(Path(args.dp2_parquet).resolve())

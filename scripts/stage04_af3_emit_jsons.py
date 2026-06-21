@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-03_emit_af3_jsons_mpnn.py
+stage04_af3_emit_jsons.py
 
-Generate AF3 JSON inputs from MPNN-designed PDB files.
+Generate AF3 JSON inputs (04_af3) from MPNN-designed PDB files (03_mpnn).
 
 Usage:
-    python scripts/03_emit_af3_jsons_mpnn.py \
-        --mpnn_pdb_dir runs/run_rfd3_mpnn/02_mpnn_pdbs \
-        --out_dir      runs/run_rfd3_mpnn/03_af3/inputs \
+    python scripts/stage04_af3_emit_jsons.py \
+        --mpnn_pdb_dir runs/<run>/03_mpnn/mpnn_pdbs \
+        --out_dir      runs/<run>/04_af3/inputs \
         --seed         1
 """
 
@@ -115,7 +115,7 @@ def main():
     chunk_size = 100
     n_tasks = (total + chunk_size - 1) // chunk_size
     log.info(f"Total JSONs: {total}")
-    log.info(f"To submit: sbatch --array=1-{n_tasks} scripts/04_af3_array.sbatch {out_dir.parent.parent}")
+    log.info(f"To submit: sbatch --array=1-{n_tasks} scripts/stage04_af3_array.sbatch {out_dir.parent.parent}")
 
 
 if __name__ == "__main__":

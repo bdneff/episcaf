@@ -1,12 +1,17 @@
 \section{The pipeline, and reproducing Lawson's workflow}\label{sec:methods}
 
 \subsection{Pipeline}
-RFdiffusion3 generates scaffold backbones around the epitope, ProteinMPNN re-sequences
-them, and AlphaFold3 predicts the structure single-sequence
-(\texttt{--norun\_data\_pipeline}, one diffusion sample, seed~1). Per-design metrics are
-computed from the AlphaFold3 prediction against the designed structure. Generation code
-lives in \texttt{episcaf\_pipeline/}, and the metrics, scoring, and visualization code in
-\texttt{episcaf\_analysis/}.
+Each contig is carried through three stages. RFdiffusion3 generates \num{8} scaffold
+backbones holding the epitope segment fixed at its contig position (one GPU task per contig,
+\texttt{n\_batches=1}). Each backbone is stripped to its $C\alpha$/backbone trace and re-sequenced
+by ProteinMPNN, which is told to hold the epitope residues \emph{fixed} --- so it designs only
+the scaffold --- and draws \num{8} sequences per backbone (temperature \num{0.1}); the epitope's
+fixed positions are read back from the contig, since an island sits at residues $N{+}1\ldots
+N{+}\ell$ of an $N$-flank contig. AlphaFold3 then predicts each sequence single-sequence
+(\texttt{--norun\_data\_pipeline}, one diffusion sample, seed~1), giving the
+$\num{8}\times\num{8}=\num{64}$ designs per contig that the four filters score against the
+designed structure. Generation code lives in \texttt{episcaf\_pipeline/} and \texttt{scripts/},
+and the metrics, scoring, and visualization code in \texttt{episcaf\_analysis/}.
 
 \subsection{Reproducing Lawson's baseline}\label{sec:repro}
 Before trusting any new number we re-implement Lawson's metrics and check them against his

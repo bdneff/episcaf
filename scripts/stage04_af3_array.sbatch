@@ -5,12 +5,11 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH -t 4:00:00
-#SBATCH -o logs/rfd3_mpnn/03_af3/af3_%A_%a.out
-#SBATCH -e logs/rfd3_mpnn/03_af3/af3_%A_%a.err
-#SBATCH --chdir=/home/bneff/rfd3/repo_refactored
+#SBATCH -o af3_mpnn_%A_%a.out
+#SBATCH -e af3_mpnn_%A_%a.err
 
 # Usage:
-#   sbatch --array=1-N scripts/04_af3_array.sbatch <run_dir>
+#   sbatch --array=1-N scripts/stage04_af3_array.sbatch <run_dir>
 #
 # Each array task processes CHUNK_SIZE JSONs sequentially on one GPU.
 # V100 requires two extra flags vs A100:
@@ -22,13 +21,12 @@ set -euo pipefail
 module load singularity
 export SINGULARITYENV_XLA_FLAGS="--xla_disable_hlo_passes=custom-kernel-fusion-rewriter"
 
-RUN_DIR="${1:?usage: sbatch --array=1-N scripts/04_af3_array.sbatch <run_dir>}"
+RUN_DIR="${1:?usage: sbatch --array=1-N scripts/stage04_af3_array.sbatch <run_dir>}"
 RUN_DIR="$(python3 -c "import os; print(os.path.abspath('${RUN_DIR}'))")"
 
-IN_DIR="${RUN_DIR}/03_af3/inputs"
-OUT_ROOT="${RUN_DIR}/03_af3/outputs"
-LOG_DIR="logs/rfd3_mpnn/03_af3"
-mkdir -p "${OUT_ROOT}" "${LOG_DIR}"
+IN_DIR="${RUN_DIR}/04_af3/inputs"
+OUT_ROOT="${RUN_DIR}/04_af3/outputs"
+mkdir -p "${OUT_ROOT}"
 
 CHUNK_SIZE=100
 TASK_ID="${SLURM_ARRAY_TASK_ID}"

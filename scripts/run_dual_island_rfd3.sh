@@ -36,14 +36,14 @@ df.to_parquet(dst, index=False)
 print(f"   {len(df)} island rows -> {dst}")
 PY
 
-# NB: the all-in-one `prep` subcommand is currently broken (cmd_prep references an
-# undefined args.in_parquet), so we run init + stage02 + stage03 separately -- same result.
+# init (00_input) + stage01 (01_design contigs) + stage02 (02_rfd3 inputs). Run explicitly
+# rather than via `prep` so each stage's output is visible.
 echo ">> init $RUN_DIR"
 python3 -m episcaf_pipeline init --dataset "$LEDGER_PARQUET" --run_dir "$RUN_DIR" --force
-echo ">> stage02 (expand seeds x reps)  [seeds=$SEEDS reps=$REPS]"
-python3 -m episcaf_pipeline stage02 --run_dir "$RUN_DIR" --seeds "$SEEDS" --reps "$REPS"
-echo ">> stage03 (emit RFD3 inputs)  [pdb_dir=$PDB_DIR]"
-python3 -m episcaf_pipeline stage03 --run_dir "$RUN_DIR" --pdb_dir "$PDB_DIR"
+echo ">> stage01 (compile contigs, expand seeds x reps)  [seeds=$SEEDS reps=$REPS]"
+python3 -m episcaf_pipeline stage01 --run_dir "$RUN_DIR" --seeds "$SEEDS" --reps "$REPS"
+echo ">> stage02 (emit RFD3 inputs)  [pdb_dir=$PDB_DIR]"
+python3 -m episcaf_pipeline stage02 --run_dir "$RUN_DIR" --pdb_dir "$PDB_DIR"
 
 MANIFEST="$RUN_DIR/02_rfd3/inputs_manifest.csv"
 N=$(($(wc -l < "$MANIFEST") - 1))   # minus header
