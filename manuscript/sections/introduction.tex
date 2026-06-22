@@ -83,6 +83,21 @@ antibody: it approximates the volume an approaching antibody would occupy and as
 scaffold mass intrudes into it. A single, config-driven composite scorer ranks designs in
 both pools, differing only in which accessibility term it uses.
 
+\subsection{Where this work fits: the DP4 questions}
+This methods development feeds a specific deliverable --- DP4, the next PepSeq library
+(\texttt{docs/DP4designIdeas.pdf}) --- built to answer three questions. \emph{(Q1) What is a
+minimal epitope?}, how many islands and residues are needed for binding: the per-island
+scaffolding of Section~\ref{sec:perisland} and the island-count and -size analysis
+(Section~\ref{sec:islands}) are aimed here. \emph{(Q2) What predicts a successful design?},
+which of epitope RMSD, scaffold RMSD, PAE, and accessibility actually track binding: this is
+what the decomposed metrics and composite scorer below are for, and DP4 is built to answer it
+empirically by assaying designs sampled across that feature space and reading off what binds
+--- the non-circular experimental label we have been waiting for before fitting the scorer's
+weights (Section~\ref{sec:open}). \emph{(Q3) Can it extend to the polyclonal setting?}, tiling
+a whole antigen with no known antibody, where the cylinder surrogate (Section~\ref{sec:noab})
+stands in for the antibody-clash filter. The design ideas originate with John; the scoring and
+metrics developed here are a refined evolution of them.
+
 \subsection{How the rest of this log reads}
 The sections that follow are in the order the work happened. We start by reproducing
 Lawson's workflow and confirming our metrics match his (Section~\ref{sec:methods}), cover how
