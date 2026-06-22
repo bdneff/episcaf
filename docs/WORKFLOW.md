@@ -43,3 +43,26 @@ python episcaf_analysis/viz/plot_fp_reduction.py --in results/... --out manuscri
 cd manuscript && latexmk -pdf main.tex
 git add manuscript && git commit -m "manuscript: refresh fp-reduction figure + text" && git push
 ```
+
+## Cluster job sizing & walltime (size from throughput, with margin)
+
+Always allocate generous SLURM walltime and size batch chunks to the *observed* per-item
+throughput — never a guess. Prefer jobs that skip already-done outputs, so a timeout becomes
+a cheap backfill rather than a silent hole.
+
+**Worked example — the MPNN timeout (2026-06-21).** The first ProteinMPNN wave for the
+dual-island run used `--time=2:00:00` with 500 backbones × 8 sequences per batch. MPNN ran
+~215 backbones/h, so 500 needed ~2.3 h and every batch died at the wall ~430/500 — dropping
+its tail and losing ~12% of designs (97,786 of 111,360). Fix: walltime 2 h → 8 h, batch
+500 → 300, and a `--skip_done --tag redo` backfill mode in `scripts/stage03_mpnn_submit.py`
+that re-runs only backbones missing their 8 outputs.
+
+**Current per-stage walltimes (validate the first task before a full submit):**
+
+| stage | sbatch | walltime | per task | watch |
+|-------|--------|----------|----------|-------|
+| RFD3 | `episcaf_pipeline/hpc/sbatch/rfd3_array.sbatch` | 10 min | 1 contig → 8 backbones | ok |
+| MPNN | `scripts/stage03_mpnn_submit.py` | 8 h | 300 backbones × 8 seqs | fixed (was 2 h) |
+| AF3  | `scripts/stage04_af3_array.sbatch` | 4 h | 100 JSONs | **validate** first task's timing on ~111k |
+
+Rule of thumb: estimate runtime = (items × observed per-item time), then multiply by 2–3×.
