@@ -22,62 +22,86 @@ from pathlib import Path
 MPNN_SCRIPT = "/tgen_labs/altin/alphafold3/workspace/dl_binder_design/mpnn_fr/dl_interface_design.py"
 MPNN_ENV    = "/tgen_labs/altin/alphafold3/miniconda3/envs/proteinmpnn_binder_design"
 
+SEQS_PER_STRUCT = 8
+
 SBATCH_TEMPLATE = """\
 #!/bin/bash
-#SBATCH --job-name=mpnn_batch_{batch_id:04d}
+#SBATCH --job-name=mpnn_{tag}_{batch_id:04d}
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH --gres=gpu:1
-#SBATCH --time=2:00:00
-#SBATCH --output=mpnn_batch_{batch_id:04d}_%A.out
+#SBATCH --time=8:00:00
+#SBATCH --output=mpnn_{tag}_{batch_id:04d}_%A.out
 
 mkdir -p {outdir}
 
 {python} {mpnn_script} \\
     -pdbdir  {pdbdir} \\
     -outpdbdir {outdir} \\
-    -seqs_per_struct 8 \\
+    -seqs_per_struct {seqs} \\
     -temperature 0.1 \\
     -relax_cycles 0
 """
+
+
+def completed_stems(outdir: Path) -> set:
+    """Fixed-PDB stems (e.g. 'X_fixed') that already have all SEQS_PER_STRUCT MPNN outputs."""
+    from collections import Counter
+    counts = Counter()
+    for p in outdir.rglob("*_dldesign_*.pdb"):
+        counts[p.name.split("_dldesign_")[0]] += 1
+    return {stem for stem, n in counts.items() if n >= SEQS_PER_STRUCT}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fixed_pdb_dir", required=True)
     parser.add_argument("--outdir",        required=True)
-    parser.add_argument("--batch_size",    type=int, default=500)
+    parser.add_argument("--batch_size",    type=int, default=300)
+    parser.add_argument("--skip_done",     action="store_true",
+                        help="only process fixed PDBs that lack all 8 MPNN outputs in --outdir "
+                             "(backfill mode after a timeout); pair with --tag redo")
+    parser.add_argument("--tag",           default="batch",
+                        help="batch-dir/job-name prefix; use a fresh tag (e.g. 'redo') so a "
+                             "backfill run does not collide with existing batch dirs")
     parser.add_argument("--dry_run",       action="store_true",
                         help="Print sbatch scripts without submitting")
     args = parser.parse_args()
 
     fixed_pdb_dir = Path(args.fixed_pdb_dir).resolve()
     outdir        = Path(args.outdir).resolve()
-    # batch staging lives under the same run dir as outdir (no hardcoded run name)
-    batch_dir     = outdir.parent / "02_mpnn_batches"
-
+    batch_dir     = outdir.parent / "batches"
     batch_dir.mkdir(parents=True, exist_ok=True)
 
     # collect all fixed PDBs
     all_pdbs = sorted(fixed_pdb_dir.glob("*_fixed.pdb"))
     print(f"Found {len(all_pdbs)} fixed PDBs")
-
     if len(all_pdbs) == 0:
-        print("ERROR: no fixed PDBs found — has 01_rfd3_cif_to_fixed_pdb.sh finished?")
+        print("ERROR: no fixed PDBs found — has stage03_mpnn_fixed_pdbs.py finished?")
         return
+
+    if args.skip_done:
+        done = completed_stems(outdir)
+        before = len(all_pdbs)
+        all_pdbs = [p for p in all_pdbs if p.stem not in done]
+        print(f"skip_done: {len(done)} backbones already complete; "
+              f"re-running {len(all_pdbs)} of {before}")
+        if not all_pdbs:
+            print("Nothing to backfill — all fixed PDBs have their 8 MPNN outputs.")
+            return
 
     # split into batches — each batch gets its own input subdir
     batches = [all_pdbs[i:i+args.batch_size]
                for i in range(0, len(all_pdbs), args.batch_size)]
-    print(f"Splitting into {len(batches)} batches of ~{args.batch_size}")
+    print(f"Splitting into {len(batches)} batches of ~{args.batch_size} (tag={args.tag})")
 
     python = f"{MPNN_ENV}/bin/python"
 
     submitted = []
     for batch_id, batch_pdbs in enumerate(batches):
         # create a subdirectory with symlinks to this batch's PDBs
-        pdbdir  = batch_dir / f"batch_{batch_id:04d}"
+        pdbdir  = batch_dir / f"{args.tag}_{batch_id:04d}"
         pdbdir.mkdir(exist_ok=True)
 
         # symlink each PDB into the batch dir
@@ -86,17 +110,19 @@ def main():
             if not link.exists():
                 link.symlink_to(pdb.resolve())
 
-        batch_outdir = outdir / f"batch_{batch_id:04d}"
+        batch_outdir = outdir / f"{args.tag}_{batch_id:04d}"
 
         script = SBATCH_TEMPLATE.format(
+            tag         = args.tag,
             batch_id    = batch_id,
             pdbdir      = pdbdir,
             outdir      = batch_outdir,
             mpnn_script = MPNN_SCRIPT,
             python      = python,
+            seqs        = SEQS_PER_STRUCT,
         )
 
-        script_path = batch_dir / f"batch_{batch_id:04d}.sh"
+        script_path = batch_dir / f"{args.tag}_{batch_id:04d}.sh"
         script_path.write_text(script)
 
         if args.dry_run:

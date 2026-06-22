@@ -20,7 +20,7 @@ cd "$(dirname "$0")/.."   # repo root
 RUN_DIR="${1:-runs/dual_island_rfd3}"
 LEDGER_CSV="${LEDGER_CSV:-results/dual_island_designs.csv}"
 N_WORKERS="${N_WORKERS:-8}"
-BATCH_SIZE="${BATCH_SIZE:-500}"
+BATCH_SIZE="${BATCH_SIZE:-300}"   # 300 backbones x 8 seqs fits the 8h MPNN walltime
 THROTTLE="${THROTTLE:-200}"
 
 RFD3_OUT="$RUN_DIR/02_rfd3/outputs"
