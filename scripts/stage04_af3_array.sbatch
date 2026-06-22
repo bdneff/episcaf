@@ -11,13 +11,13 @@
 # Usage:
 #   sbatch --array=1-N scripts/stage04_af3_array.sbatch <run_dir>
 #
-# Each array task processes CHUNK_SIZE JSONs sequentially on one GPU.
-# V100 requires two extra flags vs A100:
-#   - SINGULARITYENV_XLA_FLAGS to disable incompatible HLO pass
-#   - --flash_attention_implementation xla (triton not supported on compute capability 7.x)
+# Each array task runs its CHUNK_SIZE JSONs through AlphaFold3 in ONE container launch via
+# --input_dir, so the model loads ONCE per task (not once per JSON) and the GPU stays busy.
+# (Earlier we launched the container per JSON, reloading the model ~100x/task and leaving the
+# GPU idle during each load -- HPC flagged the idle GPUs.)
+# V100 needs the XLA flag + --flash_attention_implementation xla (no triton on cc 7.x).
 
 set -euo pipefail
-
 module load singularity
 export SINGULARITYENV_XLA_FLAGS="--xla_disable_hlo_passes=custom-kernel-fusion-rewriter"
 
@@ -26,53 +26,49 @@ RUN_DIR="$(python3 -c "import os; print(os.path.abspath('${RUN_DIR}'))")"
 
 IN_DIR="${RUN_DIR}/04_af3/inputs"
 OUT_ROOT="${RUN_DIR}/04_af3/outputs"
-mkdir -p "${OUT_ROOT}"
+STAGE_ROOT="${RUN_DIR}/04_af3/_task_inputs"
+mkdir -p "${OUT_ROOT}" "${STAGE_ROOT}"
 
 CHUNK_SIZE=100
 TASK_ID="${SLURM_ARRAY_TASK_ID}"
 START=$(( (TASK_ID - 1) * CHUNK_SIZE + 1 ))
 END=$(( TASK_ID * CHUNK_SIZE ))
 
-echo "HOST      = $(hostname)"
-echo "TASK_ID   = ${TASK_ID}"
-echo "CHUNK     = ${START}-${END}"
+echo "HOST=$(hostname)  TASK=${TASK_ID}  CHUNK=${START}-${END}"
 
 mapfile -t JSON_FILES < <(find "${IN_DIR}" -maxdepth 1 -name "*.json" | sort | sed -n "${START},${END}p")
+[[ ${#JSON_FILES[@]} -eq 0 ]] && { echo "No JSONs for task ${TASK_ID}, exiting"; exit 0; }
 
-if [[ ${#JSON_FILES[@]} -eq 0 ]]; then
-    echo "No JSONs for task ${TASK_ID}, exiting"
-    exit 0
-fi
-
-echo "Processing ${#JSON_FILES[@]} JSONs"
-
+# Stage only the not-yet-done JSONs into a per-task input dir. AF3 writes its output to
+# OUT_ROOT/<name lowercased>/, so a JSON is "done" if that dir already holds a model CIF
+# (also honor the old per-JSON _DONE flag from the earlier per-file version).
+STAGE_DIR="${STAGE_ROOT}/task_${TASK_ID}"
+rm -rf "${STAGE_DIR}"; mkdir -p "${STAGE_DIR}"
+n_todo=0
 for JSON_PATH in "${JSON_FILES[@]}"; do
     PRED_ID="$(basename "${JSON_PATH}" .json)"
-    OUT_DIR="${OUT_ROOT}/${PRED_ID}"
-    DONE_FLAG="${OUT_DIR}/_DONE"
-
-    if [[ -f "${DONE_FLAG}" ]]; then
-        echo "SKIP (done): ${PRED_ID}"
+    LC="${PRED_ID,,}"
+    if compgen -G "${OUT_ROOT}/${LC}/"'*.cif' > /dev/null 2>&1 || [[ -f "${OUT_ROOT}/${PRED_ID}/_DONE" ]]; then
         continue
     fi
-
-    mkdir -p "${OUT_DIR}"
-    echo "Running: ${PRED_ID}"
-
-    singularity exec --nv \
-        -B /home,/scratch,/tgen_labs,/ref_genomes \
-        /tgen_labs/altin/alphafold3/containers/alphafold_3.0.1.sif \
-        python /app/alphafold/run_alphafold.py \
-            --json_path    "${JSON_PATH}" \
-            --model_dir    /ref_genomes/alphafold/alphafold3/models \
-            --db_dir       /ref_genomes/alphafold/alphafold3/ \
-            --output_dir   "${OUT_ROOT}" \
-            --norun_data_pipeline \
-            --num_diffusion_samples 1 \
-            --flash_attention_implementation xla \
-        && touch "${DONE_FLAG}" \
-        || echo "FAILED: ${PRED_ID}"
-
+    ln -sf "${JSON_PATH}" "${STAGE_DIR}/${PRED_ID}.json"
+    n_todo=$((n_todo+1))
 done
+echo "TASK ${TASK_ID}: ${n_todo}/${#JSON_FILES[@]} to run; model loads once for the batch"
+[[ ${n_todo} -eq 0 ]] && { echo "all already done"; rm -rf "${STAGE_DIR}"; exit 0; }
 
+# One container launch -> one model load -> all staged JSONs predicted, GPU busy throughout.
+singularity exec --nv \
+    -B /home,/scratch,/tgen_labs,/ref_genomes \
+    /tgen_labs/altin/alphafold3/containers/alphafold_3.0.1.sif \
+    python /app/alphafold/run_alphafold.py \
+        --input_dir    "${STAGE_DIR}" \
+        --model_dir    /ref_genomes/alphafold/alphafold3/models \
+        --db_dir       /ref_genomes/alphafold/alphafold3/ \
+        --output_dir   "${OUT_ROOT}" \
+        --norun_data_pipeline \
+        --num_diffusion_samples 1 \
+        --flash_attention_implementation xla
+
+rm -rf "${STAGE_DIR}"
 echo "Task ${TASK_ID} complete."
