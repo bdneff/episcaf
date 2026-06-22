@@ -13,6 +13,14 @@ $\num{8}\times\num{8}=\num{64}$ designs per contig that the four filters score a
 designed structure. Generation code lives in \texttt{episcaf\_pipeline/} and \texttt{scripts/},
 and the metrics, scoring, and visualization code in \texttt{episcaf\_analysis/}.
 
+\paragraph{Compute budgeting.} Rough per-step throughput, to size cluster wall-time requests:
+RFdiffusion3 produces a contig's \num{8} backbones in under \SI{10}{\minute} on one A100;
+ProteinMPNN sequences $\sim\!\num{215}$ backbones/hour ($\approx\SI{17}{\second}$ for a
+backbone's \num{8} sequences); AlphaFold3 single-sequence predictions are fast but unmeasured
+on our V100 nodes~[verify]. A run's wall-time then follows by multiplication --- e.g.\ a
+\num{300}-backbone ProteinMPNN batch is $\approx\SI{1.4}{\hour}$, for which we request
+\SI{8}{\hour} to leave margin.
+
 \subsection{Reproducing Lawson's baseline}\label{sec:repro}
 Before trusting any new number we re-implement Lawson's metrics and check them against his
 ground truth. \texttt{compute\_metrics.py --validate} reads \texttt{dp2.parquet} (Lawson's
