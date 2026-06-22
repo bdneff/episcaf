@@ -10,7 +10,10 @@ fixed positions are read back from the contig, since an island sits at residues 
 N{+}\ell$ of an $N$-flank contig. AlphaFold3 then predicts each sequence single-sequence
 (\texttt{--norun\_data\_pipeline}, one diffusion sample, seed~1), giving the
 $\num{8}\times\num{8}=\num{64}$ designs per contig that the four filters score against the
-designed structure. Generation code lives in \texttt{episcaf\_pipeline/} and \texttt{scripts/},
+designed structure. A small number of backbones fail to yield sequences in ProteinMPNN for
+reasons we have not yet diagnosed, so the realized design count falls marginally short of the
+nominal $\num{5568}\,V$ (for the $V=\num{20}$ run, \num{111344} of \num{111360})~[verify].
+Generation code lives in \texttt{episcaf\_pipeline/} and \texttt{scripts/},
 and the metrics, scoring, and visualization code in \texttt{episcaf\_analysis/}.
 
 \paragraph{Benchmarking.} Rough per-step throughput, to size cluster wall-time requests:
