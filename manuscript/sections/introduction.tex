@@ -48,19 +48,26 @@ constraints RFdiffusion is given) enforce epitope residue identity and ordering,
 do not strongly constrain the distances and orientations \emph{between} islands, so the
 model can satisfy the contig and still lose the geometry an antibody needs.
 
-\subsection{Two design pools: DP3 and DP4}
-The project runs in two settings that differ in how much we know about the antibody.
+\subsection{Design pools and scoring regimes}
+The project spans two PepSeq iterations. DP3 is the previous round: the known-antibody mAb
+set, where a solved antibody complex gives a ground truth for ``good.'' DP4 is the library we
+are now assembling --- several thousand 103-mers that \emph{mostly} re-target those same mAb
+epitopes (asking what a minimal epitope is and which design features predict binding) and, for
+a minority of antigens, extend to whole proteins with no known antibody. The no-antibody
+antigens are therefore one component of DP4, not the whole; but they are the component that
+forces the question below, since the antibody-clash filter cannot be computed without an
+antibody.
 \begin{itemize}
-  \item \textbf{DP3 (known antibody).} When the antigen has a solved antibody complex, we
-  know the exact epitope and we have a ground truth for ``good'': the design must hold the
-  epitope in place and must not place scaffold mass where the antibody has to bind. This is
-  the setting where we have already run designs through the assay and seen some success, and
-  it is where the question of scaffolded-versus-linear signal is most directly testable.
-  \item \textbf{DP4 (tiled 12-mers, no known antibody).} For most antigens we have no solved
-  antibody, so we do not know where the epitope is. Here we instead tile the antigen
-  sequence into overlapping 12-residue windows, stepping by two residues at a time, and
-  scaffold each window. The aim is to cover the antigen densely enough to catch whatever
-  the real epitopes turn out to be.
+  \item \textbf{Known antibody (all of DP3, most of DP4).} When the antigen has a solved
+  antibody complex, we know the exact epitope and we have a ground truth for ``good'': the
+  design must hold the epitope in place and must not place scaffold mass where the antibody
+  has to bind. This is the setting where we have already run designs through the assay and
+  seen some success, and where the scaffolded-versus-linear question is most directly testable.
+  \item \textbf{No antibody (one component of DP4).} For whole antigens with no solved
+  antibody we do not know where the epitope is, so we tile the sequence into overlapping
+  12-residue windows (stepping by two residues) and scaffold each window, covering the antigen
+  densely enough to catch whatever the real epitopes turn out to be. This is the polyclonal
+  arm of DP4, and the one place the cylinder surrogate below is needed.
 \end{itemize}
 
 \subsection{Why a cylinder: the antibody-clash filter without an antibody}
@@ -69,8 +76,8 @@ superimpose the design's epitope region onto the native antigen, place the real 
 where it sits in the crystal complex, and count scaffold residues that clash into the
 antibody. Any design with a clash count above zero is rejected, because scaffold mass in
 the antibody's path would block the very binding event we are trying to recreate. This
-filter is only available for DP3, where a real antibody exists. For DP4 there is no
-antibody to clash against, so we cannot apply it directly. The native-antigen-aware cylinder
+filter is only available where a real antibody exists (all of DP3, most of DP4). For the
+no-antibody antigens there is no antibody to clash against, so we cannot apply it directly. The native-antigen-aware cylinder
 surrogate (Section~\ref{sec:noab}) is our attempt to recover this filter without an
 antibody: it approximates the volume an approaching antibody would occupy and asks whether
 scaffold mass intrudes into it. A single, config-driven composite scorer ranks designs in
@@ -84,6 +91,6 @@ RFdiffusion1 and RFdiffusion3 design sets directly (Section~\ref{sec:rfd}). We t
 the filtering, where the original global metrics
 bias selection toward rigid, well-ordered folds, and show how decomposing them widens the
 designable space (Section~\ref{sec:filtering}). From there we build a composite score that
-selects the best designs per epitope (Section~\ref{sec:composite}), and finally extend
-everything to DP4 using the native-aware cylinder surrogate (Section~\ref{sec:noab}). Each
-step motivates the next.
+selects the best designs per epitope (Section~\ref{sec:composite}), and finally extend the
+workflow to the no-antibody antigens using the native-aware cylinder surrogate
+(Section~\ref{sec:noab}). Each step motivates the next.
