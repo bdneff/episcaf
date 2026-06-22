@@ -14,6 +14,10 @@ DATA = {
     "datasets":       WORKSPACE / "datasets",               # dp2.parquet etc.
 }
 
+# Lawson's DP3 design ledger (verified on cluster 2026-06-22). The DP3 set is the 59-epitope
+# subset of the 1,134 AbDb complexes in ABDB_CLEANED_PDB_DIR (<=2 islands, antigen >103 aa).
+DP2_PARQUET = DATA["datasets"] / "dp2.parquet"
+
 # canonical scoring inputs (VERIFY exact filenames on the cluster)
 METRICS_12MER    = DATA["twelvemer_runs"] / "06_score" / "metrics_12mer.csv"
 METRICS_ANTIBODY = DATA["antibody_runs"] / "run_rfd3_mpnn" / "04_filter" / "metrics_cylinder_full.csv"

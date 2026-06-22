@@ -34,6 +34,13 @@ downstream: it confirms that our implementation of the filters matches the workf
 extending, so that later differences reflect the design protocol rather than a scoring bug.
 
 \subsection{Four-filter ground truth (DP3 set)}
+The DP3 set itself is a \num{59}-epitope subset of the \num{1134} cleaned antibody--antigen
+complexes in the AbDb directory (\texttt{configs/paths.py}, \texttt{ABDB\_CLEANED\_PDB\_DIR}).
+The selection condition --- which every one of the \num{59} satisfies in \texttt{dp2.parquet}
+--- is at most two epitope islands (\num{13} single-island, \num{46} dual-island) and a parent
+antigen longer than \num{103} residues (the antigen lengths run \num{105}--\num{909}); the
+other \num{1075} complexes are the candidates that condition drops~[verify].
+
 A design passes when all four conditions hold: overall backbone RMSD $\le \SI{2}{\angstrom}$,
 epitope-chunk RMSD $\le \SI{1}{\angstrom}$, mean predicted aligned error $< 5$, and zero
 antibody residues within \SI{4}{\angstrom} of non-epitope scaffold residues
