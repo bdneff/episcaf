@@ -1,13 +1,17 @@
 \section{RFD1 versus RFD3 on the same epitopes}\label{sec:rfd}
 With the metrics reproduced, we compared the two backbone generators head to head: the same
 DP3 epitopes run through RFdiffusion1 (Lawson's set) and RFdiffusion3, each followed by
-ProteinMPNN and AlphaFold3, and scored against the identical four filters. The RFD1 data here
-is Lawson's deposited set (\texttt{dp2.parquet}), which is missing AlphaFold3 results for
-\num{26870} of its \num{151232} designs; that is a property of his dataset rather than of our
-pipeline, so we compare over designs that actually have an AF3 result. On that basis the two
-are comparable, with RFD1 modestly higher: RFD1+MPNN passes \num{840}/\num{124362}
-($0.68\%$) and RFD3+MPNN \num{751}/\num{150936} ($0.50\%$). RFD3 is therefore at least an
-even trade for RFD1 on this task, which is the basis for standardizing on RFD3 going forward.
+ProteinMPNN and AlphaFold3, and scored against the identical four filters. We score over
+\emph{every design generated}: a design missing any of the four filter metrics produced no
+scorable result --- it failed somewhere in the pipeline or was dropped from Lawson's deposited
+set --- and counts as a non-pass rather than being excluded from the denominator. Lawson's RFD1
+set (\texttt{dp2.parquet}) is missing at least one metric (dominantly the AlphaFold3 result)
+for \num{26870} of its \num{151232} designs, far more than RFD3's \num{12} of \num{150948}, so
+this convention penalizes RFD1 more, not less. On that basis RFD1+MPNN passes
+\num{840}/\num{151232} ($0.56\%$) and RFD3+MPNN \num{751}/\num{150948} ($0.50\%$) --- still RFD1
+modestly higher (restricting to the designs with all four metrics, the rates are $0.68\%$ and
+$0.50\%$). RFD3 is therefore at least an even trade for RFD1 on this task, which is the basis
+for standardizing on RFD3 going forward.
 The per-metric distributions are comparable (Fig.~\ref{fig:rfd}), though RFD3 puts a bit more
 mass at low epitope and overall RMSD.
 

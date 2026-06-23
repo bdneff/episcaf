@@ -56,10 +56,10 @@ for ax,(key,label,(lo,hi)) in zip(axes,PAN):
     for s in ("top","right"): ax.spines[s].set_visible(False)
 axes[0].legend(frameon=False,fontsize=9.5,loc="upper right")
 fig.suptitle(
-    "RFD1 vs RFD3 on the same DP3 epitopes (both + ProteinMPNN + AlphaFold3); density-normalized over designs with an AF3 result\n"
-    f"four-filter pass rate per valid prediction: RFD1+MPNN {p1:,}/{nv1:,} = {rate1:.2f}%   "
-    f"RFD3+MPNN {p3:,}/{nv3:,} = {rate3:.2f}%   "
-    f"(per design generated: {100*p1/n1:.2f}% vs {100*p3/n3:.2f}%; RFD1 missing AF3 results for {n1-nv1:,})",
+    "RFD1 vs RFD3 on the same DP3 epitopes (both + ProteinMPNN + AlphaFold3); distributions density-normalized over designs with all four metrics\n"
+    f"four-filter pass rate per design generated: RFD1+MPNN {p1:,}/{n1:,} = {100*p1/n1:.2f}%   "
+    f"RFD3+MPNN {p3:,}/{n3:,} = {100*p3/n3:.2f}%   "
+    f"(designs missing >=1 metric count as non-pass: RFD1 {n1-nv1:,}, RFD3 {n3-nv3:,}; over valid only {rate1:.2f}% vs {rate3:.2f}%)",
     fontsize=11.5,fontweight="bold")
 fig.tight_layout(rect=[0,0,1,0.88])
 fig.savefig(OUT,dpi=140,bbox_inches="tight")
