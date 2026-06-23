@@ -23,6 +23,7 @@ command so anyone (or Claude Code) can reproduce it.
 | table file | script | command |
 |------------|--------|---------|
 | `tables/dual_island_targets.tex` (+ `results/dual_island_targets.csv`) | `episcaf_analysis/dual_island_targets.py` | `python3 episcaf_analysis/dual_island_targets.py --dp2 ../known_antigen/analysis/full_run/dp2.parquet --out results/dual_island_targets.csv --tex manuscript/tables/dual_island_targets.tex` |
+| `tab:funnel` + `tab:shortislands` (hand-set in `sections/metrics.tex`; `results/dual_island_gate_summary.csv`) | `scripts/stage05_summarize.py` | `python3 scripts/stage05_summarize.py --metrics runs/dual_island_rfd3/05_analysis/metrics_dual_island.parquet --out_island_csv results/dual_island_gate_summary.csv` |
 
 **`tables/dual_island_targets.tex`** (Table `tab:dualisland`, §`sec:perisland`) — the per-island design targets for John's dual-island run. From `dp2.parquet`, the 46 `epitope_chunks==2` mAb epitopes; an *island* = one contig `A`-segment, *island size* = its residue span. Each epitope contributes its islands as individual scaffolding targets; size-1 islands are skipped (can't be presented alone) but the partner island is still designed. Verified counts: 46 epitopes, 92 islands, **87 scaffolded** (size≥2) → 87 targets → 435 designs at top-5/island; **5 size-1 islands skipped** (one each in `2h32_0P`, `3q1s_0P`, `6o9i_0P`, `7a3t_0P`, `7tzh_0P`). Build the PDF with `tectonic main.tex` (not latexmk in this env).
 
