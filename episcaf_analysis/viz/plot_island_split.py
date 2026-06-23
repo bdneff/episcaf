@@ -46,6 +46,11 @@ GROUPS = [(1, "1 island", "#1f77b4"), (2, "2 islands", "#d62728")]
 
 
 def clashlen(x):
+    # present -> count; missing (no AF3 result) -> NaN, so it is not mistaken for clash-free
+    if x is None:
+        return np.nan
+    if isinstance(x, float) and np.isnan(x):
+        return np.nan
     try:
         return len(x)
     except TypeError:
@@ -62,17 +67,19 @@ def main():
 
     df = pd.read_parquet(args.dp2)
     df["n_clash"] = df["af3_clash_resindices"].apply(clashlen)
-    df = df[df["mean_pae"].notna()].copy()          # AF3 result required
-
-    # four-filter pass per design, for the per-group pass rate annotation
-    df["_pass"] = ((df.epitope_chunk_rmsd_vs_mpnn <= 1) & (df.overall_rmsd <= 2)
+    # validity = all four filter metrics present; a design missing any (no AF3 result, etc.)
+    # is counted as a non-pass over the full generated set, not excluded (matches sec:rfd).
+    df["_valid"] = (df.epitope_chunk_rmsd_vs_mpnn.notna() & df.overall_rmsd.notna()
+                    & df.mean_pae.notna() & df.n_clash.notna())
+    df["_pass"] = (df._valid & (df.epitope_chunk_rmsd_vs_mpnn <= 1) & (df.overall_rmsd <= 2)
                    & (df.mean_pae < 5) & (df.n_clash == 0))
+    dplot = df[df.mean_pae.notna()].copy()          # distributions need an AF3 result
 
     fig, axes = plt.subplots(1, len(METRICS), figsize=(5 * len(METRICS), 4.6))
     for ax, (col, title, unit, thr, direction, clip) in zip(axes, METRICS):
         bins = np.linspace(clip[0], clip[1], 41)
         for k, name, color in GROUPS:
-            v = df.loc[df.epitope_chunks == k, col].dropna().clip(*clip)
+            v = dplot.loc[dplot.epitope_chunks == k, col].dropna().clip(*clip)
             ax.hist(v, bins=bins, density=True, histtype="step", lw=2.5, color=color,
                     label=name)
             ax.axvline(v.median(), color=color, ls=":", lw=2.0, alpha=0.9)
@@ -93,9 +100,14 @@ def main():
     print(f"wrote {args.out}")
     for k, name, _ in GROUPS:
         sub = df[df.epitope_chunks == k]
-        print(f"  {name}: {len(sub):,} designs, pass {100*sub._pass.mean():.2f}%, "
-              f"median epi-RMSD {sub.epitope_chunk_rmsd_vs_mpnn.median():.2f}, "
+        nt, nv, npass = len(sub), int(sub._valid.sum()), int(sub._pass.sum())
+        print(f"  {name}: n_total {nt:,}  n_valid {nv:,}  passes {npass}  "
+              f"per-total {100*npass/nt:.3f}%  per-valid {100*npass/nv:.3f}%  "
+              f"median epi-RMSD {sub.epitope_chunk_rmsd_vs_mpnn.median():.2f}  "
               f"median PAE {sub.mean_pae.median():.1f}")
+    two_pass = df[(df.epitope_chunks == 2) & df._pass]
+    print("  two-island passes by epitope (top contributors to the binary rate):")
+    print(two_pass.groupby("id").size().sort_values(ascending=False).head(5).to_string())
 
 
 if __name__ == "__main__":

@@ -24,14 +24,17 @@ grouping. Restricting to designs with an AF3 result, that is 549 single-island a
 
 Across every four-filter metric the single-island designs sit at better values
 (Fig.~\ref{fig:islands}): median epitope-chunk RMSD 2.22 vs \SI{3.86}{\angstrom}, median
-global PAE 9.5 vs 11.9, and fewer AF3 clashes. The binary pass rate runs the other way
-(single-island 0.36\% vs two-island 0.68\%), but that is misleading: the two-island rate is
-carried almost entirely by one easy outlier (\texttt{7ox3\_0P}), while the single-island set
-has no comparable outlier and is broadly easier. So on the distributions, fewer islands is
-easier to scaffold, consistent with the multi-island difficulty argument in
-Section~\ref{sec:intro}; the binary rate just hides it. What remains for the clean control is
-to split further by island \emph{size}, since the single-island epitopes are also shorter on
-average.
+global PAE 9.5 vs 11.9, and fewer AF3 clashes. The binary pass rate runs the other way ---
+single-island $0.24\%$ (\num{2}/\num{832}) vs two-island $0.56\%$ (\num{838}/\num{150400}), on
+the same per-design denominator as Section~\ref{sec:rfd} --- but that is misleading: of the
+\num{838} two-island passes, \num{630} come from a single easy outlier (\texttt{7ox3\_0P}) and
+another \num{149} from \texttt{5fhx\_1P}, so two epitopes account for \num{779} of them. Strip
+the outlier and the two-island rate falls below single-island ($0.17\%$ vs $0.36\%$ per valid
+prediction); the single-island set has no comparable outlier and is broadly easier. So on the
+distributions, fewer islands is easier to scaffold, consistent with the multi-island
+difficulty argument in Section~\ref{sec:intro}; the binary rate just hides it. What remains for
+the clean control is to split further by island \emph{size}, since the single-island epitopes
+are also shorter on average.
 
 So the two questions point the same way for the design itself --- multi-island is both
 biologically ambiguous and harder to scaffold cleanly --- and both motivate building each
