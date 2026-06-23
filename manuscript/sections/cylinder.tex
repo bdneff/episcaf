@@ -1,0 +1,111 @@
+\section{Accessibility without an antibody: the cylinder surrogate}\label{sec:noab}
+One of the strictest filters in the DP3 setting concerns antibody accessibility: we place the
+real antibody where it sits in the crystal complex and reject any design with scaffold mass in
+its path. That filter is only available where a real antibody exists (all of DP3, most of DP4).
+Most targets, though, have no solved antibody --- the polyclonal arm of DP4 tiles whole
+antigens with no known binder (Section~\ref{sec:intro}) --- so there is nothing to clash
+against. We recover the filter with a native-antigen-aware cylinder surrogate: a cylinder
+fitted to the epitope plane along the antibody-approach normal that counts non-epitope scaffold
+mass intruding into the volume an approaching antibody would need (Fig.~\ref{fig:cylinder}).
+
+\subsection{Definition}\label{sec:cyldef}
+With no antibody available, we approximate the volume an antibody would occupy with a
+cylinder fitted to the epitope. The epitope C$\alpha$ coordinates $\{x_j\}_{j=1}^{m}$ define
+a plane: the centroid is $c=\tfrac{1}{m}\sum_j x_j$, and the plane normal $\hat n$ is the
+smallest-variance singular vector of the centered coordinates $\{x_j-c\}$ (the antibody
+approach direction), oriented to point away from the antigen body. The cylinder base is
+$b = c + d_0\,\hat n$ with offset $d_0=\SI{-4}{\angstrom}$. A scaffold C$\alpha$ at position
+$p$ lies inside the cylinder when, writing $v=p-b$, its axial and radial coordinates satisfy
+\begin{equation}\label{eq:cyl}
+0 \;\le\; v\cdot\hat n \;\le\; H
+\qquad\text{and}\qquad
+\bigl\lVert\, v-(v\cdot\hat n)\,\hat n \,\bigr\rVert \;\le\; R,
+\end{equation}
+with height $H=\SI{40}{\angstrom}$ and radius $R=\SI{16}{\angstrom}$. The plain count is the
+number of non-epitope scaffold C$\alpha$ satisfying~\eqref{eq:cyl}; the native-aware count
+additionally drops any such atom within \SI{1}{\angstrom} of a native-antigen heavy atom,
+i.e.\ sitting where the native antigen already sits, which a real antibody tolerates. The
+geometry core is \texttt{episcaf\_analysis/native\_cylinder\_core.py} (self-tested).
+
+\begin{figure}[h]\centering
+\figorbox{epitope_cylinder.png}{0.5}
+\caption{The accessibility cylinder. Epitope residues (red) sit on the scaffold (magenta);
+the epitope C$\alpha$ atoms define a plane (orange grid) whose outward normal (blue arrow,
+the antibody-approach direction) orients the cylinder (cyan). Scaffold C$\alpha$ atoms
+inside the cylinder count against accessibility. Rendered in VMD by
+\texttt{known\_antigen/analysis/cylinder\_vis/visualize\_cylinder.tcl}.}
+\label{fig:cylinder}
+\end{figure}
+
+\subsection{The native-aware carve removes false penalties}\label{sec:carve}
+A naive cylinder over-penalizes, because some scaffold mass sits exactly where the native
+antigen already sits, a volume a real antibody clearly tolerates since it binds the native
+antigen there. The native-aware carve fixes this: among truly clash-free designs, we drop
+scaffold C$\alpha$ atoms within \SI{1}{\angstrom} of a native-antigen heavy atom. Of the
+\num{3186} DP3 designs with zero true antibody clash, the number the plain cylinder flags as
+heavily penalized (count $\ge 10$) falls from \num{1112} to \num{384} once the native
+footprint is carved out, so \textbf{\num{728} false-positive penalties are removed}, while
+genuinely clashing designs are left essentially untouched (Figs.~\ref{fig:fp}
+and~\ref{fig:fpsel}).
+
+\begin{figure}[h]\centering
+\figorbox{fp_reduction.png}{0.8}
+\caption{Cylinder count among clash-free DP3 designs (zero AlphaFold3 antibody clash,
+$n=\num{3186}$), before (grey) and after (red) subtracting the native-antigen volume. The
+heavily penalized tail (count $\ge 10$) collapses from \num{1112} to \num{384}. Regenerated
+by \texttt{episcaf\_analysis/viz/plot\_fp\_reduction.py --native metrics\_native\_cyl.csv
+--mode dist}.}
+\label{fig:fp}
+\end{figure}
+
+\begin{figure}[h]\centering
+\figorbox{fp_selectivity.png}{0.8}
+\caption{The carve removes flags selectively. Fraction of designs flagged (cylinder
+$\ge 10$) across bins of true antibody clash, before versus after the carve. The gap is
+large where there is no real clash (false positives removed) and closes where the clash is
+real (true signal retained). \texttt{--mode selectivity}.}
+\label{fig:fpsel}
+\end{figure}
+
+\paragraph{A pipeline constraint worth recording: crystal gaps.}
+We measure 12-mer epitope fidelity by aligning the AlphaFold3 epitope onto the native crystal
+epitope, matched by residue number (\texttt{build\_12mer\_metrics.py}). When a tile's epitope
+residues are unresolved in the crystal (a gap in the deposited structure), the native
+C$\alpha$ anchors are missing, the Kabsch alignment cannot be formed, and the tile is dropped
+with status \texttt{crystal\_epi\_incomplete}. So which 12-mer epitopes are scorable at all
+depends on crystal coverage: an antigen with gaps over the tiled region contributes fewer (or
+no) scorable tiles, regardless of design quality. This is exactly what sets the
+epitopes-kept counts in Table~\ref{tab:tilecount} (6M0J and 4WAT lose 15 and 40 tiles), and the
+same constraint reappears in the per-island production run (Section~\ref{sec:metricsresults}).
+
+\subsection{Interpreting the cylinder: where passing designs land}\label{sec:cylinterp}
+The cylinder is easiest to read by overlaying, for each metric, the full design population
+against the designs we would actually advance (Fig.~\ref{fig:overlay}). For DP3 the advanced
+set is the four-filter passes (\num{751} designs); for DP4 it is the top three per epitope by
+composite score. On every geometry and confidence metric the passing designs concentrate
+where we expect: low RMSD, low PAE, high pTM. The cylinder column is the interesting one. The
+passing DP3 designs, which we know the antibody accepts, sit at low cylinder counts (median
+near 10), while the DP4 top-3 sit higher (medians near 25--30). This is the scaffold-mass
+effect again, not a sign the DP4 designs are worse: with a 12-residue epitope on a
+$\sim$104-residue design, more non-epitope scaffold mass falls in the fixed cylinder even
+among the designs we would pick. This is why we lean on the native-aware carve and per-antigen
+scoring rather than one absolute cutoff, and it gives us a concrete reference for a tolerable
+cylinder count, namely the DP3 passing range.
+
+The cylinder is a good stand-in for the real filter. On DP3, where the true antibody clash is
+known, it predicts clash-free designs (\texttt{af3\_n\_clash\_res}=0) with AUC $0.93$
+(\texttt{cylinder\_native\_aware} $0.935$, a little better than the plain count $0.924$;
+clash-free versus clashing medians of 5 versus 22). So it stands in well for the filter we
+lose on DP4, and the native-aware carve helps the ranking, not just the picture
+(\texttt{episcaf\_analysis/cylinder\_surrogate\_auc.py}).
+
+\begin{figure}[h]\centering
+\figorbox{passes_overlay.png}{1.0}
+\caption{All designs (grey, left axis) and passing designs (color, right colored axis), both
+in true counts, per metric and per row; the dashed line marks the median of the passes. The
+twin axes keep the full population and the much smaller passing set each at its own scale, so
+the shape of the accepted distribution and where it lands are both visible. DP3 passes are
+the four-filter set; DP4 passes are the top 3 per epitope by composite score. Regenerated by
+\texttt{episcaf\_analysis/viz/plot\_passes\_overlay.py}.}
+\label{fig:overlay}
+\end{figure}

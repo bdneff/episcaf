@@ -48,15 +48,15 @@ constraints RFdiffusion is given) enforce epitope residue identity and ordering,
 do not strongly constrain the distances and orientations \emph{between} islands, so the
 model can satisfy the contig and still lose the geometry an antibody needs.
 
-\subsection{Design pools and scoring regimes}
+\subsection{Design pools and the DP4 questions}
 The project spans two PepSeq iterations. DP3 is the previous round: the known-antibody mAb
 set, where a solved antibody complex gives a ground truth for ``good.'' DP4 is the library we
 are now assembling --- several thousand 103-mers that \emph{mostly} re-target those same mAb
 epitopes (asking what a minimal epitope is and which design features predict binding) and, for
 a minority of antigens, extend to whole proteins with no known antibody. The no-antibody
 antigens are therefore one component of DP4, not the whole; but they are the component that
-forces the question below, since the antibody-clash filter cannot be computed without an
-antibody.
+forces the accessibility problem, since the antibody-clash filter cannot be computed without an
+antibody. Scoring therefore runs in two regimes:
 \begin{itemize}
   \item \textbf{Known antibody (all of DP3, most of DP4).} When the antigen has a solved
   antibody complex, we know the exact epitope and we have a ground truth for ``good'': the
@@ -67,45 +67,35 @@ antibody.
   antibody we do not know where the epitope is, so we tile the sequence into overlapping
   12-residue windows (stepping by two residues) and scaffold each window, covering the antigen
   densely enough to catch whatever the real epitopes turn out to be. This is the polyclonal
-  arm of DP4, and the one place the cylinder surrogate below is needed.
+  arm of DP4, and the one place the native-aware cylinder surrogate (Section~\ref{sec:noab})
+  is needed, since there is no antibody to clash against.
 \end{itemize}
 
-\subsection{Why a cylinder: the antibody-clash filter without an antibody}
-One of the strictest filters in the DP3 setting concerns antibody accessibility. We
-superimpose the design's epitope region onto the native antigen, place the real antibody
-where it sits in the crystal complex, and count scaffold residues that clash into the
-antibody. Any design with a clash count above zero is rejected, because scaffold mass in
-the antibody's path would block the very binding event we are trying to recreate. This
-filter is only available where a real antibody exists (all of DP3, most of DP4). For the
-no-antibody antigens there is no antibody to clash against, so we cannot apply it directly. The native-antigen-aware cylinder
-surrogate (Section~\ref{sec:noab}) is our attempt to recover this filter without an
-antibody: it approximates the volume an approaching antibody would occupy and asks whether
-scaffold mass intrudes into it. A single, config-driven composite scorer ranks designs in
-both pools, differing only in which accessibility term it uses.
-
-\subsection{Where this work fits: the DP4 questions}
-This methods development feeds a specific deliverable --- DP4, the next PepSeq library
-(\texttt{docs/DP4designIdeas.pdf}) --- built to answer three questions. \emph{(Q1) What is a
-minimal epitope?}, how many islands and residues are needed for binding: the per-island
-scaffolding of Section~\ref{sec:perisland} and the island-count and -size analysis
-(Section~\ref{sec:islands}) are aimed here. \emph{(Q2) What predicts a successful design?},
+\noindent
+DP4 is built to answer three questions, and they organize the rest of this log.
+\emph{(Q1) What is a minimal epitope?}, how many islands and residues are needed for binding:
+whether an antibody needs one epitope island or both, and the island analysis
+(Section~\ref{sec:islands}), and the per-island production run that tests it
+(Section~\ref{sec:perisland}), are aimed here. \emph{(Q2) What predicts a successful design?},
 which of epitope RMSD, scaffold RMSD, PAE, and accessibility actually track binding: this is
-what the decomposed metrics and composite scorer below are for, and DP4 is built to answer it
-empirically by assaying designs sampled across that feature space and reading off what binds
---- the non-circular experimental label we have been waiting for before fitting the scorer's
-weights (Section~\ref{sec:open}). \emph{(Q3) Can it extend to the polyclonal setting?}, tiling
-a whole antigen with no known antibody, where the cylinder surrogate (Section~\ref{sec:noab})
-stands in for the antibody-clash filter. The design ideas originate with John; the scoring and
-metrics developed here are a refined evolution of them.
+what the decomposed metrics and composite scorer (Section~\ref{sec:scoring}) are for, and DP4
+is built to answer it empirically by assaying designs sampled across that feature space and
+reading off what binds --- the non-circular experimental label we have been waiting for before
+fitting the scorer's weights (Section~\ref{sec:open}). \emph{(Q3) Can it extend to the
+polyclonal setting?}, tiling a whole antigen with no known antibody, where the cylinder
+surrogate (Section~\ref{sec:noab}) stands in for the antibody-clash filter. The design ideas
+originate with John; the scoring and metrics developed here are a refined evolution of them.
 
 \subsection{How the rest of this log reads}
 The sections that follow are in the order the work happened. We start by reproducing
 Lawson's workflow and confirming our metrics match his (Section~\ref{sec:methods}), cover how
 we tile antigens into assay constructs (Section~\ref{sec:tiling}), and compare the
-RFdiffusion1 and RFdiffusion3 design sets directly (Section~\ref{sec:rfd}). We then turn to
-the filtering, where the original global metrics
-bias selection toward rigid, well-ordered folds, and show how decomposing them widens the
-designable space (Section~\ref{sec:filtering}). From there we build a composite score that
-selects the best designs per epitope (Section~\ref{sec:composite}), and finally extend the
-workflow to the no-antibody antigens using the native-aware cylinder surrogate
-(Section~\ref{sec:noab}). Each step motivates the next.
+RFdiffusion1 and RFdiffusion3 design sets directly (Section~\ref{sec:rfd}). We then rebuild
+scoring: the inherited filters bias selection toward rigid folds, so we decompose the metrics
+and combine them in a composite that picks the best designs per epitope
+(Section~\ref{sec:scoring}), and we recover the antibody-accessibility filter for targets with
+no antibody using the native-aware cylinder surrogate (Section~\ref{sec:noab}). Finally we turn
+to dual-island epitopes --- whether an antibody needs one island or both
+(Section~\ref{sec:islands}) --- and build the per-island production run that lets the assay
+answer it (Section~\ref{sec:perisland}). Open questions and next steps close the log
+(Section~\ref{sec:open}). Each step motivates the next.
