@@ -1,0 +1,99 @@
+\section{One metrics table for every decision}\label{sec:metrics}
+With the per-island run designed (Section~\ref{sec:perisland}) and pushed through
+RFdiffusion3 $\rightarrow$ ProteinMPNN $\rightarrow$ AlphaFold3, we extract every
+per-design metric \emph{once} into a single table and make all downstream choices
+(composite scoring, top-5 per island) from it, so the analysis is never recomputed. This is
+our analog of Lawson's \texttt{dp2.parquet}: one row per design, written by
+\texttt{scripts/stage05\_extract\_metrics.py} from the \texttt{04\_af3/outputs} predictions,
+the per-island ledger (\texttt{results/dual\_island\_designs.csv}), and the native AbDb
+complex PDBs.
+
+\paragraph{Why a dedicated extractor.}
+The repository already held two metric extractors, and neither fit this run directly.
+\texttt{compute\_metrics.py} is the Lawson-validated antibody extractor, but its run mode is
+keyed on \texttt{dp2}'s hashed tokens and the no-MPNN (RFD3$\rightarrow$AF3) layout.
+\texttt{build\_12mer\_metrics.py} emits exactly the columns the composite scorer reads
+(\texttt{epitope\_pae}, the cylinder terms) but parses the 12-mer naming and assumes no
+antibody. Stage~05 reuses the \emph{validated primitives} of the first (backbone RMSD,
+PAE, AlphaFold3 file discovery, the clash geometry) and mirrors the PAE decomposition and
+cylinder calls of the second, but drives them from our per-island ledger.
+
+The per-island set sits in a useful middle: these are the 46 dual-island \emph{mAb} epitopes,
+so a solved antibody exists and the real DP3 clash filter \emph{is} available. We therefore
+compute both accessibility signals --- the true antibody clash
+(\texttt{af3\_n\_clash\_res}, against native chains B/C) \emph{and} the cylinder surrogate ---
+which makes this run a second check of the surrogate against ground truth, on top of the DP3
+check in Section~\ref{sec:noab}.
+
+\paragraph{What each design row carries.}
+The table groups into identity, geometry, confidence, and accessibility
+(Table~\ref{tab:metricschema}). Geometry and confidence follow the four-filter definitions of
+Section~\ref{sec:methods}; the accessibility block carries the real clash and the cylinder
+side by side.
+
+\begin{center}
+\begin{longtable}{lll}
+\caption{Schema of the per-design metrics table (\texttt{metrics\_dual\_island.parquet}).
+One row per AlphaFold3 design.}\label{tab:metricschema}\\
+\toprule
+column & meaning & role \\
+\midrule
+\endfirsthead
+\toprule column & meaning & role \\ \midrule \endhead
+\multicolumn{3}{l}{\emph{Identity (which design this is)}}\\
+\texttt{id}            & epitope id (e.g.\ \texttt{2h32\_0P}) & select / scope \\
+\texttt{island\_index} & which of the two islands (0/1)        & select group \\
+\texttt{island\_size}  & island span (residues)                & strata \\
+\texttt{contig\_id}    & contig within the epitope             & provenance \\
+\texttt{variant}, \texttt{n\_flank}, \texttt{c\_flank} & flank-split placement & provenance \\
+\texttt{seed}, \texttt{rep}, \texttt{dldesign} & RFD3 / MPNN replica indices & provenance \\
+\texttt{predID}, \texttt{af3\_dir} & design stem, output path     & join key \\
+\midrule
+\multicolumn{3}{l}{\emph{Geometry (backbone RMSD, Kabsch-superposed)}}\\
+\texttt{epitope\_chunk\_rmsd} & design vs AF3, epitope only ($\le 1$) & gate + 0.35 \\
+\texttt{overall\_rmsd}        & design vs AF3, full scaffold ($\le 2$) & 0.15 \\
+\midrule
+\multicolumn{3}{l}{\emph{Confidence (AlphaFold3)}}\\
+\texttt{epitope\_pae}  & mean PAE over epitope residues   & 0.25 \\
+\texttt{scaffold\_pae} & mean PAE over the scaffold        & diagnostic \\
+\texttt{mean\_pae}     & global mean PAE ($<5$, four-filter) & diagnostic \\
+\texttt{ptm}, \texttt{ranking\_score} & AF3 summary scalars & diagnostic \\
+\midrule
+\multicolumn{3}{l}{\emph{Accessibility (this run has both)}}\\
+\texttt{af3\_n\_clash\_res} & real antibody clash count ($=0$) & ground truth \\
+\texttt{cylinder\_ca\_clashes}   & scaffold C$\alpha$ in the cylinder & 0.25 (plain) \\
+\texttt{cylinder\_native\_aware} & same, native volume carved out     & surrogate \\
+\texttt{native\_in\_cylinder}    & native non-epitope C$\alpha$ in cylinder & test \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+\paragraph{Definitional choices (held to the DP3-validated convention).}
+Three choices fix the numbers, and we keep each at the value that makes this set comparable to
+DP3. (i) Both RMSDs are computed on the \emph{backbone} (N, C$\alpha$, C, O) and
+Kabsch-superposed, as in \texttt{compute\_metrics.py}, not the C$\alpha$-only variant of the
+12-mer extractor. (ii) The cylinder uses \texttt{exclude\_dist}\,$=\,\SI{1}{\angstrom}$, the
+value adopted for the validated 12-mer preset (Section~\ref{sec:noab}). (iii) The epitope is
+the \emph{whole island span} $[\,\texttt{n\_flank},\ \texttt{n\_flank}+\texttt{island\_size}\,)$
+--- the residues stage~03 actually held \textsc{fixed} during ProteinMPNN --- not the
+contacts-only subset stored in the ledger. The native-frame and design-frame epitope residues
+pair one-to-one because each island A-segment is contiguous in both, which we verified holds
+for all \num{1740} ledger contigs ($b-a+1=\texttt{island\_size}$).
+
+\paragraph{How it is produced.}
+The extractor caches each native complex once per epitope (not once per design) and shards the
+$\sim$46 epitopes across worker processes:
+\begin{verbatim}
+python3 scripts/stage05_extract_metrics.py \
+    --af3_out_dir  runs/dual_island_rfd3/04_af3/outputs \
+    --mpnn_pdb_dir runs/dual_island_rfd3/03_mpnn/mpnn_pdbs \
+    --ledger       results/dual_island_designs.csv \
+    --native_dir   <AbDb cleaned complex dir> \
+    --out          runs/dual_island_rfd3/05_analysis/metrics_dual_island.parquet \
+    --workers 16
+\end{verbatim}
+It writes the parquet and a CSV alongside, and prints a status breakdown plus the DP3
+four-filter pass count (using the real clash). The composite scorer
+(Section~\ref{sec:composite}) reads this table directly; for the per-island deliverable we
+select the top 5 per (\texttt{id}, \texttt{island\_index}) rather than per epitope, so each
+island is ranked on its own. [pass counts and selection to follow once the full run completes]
