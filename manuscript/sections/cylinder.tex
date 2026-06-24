@@ -97,7 +97,13 @@ known, it predicts clash-free designs (\texttt{af3\_n\_clash\_res}=0) with AUC $
 (\texttt{cylinder\_native\_aware} $0.935$, a little better than the plain count $0.924$;
 clash-free versus clashing medians of 5 versus 22). So it stands in well for the filter we
 lose on DP4, and the native-aware carve helps the ranking, not just the picture
-(\texttt{episcaf\_analysis/cylinder\_surrogate\_auc.py}).
+(\texttt{episcaf\_analysis/cylinder\_surrogate\_auc.py}). This correlation is measured on the
+\emph{well-predicted} designs (epitope-chunk RMSD $< \SI{2.5}{\angstrom}$): a design AlphaFold3
+folds poorly carries an unreliable epitope placement, which would only add noise to a
+clash-versus-surrogate comparison, so it is excluded \emph{from this statistic}. Selecting the
+best designs per epitope is a different task and applies no such hard threshold --- it ranks on
+the composite score directly (Section~\ref{sec:composite}), which is why the per-island
+selection (Section~\ref{sec:selection}) gates only loosely and then ranks.
 
 \begin{figure}[h]\centering
 \figorbox{passes_overlay.png}{1.0}
