@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH -J copy_run_to_tgen
-#SBATCH -p datamover         # <-- confirm with `sinfo -p datamover` (name + max walltime)
+#SBATCH -p data-mover        # gemini data-transfer partition (14-day limit, node gemini-data2)
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH -t 12:00:00
