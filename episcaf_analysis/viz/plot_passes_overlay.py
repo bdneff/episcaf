@@ -20,7 +20,7 @@ from pathlib import Path
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 
 LOCAL = Path("/Users/bneff/Desktop/projects/episcaf")
-DP3   = LOCAL/"known_antigen/analysis/data/metrics_cylinder_full.csv"
+DP3   = LOCAL/"known_antigen/analysis/data/metrics_native_cyl_full.csv"  # full table + native-aware carve (dp3_native_cylinder.sbatch)
 DP4   = LOCAL/"12mer_tiling/analysis/data/metrics_12mer.csv"
 DP4TOP= LOCAL/"12mer_tiling/analysis/data/composite_12mer_top5_allscored.csv"
 OUT   = Path(__file__).resolve().parents[2]/"manuscript/figures/passes_overlay.png"
@@ -36,10 +36,17 @@ top3 = pd.read_csv(DP4TOP, low_memory=False); top3 = top3[num(top3.rank_in_epito
 COLS=[("epitope_chunk_rmsd","Epitope RMSD (A)"),("mean_pae","Mean PAE\n(global, filter)"),
       ("epitope_pae","Epitope PAE\n(composite)"),
       ("overall_rmsd","Overall RMSD (A)"),("ptm","pTM"),
-      ("af3_n_clash_res","AF3 clashing res\n(real antibody)"),("cylinder_ca_clashes","Cylinder clashes")]
+      ("af3_n_clash_res","AF3 clashing res\n(real antibody)"),
+      ("cylinder_ca_clashes","Cylinder clashes\n(plain)"),
+      ("cylinder_native_aware","Cylinder clashes\n(native-aware)")]
 rows=[("DP3 mAb", dp3, dp3[ispass], "#c0392b", True)]
 for ag,c in [("1d2k","#1f77b4"),("4wat","#ff7f0e"),("6m0j","#2ca02c")]:
     rows.append((f"{ag.upper()} 12mer (DP4)", m12[m12.antigen==ag], top3[top3.antigen==ag], c, False))
+
+# passing-set medians for the two cylinder columns (cited in the fig:overlay caption / sec:cylinterp)
+for name,_,passd,_,_ in rows:
+    p=num(passd.get("cylinder_ca_clashes")).median(); na=num(passd.get("cylinder_native_aware")).median()
+    print(f"  {name:18s} passes: cylinder plain median={p:.1f}  native-aware median={na:.1f}")
 
 xlim={}
 for key,_ in COLS:
@@ -49,11 +56,11 @@ for key,_ in COLS:
     xlim[key]=(lo,np.percentile(v,99.5))
 
 def edges(key,lo,hi):
-    if key in ("cylinder_ca_clashes","af3_n_clash_res"): return np.arange(np.floor(lo),np.ceil(hi)+2,2)
+    if key in ("cylinder_ca_clashes","cylinder_native_aware","af3_n_clash_res"): return np.arange(np.floor(lo),np.ceil(hi)+2,2)
     if key=="ptm": return np.linspace(lo,hi,26)
     return np.linspace(lo,hi,40)
 
-fig,axes=plt.subplots(len(rows),len(COLS),figsize=(24,12))
+fig,axes=plt.subplots(len(rows),len(COLS),figsize=(3.4*len(COLS),12))
 for r,(name,alld,passd,color,hasab) in enumerate(rows):
     for c,(key,label) in enumerate(COLS):
         ax=axes[r,c]
