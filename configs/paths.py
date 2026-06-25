@@ -18,6 +18,15 @@ DATA = {
 # subset of the 1,134 AbDb complexes in ABDB_CLEANED_PDB_DIR (<=2 islands, antigen >103 aa).
 DP2_PARQUET = DATA["datasets"] / "dp2.parquet"
 
+# Off-cluster (local-dev) copy of the same dp2.parquet, recorded 2026-06-25. 24 MB; lives
+# outside the v2 repo under the sibling known_antigen analysis dir (data stays out of git;
+# see .gitignore). Verified == the cluster ledger: 59 unique patch ids == data/sequences/
+# dp3_mab_antigens.fasta exactly (Lawson scaffolded all 59; "57" is the unique-PROTEIN count).
+# Use locally for analysis/plots; on the cluster use DP2_PARQUET above.
+DP2_PARQUET_LOCAL = Path(
+    "/Users/bneff/Desktop/projects/episcaf/known_antigen/analysis/full_run/dp2.parquet"
+)
+
 # canonical scoring inputs (VERIFY exact filenames on the cluster)
 METRICS_12MER    = DATA["twelvemer_runs"] / "06_score" / "metrics_12mer.csv"
 METRICS_ANTIBODY = DATA["antibody_runs"] / "run_rfd3_mpnn" / "04_filter" / "metrics_cylinder_full.csv"
