@@ -1,0 +1,63 @@
+target,old_len,new_len,recovered,protein,organism,status,tiles
+2h32_0P,117,121,4,Immunoglobulin omega chain,Homo sapiens (9606),clean,17
+2qqn_0P,154,154,0,Neuropilin-1,Homo sapiens (9606),clean,22
+2xqb_0P,113,114,1,INTERLEUKIN 15,Homo sapiens (9606),clean,15
+3lhp_1P,112,113,1,4E10_D0_1ISEA_004_N (T93),Artificial gene (32630),clean,15
+3ma9_0P,216,217,1,Transmembrane glycoprotein,Human immunodeficiency virus 1 (11676),clean,33
+3q1s_0P,140,140,0,Interleukin-22,Homo sapiens (9606),clean,20
+3ux9_1P,148,158,10,Interferon alpha-1/13,Homo sapiens (9606),clean,23
+4kv5_3P,112,112,0,Transforming growth factor beta-1 proprotein,Homo sapiens (9606),clean,15
+4nnp_0P,278,278,0,Lipoprotein,Staphylococcus aureus subsp. aureus (158878),clean,43
+4u6v_0P,282,282,0,Alpha-hemolysin,Staphylococcus aureus subsp. aureus TCH60 (548473),clean,43
+4xwo_5P,351,353,2,ATPase GET3,Saccharomyces cerevisiae (ATCC 204508 / S288c) (559292),clean,55
+4zfg_0P,220,228,8,Angiopoietin-2,Homo sapiens (9606),clean,34
+5eu7_1P,153,153,0,Integrase,Human immunodeficiency virus 1 (11676),clean,22
+5fhx_1P,124,124,0,Interleukin-4,Homo sapiens (9606),clean,17
+5gjs_0P,168,179,11,Hemagglutinin,Influenza A virus (641501),clean,26
+5j13_0P,124,127,3,Thymic stromal lymphopoietin,Homo sapiens (9606),clean,18
+5kw9_0P,290,291,1,Capsid protein VP1,Norwalk virus (11983),clean,45
+5l6y_0P,109,109,0,Interleukin-13,Homo sapiens (9606),clean,15
+5lsp_0P,222,231,9,Hepatocyte growth factor receptor,Homo sapiens (9606),clean,35
+5o4g_0P,542,606,64,Receptor tyrosine-protein kinase erbB-2,Homo sapiens (9606),clean,97
+6cyf_0P,127,127,0,Type III secretion system protein,Pseudomonas aeruginosa (287),clean,18
+6fgb_0P,265,339,74,IgG receptor FcRn large subunit p51,Homo sapiens (9606),clean,53
+6o39_0P,120,120,0,Frizzled-5,Homo sapiens (9606),clean,16
+6o9i_0P,106,106,0,Gastric inhibitory polypeptide receptor,Mus musculus (10090),clean,14
+6oan_0P,286,310,24,Duffy binding surface protein region II,Plasmodium vivax (5855),clean,48
+6okm_0P,114,163,49,Tumor necrosis factor receptor superfamily member 4,Homo sapiens (9606),needs_review,24
+6ol6_1P,222,227,5,ib2 Heavy Chain,Mus musculus (10090),clean,34
+6phb_1P,176,184,8,25 kDa ookinete surface antigen,Plasmodium falciparum (5833),clean,27
+6ppg_1P,121,125,4,Interleukin-17F,Homo sapiens (9606),clean,17
+6qb6_0P,159,162,3,Induced myeloid leukemia cell differentiation protein Mcl-1,Homo sapiens (9606),clean,23
+6wgl_0P,196,218,22,Interleukin-4 receptor subunit alpha,Homo sapiens (9606),clean,33
+6wmw_1P,192,223,31,GDNF family receptor alpha-like,Homo sapiens (9606),clean,34
+6xxv_0P,111,118,7,S2_1.2,Homo sapiens (9606),clean,16
+6ye3_2P,131,132,1,Interleukin-2,Homo sapiens (9606),clean,18
+6ztr_0P,213,216,3,Cadherin-3,Homo sapiens (9606),clean,32
+7a3t_0P,396,428,32,Core protein,Dengue virus 3 (11069),clean,68
+7dm1_0P,334,342,8,Phosphate-binding protein PstS 1,Mycobacterium tuberculosis H37Rv (83332),clean,53
+7kql_0P,110,110,0,Hepatitis A virus cellular receptor 2,Homo sapiens (9606),clean,15
+7o52_0P,176,190,14,CD22 d6-d7 Ig domains,Homo sapiens (9606),clean,28
+7ox3_0P,119,125,6,Interleukin-9,Homo sapiens (9606),clean,17
+7so5_0P,541,541,0,Toxin B,Clostridioides difficile R20291 (645463),clean,87
+7tzh_0P,169,185,16,Lymphocyte activation gene 3 protein,Homo sapiens (9606),clean,27
+7uxl_1P,138,146,8,Gametocyte surface protein P45/48,Plasmodium falciparum (5833),clean,21
+7yv1_0P,169,174,5,Isoform 2B of GTPase KRas,Homo sapiens (9606),clean,25
+7zxk_1P,193,209,16,Interleukin-27 subunit alpha,Homo sapiens (9606),clean,31
+8cz8_1P,148,149,1,"Mesothelin, cleaved form",Homo sapiens (9606),clean,21
+8db4_0P,124,132,8,Ara h 2 allergen,Arachis hypogaea (3818),clean,18
+8ee0_0P,909,931,22,6-deoxyerythronolide B synthase,Saccharopolyspora erythraea (1836),clean,152
+8j7e_0P,105,105,0,Soluble cytochrome b562,Escherichia coli (562),clean,14
+8jel_0P,108,115,7,T-cell immunoreceptor with Ig and ITIM domains,Homo sapiens (9606),clean,16
+8jnk_3P,211,211,0,Alpha-ketoglutarate-dependent dioxygenase alkB homolog 3,Homo sapiens (9606),clean,32
+8ol9_0P,234,235,1,Coagulation factor IX heavy chain,Homo sapiens (9606),clean,36
+8oxv_0P,693,693,0,Protein-glutamine gamma-glutamyltransferase E 27 kDa non-catalytic chain,Homo sapiens (9606),clean,112
+8pww_0P,299,322,23,Reticulocyte-binding protein homolog 5,Plasmodium falciparum 3D7 (36329),clean,50
+8t58_0P,230,235,5,Fab heavy chain,Homo sapiens (9606),clean,36
+8trt_1P,131,132,1,Ephrin type-A receptor 2,Homo sapiens (9606),clean,18
+8uky_1P,163,166,3,Bcl-2 homologous antagonist/killer,Homo sapiens (9606),clean,24
+8wsq_0P,450,450,0,Fusion glycoprotein F0,Respiratory syncytial virus (12814),clean,71
+8yx9_0P,165,178,13,Tumor necrosis factor receptor superfamily member 5,Homo sapiens (9606),clean,26
+1d2k,,392,,(control),,control,62
+4wat,,402,,(control),,control,63
+6m0j,,223,,(control),,control,34
