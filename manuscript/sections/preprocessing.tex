@@ -32,9 +32,28 @@ and 107 tiles, every tile and full construct identical).
 \subsection{Tiled 12-mers, and tiled 30-mers as linear controls}
 The existing set tiles three antigens into 12-mers. The next category is tiled 30-mers,
 which serve as the \emph{linear controls}: unscaffolded constructs (model \texttt{(none)})
-that present the bare peptide, exactly what the scaffolded designs are meant to beat. For
-those we tile all 59 mAb-target antigens (sequences taken directly from \texttt{dp2.parquet})
-plus the three tiled antigens, at a 30-residue window and step 6.
+that present the bare peptide, exactly what the scaffolded designs are meant to beat. Because
+these controls are \emph{not} scaffolded, they carry none of the constraint that ties the
+12-mers to PDB-resolved residues: a linear peptide need not exist in any crystal, so we tile
+the full deposited \textbf{PDB FASTA} chain, which is gap-free, rather than the resolved
+\texttt{antigen\_seq}. We tile all 59 mAb-target antigens plus the three tiled antigens at a
+30-residue window and step 6.
+
+\paragraph{The resolved sequence is gap-free but truncated; the FASTA fixes both.} For each
+antigen we fetch the RCSB FASTA and identify the antigen chain by matching the resolved
+\texttt{antigen\_seq} (\texttt{episcaf\_pipeline/pdb\_fasta.py}); the native window is the FASTA
+chain from where that match begins, which strips any N-terminal expression tag (restoring the
+same native start the earlier library used) while recovering the C-terminal residues the
+resolved sequence had dropped. Checking all 59
+(\texttt{scripts/verify\_antigen\_seq\_vs\_pdb\_fasta.py},
+\texttt{results/antigen\_seq\_vs\_fasta.csv}): the resolved \texttt{antigen\_seq} is an exact
+contiguous slice of the FASTA for 58 of them, missing only terminal residues (up to 74); the
+lone exception, 6OKM, splices across an internal unresolved gap --- a non-native junction.
+Tiling the FASTA recovers \num{535} residues overall and removes that fake junction, and the
+builder asserts every emitted tile is a substring of its source chain. The build
+(\texttt{episcaf\_pipeline/build\_dp4\_tiled30mers\_fasta.py}) reproduces the earlier library's
+tiles where they overlap (e.g.\ 7OX3 \texttt{design\_ID} 1 and 7 match exactly) and yields
+\num{2174} 30-mers from the 62 antigens.
 
 \subsection{Why the design count is not (tiles $\times$ top-$k$)}
 A natural expectation is that taking the top $k$ designs per epitope gives $k$ times the
