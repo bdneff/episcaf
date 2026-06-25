@@ -4,8 +4,9 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH -t 8:00:00
-#SBATCH -o dp3_native_cyl_%j.out
-#SBATCH -e dp3_native_cyl_%j.err
+#SBATCH -o err_out_files/dp3_native_cyl_%j.out
+#SBATCH -e err_out_files/dp3_native_cyl_%j.err
+# NB: err_out_files/ must exist before submit (SLURM opens these before the script runs).
 
 # Recompute cylinder_native_aware for the FULL DP3 set (no 2.5A gate), so Figure 7 / the
 # overlays can show plain AND native-aware side by side for both pools. Single process with the

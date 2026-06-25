@@ -4,8 +4,9 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH -t 12:00:00
-#SBATCH -o copy_run_to_tgen_%j.out
-#SBATCH -e copy_run_to_tgen_%j.err
+#SBATCH -o err_out_files/copy_run_to_tgen_%j.out
+#SBATCH -e err_out_files/copy_run_to_tgen_%j.err
+# NB: err_out_files/ must exist before submit (SLURM opens these before the script runs).
 
 # Copy a scratch run directory to durable /tgen_labs storage before scratch autopurges.
 #

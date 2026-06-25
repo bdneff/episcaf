@@ -5,8 +5,9 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH -t 6:00:00
-#SBATCH -o stage05_metrics_%j.out
-#SBATCH -e stage05_metrics_%j.err
+#SBATCH -o err_out_files/stage05_metrics_%j.out
+#SBATCH -e err_out_files/stage05_metrics_%j.err
+# NB: err_out_files/ must exist before submit (SLURM opens these before the script runs).
 
 # Single source-of-truth metrics extraction for the dual-island run. ONE job, many cores:
 # stage05_extract_metrics.py shards the ~46 epitopes across --workers processes (each loads
