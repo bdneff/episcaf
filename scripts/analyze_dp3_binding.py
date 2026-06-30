@@ -85,25 +85,32 @@ def main() -> None:
 
 
 def _figure(d: pd.DataFrame, cog: pd.DataFrame) -> None:
+    from matplotlib.lines import Line2D
     order = sorted(RUNS, key=lambda ab: -(cog.cognate_ab == ab).sum())
     fig, axes = plt.subplots(2, 4, figsize=(12.5, 6.8))
     for ax, ab in zip(axes.flat, order):
         ab_col, noab_col, run = RUNS[ab]
         x, y = log(d[noab_col]), log(d[ab_col])
-        ax.scatter(x, y, s=6, c="0.78", linewidths=0, label="all members")
+        ax.scatter(x, y, s=6, c="0.78", linewidths=0)
         m = d.cognate_ab == ab
-        ax.scatter(x[m], y[m], s=18, c="crimson", edgecolors="darkred",
-                   linewidths=0.3, label=f"{ab} designs (n={int(m.sum())})")
+        ax.scatter(x[m], y[m], s=18, c="crimson", edgecolors="darkred", linewidths=0.3)
         lim = [0, max(x.max(), y.max()) * 1.02]
         ax.plot(lim, lim, "--", c="0.4", lw=0.8)  # NoAb diagonal
         ax.set_xlim(lim); ax.set_ylim(lim)
-        ax.set_title(f"{ab}  ({run})", fontsize=15)
+        ax.set_title(f"{ab}  ({run}, n={int(m.sum())})", fontsize=15)  # cognate count in title
         ax.set_xlabel(r"$\log_{10}(1+\mathrm{NoAb})$")
         ax.set_ylabel(r"$\log_{10}(1+\mathrm{Ab})$")
-        ax.legend(fontsize=12, loc="upper left", framealpha=0.9)
-    fig.suptitle("DP3 binding: cognate scaffolded designs (red) vs library background (grey)",
+    fig.suptitle("DP3 binding: cognate scaffolded designs vs library background",
                  fontsize=18)
-    fig.tight_layout(rect=[0, 0, 1, 0.97])
+    handles = [
+        Line2D([0], [0], marker="o", color="none", markerfacecolor="0.78",
+               markersize=10, label="all library members"),
+        Line2D([0], [0], marker="o", color="none", markerfacecolor="crimson",
+               markeredgecolor="darkred", markersize=10, label="cognate scaffolded designs"),
+    ]
+    fig.legend(handles=handles, loc="lower center", ncol=2, fontsize=15,
+               frameon=False, bbox_to_anchor=(0.5, -0.01))
+    fig.tight_layout(rect=[0, 0.05, 1, 0.97])
     FIG.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG, dpi=150)
     print(f"\nwrote {FIG}")
