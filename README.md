@@ -63,6 +63,55 @@ python -m episcaf_analysis.score --preset twelvemer \
 python tests/test_scoring.py
 ```
 
+## Pipeline, end to end
+
+One epitope → many scaffolded designs → metrics → the best few → a synthesis-ready
+oligo. Stages live in a numbered **run directory** on `/tgen_labs`; code drives them via
+the `episcaf_pipeline` CLI and a few cluster `sbatch` array jobs. `[cluster]` = runs on
+Gemini; `[local]` = runs anywhere. Most commands take `--help`.
+
+```bash
+# 0–2. PREPARE  [local]  — init (snapshot dataset) + stage01 (contigs, seeds, reps)
+#                          + stage02 (emit RFD3 JSON inputs). One call does all three:
+python -m episcaf_pipeline prep \
+    --dataset <dataset.parquet> --run_dir <run> --pdb_dir <cleaned_antigen_pdbs>
+#   (or run `init` / `stage01` / `stage02` separately; see `... <cmd> --help`)
+
+# 3. RFD3  [cluster GPU array]  — diffuse scaffold backbones around the fixed epitope
+sbatch --array=1-N episcaf_pipeline/hpc/sbatch/rfd3_array.sbatch <run>   # N from 02_rfd3 manifest
+
+# 4. SEQUENCES + AF3 INPUTS  [cluster]  — two branches:
+#   (a) RFD3-direct (no MPNN):
+python -m episcaf_pipeline stage04 --run_dir <run>           # emit AF3 JSONs straight from RFD3
+#   (b) RFD3 → ProteinMPNN → AF3 (the canonical path); see each script's --help for args:
+python scripts/stage03_mpnn_fixed_pdbs.py  --help            # epitope-fixed backbones for MPNN
+python scripts/stage03_mpnn_submit.py      --help            # design sequences on the backbones
+python scripts/stage04_af3_emit_jsons.py   --help            # emit AF3 JSONs from MPNN seqs
+
+# 5. AF3  [cluster GPU array]  — predict each design's structure
+sbatch --array=1-N episcaf_pipeline/hpc/sbatch/af3_array.sbatch <run>
+
+# 6. METRICS  [cluster]  — epitope/overall RMSD, PAE, clash per design
+python -m episcaf_pipeline stage05 --run_dir <run>            # (or scripts/stage05_metrics.sbatch)
+#   no-antibody set also needs the accessibility surrogate:
+python scripts/dp3_native_cylinder.py ...                    # cylinder_native_aware
+
+# 7. SCORE + SELECT  [local]  — composite rank, top-k per group, NO hard gate
+python -m episcaf_analysis.score --preset twelvemer|antibody \
+    --metrics-csv <metrics.csv> --out <top5.csv>
+
+# 8. ASSEMBLE  [local]  — concatenate the DP4 components (C1–C6) into one ordered
+#                         DP2-format peptide file + the name,seq export   [06_library: to build]
+
+# 9. ENCODE  [cluster]  — peptide → DNA oligo (LadnerLab tool, DP3 codon weights)
+sbatch episcaf_pipeline/oligo_encoding/encode_step1_generate.sbatch   # candidates
+sbatch episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch     # NN-pick the best → order file
+```
+
+Verify-as-you-go: `compute_metrics.py --validate` checks our metrics reproduce Lawson's
+stored values before any selection is trusted; the manuscript records every figure's
+exact command in `manuscript/figures/FIGURES.md`.
+
 ## Scoring model
 
 The scorer is a single-layer perceptron with a per-metric activation and hand-set
