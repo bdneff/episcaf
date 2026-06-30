@@ -11,33 +11,45 @@ one ordered synthesis file (Section~\ref{sec:assembly}).
 \toprule
 component & what it is & constructs & status \\
 \midrule
-C1 scaffolds, known antibodies & top-$k$/island, mAb epitopes & $\sim$435 & generated; selection pending \\
-C2 scaffolds, polyclonal tiling & top-5/window, no antibody & $\sim$2181 & scored, top-5 selected \\
-C3 linear tiled-30mer controls & bare tiled peptides & 2174 & built \\
-C4 metric-space sampling & designs spread across metrics & TBD & planned \\
+C1 known antibody, whole epitope & full-epitope scaffolds, top-5/epitope & TBD & selection pending \\
+C2 known antibody, single island & 87 island contigs, each island alone & $\sim$435 & generated; selection pending \\
+C3 scaffolds, polyclonal tiling & top-5/window, no antibody & $\sim$2181 & scored, top-5 selected \\
+C4 linear tiled-30mer controls & bare tiled peptides & 2174 & built \\
+C5 metric-space sampling & designs spread across metrics & TBD & planned \\
 \bottomrule
 \end{tabular}
-\caption{The DP4 components assembled here. Counts are current best estimates; C1 and C2 settle
-once selection is finalized, C4 once a peptide budget is set. C2 is the 951+450+780 top-5 designs
-of Table~\ref{tab:tilecount}; C3 is the \num{2174} tiles of Section~\ref{sec:tiling}.}
+\caption{The DP4 components assembled here. C1 and C2 are the two halves of the islands
+experiment (whole epitope vs.\ one island at a time). Counts are current best estimates; C1/C2
+settle once selection is finalized, C5 once a peptide budget is set. C3 is the 951+450+780 top-5
+designs of Table~\ref{tab:tilecount}; C4 is the \num{2174} tiles of Section~\ref{sec:tiling}.}
 \label{tab:dp4components}
 \end{table}
 
-\subsection{C1 --- scaffolded epitopes with known antibodies}\label{sec:dp4c1}
-For each mAb epitope we ship the best few scaffolded designs, selected by the composite
-(Section~\ref{sec:composite}) at top-$k$ per island. These are the designs whose binding we can
-score against a ground truth, since the antibody is known; in DP4 they extend the DP3 set that
-gave us the binding data of Section~\ref{sec:experimental}. They are built island-by-island
-(Section~\ref{sec:perisland}): a multi-island epitope contributes each of its islands as a
-separate scaffolding target, which is what lets the assay ask whether an antibody needs one
-island or both (Q1, Section~\ref{sec:islands}). The per-island production run covers \num{87}
-scaffolded islands (\num{5} size-1 islands are skipped as un-presentable); at top-5 per island
-that is on the order of \num{435} constructs (Table~\ref{tab:dualisland}). Selection ranks on the
-re-weighted composite with no hard gate (Section~\ref{sec:selection}); because the antibody is
-known, the accessibility term is the \emph{real} clash \texttt{af3\_n\_clash\_res} rather than the
-cylinder surrogate.
+\subsection{C1 --- known-antibody epitopes, whole}\label{sec:dp4c1}
+For each mAb epitope we ship the best few scaffolds that present the \emph{complete} epitope ---
+all of its islands held together in their native geometry, the way the antibody actually sees it.
+These are the designs whose binding we can score against a ground truth, since the antibody is
+known; they continue the DP3 set that gave us the binding data of Section~\ref{sec:experimental}
+and are the comparator for the single-island arm below. Selection ranks on the re-weighted
+composite with no hard gate (Section~\ref{sec:selection}); because the antibody is known, the
+accessibility term is the \emph{real} clash \texttt{af3\_n\_clash\_res} rather than the cylinder
+surrogate. Whole-epitope presentation is straightforward for the \num{13} single-island epitopes
+but hard for multi-island ones --- preserving the relative geometry of separated islands is
+exactly where scaffolding struggles (Section~\ref{sec:intro}, the \texttt{2XQB} failure) --- which
+is the motivation for shipping C2 alongside it.
 
-\subsection{C2 --- scaffolded epitopes from polyclonal tiling}\label{sec:dp4c2}
+\subsection{C2 --- known-antibody epitopes, one island at a time}\label{sec:dp4c2}
+The single-island component scaffolds each island of the \num{46} multi-island epitopes
+\emph{individually}: one island per design, presented alone. This is the direct test of Q1
+(Section~\ref{sec:islands}) --- does an antibody need both islands of its epitope, or does one
+suffice? Shipping C1 (whole epitope) and C2 (each island alone) for the same antibodies lets the
+assay deconvolve which island, if any, carries the binding. The per-island production run
+(Section~\ref{sec:perisland}) covers \num{87} scaffolded islands (\num{5} size-1 islands are
+skipped as un-presentable); at top-5 per island that is on the order of \num{435} constructs
+(Table~\ref{tab:dualisland}). Selection is identical to C1 (composite, no gate, real-clash
+accessibility), ranked per (\texttt{id}, island) so each island competes on its own.
+
+\subsection{C3 --- scaffolded epitopes from polyclonal tiling}\label{sec:dp4c3}
 For antigens with no known antibody we tile the whole protein into overlapping windows and
 scaffold each one (Section~\ref{sec:tiling}), then keep the top 5 designs per window by the
 composite. This is the polyclonal arm (Q3): we do not know where the real epitope is, so we cover
@@ -48,7 +60,7 @@ strongest predictor (Section~\ref{sec:whatpredicts}), which is why it now carrie
 in selecting these designs. Across the three tiled antigens (1D2K, 6M0J, 4WAT) this is
 \num{951}+\num{450}+\num{780} top-5 designs (Table~\ref{tab:tilecount}).
 
-\subsection{C3 --- linear tiled-30mer controls}\label{sec:dp4c3}
+\subsection{C4 --- linear tiled-30mer controls}\label{sec:dp4c4}
 The linear controls are the bare epitope peptides the scaffolded designs are meant to beat:
 unscaffolded 30-mers (model \texttt{(none)}) tiled across the antigen, presenting the sequence
 with none of the conformational constraint a scaffold imposes. They are the baseline for the
@@ -58,9 +70,9 @@ tile. We tile the gap-free PDB FASTA chain at a 30-residue window, step 6
 (Section~\ref{sec:tiling}), giving \num{2174} tiles over \num{62} antigens
 (\texttt{data/libraries/dp4\_tiled30mers\_fasta.csv}). This component is built.
 
-\subsection{C4 --- metric-space sampling}\label{sec:dp4c4}
+\subsection{C5 --- metric-space sampling}\label{sec:dp4c5}
 The DP3 binding data is a weak prior precisely because every assayed design already passed the
-four filters, so the metrics barely varied (Section~\ref{sec:experimental}). C4 fixes that by
+four filters, so the metrics barely varied (Section~\ref{sec:experimental}). C5 fixes that by
 design: instead of shipping only the top designs, we deliberately sample designs \emph{spread
 across} the metric space --- including ones the current filters would reject --- so that epitope
 RMSD, accessibility, and PAE each take a wide range of values. Here accessibility is the cylinder
@@ -72,8 +84,8 @@ filters we started from. The sampling design (a farthest-point spread over the s
 metrics) is worked out; the size is set by the peptide budget, so the count is open.
 
 \subsection{Assembly into one synthesis file}\label{sec:assembly}
-All four components share the constant 103-mer construct and the eight-column DP2 annotated format
+All five components share the constant 103-mer construct and the eight-column DP2 annotated format
 (Section~\ref{sec:tiling}), so the final step concatenates them into a single ordered library file
 with global \texttt{library\_member} numbering --- a named, documented pipeline stage
 (\texttt{06\_library}) so the shipped file is regenerable from its components. That assembly is the
-last thing to run once C1 selection is locked and C4's budget is set.
+last thing to run once C1/C2 selection is locked and C5's budget is set.
