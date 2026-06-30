@@ -16,12 +16,14 @@ C2 known antibody, single island & 87 island contigs, each island alone & $\sim$
 C3 scaffolds, polyclonal tiling & top-5/window, no antibody & $\sim$2181 & scored, top-5 selected \\
 C4 linear tiled-30mer controls & bare tiled peptides & 2174 & built \\
 C5 metric-space sampling & designs spread across metrics & TBD & planned \\
+C6 mutational ablation series & top-20/mAb $\times$ alanine flavors & $\sim$4000 & spec; to build \\
 \bottomrule
 \end{tabular}
 \caption{The DP4 components assembled here. C1 and C2 are the two halves of the islands
-experiment (whole epitope vs.\ one island at a time). Counts are current best estimates; C1/C2
-settle once selection is finalized, C5 once a peptide budget is set. C3 is the 951+450+780 top-5
-designs of Table~\ref{tab:tilecount}; C4 is the \num{2174} tiles of Section~\ref{sec:tiling}.}
+experiment (whole epitope vs.\ one island at a time); C6 tests the same question by mutation.
+Counts are current best estimates; C1/C2 settle once selection is finalized, C5 once a peptide
+budget is set. C3 is the 951+450+780 top-5 designs of Table~\ref{tab:tilecount}; C4 is the
+\num{2174} tiles of Section~\ref{sec:tiling}.}
 \label{tab:dp4components}
 \end{table}
 
@@ -83,8 +85,25 @@ finally fit the composite's weights (Q2, Section~\ref{sec:open}), rather than re
 filters we started from. The sampling design (a farthest-point spread over the standardized
 metrics) is worked out; the size is set by the peptide budget, so the count is open.
 
+\subsection{C6 --- mutational ablation series}\label{sec:dp4c6}
+For the best \num{20} designs of each of the \num{57} mAbs we ship a controlled mutation series
+that tests \emph{what} drives any binding observed. Each design appears in up to four flavors:
+(i) \textbf{unmutated}, the reference; (ii) the \textbf{first epitope island mutated entirely to
+alanine}; (iii) the \textbf{second island to alanine}, where the epitope has one; and (iv)
+\textbf{four 6-residue windows of the scaffold} (not the epitope) mutated. The logic is causal.
+Ablating an epitope island removes its side-chain chemistry while leaving the fold, so (ii) and
+(iii) read out each island's contribution \emph{by mutation} --- the complement to C2, which reads
+it out \emph{by presentation} (each island scaffolded alone). Flavor (iv) is the negative control:
+if binding is epitope-driven, perturbing the scaffold should leave it intact, so a design whose
+binding survives (iv) but collapses under (ii)/(iii) is behaving exactly as intended --- the
+epitope, not the scaffold, carries the signal. At \num{20} designs $\times$ \num{57} mAbs $\times$
+up to four flavors this is on the order of \num{4000} constructs (flavor (iii) applies only to
+multi-island epitopes). \emph{To confirm:} that the mutant residue is alanine throughout, the rule
+for choosing the four scaffold windows in (iv), and that ``best 20'' means the top 20 per mAb by
+the composite.
+
 \subsection{Assembly into one synthesis file}\label{sec:assembly}
-All five components share the constant 103-mer construct and the eight-column DP2 annotated format
+All six components share the constant 103-mer construct and the eight-column DP2 annotated format
 (Section~\ref{sec:tiling}), so the final step concatenates them into a single ordered library file
 with global \texttt{library\_member} numbering --- a named, documented pipeline stage
 (\texttt{06\_library}) so the shipped file is regenerable from its components. That assembly is the
