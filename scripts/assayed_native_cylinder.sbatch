@@ -10,27 +10,26 @@
 
 # Native-aware cylinder for the 403 ASSAYED scaffold designs (the DP3 binding set), so the
 # cylinder surrogate can be correlated against experimental binding. Identical carve to
-# dp3_native_cylinder.py; only ~400 designs, so minutes. The slow part is indexing the AF3
-# output tree once -- if AF3_ROOT is huge the rglob dominates; point it as deep as possible.
+# dp3_native_cylinder.py; only ~400 designs, so minutes. AF3 dirs are resolved directly by the
+# assay hash (no tree walk).
 #
 # PRECONDITIONS:
 #   - results/assayed_cylinder_worklist.csv exists (python3 scripts/build_assayed_cylinder_worklist.py)
-#   - the assayed designs' AF3 outputs exist under AF3_ROOT, each design's *_model.cif in a dir
-#     whose path contains its assay_scaffolded_epitope_id hash. If keyed differently, edit the
-#     python call to add --key_col <col>.
+#   - the assayed AF3 outputs are at <af3_root>/<assay_scaffolded_epitope_id>/<hash>_model.cif.gz
+#     (verified 403/403 under sourced_antibody_v1/no_antibody/af3_predictions).
 #
-# Usage:
-#   sbatch scripts/assayed_native_cylinder.sbatch <af3_root> [worklist] [dp2.parquet] [native_dir] [out.csv]
+# Usage (defaults already point at sourced_antibody_v1/no_antibody):
+#   sbatch scripts/assayed_native_cylinder.sbatch [af3_root] [worklist] [dp2_or_403.parquet] [native_dir] [out.csv]
 
 set -euo pipefail
 module load Mamba/25.3.0-3
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate ~/rfd3/env/rfd3_py312
 
-WS=/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff
-AF3_ROOT="${1:?give the root dir of the assayed-design AF3 outputs}"
+BASE=/tgen_labs/altin/alphafold3/workspace/episcaf-experiments/data/sourced_antibody_v1/no_antibody
+AF3_ROOT="${1:-${BASE}/af3_predictions}"
 WORKLIST="${2:-results/assayed_cylinder_worklist.csv}"
-DP2="${3:-${WS}/datasets/dp2.parquet}"
+DP2="${3:-${BASE}/assay_scaffold_simple_metrics_403.parquet}"   # has all 403 hashes + epitope indices
 NATIVE_DIR="${4:-/tgen_labs/altin/alphafold3/workspace/episcaf-experiments/data/abdb/complex_pdbfiles/cleaned}"
 OUT="${5:-results/assayed_native_cyl.csv}"
 

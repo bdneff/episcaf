@@ -11,20 +11,21 @@ Inputs:
                one row per assayed scaffold with designedSequence, id, assay_scaffolded_epitope_id.
   --dp2_parquet  dp2.parquet -- epitope residue indices, looked up by assay_scaffolded_epitope_id.
   --native_dir   AbDb cleaned complex dir (ABDB_CLEANED_PDB_DIR); antigen = chain A of <id>.pdb.
-  --af3_root     root under which the assayed designs' AF3 outputs live. Each design's output
-                 directory (containing *_model.cif) is found by searching af3_root for its
-                 assay_scaffolded_epitope_id hash. If the assayed AF3 outputs are keyed by a
-                 different token, set --key_col to that worklist column instead.
+  --af3_root     root under which the assayed designs' AF3 outputs live, one dir per design
+                 named by the assay hash: <af3_root>/<assay_scaffolded_epitope_id>/<hash>_model.cif.gz
+                 (verified 403/403 under sourced_antibody_v1/no_antibody/af3_predictions). The dir
+                 is resolved directly; --key_col overrides which worklist column names the dir.
   --out_csv      output; one row per design with cylinder_ca_clashes, native_in_cylinder,
                  cylinder_native_aware, keyed by designedSequence (joins to dp3_binding_metrics.csv).
 
-Example:
+Example (defaults in scripts/assayed_native_cylinder.sbatch already point at the right folder):
   conda activate ~/rfd3/env/rfd3_py312
+  B=/tgen_labs/altin/alphafold3/workspace/episcaf-experiments/data/sourced_antibody_v1/no_antibody
   python3 scripts/assayed_native_cylinder.py \
       --worklist    results/assayed_cylinder_worklist.csv \
-      --dp2_parquet /tgen_labs/.../datasets/dp2.parquet \
-      --native_dir  <abdb cleaned dir> \
-      --af3_root    <root of the assayed-design AF3 outputs> \
+      --dp2_parquet $B/assay_scaffold_simple_metrics_403.parquet \
+      --native_dir  /tgen_labs/altin/alphafold3/workspace/episcaf-experiments/data/abdb/complex_pdbfiles/cleaned \
+      --af3_root    $B/af3_predictions \
       --out_csv     results/assayed_native_cyl.csv \
       --exclude_dist 1.0
 """
@@ -41,23 +42,6 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 # identical carve + helpers; do NOT re-implement
 from dp3_native_cylinder import process, parse_index_list, first_present, DP2_EPI_COLS  # noqa: E402
-
-
-def build_af3_index(af3_root: str, keys: set[str]) -> dict[str, Path]:
-    """Walk af3_root ONCE and map each wanted key to the AF3 output dir whose path contains it.
-
-    A dir qualifies if it holds a *_model.cif. The key (the assay hash by default) must appear in
-    the dir path -- which is how the assayed AF3 outputs are expected to be named. Walking once is
-    O(tree); the alternative (one rglob per design) re-walks the whole tree 400+ times."""
-    root = Path(af3_root)
-    index: dict[str, Path] = {}
-    for cif in root.rglob("*_model.cif"):
-        d = cif.parent
-        path_l = str(d).lower()
-        for k in keys:
-            if k in path_l and k not in index:
-                index[k] = d
-    return index
 
 
 def main() -> None:
@@ -87,10 +71,11 @@ def main() -> None:
     if missing_native:
         print(f"WARNING: no native PDB for ids: {missing_native}")
 
-    keys = set(wl[args.key_col].astype(str).str.lower())
-    print(f"indexing AF3 outputs under {args.af3_root} for {len(keys)} keys ...", flush=True)
-    af3_index = build_af3_index(args.af3_root, keys)
-    print(f"  matched {len(af3_index)}/{len(keys)} keys to an AF3 dir", flush=True)
+    # The assayed-design AF3 outputs are stored one dir per design, named exactly by the
+    # assay hash: <af3_root>/<key>/<key>_model.cif.gz (verified 403/403, sourced_antibody_v1/
+    # no_antibody). So resolve the dir directly -- no tree walk. find_af3_cif (in the shared
+    # carve) handles the .cif.gz.
+    af3_root = Path(args.af3_root)
 
     plain = np.full(len(wl), np.nan); natin = np.full(len(wl), np.nan)
     aware = np.full(len(wl), np.nan); af3_found = []
@@ -98,7 +83,8 @@ def main() -> None:
     for pos, row in enumerate(wl.itertuples(index=False)):
         h = getattr(row, "assay_scaffolded_epitope_id")
         key = str(getattr(row, args.key_col)).lower()
-        af3 = af3_index.get(key)
+        d = af3_root / key
+        af3 = d if d.is_dir() else None
         af3_found.append(str(af3) if af3 else "")
         if af3 is None:
             n_nodir += 1; continue
