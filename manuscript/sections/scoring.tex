@@ -131,13 +131,21 @@ $x_0,k$) from data. The dials live in \texttt{episcaf\_analysis/presets.py}:
 \toprule
 metric & weight \\
 \midrule
+accessibility      & 0.35 \\
 epitope-chunk RMSD & 0.35 \\
-epitope PAE        & 0.25 \\
-accessibility      & 0.25 \\
 overall RMSD       & 0.15 \\
+epitope PAE        & 0.15 \\
 \bottomrule
 \end{tabular}
 \end{center}
+
+\noindent
+These weights are set from the DP3 binding data (Section~\ref{sec:whatpredicts}): correlating
+each metric with experimental binding \emph{within} antibody, the accessibility cylinder and
+epitope RMSD are the two terms that track binding (the cylinder most, and uniquely surviving the
+between-antibody confound), while overall RMSD and PAE carry little signal --- so the first two
+carry the weight and the latter two are kept small. This is still a hand-set prior from an
+all-passing set, not a fit.
 
 \noindent
 The weights sum to one (renormalized over whichever metrics a given table actually

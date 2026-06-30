@@ -17,16 +17,22 @@ regression of the transformed features against the DP3 `is_pass` label
 (see docs/REORG.md, the v2 hook).
 """
 
+# Weights are a PRIOR set from the DP3 binding data (manuscript sec:whatpredicts): correlating
+# each metric with experimental cognate enrichment WITHIN antibody (the deconfounded view), the
+# accessibility cylinder is the strongest predictor (native-aware r=-0.22) and epitope RMSD next
+# (-0.14); overall RMSD (-0.08) and PAE (~0, mean_pae tested) carry little binding signal. So the
+# cylinder and epitope-RMSD terms get the weight; the other two are kept small but non-zero. This
+# is a hand-set prior from an all-passing set, to be re-fit once DP4 spans the full metric space.
 TWELVEMER = dict(
     gate=("epitope_chunk_rmsd", 2.5),
     scope="per_antigen",                 # rank within each antigen, not pooled across all
     antigen_col="antigen",
     select=dict(group="id", topk=5),     # top-5 per epitope  (verify `id` is the epitope key)
     metrics={
+        "cylinder_native_aware":  dict(weight=0.35, better="low", transform="percentile"),
         "epitope_chunk_rmsd":     dict(weight=0.35, better="low", transform="percentile"),
-        "epitope_pae":            dict(weight=0.25, better="low", transform="percentile"),
         "overall_rmsd":           dict(weight=0.15, better="low", transform="percentile"),
-        "cylinder_native_aware":  dict(weight=0.25, better="low", transform="percentile"),
+        "epitope_pae":            dict(weight=0.15, better="low", transform="percentile"),
     },
 )
 
@@ -35,11 +41,12 @@ ANTIBODY = dict(   # DP3 / mAb set — has real af3_n_clash_res ground truth + i
     scope="pooled",
     antigen_col="antigen",
     select=dict(group="id", topk=15),
-    metrics={
+    metrics={      # cylinder_ca_clashes here is the plain count (-0.18); native-aware (-0.22) is
+                   # better and preferred where the column is available.
+        "cylinder_ca_clashes":  dict(weight=0.35, better="low", transform="percentile"),
         "epitope_chunk_rmsd":   dict(weight=0.35, better="low", transform="percentile"),
-        "epitope_pae":          dict(weight=0.25, better="low", transform="percentile"),
         "overall_rmsd":         dict(weight=0.15, better="low", transform="percentile"),
-        "cylinder_ca_clashes":  dict(weight=0.25, better="low", transform="percentile"),
+        "epitope_pae":          dict(weight=0.15, better="low", transform="percentile"),
     },
 )
 
