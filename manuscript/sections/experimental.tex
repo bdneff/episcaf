@@ -105,12 +105,68 @@ designs; the remaining six antibodies have between one and twelve each. A within
 only meaningfully possible for two epitopes, which is far too narrow to learn weights that would
 generalize across targets.
 
-None of this diminishes the positive result --- it constrains its use. DP3 gives a defensible
-\emph{starting prior}: the scaffold-versus-linear premise holds, binding is real, and the
-cylinder accessibility weight is independently earned by its AUC against the true antibody clash
-(Section~\ref{sec:noab}). What DP3 cannot do is fix the composite's weights, because the data has
-no failures, a confounded pooled signal, and only two well-sampled epitopes. Closing that gap is
-the explicit purpose of the DP4 sampling (Section~\ref{sec:open}): deliberately assay designs
-spread across the metric space --- including ones the current filters would reject --- so that
-binding can finally be regressed on the metrics with the variance and the breadth this first set
-lacks.
+\subsection{What does predict binding: the accessibility cylinder}\label{sec:whatpredicts}
+The deconfounding move above --- comparing designs \emph{within} an antibody rather than across
+the pool --- is also how we find the one metric that does carry signal. For each filter metric we
+regress cognate log-enrichment on it two ways: pooled across all \num{377} designs, and after
+removing each antibody's own mean from both the metric and the enrichment (a fixed-effect
+centering that strips the baseline offsets the pooled view conflates). The contrast between the
+two numbers is the test: a predictor that is real survives the centering; an artifact collapses.
+Figure~\ref{fig:metricbinding} shows both views for every metric, and we add the
+\emph{accessibility cylinder} (Section~\ref{sec:noab}) computed on the assayed designs' own
+AlphaFold3 structures (\texttt{scripts/assayed\_native\_cylinder.py}).
+
+\begin{table}[h]\centering
+\begin{tabular}{lccc}
+\toprule
+metric & pooled $r$ & within-antibody $r$ & survives deconfounding? \\
+\midrule
+cylinder, native-aware & $-0.23$ & $\mathbf{-0.22}$ \;(\(p{=}2\times10^{-5}\)) & yes --- essentially intact \\
+cylinder, plain        & $-0.24$ & $-0.18$ & mostly \\
+epitope RMSD           & $-0.41$ & $-0.14$ & no --- mostly between-antibody \\
+overall RMSD           & $-0.17$ & $-0.08$ & no \\
+mean PAE               & $-0.02$ & $+0.07$ & no (and wrong sign) \\
+\bottomrule
+\end{tabular}
+\caption{Pearson correlation of each metric with cognate log-enrichment, pooled versus
+within-antibody (fixed-effect centered). The accessibility cylinder is the only metric whose
+correlation barely changes between the two --- it is a genuine within-antibody predictor, not a
+pooling artifact --- and the native-aware carve is stronger than the plain count.}
+\label{tab:metricbinding}
+\end{table}
+
+\begin{figure}[h]\centering
+\figorbox{dp3_metric_binding.png}{1.0}
+\caption{Each metric versus cognate log-enrichment. Top row pooled (one trend line); bottom row
+colored by antibody with per-antibody trend lines and the within-antibody fixed-effect
+correlation in the title. Epitope RMSD's strong pooled slope (column~2) flattens once colored by
+antibody --- the pooled line was riding the gap between the high-binding 7ox3 band and the
+low-binding 5fhx band. The native-aware cylinder (right column) slopes down both pooled and
+within \emph{every} antibody: more scaffold mass blocking the antibody approach, less binding.}
+\label{fig:metricbinding}
+\end{figure}
+
+Three things make the cylinder result stand out (Table~\ref{tab:metricbinding}). First, it is the
+only metric that survives deconfounding: epitope RMSD looks like the best predictor when pooled
+($r=-0.41$) but collapses to $-0.14$ once the antibody offset is removed, whereas the cylinder
+holds from $-0.23$ to $-0.22$, with the same negative sign within all three well-sampled
+antibodies (7ox3 $-0.24$, 5fhx $-0.18$, 6o9i $-0.61$). Second, the sign is the mechanistically
+expected one and matches the surrogate's purpose: scaffold mass placed where the antibody must
+approach predicts \emph{less} binding. Third --- and this is why the cylinder can show a signal
+where the filter metrics cannot --- the cylinder was never part of the four-filter, so it kept
+its full dynamic range in the assayed set (native-aware count \numrange{0}{17}, median \num{6})
+while the filter metrics were squeezed into their passing slivers. The native-aware carve, which
+drops scaffold $C\alpha$ atoms that merely reoccupy the native antigen's own volume, correlates
+more strongly than the plain count ($-0.22$ vs $-0.18$), a direct experimental endorsement of the
+exact refinement we apply where there is no antibody.
+
+This is the first time the cylinder is validated against \emph{experimental} binding rather than
+against the in-silico true clash it was built to approximate (the AUC of Section~\ref{sec:noab}).
+The two lines of evidence agree, and they upgrade the starting prior: of everything we measure,
+the accessibility surrogate --- the metric we most need for the no-antibody designs, where it is
+the only accessibility signal available --- is the one DP3 binding most supports. The filter
+metrics, by contrast, remain weak and confounded here. What DP3 still cannot do is fix the full
+composite, because the data has no failing designs, and only two antibodies are sampled deeply.
+Closing that gap is the explicit purpose of the DP4 sampling (Section~\ref{sec:open}):
+deliberately assay designs spread across the metric space --- including ones the current filters
+would reject --- so the weights can be fit with the variance and breadth this first set lacks.

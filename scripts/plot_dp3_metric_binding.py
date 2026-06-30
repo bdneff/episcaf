@@ -29,13 +29,14 @@ import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parents[1]
 CSV = ROOT / "results" / "dp3_binding_metrics.csv"
-OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(
-    "/private/tmp/claude-1406856884/-Users-bneff-Desktop-projects-episcaf-episcaf-v2/"
-    "04658a63-b311-4ce9-945a-f4ee72ab053f/scratchpad/dp3_metric_binding.png")
+CYL = ROOT / "results" / "assayed_native_cyl.csv"   # post-hoc cylinder on the assayed structures
+OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "manuscript" / "figures" / "dp3_metric_binding.png"
 
 METRICS = [("overall_rmsd", "overall RMSD (Å)"),
            ("epitope_chunk_rmsd_vs_mpnn", "epitope RMSD (Å)"),
-           ("mean_pae", "mean PAE")]
+           ("mean_pae", "mean PAE"),
+           ("cylinder_ca_clashes", "cylinder (plain)"),
+           ("cylinder_native_aware", "cylinder (native-aware)")]
 Y = "cognate_log_enrichment"
 
 
@@ -54,8 +55,11 @@ def corr_line(ax, x, y, color, label=None, lw=1.6):
 
 def main() -> None:
     d = pd.read_csv(CSV)
+    cyl = pd.read_csv(CYL)[["designedSequence", "cylinder_ca_clashes", "cylinder_native_aware"]]
+    d = d.merge(cyl, on="designedSequence", how="left")
     s = d[(d.category == "scaffoldedAbEpitope") & d.cognate_ab.notna()].copy()
     print(f"cognate scaffolded designs: {len(s)}  (antibodies: {sorted(s.cognate_ab.unique())})")
+    print(f"cylinder merged for {s.cylinder_native_aware.notna().sum()}/{len(s)} of them")
 
     # within-Ab (fixed-effect) centering: subtract per-Ab mean from metric and from y
     g = s.groupby("cognate_ab")
@@ -67,7 +71,8 @@ def main() -> None:
     cmap = plt.get_cmap("tab10")
     abcol = {ab: cmap(i % 10) for i, ab in enumerate(abs_sorted)}
 
-    fig, axes = plt.subplots(2, 3, figsize=(15, 9))
+    ncol = len(METRICS)
+    fig, axes = plt.subplots(2, ncol, figsize=(5 * ncol, 9))
     print("\n=== correlations of metric vs cognate_log_enrichment ===")
     for j, (col, lab) in enumerate(METRICS):
         # row 1: pooled
@@ -97,7 +102,7 @@ def main() -> None:
                     print(f"  within {ab:5s} n={rr[3]:3d}  Pearson r={rr[0]:+.3f}  Spearman rho={rr[1]:+.3f}")
         ax2.set_title(f"by antibody  (within-Ab fixed-effect r={rw:+.2f})", fontsize=10)
         ax2.set_xlabel(lab); ax2.set_ylabel("cognate log-enrichment")
-        if j == 2:
+        if j == ncol - 1:
             ax2.legend(fontsize=7, loc="best", framealpha=0.9)
 
     fig.suptitle("DP3: do the filter metrics predict binding? (cognate scaffolded designs)",

@@ -28,8 +28,10 @@ between-antibody artifact, and only two of the eight antibodies are sampled deep
 still defer the fit, and the requirement for DP4 is specific: assay designs spread across the
 metric space, \emph{including ones the current filters reject}, so that binding can be regressed
 on the metrics with real variance and across many epitopes. The cylinder weight in particular is
-already justified by data: on DP3 it predicts the true antibody clash at AUC $0.93$
-(Section~\ref{sec:noab}), so it earns real weight even before a global fit.
+already justified by data twice over: on DP3 it predicts the true antibody clash at AUC $0.93$
+(Section~\ref{sec:noab}), and it is the single best predictor of \emph{experimental} binding,
+the only metric whose correlation survives the between-antibody confound
+(Section~\ref{sec:whatpredicts}). So it earns real weight even before a global fit.
 
 \item \textbf{Confirm the canonical DP3 metrics builder.} Determine whether
 \texttt{compute\_metrics\_mpnn.py} (currently archived) is the live RFD3+MPNN metrics

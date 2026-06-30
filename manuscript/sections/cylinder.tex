@@ -111,6 +111,16 @@ best designs per epitope is a different task and applies no such hard threshold 
 the composite score directly (Section~\ref{sec:composite}), which is why the per-island
 selection (Section~\ref{sec:selection}) gates only loosely and then ranks.
 
+\paragraph{The surrogate also tracks experimental binding.} The AUC above shows the cylinder
+reproduces the in-silico clash it was built to approximate; the DP3 assay
+(Section~\ref{sec:whatpredicts}) lets us check it against real binding. Computed on the assayed
+designs' own structures, the native-aware cylinder is the single best binding predictor among all
+our metrics, and the only one whose correlation survives the between-antibody confound
+(within-antibody $r=-0.22$, more scaffold mass in the antibody path $\Rightarrow$ less binding),
+beating the plain count ($-0.18$). The surrogate is thus endorsed twice over --- against the true
+clash it stands in for, and against the binding it is meant to predict --- which is what justifies
+giving it real weight in the no-antibody setting where no other accessibility signal exists.
+
 \begin{figure}[h]\centering
 \figorbox{passes_overlay.png}{1.0}
 \caption{All designs (grey, left axis) and passing designs (color, right colored axis), both
