@@ -164,9 +164,13 @@ This is the first time the cylinder is validated against \emph{experimental} bin
 against the in-silico true clash it was built to approximate (the AUC of Section~\ref{sec:noab}).
 The two lines of evidence agree, and they upgrade the starting prior: of everything we measure,
 the accessibility surrogate --- the metric we most need for the no-antibody designs, where it is
-the only accessibility signal available --- is the one DP3 binding most supports. The filter
-metrics, by contrast, remain weak and confounded here. What DP3 still cannot do is fix the full
-composite, because the data has no failing designs, and only two antibodies are sampled deeply.
-Closing that gap is the explicit purpose of the DP4 sampling (Section~\ref{sec:open}):
-deliberately assay designs spread across the metric space --- including ones the current filters
-would reject --- so the weights can be fit with the variance and breadth this first set lacks.
+the only accessibility signal available --- is the one DP3 binding most supports.
+
+\textbf{This is what sets the scorer's weights} (Section~\ref{sec:composite}): accessibility and
+epitope RMSD carry the weight because they are the two metrics that track binding, and overall RMSD
+and PAE are kept small because they do not. What DP3 cannot yet do is \emph{fit} the full composite,
+because the data has no failing designs and only two antibodies are sampled deeply --- so the
+weights stay a hand-set prior, not a fit. Closing that gap is the explicit purpose of the DP4
+metric-space sampling (Section~\ref{sec:open}): deliberately assay designs spread across the metric
+space, including ones the current filters would reject, so the weights can finally be fit with the
+variance and breadth this first set lacks.

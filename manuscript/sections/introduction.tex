@@ -88,15 +88,22 @@ originate with the project's earlier work; the scoring and metrics developed her
 evolution of them.
 
 \subsection{How the rest of this log reads}
-The sections that follow are in the order the work happened. We start by reproducing
-Lawson's workflow and confirming our metrics match his (Section~\ref{sec:methods}), cover how
-we tile antigens into assay constructs (Section~\ref{sec:tiling}), and compare the
-RFdiffusion1 and RFdiffusion3 design sets directly (Section~\ref{sec:rfd}). We then rebuild
-scoring: the inherited filters bias selection toward rigid folds, so we decompose the metrics
-and combine them in a composite that picks the best designs per epitope
-(Section~\ref{sec:scoring}), and we recover the antibody-accessibility filter for targets with
-no antibody using the native-aware cylinder surrogate (Section~\ref{sec:noab}). Finally we turn
-to dual-island epitopes --- whether an antibody needs one island or both
-(Section~\ref{sec:islands}) --- and build the per-island production run that lets the assay
-answer it (Section~\ref{sec:perisland}). Open questions and next steps close the log
-(Section~\ref{sec:open}). Each step motivates the next.
+The log runs in two halves. The first establishes the method on the known-antibody (DP3) set and
+ends with the experimental ground truth that anchors it; the second uses that footing to design
+the next library, DP4. Each section motivates the next.
+
+\emph{Part I --- method and ground truth.} We reproduce Lawson's workflow and confirm our metrics
+match his (Section~\ref{sec:methods}), tile antigens into assay constructs
+(Section~\ref{sec:tiling}), and compare the RFdiffusion1 and RFdiffusion3 design sets head to head
+(Section~\ref{sec:rfd}). We then rebuild scoring --- the inherited filters bias selection toward
+rigid folds, so we decompose the metrics into a composite that picks the best designs per epitope
+(Section~\ref{sec:scoring}) --- and recover the antibody-accessibility filter for targets with no
+antibody, using the native-aware cylinder surrogate (Section~\ref{sec:noab}). The first
+experimental binding data then closes the loop (Section~\ref{sec:experimental}): it shows which
+metrics actually predict binding, and is what sets the scorer's weights.
+
+\emph{Part II --- designing DP4.} With the method grounded, we turn to the next library. We ask
+whether an antibody needs one epitope island or both (Section~\ref{sec:islands}), build the
+per-island production run that lets the assay answer it (Section~\ref{sec:perisland}), and lay out
+the full set of DP4 components we are shipping (Section~\ref{sec:dp4}). Open questions and next
+steps close the log (Section~\ref{sec:open}).
