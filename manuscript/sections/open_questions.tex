@@ -18,16 +18,18 @@ transfer to DP4. The scorer already supports it (\texttt{transform=sigmoid} in
 midpoint near 15, between the clash-free and clashing medians). This is the prerequisite for
 fitting; the percentile version stays the default until then.
 
-\item \textbf{Defer fitting until we have an experimental label.} The composite is a
-single-layer perceptron with hand-set weights (feed-forward, no backprop), and the natural
-next step is to learn the weights. We are deliberately \emph{not} fitting yet: the only label
-available now is the in-silico \texttt{is\_pass}, which is defined by the four filters
-themselves, so fitting to it would largely re-derive the filters. The plan instead is to
-generate designs at scale, prioritize them with the current composite, run the top picks
-through the PepSeq assay, and fit the weights against \emph{experimental binding}, the
-non-circular target. The cylinder weight in particular is already justified by data: on DP3
-it predicts the true antibody clash at AUC $0.93$ (Section~\ref{sec:noab}), so it earns
-real weight even before a global fit.
+\item \textbf{Fit the weights once the label has breadth.} The composite is a single-layer
+perceptron with hand-set weights (feed-forward, no backprop), and the natural next step is to
+learn them. The first experimental label has now arrived (the DP3 binding data,
+Section~\ref{sec:experimental}): scaffolded designs do enrich over the no-antibody baseline, so
+the premise holds. But that set cannot yet fix the weights --- every assayed design already
+passed the four filters (no failures to contrast), its pooled metric--binding correlation is a
+between-antibody artifact, and only two of the eight antibodies are sampled deeply. We therefore
+still defer the fit, and the requirement for DP4 is specific: assay designs spread across the
+metric space, \emph{including ones the current filters reject}, so that binding can be regressed
+on the metrics with real variance and across many epitopes. The cylinder weight in particular is
+already justified by data: on DP3 it predicts the true antibody clash at AUC $0.93$
+(Section~\ref{sec:noab}), so it earns real weight even before a global fit.
 
 \item \textbf{Confirm the canonical DP3 metrics builder.} Determine whether
 \texttt{compute\_metrics\_mpnn.py} (currently archived) is the live RFD3+MPNN metrics

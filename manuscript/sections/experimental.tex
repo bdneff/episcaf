@@ -1,0 +1,116 @@
+\section{Experimental binding data: the first ground-truth label}\label{sec:experimental}
+Everything up to this point has been scored \emph{in silico}: the four filters and the
+composite rank designs by how AlphaFold3 sees them, with no measurement of whether a design
+actually binds. We now have the first experimental readout for the DP3 (known-antibody) set.
+This is the non-circular label the scorer has been waiting for (Section~\ref{sec:open}), so
+this section sets out exactly what the data is, what it looks like, and --- importantly --- how
+far it can be trusted, before any weight is fit to it.
+
+\subsection{How a binding measurement is made}
+The DP3 designs were carried into the PepSeq assay. Each library member is displayed as its
+constant-length construct (the \num{103}-mer of Section~\ref{sec:tiling}), and the assay reads
+out, by sequencing, how much of each member is pulled down by a given monoclonal antibody
+relative to a no-antibody control (\texttt{NoAb}) run on the same plate. The working readout is
+the one used throughout: $\log_{10}(1+\text{Ab})$ against $\log_{10}(1+\text{NoAb})$, with the
+designs cognate to that antibody --- those scaffolding its epitope --- highlighted. A design
+that binds sits above the $y=x$ diagonal: more pulldown with the antibody present than without.
+We summarize each design by its \emph{cognate log-enrichment},
+$\log_{10}(1+\text{Ab}) - \log_{10}(1+\text{NoAb})$ for the antibody raised against its target.
+
+The measurements arrived as two assay runs, and the run parameters are not identical: the six
+IM226 antibodies were read at \SI{0.1}{\pico\mol} with antibody-first bead capture, while the
+two IM229 antibodies were read at \SI{1}{\pico\mol} (one, 8db4, at a ten-fold higher antibody
+concentration) with a different bead order. Absolute counts are therefore not comparable across
+runs or even across antibodies, which is the first reason the analysis below stays
+\emph{within} an antibody rather than pooling. The full wet-lab protocol is recorded with the
+experimental methods; here we treat the intensities as provided.
+
+\subsection{What we have}
+Eight monoclonal antibodies, the subset of the original ten that assayed cleanly: 4xwo was
+dropped (its synthesized antibody was too low-yield) and 7a3t was dropped (its epitope was too
+small for RMSD to discriminate). Their designs remain in the library but have no usable
+antibody column. The two runs share the same \num{1000} DP2 library members; \num{403} are our
+scaffolded epitope designs (\texttt{category=scaffoldedAbEpitope}) and the rest are control
+content (pMHC and published binders, which also carry the only measured $K_d$ values --- none
+of our designs do). Of the \num{403}, \num{377} target one of the eight usable antibodies; the
+remaining \num{26} target the two dropped ones.
+
+Each design's scaffold sequence matches \texttt{scaffolded\_epitope\_seq} in \texttt{dp2.parquet}
+one-to-one (\num{403} of \num{403}), so we can attach its AlphaFold3 metrics directly and ask
+how binding relates to them (\texttt{scripts/build\_dp3\_binding\_join.py} $\rightarrow$
+\texttt{results/dp3\_binding\_metrics.csv}; figure and numbers from
+\texttt{scripts/analyze\_dp3\_binding.py}). Figure~\ref{fig:dp3binding} shows the cognate
+designs against the library background for each antibody; Table~\ref{tab:dp3binding} gives the
+per-antibody counts and median enrichments.
+
+\begin{figure}[h]\centering
+\figorbox{dp3_binding_scatter.png}{1.0}
+\caption{DP3 binding, one panel per antibody: $\log_{10}(1+\text{NoAb})$ (x) versus
+$\log_{10}(1+\text{Ab})$ (y), all \num{1000} library members in grey, the cognate scaffolded
+designs in red, dashed line $y=x$. The two well-sampled antibodies (7ox3, $n=\num{193}$; 5fhx,
+$n=\num{149}$) put the bulk of their designs clearly above the diagonal; the small-$n$
+antibodies show a handful of points each, mostly above the line. Panels are on independent axes
+because absolute counts are not comparable across antibodies/runs.}
+\label{fig:dp3binding}
+\end{figure}
+
+\begin{table}[h]\centering
+\begin{tabular}{llrrr}
+\toprule
+antibody & run & cognate designs & median log-enrichment & fraction above baseline \\
+\midrule
+7ox3 & IM226 & 193 & 1.68 & 1.00 \\
+5fhx & IM226 & 149 & 0.42 & 0.81 \\
+6o9i & IM226 &  12 & 1.44 & 1.00 \\
+8pww & IM229 &  11 & 1.85 & 1.00 \\
+8jnk & IM226 &   6 & 1.23 & 1.00 \\
+8cz8 & IM226 &   3 & 0.86 & 1.00 \\
+6xxv & IM226 &   2 & 1.65 & 1.00 \\
+8db4 & IM229 &   1 & 0.79 & 1.00 \\
+\bottomrule
+\end{tabular}
+\caption{Per-antibody cognate scaffolded designs. ``Above baseline'' = log-enrichment $>0$
+(above the NoAb diagonal). Two antibodies (7ox3, 5fhx) account for \num{342} of the \num{377}
+designs; the other six carry \num{35} between them.}
+\label{tab:dp3binding}
+\end{table}
+
+\subsection{How reliable it is, and how far it goes}
+The headline is encouraging: across all eight antibodies the scaffolded designs enrich over the
+no-antibody baseline, almost all of them above the diagonal, and for the two well-sampled
+antibodies this holds for the great majority of designs. The scaffolding approach produces
+binders. That is a real, positive result.
+
+But three properties bound how much this data can teach about \emph{which} design features
+predict binding, and they all point the same way --- toward a starting prior, not a fit.
+
+\emph{Everything assayed already passed.} The library was selected for synthesis from the
+top of the four-filter ranking, so every one of the \num{377} cognate designs has
+\texttt{is\_pass}~$=$~true. The metrics consequently span only their passing range
+(\texttt{overall\_rmsd} \numrange{0.35}{1.95}, \texttt{epitope\_chunk\_rmsd} \numrange{0.22}{0.95},
+\texttt{mean\_pae} \numrange{3.0}{5.0}, and zero antibody clash by construction). There is no
+failing design in the set to contrast against, so the filter itself has no variance here and
+cannot be tested for whether it separates binders from non-binders.
+
+\emph{The pooled signal is a between-antibody artifact.} Pooling all \num{377} designs, lower
+epitope RMSD tracks higher enrichment (Spearman $\rho=-0.43$), which looks like exactly the
+predictor we want. It is mostly an illusion of pooling: different antibodies sit at different
+baseline enrichments \emph{and} different metric distributions, so a correlation across the pool
+largely reflects which antibody a design belongs to. Within a single antibody the relationship
+nearly vanishes (epitope RMSD versus enrichment: $\rho=-0.20$ for 7ox3, $-0.07$ for 5fhx), and
+the other metrics are similarly weak and inconsistent in sign.
+
+\emph{The sample is two antibodies deep.} 7ox3 and 5fhx supply \num{342} of the \num{377}
+designs; the remaining six antibodies have between one and twelve each. A within-antibody fit is
+only meaningfully possible for two epitopes, which is far too narrow to learn weights that would
+generalize across targets.
+
+None of this diminishes the positive result --- it constrains its use. DP3 gives a defensible
+\emph{starting prior}: the scaffold-versus-linear premise holds, binding is real, and the
+cylinder accessibility weight is independently earned by its AUC against the true antibody clash
+(Section~\ref{sec:noab}). What DP3 cannot do is fix the composite's weights, because the data has
+no failures, a confounded pooled signal, and only two well-sampled epitopes. Closing that gap is
+the explicit purpose of the DP4 sampling (Section~\ref{sec:open}): deliberately assay designs
+spread across the metric space --- including ones the current filters would reject --- so that
+binding can finally be regressed on the metrics with the variance and the breadth this first set
+lacks.
