@@ -32,9 +32,10 @@ gave us the binding data of Section~\ref{sec:experimental}. They are built islan
 separate scaffolding target, which is what lets the assay ask whether an antibody needs one
 island or both (Q1, Section~\ref{sec:islands}). The per-island production run covers \num{87}
 scaffolded islands (\num{5} size-1 islands are skipped as un-presentable); at top-5 per island
-that is on the order of \num{435} constructs (Table~\ref{tab:dualisland}). Selection uses the
-re-weighted composite (accessibility and epitope RMSD carrying the weight,
-Section~\ref{sec:composite}), gated loosely and then ranked rather than hard-filtered.
+that is on the order of \num{435} constructs (Table~\ref{tab:dualisland}). Selection ranks on the
+re-weighted composite with no hard gate (Section~\ref{sec:selection}); because the antibody is
+known, the accessibility term is the \emph{real} clash \texttt{af3\_n\_clash\_res} rather than the
+cylinder surrogate.
 
 \subsection{C2 --- scaffolded epitopes from polyclonal tiling}\label{sec:dp4c2}
 For antigens with no known antibody we tile the whole protein into overlapping windows and
@@ -62,11 +63,13 @@ The DP3 binding data is a weak prior precisely because every assayed design alre
 four filters, so the metrics barely varied (Section~\ref{sec:experimental}). C4 fixes that by
 design: instead of shipping only the top designs, we deliberately sample designs \emph{spread
 across} the metric space --- including ones the current filters would reject --- so that epitope
-RMSD, accessibility, and PAE each take a wide range of values. Reading binding off this spread is
-what lets us learn which metrics actually predict enrichment and finally fit the composite's
-weights (Q2, Section~\ref{sec:open}), rather than re-deriving the filters we started from. The
-sampling design (a farthest-point spread over the standardized metrics) is worked out; the size
-is set by the peptide budget, so the count is open.
+RMSD, accessibility, and PAE each take a wide range of values. Here accessibility is the cylinder
+(not the real clash): the point of this component is to learn the predictors that transfer to the
+no-antibody setting, so we sample along the same surrogate we will have to rely on there. Reading
+binding off this spread is what lets us learn which metrics actually predict enrichment and
+finally fit the composite's weights (Q2, Section~\ref{sec:open}), rather than re-deriving the
+filters we started from. The sampling design (a farthest-point spread over the standardized
+metrics) is worked out; the size is set by the peptide budget, so the count is open.
 
 \subsection{Assembly into one synthesis file}\label{sec:assembly}
 All four components share the constant 103-mer construct and the eight-column DP2 annotated format

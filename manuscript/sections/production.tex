@@ -288,7 +288,11 @@ accessibility score.
 The composite scorer (Section~\ref{sec:composite}) reads this table directly. For the
 per-island deliverable we select the top five per (\texttt{id}, \texttt{island\_index}) ---
 per \emph{island}, not per epitope --- so each island is ranked on its own and the PepSeq
-assay can deconvolve which island drives binding. Because this set has the real antibody
-clash, whether to keep \texttt{af3\_n\_clash\_res}$\,=\,0$ as a hard pre-filter or fold the
-cylinder term into the score is the one selection choice still open. [final selection and
-top-5 designs to follow]
+assay can deconvolve which island drives binding. The policy is to \textbf{rank, not gate}: we
+apply no hard threshold and take the top five designs per island by composite score, since the
+composite already penalizes weak metrics softly and a hard cut would only discard designs the
+ranking buries anyway. Because this is a known-antibody set, the accessibility term in the
+composite is the \emph{real} clash \texttt{af3\_n\_clash\_res} rather than the cylinder surrogate
+(Section~\ref{sec:composite}): a design that places mass where the antibody binds is pushed down
+the ranking, but is not categorically excluded. [final top-5 list to be regenerated from the
+locked policy]

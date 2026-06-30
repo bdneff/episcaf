@@ -65,13 +65,17 @@ def _scoped(df: pd.DataFrame, col: str, spec: dict, scope: str, antigen_col: str
 def score(df: pd.DataFrame, preset: dict) -> pd.DataFrame:
     df = df.copy()
 
-    # 1. gate (lower-better) ----------------------------------------------------
-    gcol, gthr = preset["gate"]
-    if gcol not in df.columns:
-        sys.exit(f"[score] gate column {gcol!r} not in CSV. columns: {list(df.columns)}")
-    n0 = len(df)
-    df = df[pd.to_numeric(df[gcol], errors="coerce") <= gthr].copy()
-    print(f"[score] gate {gcol} <= {gthr}: {len(df)}/{n0} rows kept")
+    # 1. gate (lower-better), optional -----------------------------------------
+    gate = preset.get("gate")
+    if gate is not None:
+        gcol, gthr = gate
+        if gcol not in df.columns:
+            sys.exit(f"[score] gate column {gcol!r} not in CSV. columns: {list(df.columns)}")
+        n0 = len(df)
+        df = df[pd.to_numeric(df[gcol], errors="coerce") <= gthr].copy()
+        print(f"[score] gate {gcol} <= {gthr}: {len(df)}/{n0} rows kept")
+    else:
+        print(f"[score] no gate: ranking all {len(df)} rows on the composite")
 
     # 2. per-metric transforms within scope ------------------------------------
     scope = preset.get("scope", "pooled")
