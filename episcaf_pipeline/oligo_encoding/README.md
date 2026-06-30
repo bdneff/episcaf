@@ -40,7 +40,30 @@ The encoder, NN selector, and model are ekelley's cluster install, referenced by
 `main`), so to reproduce DP3 exactly we mirror **ekelley's** version, not master. [decide: vendor a
 pinned copy of that dir here, or reference the cluster install]
 
-## DP4
+## Running DP4
 The only thing that changes from DP3 is the **`-i` input**: point it at the DP4 named-peptides file
 that `06_library` exports (`library_member,sequence`, no header). Everything else — weights, model,
 GC, trials, adapters — stays as the DP3 recipe above.
+
+Two parameterized SLURM scripts here drive the run (better-documented rewrites of ekelley's
+`run_pepseq_design_step{1,2}.sh`, which are kept as the pinned DP3 reference):
+
+```bash
+# on Gemini, in a working dir holding codon_weights_updated.csv + DP4_named_peptides.csv:
+sbatch episcaf_pipeline/oligo_encoding/encode_step1_generate.sbatch   # candidates -> out_seqs, output_ratio
+sbatch episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch     # NN-select  -> DP4_best_encodings
+```
+
+Both default `TOOL_DIR` to ekelley's install and carry the DP3 parameters as defaults; override any
+by exporting it first (e.g. `INPUT=...`, `MODEL=...`, `GC=...`). The encoder runs on Gemini — the
+compiled `main`, the `encoding_with_nn.py` selector, and the H2O model all live there; we only
+supply the input file and reuse the DP3 config.
+
+## The order-file gap (open item)
+Step 2 writes `*_best_encodings`. The DP3 **order file** that actually goes to synthesis
+(`examples/DP3_order_file.sample.csv`, columns `Seq ID,nucleotide_encoding_with_twist_adapters`,
+Twist adapters flanking each oligo) is a **further reformat + adapter step that is not in ekelley's
+two scripts**. It is most likely either (a) `encoding_with_nn.py`'s `--adapter` default already
+flanking the oligo so the order file is just a column rename of `*_best_encodings`, or (b) a small
+unshared script. **Confirm with Erin** before treating the two-step run as the whole pipeline; once
+known, it becomes a tiny `stage07c` (or a flag on step 2) and gets documented here.
