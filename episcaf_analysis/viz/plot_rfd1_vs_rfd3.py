@@ -16,6 +16,7 @@ Inputs (local copies off-cluster):
 import numpy as np, pandas as pd
 from pathlib import Path
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+plt.rcParams.update({"font.size": 14, "axes.titlesize": 16, "axes.labelsize": 15, "xtick.labelsize": 12, "ytick.labelsize": 12, "legend.fontsize": 12, "figure.titlesize": 18})  # paper-legible fonts
 
 LOCAL = Path("/Users/bneff/Desktop/projects/episcaf/known_antigen/analysis")
 RFD1  = LOCAL/"full_run/metrics_full_rfd1_mpnn_LAWSON.csv"
@@ -46,22 +47,21 @@ p1,n1,nv1,rate1 = stats(r1d, len(r1)); p3,n3,nv3,rate3 = stats(r3d, len(r3))
 PAN=[("epi","Epitope RMSD (A)",(0,16)),("overall","Overall RMSD (A)",(0,25)),
      ("pae","Mean PAE",(0,20)),("clash","AF3 clashing res",(0,60))]
 C1,C3="#1f77b4","#d62728"
-fig,axes=plt.subplots(1,4,figsize=(20,4.6))
+fig,axes=plt.subplots(1,4,figsize=(13,4.0))
 for ax,(key,label,(lo,hi)) in zip(axes,PAN):
     e=np.arange(lo,hi+2,2) if key=="clash" else np.linspace(lo,hi,45)
     a=np.clip(r1d[key].dropna().values,lo,hi); b=np.clip(r3d[key].dropna().values,lo,hi)
     ax.hist(a,bins=e,density=True,color=C1,alpha=0.45,label=f"RFD1+MPNN (n={nv1:,})")
     ax.hist(b,bins=e,density=True,histtype="step",color=C3,lw=2,label=f"RFD3+MPNN (n={nv3:,})")
-    ax.set_title(label,fontsize=12,fontweight="bold"); ax.set_yticks([]); ax.set_xlim(lo,hi)
+    ax.set_title(label,fontsize=17,fontweight="bold"); ax.set_yticks([]); ax.set_xlim(lo,hi)
     for s in ("top","right"): ax.spines[s].set_visible(False)
-axes[0].legend(frameon=False,fontsize=9.5,loc="upper right")
-fig.suptitle(
-    "RFD1 vs RFD3 on the same DP3 epitopes (both + ProteinMPNN + AlphaFold3); distributions density-normalized over designs with all four metrics\n"
-    f"four-filter pass rate per design generated: RFD1+MPNN {p1:,}/{n1:,} = {100*p1/n1:.2f}%   "
-    f"RFD3+MPNN {p3:,}/{n3:,} = {100*p3/n3:.2f}%   "
-    f"(designs missing >=1 metric count as non-pass: RFD1 {n1-nv1:,}, RFD3 {n3-nv3:,}; over valid only {rate1:.2f}% vs {rate3:.2f}%)",
-    fontsize=11.5,fontweight="bold")
-fig.tight_layout(rect=[0,0,1,0.88])
+axes[0].legend(frameon=False,fontsize=13,loc="upper right")
+# Pass-rate stats live in the caption; keep the figure title short and legible.
+print(f"[rfd1_vs_rfd3] pass per design generated: RFD1 {p1:,}/{n1:,}={100*p1/n1:.2f}%  "
+      f"RFD3 {p3:,}/{n3:,}={100*p3/n3:.2f}%  (missing>=1 metric -> non-pass: RFD1 {n1-nv1:,}, "
+      f"RFD3 {n3-nv3:,}; over valid {rate1:.2f}% vs {rate3:.2f}%)")
+fig.suptitle("RFD1+MPNN vs RFD3+MPNN on the same DP3 epitopes", fontsize=18, fontweight="bold")
+fig.tight_layout(rect=[0,0,1,0.92])
 fig.savefig(OUT,dpi=140,bbox_inches="tight")
 print(f"wrote {OUT}")
 print(f"RFD1: valid {nv1:,}/{n1:,}  pass {p1}  per-valid {rate1:.3f}%  per-total {100*p1/n1:.3f}%")

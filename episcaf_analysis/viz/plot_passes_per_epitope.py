@@ -9,6 +9,7 @@ compare target by target. Filters: epitope RMSD <= 1, overall <= 2, mean PAE < 5
 import numpy as np, pandas as pd
 from pathlib import Path
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+plt.rcParams.update({"font.size": 14, "axes.titlesize": 16, "axes.labelsize": 15, "xtick.labelsize": 12, "ytick.labelsize": 12, "legend.fontsize": 12, "figure.titlesize": 18})  # paper-legible fonts
 
 KA   = Path("/Users/bneff/Desktop/projects/episcaf/known_antigen/analysis")
 RFD1 = KA/"full_run/metrics_full_rfd1_mpnn_LAWSON.csv"
@@ -37,10 +38,10 @@ x = np.arange(len(tab)); w = 0.42
 fig, ax = plt.subplots(figsize=(max(9, 0.5*len(tab)), 5))
 ax.bar(x-w/2, tab.RFD1, w, color="#1f77b4", label=f"RFD1+MPNN ({int(tab.RFD1.sum()):,} passes)")
 ax.bar(x+w/2, tab.RFD3, w, color="#d62728", label=f"RFD3+MPNN ({int(tab.RFD3.sum()):,} passes)")
-ax.set_xticks(x); ax.set_xticklabels(tab.index, rotation=60, ha="right", fontsize=8)
+ax.set_xticks(x); ax.set_xticklabels(tab.index, rotation=60, ha="right", fontsize=12)
 ax.set_ylabel("four-filter passing designs"); ax.set_xlabel("epitope target")
 ax.set_title(f"Passing designs per epitope target, RFD1 vs RFD3 "
-             f"({len(tab)} targets with any passes)", fontsize=12, fontweight="bold")
+             f"({len(tab)} targets with any passes)", fontsize=17, fontweight="bold")
 ax.legend(frameon=False);
 for s in ("top","right"): ax.spines[s].set_visible(False)
 fig.tight_layout(); fig.savefig(OUT, dpi=140, bbox_inches="tight")

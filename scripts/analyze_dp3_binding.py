@@ -16,6 +16,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+plt.rcParams.update({"font.size": 14, "axes.titlesize": 16, "axes.labelsize": 15, "xtick.labelsize": 12, "ytick.labelsize": 12, "legend.fontsize": 12, "figure.titlesize": 18})  # paper-legible fonts
 
 ROOT = Path(__file__).resolve().parents[1]
 CSV = ROOT / "results" / "dp3_binding_metrics.csv"
@@ -85,7 +86,7 @@ def main() -> None:
 
 def _figure(d: pd.DataFrame, cog: pd.DataFrame) -> None:
     order = sorted(RUNS, key=lambda ab: -(cog.cognate_ab == ab).sum())
-    fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+    fig, axes = plt.subplots(2, 4, figsize=(12.5, 6.8))
     for ax, ab in zip(axes.flat, order):
         ab_col, noab_col, run = RUNS[ab]
         x, y = log(d[noab_col]), log(d[ab_col])
@@ -96,12 +97,12 @@ def _figure(d: pd.DataFrame, cog: pd.DataFrame) -> None:
         lim = [0, max(x.max(), y.max()) * 1.02]
         ax.plot(lim, lim, "--", c="0.4", lw=0.8)  # NoAb diagonal
         ax.set_xlim(lim); ax.set_ylim(lim)
-        ax.set_title(f"{ab}  ({run})", fontsize=11)
+        ax.set_title(f"{ab}  ({run})", fontsize=15)
         ax.set_xlabel(r"$\log_{10}(1+\mathrm{NoAb})$")
         ax.set_ylabel(r"$\log_{10}(1+\mathrm{Ab})$")
-        ax.legend(fontsize=8, loc="upper left", framealpha=0.9)
+        ax.legend(fontsize=12, loc="upper left", framealpha=0.9)
     fig.suptitle("DP3 binding: cognate scaffolded designs (red) vs library background (grey)",
-                 fontsize=13)
+                 fontsize=18)
     fig.tight_layout(rect=[0, 0, 1, 0.97])
     FIG.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIG, dpi=150)

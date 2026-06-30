@@ -21,6 +21,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+plt.rcParams.update({"font.size": 14, "axes.titlesize": 16, "axes.labelsize": 15, "xtick.labelsize": 12, "ytick.labelsize": 12, "legend.fontsize": 12, "figure.titlesize": 18})  # paper-legible fonts
 
 BEFORE = "#9aa7b4"   # muted grey-blue (original)
 AFTER = "#c0504d"    # warm red (native-aware)
@@ -49,14 +50,14 @@ def plot_dist(tc, before, after, out, thr):
     ax.annotate(f"heavily penalised (cylinder \u2265 {thr}):\n"
                 f"{nb:,}  \u2192  {na:,} designs",
                 xy=(thr, ax.get_ylim()[1] * 0.82), xytext=(thr + hi * 0.18,
-                ax.get_ylim()[1] * 0.82), fontsize=10, color="#333",
+                ax.get_ylim()[1] * 0.82), fontsize=14, color="#333",
                 arrowprops=dict(arrowstyle="->", color="#333"))
     ax.set_xlabel("cylinder count (scaffold residues in the antibody approach path)")
     ax.set_ylabel("number of designs")
     ax.set_title(f"Designs the antibody tolerates (zero AlphaFold clash, n={n:,})\n"
                  "cylinder count collapses after subtracting native antigen volume",
-                 fontsize=11)
-    ax.legend(frameon=False, fontsize=9.5)
+                 fontsize=15)
+    ax.legend(frameon=False, fontsize=13)
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
     fig.tight_layout()
@@ -86,11 +87,11 @@ def plot_selectivity(tc, before, after, out, thr):
     ax.set_xlabel("AlphaFold antibody clashes (true clash)")
     ax.set_ylabel(f"fraction of designs flagged (cylinder \u2265 {thr})")
     ax.set_title("The carve removes flags where there's no real clash,\n"
-                 "and leaves the genuinely-clashing designs alone", fontsize=11)
+                 "and leaves the genuinely-clashing designs alone", fontsize=15)
     ax.annotate("false positives\nremoved here", xy=(0.3, (fb[0] + fa[0]) / 2),
-                xytext=(1.2, 0.30), fontsize=9.5, color=AFTER,
+                xytext=(1.2, 0.30), fontsize=13, color=AFTER,
                 arrowprops=dict(arrowstyle="->", color=AFTER))
-    ax.legend(frameon=False, fontsize=9.5, loc="lower right")
+    ax.legend(frameon=False, fontsize=13, loc="lower right")
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
     fig.tight_layout()

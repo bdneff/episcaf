@@ -23,6 +23,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+plt.rcParams.update({"font.size": 14, "axes.titlesize": 16, "axes.labelsize": 15, "xtick.labelsize": 12, "ytick.labelsize": 12, "legend.fontsize": 12, "figure.titlesize": 18})  # paper-legible fonts
 
 plt.rcParams.update({
     "font.size": 14,
@@ -86,7 +87,7 @@ def main():
         ax.axvline(thr, color="0.35", ls="--", lw=2.0)
         # short threshold tag near the filter line, off the canvas detail goes in the caption
         ax.annotate(f"filter {direction}{thr:g}", xy=(thr, 0.97), xycoords=("data", "axes fraction"),
-                    fontsize=12, color="0.35", ha="left", va="top", rotation=90,
+                    fontsize=17, color="0.35", ha="left", va="top", rotation=90,
                     xytext=(3, 0), textcoords="offset points")
         ax.set_title(title)
         ax.set_xlabel(unit)

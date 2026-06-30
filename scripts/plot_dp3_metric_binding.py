@@ -26,6 +26,7 @@ from scipy import stats
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+plt.rcParams.update({"font.size": 14, "axes.titlesize": 16, "axes.labelsize": 15, "xtick.labelsize": 12, "ytick.labelsize": 12, "legend.fontsize": 12, "figure.titlesize": 18})  # paper-legible fonts
 
 ROOT = Path(__file__).resolve().parents[1]
 CSV = ROOT / "results" / "dp3_binding_metrics.csv"
@@ -72,7 +73,7 @@ def main() -> None:
     abcol = {ab: cmap(i % 10) for i, ab in enumerate(abs_sorted)}
 
     ncol = len(METRICS)
-    fig, axes = plt.subplots(2, ncol, figsize=(5 * ncol, 9))
+    fig, axes = plt.subplots(2, ncol, figsize=(3.4 * ncol, 6.4))
     print("\n=== correlations of metric vs cognate_log_enrichment ===")
     for j, (col, lab) in enumerate(METRICS):
         # row 1: pooled
@@ -83,9 +84,10 @@ def main() -> None:
         # within-Ab fixed-effect correlation
         rw, pw = stats.pearsonr(s[col + "_c"], s["y_c"])
         rhow, _ = stats.spearmanr(s[col + "_c"], s["y_c"])
-        ax.set_title(f"POOLED  Pearson r={r:+.2f} (p={p:.1g})\nSpearman rho={rho:+.2f}",
-                     fontsize=10)
-        ax.set_xlabel(lab); ax.set_ylabel("cognate log-enrichment")
+        ax.set_title(f"pooled  r={r:+.2f}", fontsize=15)
+        ax.set_xlabel(lab)
+        if j == 0:
+            ax.set_ylabel("pooled\ncognate log-enrich.")
         print(f"\n{col}:")
         print(f"  POOLED      n={n:3d}  Pearson r={r:+.3f} (p={p:.2g})  Spearman rho={rho:+.3f}")
         print(f"  WITHIN-Ab   (fixed-effect, centered)  Pearson r={rw:+.3f} (p={pw:.2g})  Spearman rho={rhow:+.3f}")
@@ -100,13 +102,15 @@ def main() -> None:
                 rr = corr_line(ax2, gg[col], gg[Y], abcol[ab], lw=1.6)
                 if rr:
                     print(f"  within {ab:5s} n={rr[3]:3d}  Pearson r={rr[0]:+.3f}  Spearman rho={rr[1]:+.3f}")
-        ax2.set_title(f"by antibody  (within-Ab fixed-effect r={rw:+.2f})", fontsize=10)
-        ax2.set_xlabel(lab); ax2.set_ylabel("cognate log-enrichment")
+        ax2.set_title(f"within-Ab  r={rw:+.2f}", fontsize=15)
+        ax2.set_xlabel(lab)
+        if j == 0:
+            ax2.set_ylabel("by antibody\ncognate log-enrich.")
         if j == ncol - 1:
-            ax2.legend(fontsize=7, loc="best", framealpha=0.9)
+            ax2.legend(fontsize=11, loc="best", framealpha=0.9)
 
     fig.suptitle("DP3: do the filter metrics predict binding? (cognate scaffolded designs)",
-                 fontsize=13)
+                 fontsize=18)
     fig.tight_layout(rect=[0, 0, 1, 0.96])
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT, dpi=140)
