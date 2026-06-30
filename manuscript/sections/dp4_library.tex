@@ -16,7 +16,7 @@ C2 known antibody, single island & 87 island contigs, each island alone & $\sim$
 C3 scaffolds, polyclonal tiling & top-5/window, no antibody & $\sim$2181 & scored, top-5 selected \\
 C4 linear tiled-30mer controls & bare tiled peptides & 2174 & built \\
 C5 metric-space sampling & designs spread across metrics & TBD & planned \\
-C6 island alanine-ablation mutants & island1/2 $\to$ Ala, best-20/mAb & $\sim$2000 & spec; to build \\
+C6 island alanine mutants & island1/2 $\to$ Ala, best-20/mAb & $\sim$2000 & spec; to build \\
 \bottomrule
 \end{tabular}
 \caption{The DP4 components assembled here. C1 and C2 are the two halves of the islands
@@ -85,13 +85,13 @@ finally fit the composite's weights (Q2, Section~\ref{sec:open}), rather than re
 filters we started from. The sampling design (a farthest-point spread over the standardized
 metrics) is worked out; the size is set by the peptide budget, so the count is open.
 
-\subsection{C6 --- island alanine-ablation mutants}\label{sec:dp4c6}
-For the best \num{20} designs of each of the \num{57} mAbs we ship alanine-ablation mutants of the
-epitope islands: every residue of island~1 mutated to alanine, and (where the epitope has a second
-island) every residue of island~2. The unmutated designs are not part of this component --- they
-are already shipped as C1 --- so C6 is the controlled comparison against them. Mutating an island
-to alanine strips its side-chain chemistry while leaving the fold intact, so if binding drops when
-island~1 is ablated the antibody requires island~1, and likewise for island~2. This is the
+\subsection{C6 --- island alanine mutants}\label{sec:dp4c6}
+For the best \num{20} designs of each of the \num{57} mAbs we alanine-scan the epitope islands:
+every residue of island~1 mutated to alanine, and (where the epitope has a second island) every
+residue of island~2. The unmutated designs are not part of this component --- they are already
+shipped as C1 --- so C6 is the controlled comparison against them. Mutating an island to alanine
+strips its side-chain chemistry while leaving the fold intact, so if binding drops when island~1 is
+alanine-substituted the antibody requires island~1, and likewise for island~2. This is the
 mutation-based read of the islands question (Q1), complementary to C2's presentation-based read
 (each island scaffolded alone): C2 asks whether one island \emph{suffices}, C6 asks whether each
 island is \emph{necessary}. At \num{20} designs $\times$ \num{57} mAbs, with one island-mutant for
@@ -101,7 +101,7 @@ constructs.
 \paragraph{Scaffold-mutation control (under discussion).} A companion negative control would mutate
 four 6-residue windows of the \emph{scaffold} (not the epitope) in each design: if binding is
 epitope-driven, perturbing the scaffold should leave it intact, so a design that survives this but
-collapses under island ablation is behaving exactly as intended. The open question is how the four
+collapses when an epitope island is alanine-substituted is behaving exactly as intended. The open question is how the four
 windows are chosen. Purely random placement is risky --- a window landing on fold-critical
 residues could unfold the protein and lose epitope presentation, which would confound the control
 rather than serve it. We would instead fix the windows \emph{deterministically} and
@@ -119,3 +119,10 @@ All six components share the constant 103-mer construct and the eight-column DP2
 with global \texttt{library\_member} numbering --- a named, documented pipeline stage
 (\texttt{06\_library}) so the shipped file is regenerable from its components. That assembly is the
 last thing to run once C1/C2 selection is locked and C5's budget is set.
+
+The assembled peptide library is then encoded to DNA oligos for synthesis with the LadnerLab
+\texttt{oligo\_encoding} tools (\url{https://github.com/LadnerLab/Library-Design}), using the same
+updated codon-weight table as DP3
+(\texttt{/tgen\_labs/Immunology/ekelley/DP3\_PepSeq\_Library\_Design/new\_codon\_weights/}). The
+encoding is the final synthesis-prep step; it is external tooling, so the pipeline ends at the
+DP2-format peptide file and hands off to it.
