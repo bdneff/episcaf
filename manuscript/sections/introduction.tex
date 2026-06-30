@@ -77,13 +77,14 @@ DP4 is built to answer three questions, and they organize the rest of this log.
 whether an antibody needs one epitope island or both, and the island analysis
 (Section~\ref{sec:islands}), and the per-island production run that tests it
 (Section~\ref{sec:perisland}), are aimed here. \emph{(Q2) What predicts a successful design?},
-which of epitope RMSD, scaffold RMSD, PAE, and accessibility actually track binding: this is
-what the decomposed metrics and composite scorer (Section~\ref{sec:scoring}) are for, and DP4
-is built to answer it empirically by assaying designs sampled across that feature space and
-reading off what binds --- the non-circular experimental label we have been waiting for before
-fitting the scorer's weights (Section~\ref{sec:open}). \emph{(Q3) Can it extend to the
-polyclonal setting?}, tiling a whole antigen with no known antibody, where the cylinder
-surrogate (Section~\ref{sec:noab}) stands in for the antibody-clash filter. These design ideas
+which of epitope RMSD, scaffold RMSD, PAE, and accessibility actually track binding: this is what
+the decomposed metrics and composite scorer (Section~\ref{sec:scoring}) are for. The first
+experimental answer is already in --- the DP3 binding data (Section~\ref{sec:experimental}) shows
+accessibility and epitope RMSD are the metrics that track binding --- and DP4 is built to sharpen
+it by assaying designs spread across the feature space, so the scorer's weights can be fit rather
+than hand-set (Section~\ref{sec:open}). \emph{(Q3) Can it extend to the polyclonal setting?},
+tiling a whole antigen with no known antibody, where the cylinder surrogate
+(Section~\ref{sec:noab}) stands in for the antibody-clash filter. These design ideas
 originate with the project's earlier work; the scoring and metrics developed here are a refined
 evolution of them.
 
