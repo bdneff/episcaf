@@ -59,6 +59,9 @@ def main():
     ap.add_argument("indir")
     ap.add_argument("--label", default="")
     ap.add_argument("--out", default="")
+    ap.add_argument("--carve_viz", type=float, default=0.5,
+                    help="disk radius for DRAWING the carve region (the true carve is 1.0 A and "
+                         "still sets the flag colors); shrink it so the dense antigen doesn't blob")
     args = ap.parse_args()
     d = Path(args.indir)
     base, normal, p1, p2, R, H = frame(d)
@@ -103,7 +106,7 @@ def main():
             return
         X, Y = np.meshgrid(np.linspace(*xr, n), np.linspace(*yr, n))
         dmin, _ = cKDTree(np.c_[x, y]).query(np.c_[X.ravel(), Y.ravel()], k=1)
-        Z = (dmin.reshape(X.shape) <= CARVE).astype(float)
+        Z = (dmin.reshape(X.shape) <= args.carve_viz).astype(float)
         ax.contourf(X, Y, Z, levels=[0.5, 2], colors=["mediumseagreen"], alpha=0.18, zorder=1)
         ax.contour(X, Y, Z, levels=[0.5], colors=["seagreen"], linewidths=1.6, zorder=3)
 
