@@ -44,7 +44,7 @@ python3 scripts/cylinder_param_sweep.py \
     --metrics_csv $WS/runs/run_rfd3_mpnn/04_filter/metrics_native_cyl_full.csv \
     --dp2_parquet $WS/datasets/dp2.parquet \
     --native_dir  /tgen_labs/altin/alphafold3/workspace/episcaf-experiments/data/abdb/complex_pdbfiles/cleaned \
-    --offsets -6,-4,-2,0,2,4 --radii 12,14,16,18,20 --heights 30,40,50 \
+    --offsets=-6,-4,-2,0,2,4 --radii 12,14,16,18,20 --heights 30,40,50 \
     --exclude_dists 1.0 --limit 20000 \
     --out_csv results/cylinder_param_sweep.csv
 ```

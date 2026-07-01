@@ -16,7 +16,7 @@ Usage (sample first for speed, then full):
       --metrics_csv <run>/04_filter/metrics_native_cyl_full.csv \
       --dp2_parquet <datasets>/dp2.parquet \
       --native_dir  <abdb cleaned complex dir> \
-      --offsets -6,-4,-2,0,2,4 --radii 12,14,16,18,20 --heights 30,40,50 \
+      --offsets=-6,-4,-2,0,2,4 --radii 12,14,16,18,20 --heights 30,40,50 \
       --exclude_dists 1.0 --limit 20000 \
       --out_csv results/cylinder_param_sweep.csv
 """
