@@ -27,6 +27,20 @@ additionally drops any such atom within \SI{1}{\angstrom} of a native-antigen he
 i.e.\ sitting where the native antigen already sits, which a real antibody tolerates. The
 geometry core is \texttt{episcaf\_analysis/native\_cylinder\_core.py} (self-tested).
 
+\paragraph{Geometry parameters --- provenance and sweep.} The four dials above (offset
+$d_0=\SI{-4}{\angstrom}$, radius $R=\SI{16}{\angstrom}$, height $H=\SI{40}{\angstrom}$, carve
+distance \SI{1}{\angstrom}) were inherited from the initial implementation and had not been
+chosen against ground truth. We now record and validate them: \texttt{docs/CYLINDER\_PARAMS.md}
+is the parameter record, and \texttt{scripts/cylinder\_param\_sweep.py} sweeps the
+$(\text{offset},R,H,\text{carve})$ grid and scores each cell by its AUC for predicting the true
+antibody clash (\texttt{af3\_n\_clash\_res}=0) across DP3, so the geometry is picked on data
+rather than inherited. This was prompted by a concrete false positive: for the strongly-binding
+8pww designs the cylinder flags $\sim$10 scaffold C$\alpha$ while the real crystal clash is zero,
+and the flagged atoms sit at the cylinder \emph{base}, hugging the epitope below where the
+paratope actually approaches (\texttt{scripts/cylinder\_fp\_probe.py}) --- suggesting the base
+offset in particular is too low. The chosen values (and any change to the numbers below) will be
+recorded here once the sweep completes.
+
 \begin{figure}[h]\centering
 \figorbox{epitope_cylinder.png}{0.5}
 \caption{The accessibility cylinder. Epitope residues (red) sit on the scaffold (magenta);

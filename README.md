@@ -141,6 +141,7 @@ python episcaf_analysis/native_cylinder_core.py   # cylinder geometry self-test
 cd manuscript && tectonic main.tex                # build the living log
 ```
 
-See `docs/MIGRATION.md` for exactly what moved where, and
+See `docs/MIGRATION.md` for exactly what moved where,
 `docs/README_v2_original.md` for the original experimental background and the
-4-filter definitions.
+4-filter definitions, and `docs/CYLINDER_PARAMS.md` for the cylinder geometry
+parameters (provenance + the ground-truth sweep that chooses them).
