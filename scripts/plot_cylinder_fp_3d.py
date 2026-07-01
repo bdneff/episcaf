@@ -67,8 +67,6 @@ def main():
         p = d / name
         return read_pdb(p, ca_only=ca) if p.exists() else np.empty((0, 3))
 
-    from matplotlib.patches import Circle
-    from matplotlib.collections import PatchCollection
     CARVE = 1.0  # native-aware carve distance: a scaffold CA within CARVE of a heavy atom is carved
 
     sets = {
@@ -96,24 +94,32 @@ def main():
     lo, hi = (fax.min() - CARVE - 1, fax.max() + CARVE + 1) if len(fax) else (-2, 8)
     slab = (hax >= lo) & (hax <= hi)
 
-    def carve_disks(ax, x, y):
-        ax.add_collection(PatchCollection([Circle((a, b), CARVE) for a, b in zip(x, y)],
-                          facecolor="mediumseagreen", edgecolor="none", alpha=0.22, zorder=3))
+    def carve_outline(ax, x, y, xr, yr, n=220):
+        """Project the exclusion SPHERES (radius CARVE around each heavy atom) onto this view:
+        a sphere projects to a CARVE-radius circle at any depth, so the union of those circles
+        is the carve region in this plane -- circular cutouts in both side and top-down views."""
+        from scipy.spatial import cKDTree
+        if len(x) == 0:
+            return
+        X, Y = np.meshgrid(np.linspace(*xr, n), np.linspace(*yr, n))
+        dmin, _ = cKDTree(np.c_[x, y]).query(np.c_[X.ravel(), Y.ravel()], k=1)
+        Z = (dmin.reshape(X.shape) <= CARVE).astype(float)
+        ax.contourf(X, Y, Z, levels=[0.5, 2], colors=["mediumseagreen"], alpha=0.18, zorder=1)
+        ax.contour(X, Y, Z, levels=[0.5], colors=["seagreen"], linewidths=1.6, zorder=3)
 
     fig, (axS, axT) = plt.subplots(1, 2, figsize=(12, 6))
-    # SIDE view: r1 vs axial -- antigen body as faint green context
-    axS.scatter(hr1, hax, s=4, c="mediumseagreen", alpha=0.18, zorder=2)
+    # SIDE view: r1 vs axial -- carve region (antigen sphere-projection) reaching up to the flags
+    carve_outline(axS, hr1, hax, (-R - 4, R + 4), (hax.min() - 2, 12))
     for k, (_, st) in sets.items():
         r1, r2, ax_ = fr[k]
         axS.scatter(r1, ax_, label=k, **st)
-    axS.axhspan(lo, hi, color="mediumseagreen", alpha=0.05, zorder=0)  # the slab shown top-down
     axS.add_patch(plt.Rectangle((-R, 0), 2 * R, H, fill=False, ec="tab:cyan", lw=1.5))
     axS.axhline(4.0, ls="--", c="0.4", lw=1)   # epitope plane (offset -4)
     axS.set_xlabel("in-plane distance from axis (Å)")
     axS.set_ylabel("height up the approach normal (Å)")
     axS.set_title("side view"); axS.set_xlim(-R - 4, R + 4)
-    # TOP-DOWN: the carve region (green disks) + everything, in the epitope-plane slab
-    carve_disks(axT, hr1[slab], hr2[slab])
+    # TOP-DOWN: same carve region, looking down the normal (slabbed to the flags' axial band)
+    carve_outline(axT, hr1[slab], hr2[slab], (-R - 4, R + 4), (-R - 4, R + 4))
     for k, (_, st) in sets.items():
         r1, r2, ax_ = fr[k]
         axT.scatter(r1, r2, **st)
