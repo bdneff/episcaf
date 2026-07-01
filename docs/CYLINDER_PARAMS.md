@@ -78,9 +78,29 @@ near-optimal and no change is justified:
 well-predicted subset (epitope-chunk RMSD < 2.5) — different population, both valid. Only the
 *relative* ranking across cells is used to choose the geometry.)
 
-**Still to do (independent of the geometry decision):** fix the stale `exclude_dist=4.0` default
-in `native_cylinder_core.py` (all runs use 1.0). Optional confirmations before adopting any tweak:
-re-run the sweep on the full DP3 (drop `--limit`) and gated (epitope RMSD < 2.5) to check the
-ranking is stable, and cross-check the chosen geometry against binding on the assayed 403
-(within-antibody, §`sec:whatpredicts`). Given the gain is noise-level, the current recommendation
-is **no geometry change**.
+### Carve radius (exclude_dist) sweep — 2026-07-01
+
+Same 20k sample, geometry fixed at (−4, 16, 40), sweeping only the native-carve exclusion radius
+(`results/cylinder_carve_sweep.csv`):
+
+| exclude_dist | 0.5 | 1.0 (current) | **1.5** | 2.0 | 2.5 | 3.0 | 4.0 (stale) |
+|---|---|---|---|---|---|---|---|
+| AUC vs clash | 0.880 | 0.899 | **0.908** | 0.903 | 0.890 | 0.879 | 0.866 |
+
+Unlike the geometry (flat), this dial has a **real optimum at 1.5 Å** (AUC rises then falls; 0.042
+range — the most consequential cylinder parameter, and it was never tuned). 1.5 beats the current
+**1.0 by ~0.009** (clean monotone-then-peak, not noise); ~1.5 Å is a van-der-Waals contact with the
+antigen, vs 1.0 carving only near-exact overlaps. The stale **4.0 is the worst of all** (0.866) —
+confirms fixing it was right.
+
+**Recommendation: adopt exclude_dist = 1.5 (pending confirmation).** Before changing 1.0→1.5:
+(1) re-run the carve sweep on the full DP3 (drop `--limit`) and gated (epitope RMSD < 2.5); (2)
+cross-check against binding on the assayed 403 — recompute the assayed cylinder at 1.5
+(`assayed_native_cylinder.py --exclude_dist 1.5`) and re-run the within-antibody correlation
+(§`sec:whatpredicts`). If both hold, update the default in `native_cylinder_core.py` (currently
+1.0) + the preset, re-run the full DP3 native-aware at 1.5, and regenerate the manuscript's cylinder
+numbers (the AUC 0.935 and the binding correlations are at 1.0).
+
+**Geometry:** the sweep found offset/radius/height near-optimal at the inherited (−4, 16, 40), gain
+noise-level, so **no geometry change**. The stale `exclude_dist=4.0` default in
+`native_cylinder_core.py` is fixed to 1.0 (will move to 1.5 if the confirmations above hold).
