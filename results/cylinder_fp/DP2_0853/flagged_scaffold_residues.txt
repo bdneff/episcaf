@@ -1,0 +1,2 @@
+0-based design residue indices of cylinder-flagged scaffold CAs:
+34 35 36 45 47 48 71 74
