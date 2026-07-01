@@ -41,7 +41,10 @@ mol addrep $f; mol modselect 0 $f {all}; mol modstyle 0 $f VDW 0.9 16; mol modco
 
 mol new antibody_aligned.pdb type pdb waitfor all
 set a [molinfo top get id]; mol delrep 0 $a
-mol addrep $a; mol modselect 0 $a {all}; mol modstyle 0 $a Points 4; mol modcolor 0 $a ColorID 0
+mol addrep $a; mol modselect 0 $a {all}
+mol modstyle 0 $a QuickSurf 1.2 0.7 1.0 1.0; mol modcolor 0 $a ColorID 0
+mol modmaterial 0 $a Transparent   ; # antibody as a translucent blue volume, so the
+                                     # base gap below it is obvious
 
 display projection Orthographic
 display depthcue on
