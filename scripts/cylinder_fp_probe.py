@@ -127,22 +127,25 @@ def main() -> None:
 
     if args.out_dir:
         out = Path(args.out_dir); out.mkdir(parents=True, exist_ok=True)
-        # aligned antibody, for loading alongside the design in VMD/PyMOL
-        st = gemmi.Structure(); model = gemmi.Model("1"); ch = gemmi.Chain("Y")
-        for i, xyz in enumerate(ab_al):
-            res = gemmi.Residue(); res.name = "DUM"; res.seqid = gemmi.SeqId(i + 1)
-            at = gemmi.Atom(); at.name = "C"; at.element = gemmi.Element("C")
-            at.pos = gemmi.Position(*map(float, xyz)); res.add_atom(at); ch.add_residue(res)
-        model.add_chain(ch); st.add_model(model)
-        st.write_pdb(str(out / "antibody_aligned.pdb"))
+        def write_points_pdb(path, coords, chain, resname):
+            with open(path, "w") as fh:
+                for i, (x, y, z) in enumerate(coords, 1):
+                    fh.write(f"ATOM  {i % 100000:5d}  C   {resname:<3s} {chain}{(i % 9999) + 1:4d}    "
+                             f"{x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00           C\n")
+                fh.write("END\n")
+        # both in the design frame -> load alongside the design cif in VMD/PyMOL
+        write_points_pdb(out / "antibody_aligned.pdb", ab_al, "Y", "AB")   # real antibody, point cloud
+        write_points_pdb(out / "flagged_cas.pdb", flagged_xyz, "Z", "FLG")  # the 13 flagged scaffold CAs
         (out / "flagged_scaffold_residues.txt").write_text(
             "0-based design residue indices of cylinder-flagged scaffold CAs:\n"
             + " ".join(map(str, flagged_res)) + "\n")
         (out / "cylinder_frame.txt").write_text(
             f"base {base.tolist()}\nnormal {normal.tolist()}\nR {RADIUS}\nH {HEIGHT}\n")
-        print(f"\nwrote {out}/  (antibody_aligned.pdb, flagged_scaffold_residues.txt, cylinder_frame.txt)")
-        print("VMD: load the design cif + antibody_aligned.pdb (same frame), color the flagged "
-              "residues, and draw the cylinder from cylinder_frame.txt (see visualize_cylinder.tcl).")
+        print(f"\nwrote {out}/  (antibody_aligned.pdb, flagged_cas.pdb, "
+              f"flagged_scaffold_residues.txt, cylinder_frame.txt)")
+        print("VMD: load the design cif + antibody_aligned.pdb + flagged_cas.pdb (same frame); the "
+              "flagged CAs (FLG) sit at the cylinder base, the antibody (AB) sits above them. Draw "
+              "the cylinder from cylinder_frame.txt (see visualize_cylinder.tcl).")
 
 
 if __name__ == "__main__":
