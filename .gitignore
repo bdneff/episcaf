@@ -52,6 +52,10 @@ tmp/
 !results/*.csv
 !results/*.tsv
 !results/*.json
+# cylinder-FP probe outputs: small point-cloud PDBs + frames, to round-trip to a local VMD
+!results/cylinder_fp/
+!results/cylinder_fp/**/*.pdb
+!results/cylinder_fp/**/*.txt
 # the living manuscript: its figures and the built PDF
 !manuscript/figures/
 !manuscript/figures/.gitkeep
