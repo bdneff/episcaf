@@ -162,6 +162,7 @@ def main() -> None:
         write_points_pdb(out / "epitope_cas.pdb", epi_ca, "E", "EPI")      # epitope CAs (red)
         write_points_pdb(out / "antibody_aligned.pdb", ab_al, "Y", "AB")   # real antibody, point cloud
         write_points_pdb(out / "native_antigen.pdb", ag_ca_nonepi, "N", "NAG")  # native antigen (non-epi CAs)
+        write_points_pdb(out / "native_antigen_heavy.pdb", ag_nonepi, "H", "NAH")  # the carve volume (heavy atoms)
         write_points_pdb(out / "flagged_cas.pdb", flagged_xyz, "Z", "FLG")       # all cylinder-flagged CAs
         write_points_pdb(out / "flagged_survive.pdb", flagged_xyz[survive], "S", "SUR")  # native-aware count
         write_points_pdb(out / "flagged_carved.pdb", flagged_xyz[carved], "C", "CRV")    # sit on native antigen

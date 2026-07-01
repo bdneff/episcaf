@@ -67,42 +67,62 @@ def main():
         p = d / name
         return read_pdb(p, ca_only=ca) if p.exists() else np.empty((0, 3))
 
+    from matplotlib.patches import Circle
+    from matplotlib.collections import PatchCollection
+    CARVE = 1.0  # native-aware carve distance: a scaffold CA within CARVE of a heavy atom is carved
+
     sets = {
-        "scaffold":       (rp("design.pdb", ca=True), dict(s=8, c="0.82", zorder=1)),
-        "native antigen": (rp("native_antigen.pdb"), dict(s=10, c="mediumseagreen", alpha=0.4, zorder=2)),
-        "antibody":       (rp("antibody_aligned.pdb"), dict(s=3, c="tab:blue", alpha=0.10, zorder=2)),
-        "epitope":        (rp("epitope_cas.pdb"), dict(s=55, c="crimson", edgecolors="k", linewidths=0.4, zorder=5)),
+        "scaffold":  (rp("design.pdb", ca=True), dict(s=8, c="0.82", zorder=1)),
+        "antibody":  (rp("antibody_aligned.pdb"), dict(s=3, c="tab:blue", alpha=0.10, zorder=2)),
+        "epitope":   (rp("epitope_cas.pdb"), dict(s=55, c="crimson", edgecolors="k", linewidths=0.4, zorder=5)),
     }
-    if (d / "flagged_survive.pdb").exists():   # native-aware split available
+    if (d / "flagged_survive.pdb").exists():
         sets["flagged, carved"] = (rp("flagged_carved.pdb"),
-                                   dict(s=60, c="0.45", marker="x", linewidths=1.6, zorder=4))
+                                   dict(s=60, c="0.35", marker="x", linewidths=1.8, zorder=6))
         sets["flagged, counts"] = (rp("flagged_survive.pdb"),
-                                   dict(s=85, c="orange", edgecolors="k", linewidths=0.6, zorder=6))
-    else:                                      # older probe output
-        sets["flagged"] = (rp("flagged_cas.pdb"), dict(s=70, c="orange", edgecolors="k", linewidths=0.5, zorder=6))
+                                   dict(s=90, c="orange", edgecolors="k", linewidths=0.6, zorder=7))
+    else:
+        sets["flagged"] = (rp("flagged_cas.pdb"), dict(s=70, c="orange", edgecolors="k", linewidths=0.5, zorder=7))
     fr = {k: to_frame(v[0], base, normal, p1, p2) for k, v in sets.items()}
 
+    # the carve VOLUME: native-antigen heavy atoms, each a CARVE-radius disk (union = the carved zone)
+    heavy = rp("native_antigen_heavy.pdb")
+    if len(heavy) == 0:
+        heavy = rp("native_antigen.pdb")   # fallback: CAs (coarser)
+    hr1, hr2, hax = to_frame(heavy, base, normal, p1, p2)
+    # slab the heavy atoms to the axial band the flagged scaffold lives in (that's what carves them)
+    fax = np.concatenate([fr[k][2] for k in sets if k.startswith("flagged")]) if any(
+        k.startswith("flagged") for k in sets) else np.array([0.0, 6.0])
+    lo, hi = (fax.min() - CARVE - 1, fax.max() + CARVE + 1) if len(fax) else (-2, 8)
+    slab = (hax >= lo) & (hax <= hi)
+
+    def carve_disks(ax, x, y):
+        ax.add_collection(PatchCollection([Circle((a, b), CARVE) for a, b in zip(x, y)],
+                          facecolor="mediumseagreen", edgecolor="none", alpha=0.22, zorder=3))
+
     fig, (axS, axT) = plt.subplots(1, 2, figsize=(12, 6))
-    # SIDE view: r1 vs axial
+    # SIDE view: r1 vs axial -- antigen body as faint green context
+    axS.scatter(hr1, hax, s=4, c="mediumseagreen", alpha=0.18, zorder=2)
     for k, (_, st) in sets.items():
         r1, r2, ax_ = fr[k]
         axS.scatter(r1, ax_, label=k, **st)
-    axS.add_patch(plt.Rectangle((-R, 0), 2 * R, H, fill=False, ec="tab:cyan", lw=1.5))  # cylinder
-    axS.axhline(-(-4.0) if False else 4.0, ls="--", c="0.4", lw=1)   # epitope plane ~ axial 4 (offset -4)
+    axS.axhspan(lo, hi, color="mediumseagreen", alpha=0.05, zorder=0)  # the slab shown top-down
+    axS.add_patch(plt.Rectangle((-R, 0), 2 * R, H, fill=False, ec="tab:cyan", lw=1.5))
+    axS.axhline(4.0, ls="--", c="0.4", lw=1)   # epitope plane (offset -4)
     axS.set_xlabel("in-plane distance from axis (Å)")
     axS.set_ylabel("height up the approach normal (Å)")
-    axS.set_title("side view")
-    axS.set_xlim(-R - 4, R + 4)
-    # TOP-DOWN view: r1 vs r2 (looking down the normal)
+    axS.set_title("side view"); axS.set_xlim(-R - 4, R + 4)
+    # TOP-DOWN: the carve region (green disks) + everything, in the epitope-plane slab
+    carve_disks(axT, hr1[slab], hr2[slab])
     for k, (_, st) in sets.items():
         r1, r2, ax_ = fr[k]
         axT.scatter(r1, r2, **st)
     th = np.linspace(0, 2 * np.pi, 100)
-    axT.plot(R * np.cos(th), R * np.sin(th), c="tab:cyan", lw=1.5)   # cylinder circle
+    axT.plot(R * np.cos(th), R * np.sin(th), c="tab:cyan", lw=1.5)
     axT.set_xlabel("in-plane x (Å)"); axT.set_ylabel("in-plane y (Å)")
-    axT.set_title("top-down (looking down the antibody approach)")
+    axT.set_title("top-down: green = carve volume (native antigen ±1Å)")
     axT.set_aspect("equal"); axT.set_xlim(-R - 4, R + 4); axT.set_ylim(-R - 4, R + 4)
-    axS.legend(loc="upper right", framealpha=0.9, markerscale=1.2)
+    axS.legend(loc="upper right", framealpha=0.9, markerscale=1.2, fontsize=11)
 
     fig.suptitle(args.label or d.name, fontsize=17)
     fig.tight_layout(rect=[0, 0, 1, 0.96])
