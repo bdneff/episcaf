@@ -37,15 +37,24 @@ from dp3_native_cylinder import (  # identical primitives; no re-implementation 
 CLASH_CUT = 4.0  # A; same definition as af3_n_clash_res (scaffold heavy vs antibody heavy)
 
 
+CARVE_DIST = 1.0  # native-aware carve distance used in production (docs/CYLINDER_PARAMS.md)
+
+
 def load_complex(pdb: Path):
-    """Antigen chain A (CA + seq) and every non-A chain's heavy atoms (the antibody)."""
+    """Antigen chain A (CA + seq; heavy atoms + their CA-residue index) and the antibody
+    (every non-A chain's heavy atoms)."""
     st = read_gemmi(pdb)
     ag = chain_by_name(st[0], "A")
-    aca, aseq = [], []
+    aca, aseq, ag_heavy, ag_heavy_resi = [], [], [], []
     for res in ag:
         a = res.find_atom("CA", altloc="*")
-        if a:
-            aca.append([a.pos.x, a.pos.y, a.pos.z]); aseq.append(THREE2ONE.get(res.name.upper(), "X"))
+        if not a:
+            continue
+        ri = len(aca)
+        aca.append([a.pos.x, a.pos.y, a.pos.z]); aseq.append(THREE2ONE.get(res.name.upper(), "X"))
+        for at in res:
+            if at.element != gemmi.Element("H"):
+                ag_heavy.append([at.pos.x, at.pos.y, at.pos.z]); ag_heavy_resi.append(ri)
     ab_heavy = []
     for ch in st[0]:
         if ch.name == "A":
@@ -54,7 +63,8 @@ def load_complex(pdb: Path):
             for at in res:
                 if at.element != gemmi.Element("H"):
                     ab_heavy.append([at.pos.x, at.pos.y, at.pos.z])
-    return np.asarray(aca, float), "".join(aseq), np.asarray(ab_heavy, float)
+    return (np.asarray(aca, float), "".join(aseq), np.asarray(ag_heavy, float),
+            np.asarray(ag_heavy_resi, int), np.asarray(ab_heavy, float))
 
 
 def main() -> None:
@@ -100,13 +110,22 @@ def main() -> None:
     flagged_res = [int(res_idx[scaf_pos[i]]) for i in np.where(ins)[0]]  # 0-based design residues
     print(f"\ncylinder: R={RADIUS} H={HEIGHT} A ; scaffold CAs inside = {int(ins.sum())} (the plain count)")
 
-    aca, aseq, ab_heavy = load_complex(native_pdb)
+    aca, aseq, ag_heavy, ag_heavy_resi, ab_heavy = load_complex(native_pdb)
     m = match_epitope(epi_seq, epi_ca, aseq, aca)
     if m is None:
         sys.exit("could not align design epitope to native antigen")
-    R, t, _, rmsd = m
+    R, t, nepi_set, rmsd = m
     ab_al = (R @ ab_heavy.T).T + t          # antibody, in the design frame
+    ag_al = (R @ ag_heavy.T).T + t          # native antigen heavy, in the design frame
+    ag_nonepi = ag_al[~np.isin(ag_heavy_resi, list(nepi_set))]   # non-epitope antigen volume
     print(f"epitope alignment RMSD = {rmsd:.2f} A ; antibody heavy atoms = {len(ab_al)}")
+
+    # native-aware carve: which flagged CAs sit in native-antigen volume (carved) vs not (survive)
+    d_native, _ = cKDTree(ag_nonepi).query(flagged_xyz, k=1) if len(ag_nonepi) else (np.full(len(flagged_xyz), 1e9), None)
+    carved = d_native <= CARVE_DIST
+    survive = ~carved
+    print(f"native-aware carve ({CARVE_DIST} A): {int(survive.sum())} survive (the native-aware "
+          f"count), {int(carved.sum())} carved (sit on the native antigen)")
 
     # the key question: how close are the cylinder-flagged scaffold atoms to the REAL antibody?
     tree = cKDTree(ab_al)
@@ -138,9 +157,14 @@ def main() -> None:
         cif = find_af3_cif(af3_dir)
         if cif is not None:
             read_gemmi(cif).write_pdb(str(out / "design.pdb"))            # full design model (ribbon)
+        aca_al = (R @ aca.T).T + t
+        ag_ca_nonepi = aca_al[[i for i in range(len(aca)) if i not in nepi_set]]
         write_points_pdb(out / "epitope_cas.pdb", epi_ca, "E", "EPI")      # epitope CAs (red)
         write_points_pdb(out / "antibody_aligned.pdb", ab_al, "Y", "AB")   # real antibody, point cloud
-        write_points_pdb(out / "flagged_cas.pdb", flagged_xyz, "Z", "FLG")  # cylinder-flagged scaffold CAs
+        write_points_pdb(out / "native_antigen.pdb", ag_ca_nonepi, "N", "NAG")  # native antigen (non-epi CAs)
+        write_points_pdb(out / "flagged_cas.pdb", flagged_xyz, "Z", "FLG")       # all cylinder-flagged CAs
+        write_points_pdb(out / "flagged_survive.pdb", flagged_xyz[survive], "S", "SUR")  # native-aware count
+        write_points_pdb(out / "flagged_carved.pdb", flagged_xyz[carved], "C", "CRV")    # sit on native antigen
         (out / "flagged_scaffold_residues.txt").write_text(
             "0-based design residue indices of cylinder-flagged scaffold CAs:\n"
             + " ".join(map(str, flagged_res)) + "\n")
@@ -148,8 +172,9 @@ def main() -> None:
         (out / "cylinder_frame.txt").write_text(
             f"base {bx} {by} {bz}\nnormal {nnx} {nny} {nnz}\nR {RADIUS}\nH {HEIGHT}\n")
         print(f"\nwrote {out}/  (design.pdb, epitope_cas.pdb, antibody_aligned.pdb, "
-              f"flagged_cas.pdb, cylinder_frame.txt, flagged_scaffold_residues.txt)")
-        print(f"VISUALIZE:  cd {out} && vmd -e $REPO/scripts/visualize_cylinder_fp.tcl")
+              f"native_antigen.pdb, flagged_survive.pdb, flagged_carved.pdb, flagged_cas.pdb, "
+              f"cylinder_frame.txt)")
+        print(f"VISUALIZE:  python scripts/plot_cylinder_fp_3d.py {out} --label '...'")
 
 
 if __name__ == "__main__":

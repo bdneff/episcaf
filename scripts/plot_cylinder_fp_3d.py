@@ -63,12 +63,23 @@ def main():
     d = Path(args.indir)
     base, normal, p1, p2, R, H = frame(d)
 
+    def rp(name, ca=False):
+        p = d / name
+        return read_pdb(p, ca_only=ca) if p.exists() else np.empty((0, 3))
+
     sets = {
-        "scaffold": (read_pdb(d / "design.pdb", ca_only=True), dict(s=10, c="0.75", zorder=1)),
-        "antibody": (read_pdb(d / "antibody_aligned.pdb"), dict(s=3, c="tab:blue", alpha=0.12, zorder=2)),
-        "epitope":  (read_pdb(d / "epitope_cas.pdb"), dict(s=55, c="crimson", edgecolors="k", linewidths=0.4, zorder=4)),
-        "flagged":  (read_pdb(d / "flagged_cas.pdb"), dict(s=70, c="orange", edgecolors="k", linewidths=0.5, zorder=5)),
+        "scaffold":       (rp("design.pdb", ca=True), dict(s=8, c="0.82", zorder=1)),
+        "native antigen": (rp("native_antigen.pdb"), dict(s=10, c="mediumseagreen", alpha=0.4, zorder=2)),
+        "antibody":       (rp("antibody_aligned.pdb"), dict(s=3, c="tab:blue", alpha=0.10, zorder=2)),
+        "epitope":        (rp("epitope_cas.pdb"), dict(s=55, c="crimson", edgecolors="k", linewidths=0.4, zorder=5)),
     }
+    if (d / "flagged_survive.pdb").exists():   # native-aware split available
+        sets["flagged, carved"] = (rp("flagged_carved.pdb"),
+                                   dict(s=60, c="0.45", marker="x", linewidths=1.6, zorder=4))
+        sets["flagged, counts"] = (rp("flagged_survive.pdb"),
+                                   dict(s=85, c="orange", edgecolors="k", linewidths=0.6, zorder=6))
+    else:                                      # older probe output
+        sets["flagged"] = (rp("flagged_cas.pdb"), dict(s=70, c="orange", edgecolors="k", linewidths=0.5, zorder=6))
     fr = {k: to_frame(v[0], base, normal, p1, p2) for k, v in sets.items()}
 
     fig, (axS, axT) = plt.subplots(1, 2, figsize=(12, 6))
