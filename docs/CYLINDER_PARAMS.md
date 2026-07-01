@@ -93,13 +93,21 @@ range — the most consequential cylinder parameter, and it was never tuned). 1.
 antigen, vs 1.0 carving only near-exact overlaps. The stale **4.0 is the worst of all** (0.866) —
 confirms fixing it was right.
 
-**Recommendation: adopt exclude_dist = 1.5 (pending confirmation).** Before changing 1.0→1.5:
-(1) re-run the carve sweep on the full DP3 (drop `--limit`) and gated (epitope RMSD < 2.5); (2)
-cross-check against binding on the assayed 403 — recompute the assayed cylinder at 1.5
-(`assayed_native_cylinder.py --exclude_dist 1.5`) and re-run the within-antibody correlation
-(§`sec:whatpredicts`). If both hold, update the default in `native_cylinder_core.py` (currently
-1.0) + the preset, re-run the full DP3 native-aware at 1.5, and regenerate the manuscript's cylinder
-numbers (the AUC 0.935 and the binding correlations are at 1.0).
+**Resolution: keep exclude_dist = 1.0.** The clash-AUC and the binding data disagree, and binding
+wins the tie. Binding cross-check on the assayed 403 (within-antibody Pearson vs cognate enrichment,
+`assayed_native_cylinder.py --exclude_dist 1.5` -> `results/assayed_native_cyl_ed1.5.csv`):
+
+| exclude_dist | clash-AUC | within-Ab binding r |
+|---|---|---|
+| 1.0 (current) | 0.899 | **-0.219** (p=2e-5) |
+| 1.5 | 0.908 | -0.200 (p=9e-5) |
+
+1.5 wins on in-silico clash (+0.009) but is slightly WORSE at predicting real binding. Carving more
+(1.5) does knock down the 8pww false positives (their median cylinder drops 10->5), but it also
+carves genuinely informative signal, and the net effect on binding is a small loss. Binding is the
+ground truth we ultimately care about, so **1.0 stays** -- and it is now validated on BOTH axes
+(near the clash-AUC optimum AND best-on-binding), no longer inherited. No re-run / no manuscript
+change needed.
 
 **Geometry:** the sweep found offset/radius/height near-optimal at the inherited (−4, 16, 40), gain
 noise-level, so **no geometry change**. The stale `exclude_dist=4.0` default in

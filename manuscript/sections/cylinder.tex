@@ -46,8 +46,11 @@ not appear among the top cells and slightly \emph{lower} the AUC --- so the 8pww
 \emph{local} artifact of that epitope's geometry, not a global mis-setting, and raising the base to
 fix it would hurt clash prediction on average. Radius and height barely move the AUC (the whole
 top tier spans \num{0.90}--\num{0.902}; the only candidate change, $R=\SI{18}{\angstrom}$, buys
-$\sim\!\num{0.003}$, within sample noise). The native-aware carve beats the plain count at every
-setting. Full result and the checklist in \texttt{docs/CYLINDER\_PARAMS.md}.
+$\sim\!\num{0.003}$, within sample noise). The carve distance was swept the same way and is the one
+dial that matters (AUC range \num{0.87}--\num{0.91}): \SI{1.5}{\angstrom} edges the clash-AUC, but
+\SI{1}{\angstrom} predicts real \emph{binding} slightly better (within-antibody $r=-0.22$ vs
+$-0.20$), so we keep \SI{1}{\angstrom} --- now chosen on both the true clash and binding rather than
+inherited. Full results and the checklist in \texttt{docs/CYLINDER\_PARAMS.md}.
 
 \begin{figure}[h]\centering
 \figorbox{epitope_cylinder.png}{0.5}
