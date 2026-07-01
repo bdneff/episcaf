@@ -133,19 +133,23 @@ def main() -> None:
                     fh.write(f"ATOM  {i % 100000:5d}  C   {resname:<3s} {chain}{(i % 9999) + 1:4d}    "
                              f"{x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00           C\n")
                 fh.write("END\n")
-        # both in the design frame -> load alongside the design cif in VMD/PyMOL
+        # all in the design frame -> load together in VMD (see scripts/visualize_cylinder_fp.tcl)
+        from dp3_native_cylinder import find_af3_cif
+        cif = find_af3_cif(af3_dir)
+        if cif is not None:
+            read_gemmi(cif).write_pdb(str(out / "design.pdb"))            # full design model (ribbon)
+        write_points_pdb(out / "epitope_cas.pdb", epi_ca, "E", "EPI")      # epitope CAs (red)
         write_points_pdb(out / "antibody_aligned.pdb", ab_al, "Y", "AB")   # real antibody, point cloud
-        write_points_pdb(out / "flagged_cas.pdb", flagged_xyz, "Z", "FLG")  # the 13 flagged scaffold CAs
+        write_points_pdb(out / "flagged_cas.pdb", flagged_xyz, "Z", "FLG")  # cylinder-flagged scaffold CAs
         (out / "flagged_scaffold_residues.txt").write_text(
             "0-based design residue indices of cylinder-flagged scaffold CAs:\n"
             + " ".join(map(str, flagged_res)) + "\n")
+        bx, by, bz = base; nnx, nny, nnz = normal
         (out / "cylinder_frame.txt").write_text(
-            f"base {base.tolist()}\nnormal {normal.tolist()}\nR {RADIUS}\nH {HEIGHT}\n")
-        print(f"\nwrote {out}/  (antibody_aligned.pdb, flagged_cas.pdb, "
-              f"flagged_scaffold_residues.txt, cylinder_frame.txt)")
-        print("VMD: load the design cif + antibody_aligned.pdb + flagged_cas.pdb (same frame); the "
-              "flagged CAs (FLG) sit at the cylinder base, the antibody (AB) sits above them. Draw "
-              "the cylinder from cylinder_frame.txt (see visualize_cylinder.tcl).")
+            f"base {bx} {by} {bz}\nnormal {nnx} {nny} {nnz}\nR {RADIUS}\nH {HEIGHT}\n")
+        print(f"\nwrote {out}/  (design.pdb, epitope_cas.pdb, antibody_aligned.pdb, "
+              f"flagged_cas.pdb, cylinder_frame.txt, flagged_scaffold_residues.txt)")
+        print(f"VISUALIZE:  cd {out} && vmd -e $REPO/scripts/visualize_cylinder_fp.tcl")
 
 
 if __name__ == "__main__":
