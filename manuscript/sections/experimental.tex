@@ -117,21 +117,25 @@ Figure~\ref{fig:metricbinding} shows both views for every metric, and we add the
 AlphaFold3 structures (\texttt{scripts/assayed\_native\_cylinder.py}).
 
 \begin{table}[h]\centering
-\begin{tabular}{lccc}
+\begin{tabular}{lcccc}
 \toprule
-metric & pooled $r$ & within-antibody $r$ & survives deconfounding? \\
+metric & pooled $r$ & within-antibody $r$ & within-Ab $p$ & survives deconfounding? \\
 \midrule
-cylinder, native-aware & $-0.23$ & $\mathbf{-0.22}$ \;(\(p{=}2\times10^{-5}\)) & yes --- essentially intact \\
-cylinder, plain        & $-0.24$ & $-0.18$ & mostly \\
-epitope RMSD           & $-0.41$ & $-0.14$ & no --- mostly between-antibody \\
-overall RMSD           & $-0.17$ & $-0.08$ & no \\
-mean PAE               & $-0.02$ & $+0.07$ & no (and wrong sign) \\
+cylinder, native-aware & $-0.23$ & $\mathbf{-0.22}$ & $2\times10^{-5}$ & yes --- essentially intact \\
+cylinder, plain        & $-0.24$ & $-0.18$ & $3\times10^{-4}$ & mostly \\
+epitope RMSD           & $-0.41$ & $-0.14$ & $0.006$ & no --- mostly between-antibody \\
+overall RMSD           & $-0.17$ & $-0.08$ & $0.13$ & no \\
+mean PAE               & $-0.02$ & $+0.07$ & $0.18$ & no (and wrong sign) \\
 \bottomrule
 \end{tabular}
 \caption{Pearson correlation of each metric with cognate log-enrichment, pooled versus
-within-antibody (fixed-effect centered). The accessibility cylinder is the only metric whose
-correlation barely changes between the two --- it is a genuine within-antibody predictor, not a
-pooling artifact --- and the native-aware carve is stronger than the plain count.}
+within-antibody (fixed-effect centered, $n=\num{377}$), with the within-antibody $p$-value. The
+accessibility cylinder is the only metric whose correlation barely changes between pooled and
+within --- a genuine within-antibody predictor, not a pooling artifact --- and the native-aware
+carve is stronger than the plain count. Per antibody, the two well-sampled sets differ: for 7ox3
+($n=\num{193}$) both epitope RMSD ($p=0.002$) and the cylinder ($p=0.0009$) are significant, while
+for 5fhx ($n=\num{149}$) only the native-aware cylinder reaches significance ($p=0.03$; epitope
+RMSD $p=0.16$) --- so the cylinder is the more consistent signal across antibodies.}
 \label{tab:metricbinding}
 \end{table}
 
