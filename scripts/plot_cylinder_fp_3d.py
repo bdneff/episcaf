@@ -72,15 +72,15 @@ def main():
     sets = {
         "scaffold":  (rp("design.pdb", ca=True), dict(s=8, c="0.82", zorder=1)),
         "antibody":  (rp("antibody_aligned.pdb"), dict(s=3, c="tab:blue", alpha=0.10, zorder=2)),
-        "epitope":   (rp("epitope_cas.pdb"), dict(s=55, c="crimson", edgecolors="k", linewidths=0.4, zorder=5)),
+        "epitope":   (rp("epitope_cas.pdb"), dict(s=34, c="crimson", edgecolors="k", linewidths=0.3, zorder=5)),
     }
     if (d / "flagged_survive.pdb").exists():
         sets["flagged, carved"] = (rp("flagged_carved.pdb"),
-                                   dict(s=60, c="0.35", marker="x", linewidths=1.8, zorder=6))
+                                   dict(s=45, c="0.3", marker="x", linewidths=1.6, zorder=6))
         sets["flagged, counts"] = (rp("flagged_survive.pdb"),
-                                   dict(s=90, c="orange", edgecolors="k", linewidths=0.6, zorder=7))
+                                   dict(s=42, c="orange", edgecolors="k", linewidths=0.5, zorder=7))
     else:
-        sets["flagged"] = (rp("flagged_cas.pdb"), dict(s=70, c="orange", edgecolors="k", linewidths=0.5, zorder=7))
+        sets["flagged"] = (rp("flagged_cas.pdb"), dict(s=42, c="orange", edgecolors="k", linewidths=0.5, zorder=7))
     fr = {k: to_frame(v[0], base, normal, p1, p2) for k, v in sets.items()}
 
     # the carve VOLUME: native-antigen heavy atoms, each a CARVE-radius disk (union = the carved zone)
