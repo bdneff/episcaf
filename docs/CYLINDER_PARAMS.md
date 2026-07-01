@@ -55,10 +55,32 @@ is the **binding** correlation on the assayed 403 designs at the chosen geometry
 §`sec:whatpredicts`) — the geometry should hold up against real binding, not just the in-silico
 clash.
 
-## Chosen values
+## Chosen values — sweep result (2026-07-01)
 
-`[to record from the sweep]` — after the sweep, write the chosen `(OFFSET, RADIUS, HEIGHT,
-exclude_dist)` here with the AUC that justifies each, update the constants in
-`native_cylinder_core.py` and `dp3_native_cylinder.py`, fix the stale `exclude_dist=4.0`
-defaults, re-run the full DP3 native-aware, and regenerate the cylinder figures/numbers in the
-manuscript.
+Sweep: 20k random sample of the DP3 RFD3 set (`metrics_native_cyl_full.csv`), 180 grid cells
+(offsets −6..4, radii 12..20, heights 30/40/50, carve 1.0), scored by AUC for clash-free
+(`af3_n_clash_res==0`; 3.8% of the sample). `results/cylinder_param_sweep.csv`.
+
+**Outcome: keep the inherited geometry `(OFFSET −4, RADIUS 16, HEIGHT 40, carve 1.0)`.** It is
+near-optimal and no change is justified:
+
+- **offset −4 is the best offset.** Higher offsets (0, +2, +4) do *not* appear in the top-12
+  cells; −2 is slightly worse than −4. So despite the 8pww false positives (which motivated the
+  sweep), raising the base *hurts* aggregate clash prediction — the 8pww over-count is a
+  **local** artifact of that epitope's geometry, not a global mis-setting.
+- **radius / height barely matter.** The whole top-12 spans AUC 0.9017–0.9004 (native-aware,
+  carve 1.0). The current `(−4,16,40)` = 0.8987; the best cell `(−4,18,40–50)` = 0.9017, a
+  **+0.003** gain that is within sample noise (754 positives) and not worth re-running the full
+  DP3 + regenerating every figure. Height (30/40/50) is essentially flat.
+- native-aware (carve 1.0) beats plain everywhere (`(−4,16,40)`: 0.899 vs 0.874), as expected.
+
+(Absolute AUC here, ~0.90, is on the *ungated* full set; the manuscript's 0.935 is on the
+well-predicted subset (epitope-chunk RMSD < 2.5) — different population, both valid. Only the
+*relative* ranking across cells is used to choose the geometry.)
+
+**Still to do (independent of the geometry decision):** fix the stale `exclude_dist=4.0` default
+in `native_cylinder_core.py` (all runs use 1.0). Optional confirmations before adopting any tweak:
+re-run the sweep on the full DP3 (drop `--limit`) and gated (epitope RMSD < 2.5) to check the
+ranking is stable, and cross-check the chosen geometry against binding on the assayed 403
+(within-antibody, §`sec:whatpredicts`). Given the gain is noise-level, the current recommendation
+is **no geometry change**.

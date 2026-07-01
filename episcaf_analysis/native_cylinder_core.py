@@ -53,7 +53,9 @@ def count_native_in_cylinder(native_ca, native_is_epitope, base, normal,
 
 
 def native_aware_scaffold_count(scaf_ca, base, normal, native_heavy_xyz,
-                                exclude_dist=4.0, radius=RADIUS, height=HEIGHT):
+                                exclude_dist=1.0, radius=RADIUS, height=HEIGHT):
+    # exclude_dist default is 1.0 -- the value every DP3 / 12-mer run actually uses and the
+    # manuscript reports (docs/CYLINDER_PARAMS.md). (Was a stale 4.0; nothing ran at 4.0.)
     """SOLUTION: scaffold CAs inside the cylinder but NOT in native-occupied space.
     Returns (native_aware_count, plain_count) so you can see what the carve-out removed.
     native_heavy_xyz: native-antigen heavy-atom coords in the AF3 frame (epitope
@@ -97,9 +99,9 @@ if __name__ == "__main__":
 
     # SOLUTION carve-out: 3 scaffold CAs inside; one sits on a native atom -> removed
     scaf = np.array([[1,1,8],[2,1,12],[0,1,20]], float)
-    native_heavy = np.array([[1,1,8.0]], float)   # within 4A of first scaffold CA only
+    native_heavy = np.array([[1,1,8.0]], float)   # on the first scaffold CA -> removed by the carve
     aware, plain = native_aware_scaffold_count(scaf, base, normal, native_heavy,
-                                               exclude_dist=4.0)
+                                               exclude_dist=1.0)
     assert plain == 3 and aware == 2, (plain, aware)
 
     # Kabsch sanity (alignment you'd use to bring native epitope onto AF3 epitope)
