@@ -114,7 +114,10 @@ reproducibility. We ship this four-window variant (\texttt{scaffoldMutX4}) only 
 perturbation carried over from DP3 --- and drop the single-window one to save space. Because island
 membership and the epitope-avoidance constraint are both read directly from the case-encoding, no
 separate residue-index map is needed; a design that cannot fit four disjoint scaffold windows is
-logged and skipped.
+logged and skipped. In the current build this affects \num{89} of \num{1140} base designs
+(\SI{7.8}{\percent}) --- scaffolds too small or too epitope-dense to place four hexamers each
+$\ge\!4$ residues from the epitope --- so the \texttt{scaffoldMutX4} arm covers \num{1051} of the
+\num{1140} bases while the island-alanine arms cover all of them.
 
 \medskip
 \noindent The controls follow the DP3 mutation scheme (reference and port in
