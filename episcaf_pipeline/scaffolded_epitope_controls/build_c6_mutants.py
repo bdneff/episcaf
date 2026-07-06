@@ -90,6 +90,7 @@ def main() -> None:
     ap.add_argument("--target-col", default="Target")
     ap.add_argument("--seq-col", default="scaffoldEPITOPE")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--drop-targets", default="", help="comma prefixes of target ids to exclude (e.g. 4xwo,7a3t)")
     ap.add_argument("--seed", type=int, default=0, help="RNG seed for scaffold 6-mer placement")
     ap.add_argument("--every-other", action="store_true", help="DP3-compat: Ala every OTHER island residue")
     ap.add_argument("--include-x1", action="store_true", help="also emit _scaffoldMutX1 (DP3-compat)")
@@ -101,6 +102,11 @@ def main() -> None:
         if c not in df.columns:
             sys.exit(f"[c6] column {c!r} not in input. have: {list(df.columns)}")
     tgt = args.target_col if args.target_col in df.columns else None
+    if args.drop_targets and tgt:
+        pref = tuple(p.strip().lower() for p in args.drop_targets.split(",") if p.strip())
+        n0 = len(df)
+        df = df[~df[tgt].astype(str).str.lower().str.startswith(pref)].copy()
+        print(f"[c6] dropped {n0-len(df)} rows with target in {pref} -> {len(df)} base designs")
     rng = random.Random(args.seed)
 
     rows, n_isl2, n_x4_fail = [], 0, 0
