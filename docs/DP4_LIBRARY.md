@@ -59,9 +59,36 @@ designed to span the metric space so these weights can be re-fit on real DP4 bin
   island1→Ala, island2→Ala (dual-island only), and `scaffoldMutX4` (a `PPDDGG` hexamer in 4 scaffold
   windows, each ≥4 residues from the epitope, seeded). **89/1,140 (7.8%)** designs can't fit 4 hexamers
   → X4 arm covers 1,051/1,140; alanine arms cover all.
+- **C4 — linear tiled-30mer controls** (`data/libraries/dp4_tiled30mers_fasta.csv`, John-approved).
+  The **full antigen sequences** of the ~60 proteins (57 mAb targets + 3 tiled antigens 1D2K/6M0J/4WAT),
+  taken from the **FASTA files (no unresolved-gap holes, unlike the PDBs)**, chopped into overlapping
+  **30-mers, step = 6**. No RFD/MPNN/AF3. Each 30-mer goes at the END of a constant construct:
+  `GSGAGSGA…GSGA` filler + `ENLYFQGA` (TEV protease site) + `[30-mer]` → a constant **103-mer** that is
+  cleaved to the 30-mer in the final step (matches the linear-epitope assays). Use the `_fasta` files,
+  not the earlier PDB-derived ones.
 - **Case-encoding** (`scripts/case_encode_selected.py`, `docs/CASE_ENCODING.md`). C1/C5 designs' epitope
   positions were recovered (token → `dp2.assay_scaffolded_epitope_id` → `scaffolded_epitope_chunk_resindices`)
   and written as case-encoded sequences (`results/dp4_C{1,5}_scaffoldEPITOPE.csv`), feeding C6 + assembly.
+
+## Assembly format (DP2 annotated, John-approved)
+
+The final synthesis file is the **8-column DP2 annotated format** — already settled and approved on C4
+(`dp4_tiled30mers_fasta.csv` is the reference instance):
+
+| column | meaning |
+|---|---|
+| `library_member` | global id, `DP4_<N>` |
+| `sequence` | the constant **103-mer** actually synthesized |
+| `category` | component type (`tiled30mer`, `scaffoldedAbEpitope`, `metricSpaceTitration`, …) |
+| `model` | `RFD` for designs, `(none)` for linear controls |
+| `designedSequence` | the payload (the 30-mer for C4; the scaffold for C1/C2/C3/C5/C6) |
+| `designedSequenceLength` | len(`designedSequence`) |
+| `design_ID` | within-category id |
+| `target` | antigen / mAb id |
+
+Per-category `sequence` construction: **linear controls (C4)** = filler + `ENLYFQGA` + 30-mer;
+**scaffolded designs (C1/C2/C3/C5/C6)** = the design's own 103-mer directly. Assembly concatenates all
+components in this schema with global `library_member` numbering.
 
 ## Budget & depth
 
@@ -70,10 +97,13 @@ DP4 = a 36k library that includes all minibinders → **~10–15k slots for Epis
 elastic buffer**, sized last once the final minibinder count is known. At top-5 the ranked counts
 shrink ~4× from the top-20 figures above.
 
-## Pending — assembly & encoding (blocked on John)
+## Pending — assembly & encoding
 
-1. **Assembly (`06_library`)** — merge the six components + attach sequences into one DP2-format file
-   with global `library_member` numbering. Needs **John's DP2 source template** (names / full-length
-   conventions) and the chosen **shipping depth**.
+Format is settled (above), so assembly is **not** blocked on a template anymore — only on John's okay
+on the components and the chosen depth.
+
+1. **Assembly (`06_library`)** — build each component's rows in the 8-column DP2 schema (C4 already is),
+   concatenate, assign global `library_member` numbering. Needs: John's **okay on components/counts**
+   and the **shipping depth** (top-*n*, sized from the budget). Then it's a mechanical build.
 2. **Oligo encoding** — LadnerLab `oligo_encoding` + DP3 codon weights
    (`episcaf_pipeline/oligo_encoding/`), then the order-file step (confirm with Erin).
