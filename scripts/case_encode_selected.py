@@ -49,7 +49,7 @@ def case_encode(seq: str, epi_positions, offset: int = 0) -> str:
 
 
 def read_design_seq(pdb: str):
-    st = CM.read_structure(pdb)
+    st = CM.read_structure(Path(pdb))          # CM.read_structure needs a Path (uses .suffix)
     return CM.chain_seq(CM.get_chain(st, "A"))
 
 
