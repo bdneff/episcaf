@@ -11,19 +11,19 @@ one ordered synthesis file (Section~\ref{sec:assembly}).
 \toprule
 component & what it is & constructs & status \\
 \midrule
-C1 known antibody, whole epitope & full-epitope scaffolds, top-5/epitope & TBD & selection pending \\
-C2 known antibody, single island & 87 island contigs, each island alone & $\sim$435 & generated; selection pending \\
-C3 scaffolds, polyclonal tiling & top-5/window, no antibody & $\sim$2181 & scored, top-5 selected \\
+C1 known antibody, whole epitope & full-epitope scaffolds, top-$n$/epitope & depth-set & ranked \\
+C2 known antibody, single island & 87 island contigs, each island alone & depth-set & ranked, per island \\
+C3 scaffolds, polyclonal tiling & top-$n$/window, no antibody & depth-set & selected, ungated \\
 C4 linear tiled-30mer controls & bare tiled peptides & 2174 & built \\
-C5 metric-space sampling & designs spread across metrics & TBD & planned \\
-C6 island alanine mutants & island1/2 $\to$ Ala, best-20/mAb & $\sim$2000 & spec; to build \\
+C5 metric-space sampling & designs spread across metrics & \num{3000} & sampled \\
+C6 scaffolded-epitope controls & island$\to$Ala $+$ scaffold-disruption & $\sim$3k & code ported \\
 \bottomrule
 \end{tabular}
 \caption{The DP4 components assembled here. C1 and C2 are the two halves of the islands
 experiment (whole epitope vs.\ one island at a time); C6 tests the same question by mutation.
-Counts are current best estimates; C1/C2 settle once selection is finalized, C5 once a peptide
-budget is set. C3 is the 951+450+780 top-5 designs of Table~\ref{tab:tilecount}; C4 is the
-\num{2174} tiles of Section~\ref{sec:tiling}.}
+C1--C3 are selected (ranked on the composite, Section~\ref{sec:selection}); the shipped depth
+(top-$n$ per group) is set at assembly from the peptide budget, so their final counts settle then.
+C5 is set at \num{3000} designs; C4 is the \num{2174} tiles of Section~\ref{sec:tiling}.}
 \label{tab:dp4components}
 \end{table}
 
@@ -82,10 +82,13 @@ RMSD, accessibility, and PAE each take a wide range of values. Here accessibilit
 no-antibody setting, so we sample along the same surrogate we will have to rely on there. Reading
 binding off this spread is what lets us learn which metrics actually predict enrichment and
 finally fit the composite's weights (Q2, Section~\ref{sec:open}), rather than re-deriving the
-filters we started from. The sampling design (a farthest-point spread over the standardized
-metrics) is worked out; the size is set by the peptide budget, so the count is open.
+filters we started from. The sampling is implemented (\texttt{scripts/stage06\_sample\_c5.py}): a
+farthest-point (max--min) spread over the four standardized scoring axes --- epitope RMSD, epitope
+PAE, overall RMSD, and the native-aware cylinder --- sampled per mAb over the \num{57} assayable
+epitopes. We ship \num{3000} designs (about \num{53} per mAb); the sample spans \SIrange{89}{97}{\percent}
+of each axis's full range, i.e.\ deliberately including the low-quality tail the filters reject.
 
-\subsection{C6 --- island alanine mutants}\label{sec:dp4c6}
+\subsection{C6 --- scaffolded-epitope controls}\label{sec:dp4c6}
 For the best \num{20} designs of each of the \num{57} mAbs we alanine-scan the epitope islands:
 every residue of island~1 mutated to alanine, and (where the epitope has a second island) every
 residue of island~2. The unmutated designs are not part of this component --- they are already
@@ -94,24 +97,30 @@ strips its side-chain chemistry while leaving the fold intact, so if binding dro
 alanine-substituted the antibody requires island~1, and likewise for island~2. This is the
 mutation-based read of the islands question (Q1), complementary to C2's presentation-based read
 (each island scaffolded alone): C2 asks whether one island \emph{suffices}, C6 asks whether each
-island is \emph{necessary}. At \num{20} designs $\times$ \num{57} mAbs, with one island-mutant for
-single-island epitopes and two for multi-island ones, this is on the order of \num{2000}
-constructs.
+island is \emph{necessary}. The mutations are string substitutions on the existing designs'
+case-encoded sequence (epitope residues uppercase, scaffold lowercase, each contiguous uppercase run
+an island), implemented in \texttt{episcaf\_pipeline/scaffolded\_epitope\_controls/} (a port of the
+DP3 scheme). Over the best designs of each of the \num{57} mAbs, with one island-mutant for
+single-island epitopes and two for multi-island ones, plus the scaffold-disruption variant below,
+this is on the order of \num{3000} constructs at the current selection depth.
 
-\paragraph{Scaffold-mutation control (under discussion).} A companion negative control would mutate
-four 6-residue windows of the \emph{scaffold} (not the epitope) in each design: if binding is
-epitope-driven, perturbing the scaffold should leave it intact, so a design that survives this but
-collapses when an epitope island is alanine-substituted is behaving exactly as intended. The open question is how the four
-windows are chosen. Purely random placement is risky --- a window landing on fold-critical
-residues could unfold the protein and lose epitope presentation, which would confound the control
-rather than serve it. We would instead fix the windows \emph{deterministically} and
-\emph{epitope-avoiding} (surface positions away from the core), so the perturbation tests scaffold
-sequence without destabilizing the fold, and so the construct set is reproducible. The mutant
-residue (alanine, or a fold-tolerant choice) is likewise to be decided.
+\paragraph{Scaffold-disruption control.} A companion negative control mutates the \emph{scaffold}
+(not the epitope) in each design: if binding is epitope-driven, perturbing the scaffold should leave
+it intact, so a design that survives this but collapses under an island alanine-substitution is
+behaving as intended. We insert a fixed structure-disrupting hexamer (\texttt{PPDDGG}) into four
+lowercase (scaffold) windows, each required to lie at least four residues from any epitope position,
+so the epitope is untouched and the perturbation is confined to the scaffold; placement is seeded for
+reproducibility. We ship this four-window variant (\texttt{scaffoldMutX4}) only --- the stronger
+perturbation carried over from DP3 --- and drop the single-window one to save space. Because island
+membership and the epitope-avoidance constraint are both read directly from the case-encoding, no
+separate residue-index map is needed; a design that cannot fit four disjoint scaffold windows is
+logged and skipped.
 
 \medskip
-\noindent\emph{Still to confirm for C6:} that ``best 20'' is the top 20 per mAb by the composite,
-and the scaffold-control specifics above.
+\noindent The controls follow the DP3 mutation scheme (reference and port in
+\texttt{episcaf\_pipeline/scaffolded\_epitope\_controls/}); the DP4 changes are all-residue island
+alanine (not every other) and the four-window scaffold variant only. The base set is the same top-$n$
+per mAb used for C1.
 
 \subsection{Assembly into one synthesis file}\label{sec:assembly}
 All six components share the constant 103-mer construct and the eight-column DP2 annotated format

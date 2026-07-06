@@ -28,11 +28,18 @@ native-aware cylinder surrogate stands in). PI: John Altin.
 - **Keep the manuscript current.** When a result changes, update `manuscript/` the same
   session: the section text, the figure, and the command that produced it. The
   manuscript is the living record, not an afterthought.
+- **Check prior art before reconstructing.** Before reverse-engineering a mechanism from
+  raw data, look for an existing script, a reference implementation, or the relevant
+  `manuscript/sections/*.tex` — especially for anything carried over from DP3. Reach for
+  the existing method before inventing one; a long data hunt is a signal the premise is wrong.
 
 ## Where things live
 - Code: `episcaf_pipeline/` (generation, untouched), `episcaf_analysis/` (metrics,
   scoring, viz), `scripts/` (pipeline steps). Data paths live in `configs/paths.py` only.
-- Data & big outputs: `/tgen_labs` (cluster), never in git (`.gitignore`).
+- Data & big outputs: `/tgen_labs` (cluster, **persistent**), never in git (`.gitignore`).
+  Durable cluster workspace: `$WS=/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff`
+  (datasets, runs). `/scratch` is **ephemeral** — keep long-lived artifacts under `$WS`, not
+  `/scratch`. Full map in memory `filesystem-map`.
 - Small derived results that figures depend on: `results/` (tracked).
 - Living manuscript: `manuscript/` (LaTeX → `manuscript/main.pdf`).
 - Reference docs: `docs/REORG.md`, `docs/MIGRATION.md`, `docs/WORKFLOW.md`.
