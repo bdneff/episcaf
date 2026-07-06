@@ -11,7 +11,7 @@
 #     mkdir -p logs && sbatch scripts/case_encode_selected.sbatch
 # Walltime sized ~generously (reading ~4.2k small PDBs + one dp2 load ~ 15 min); see memory
 # cluster-job-walltime. Output feeds build_c6_mutants.py and library assembly.
-set -euo pipefail
+set -eo pipefail        # NOT -u: the cluster's /etc/bashrc uses an unbound var (BASHRCSOURCED)
 source ~/.bashrc
 conda activate ~/rfd3/env/rfd3_py312
 
