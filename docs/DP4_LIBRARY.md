@@ -96,6 +96,49 @@ Per-category `sequence` construction: **linear controls (C4)** = filler + `ENLYF
 **scaffolded designs (C1/C2/C3/C5/C6)** = the design's own 103-mer directly. Assembly concatenates all
 components in this schema with global `library_member` numbering.
 
+## Reproduce (exact commands)
+
+Every deliverable is regenerable by a named script; the numbers reported (counts, coverage, the 89 X4
+skips) are printed by these scripts, not hand-computed. Metric CSVs live in the local sibling data dirs
+(`$D = /Users/bneff/Desktop/projects/episcaf`, see `filesystem-map`); C2 + case-encoding run on Gemini.
+
+```bash
+# C1 (local)
+python scripts/stage06_select.py --preset antibody \
+  --metrics-csv $D/known_antigen/analysis/data/metrics_native_cyl_full.csv \
+  --group id --topk 20 --out results/dp4_C1_whole_epitope_ranked.csv
+
+# C2 (Gemini, at the dual-island run's metrics)
+python scripts/stage06_select.py --preset antibody \
+  --metrics-csv runs/dual_island_rfd3/05_analysis/metrics_dual_island.parquet \
+  --group id,island_index --topk 20 --out results/dp4_C2_single_island_ranked.csv
+
+# C3 (local)
+python scripts/stage06_select.py --preset twelvemer \
+  --metrics-csv $D/12mer_tiling/analysis/data/metrics_12mer.csv \
+  --group antigen,id --topk 20 --out results/dp4_C3_12mer_ranked.csv
+
+# C4 (local; defaults -> data/libraries/dp4_tiled30mers_fasta.csv)
+python -m episcaf_pipeline.build_dp4_tiled30mers_fasta
+
+# C5 (local; deterministic FPS)
+python scripts/stage06_sample_c5.py \
+  --metrics-csv $D/known_antigen/analysis/data/metrics_native_cyl_full.csv \
+  --total 3000 --out results/dp4_C5_titration.csv
+
+# Case-encode C1 + C5 (Gemini SLURM) -> results/dp4_C{1,5}_scaffoldEPITOPE.csv
+sbatch scripts/case_encode_selected.sbatch
+
+# C6 (local; seeded, reproducible)
+python episcaf_pipeline/scaffolded_epitope_controls/build_c6_mutants.py \
+  --input results/dp4_C1_scaffoldEPITOPE.csv \
+  --id-col token --target-col target --seq-col scaffoldEPITOPE \
+  --drop-targets 4xwo,7a3t --out results/dp4_C6_controls.csv
+```
+
+Scorer weights/transforms are config, not magic numbers: `episcaf_analysis/presets.py` (provenance
+above). C5 and C6 are deterministic (FPS is seed-free deterministic; C6 seeds its RNG).
+
 ## Budget & depth
 
 DP4 = a 36k library that includes all minibinders → **~10–15k slots for Episcaf designs**

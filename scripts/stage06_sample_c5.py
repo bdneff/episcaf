@@ -18,7 +18,7 @@ Pool = the known-Ab whole-epitope designs (same table as C1), over the 57 assaya
 
 Usage:
   python scripts/stage06_sample_c5.py \
-      --metrics-csv known_antigen/analysis/full_run/metrics_native_cyl_full.csv \
+      --metrics-csv known_antigen/analysis/data/metrics_native_cyl_full.csv \
       --total 3000 --out results/dp4_C5_titration.csv
 """
 from __future__ import annotations
