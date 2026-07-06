@@ -19,6 +19,11 @@ WS=/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff
 cd /scratch/bneff/episcaf
 mkdir -p logs results
 
+# dp2 that carries OUR rerun tokens (assay_scaffolded_epitope_id). Try the $WS copy first; if the log
+# reports 0 token coverage, override: DP2=/home/bneff/rfd3/repo_refactored/datasets/dp2.parquet (run's dp2).
+DP2="${DP2:-$WS/datasets/dp2.parquet}"
+echo "DP2: $DP2"
+
 # The selections' mpnn_pdb paths point to the OLD repo_refactored home dir (gone); the files live in
 # the persistent workspace. Remap to $WS by default; override with REMAP="" to disable.
 if [ -z "${REMAP:-}" ]; then
@@ -33,8 +38,8 @@ for pair in \
   echo "=== case-encoding $sel -> $out ==="
   python3 scripts/case_encode_selected.py \
       --selection "$sel" \
-      --dp2 "$WS/datasets/dp2.parquet" \
-      --id-col id --pdb-col mpnn_pdb --target-col id \
+      --dp2 "$DP2" \
+      --token-col token --pdb-col mpnn_pdb --target-col id \
       $REMAP \
       --out "$out"
 done

@@ -2,29 +2,23 @@
 """
 case_encode_selected.py -- rebuild the case-encoded `scaffoldEPITOPE` for selected designs.
 
-Heals the lost token->design mapping (see memory dp4-selection-state): our selections are keyed by a
-design `token`, but the epitope positions live in dp2 keyed by (id, rfd_id, mpnn_id). The clean key
-that bridges them is the design's OWN SEQUENCE (MPNN-unique). So, per selected design:
-  1. read its chain-A sequence from the design PDB (`mpnn_pdb` in the selection table);
-  2. match that sequence to its dp2 row (within the same `id`);
-  3. uppercase the epitope CHUNK-span positions (`scaffolded_epitope_chunk_resindices`, contiguous per
-     island) and lowercase the rest -> the case-encoded string John's controls + assembly need
-     (UPPERCASE = epitope, lowercase = scaffold; each contiguous uppercase run = one island).
+Full mechanism + why-it-works in docs/CASE_ENCODING.md. In short: we reran RFdiffusion3 on Lawson's
+contigs, so each design's epitope span is a contig property. The metrics driver
+(`compute_metrics.py::run_metrics`, ~line 700-712) joins each design to `dp2` by
+`token == dp2.assay_scaffolded_epitope_id` and takes the epitope positions from
+`dp2.scaffolded_epitope_chunk_resindices` (0-based indices into the design chain, contiguous per
+island). We do exactly that here, then uppercase those positions in the design's own chain-A sequence
+(read from its PDB) -> the case-encoded string (UPPERCASE = epitope, lowercase = scaffold; each
+contiguous uppercase run = one island) that C6 (`build_c6_mutants.py`) and assembly consume.
 
-Validated basis (local, on dp2 ground truth): recorded epitope positions spell the native epitope AA
-exactly (400/400), so dp2's positions are trustworthy; the epitope is NOT contiguous (scattered
-contacts) so we use the chunk SPANS, which are contiguous and give clean per-island uppercase runs.
+IMPORTANT: join by TOKEN, not by sequence -- `dp2.scaffolded_epitope_seq` is LAWSON's sequence, not
+ours (different MPNN run); only the contig-determined POSITIONS transfer. And use the dp2 that carries
+OUR tokens (repo_refactored/datasets or $WS/datasets), not the local known_antigen dp2 (only ~149 match).
 
-Runs on Gemini (needs the design PDBs). dp2 at $WS/datasets/dp2.parquet. Self-diagnosing: reports
-matched / unmatched / ambiguous so a coverage gap is loud, not silent.
-
-Usage (see case_encode_selected.sbatch):
-  python scripts/case_encode_selected.py \
-      --selection results/dp4_C1_whole_epitope_ranked.top20.csv \
-      --dp2 $WS/datasets/dp2.parquet --out results/dp4_C1_scaffoldEPITOPE.csv
+Runs on Gemini (needs the design PDBs). Self-diagnosing: prints token coverage + failure buckets.
 """
 from __future__ import annotations
-import argparse, ast, sys
+import argparse, ast, re, sys
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -35,20 +29,26 @@ import compute_metrics as CM   # noqa: E402  (read_structure, get_chain, chain_s
 
 
 def parse_list(x):
-    return list(x) if isinstance(x, (list, tuple, np.ndarray)) else ast.literal_eval(x)
+    if isinstance(x, (list, tuple, np.ndarray)):
+        return [int(v) for v in x]
+    if x is None or (isinstance(x, float) and np.isnan(x)):
+        return []
+    return [int(v) for v in ast.literal_eval(x)] if isinstance(x, str) else list(x)
 
 
-def case_encode(seq: str, epi_positions, offset: int = 0) -> str:
-    """Lowercase everything, uppercase the epitope chunk-span positions (shifted by `offset`)."""
+def case_encode(seq: str, epi_positions) -> str:
     chars = [c.lower() for c in seq]
     for p in epi_positions:
-        q = p + offset
-        if 0 <= q < len(chars):
-            chars[q] = chars[q].upper()
+        if 0 <= p < len(chars):
+            chars[p] = chars[p].upper()
     return "".join(chars)
 
 
-def read_design_seq(pdb: str):
+def n_islands(se: str) -> int:
+    return len(re.findall(r"[A-Z]+", se))
+
+
+def read_design_seq(pdb: str) -> str:
     st = CM.read_structure(Path(pdb))          # CM.read_structure needs a Path (uses .suffix)
     return CM.chain_seq(CM.get_chain(st, "A"))
 
@@ -56,67 +56,64 @@ def read_design_seq(pdb: str):
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--selection", required=True, help="CSV of selected designs (needs id + mpnn_pdb)")
-    ap.add_argument("--dp2", required=True, help="dp2.parquet (native + scaffolded epitope positions)")
-    ap.add_argument("--id-col", default="id")
+    ap.add_argument("--selection", required=True, help="CSV of selected designs (needs token + mpnn_pdb)")
+    ap.add_argument("--dp2", required=True, help="dp2.parquet that carries OUR tokens (assay_scaffolded_epitope_id)")
+    ap.add_argument("--token-col", default="token")
     ap.add_argument("--pdb-col", default="mpnn_pdb")
-    ap.add_argument("--target-col", default="id", help="column to carry as 'target'")
+    ap.add_argument("--target-col", default="id")
     ap.add_argument("--pdb-remap", default="", help="'FROM:TO' prefix swap if PDB paths are stale")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
 
     sel = pd.read_csv(args.selection, low_memory=False)
     dp2 = pd.read_parquet(args.dp2)
-    # per-id lookup: exact design sequence -> chunk-span positions
-    by_id: dict = {}
-    for idv, g in dp2.dropna(subset=["scaffolded_epitope_seq"]).groupby(args.id_col):
-        d = {}
-        for _, r in g.iterrows():
-            d[r["scaffolded_epitope_seq"]] = parse_list(r["scaffolded_epitope_chunk_resindices"])
-        by_id[str(idv)] = d
-    remap = args.pdb_remap.split(":", 1) if args.pdb_remap else None
+    dp2["assay_scaffolded_epitope_id"] = dp2["assay_scaffolded_epitope_id"].astype(str).str.lower()
+    # token -> epitope chunk-span positions (contig-determined; same for our rerun as Lawson's)
+    by_token = {}
+    for tok, chunks in zip(dp2["assay_scaffolded_epitope_id"], dp2["scaffolded_epitope_chunk_resindices"]):
+        if tok not in by_token:
+            by_token[tok] = parse_list(chunks)
 
-    rows, n_ok, n_nopdb, n_nomatch, n_offset = [], 0, 0, 0, 0
+    sel_tokens = sel[args.token_col].astype(str).str.lower()
+    cover = sel_tokens.isin(by_token).sum()
+    print(f"[case-encode] dp2 tokens cover {cover}/{len(sel_tokens)} selected tokens "
+          f"({100*cover/max(len(sel_tokens),1):.0f}%)")
+    if cover == 0:
+        print("[case-encode] WARNING: 0 token overlap -- wrong dp2 (Lawson-token version?). "
+              "Point --dp2 at the run's dp2 (repo_refactored/datasets or $WS/datasets).")
+
+    remap = args.pdb_remap.split(":", 1) if args.pdb_remap else None
+    rows, n_ok, n_notok, n_nopdb, n_oob = [], 0, 0, 0, 0
     for r in sel.itertuples(index=False):
-        idv = str(getattr(r, args.id_col)); pdb = str(getattr(r, args.pdb_col))
+        tok = str(getattr(r, args.token_col)).lower()
+        pos = by_token.get(tok)
+        if pos is None:
+            n_notok += 1; rows.append(dict(token=tok, status="no_dp2_token", scaffoldEPITOPE="")); continue
+        pdb = str(getattr(r, args.pdb_col))
         if remap:
             pdb = pdb.replace(remap[0], remap[1])
         try:
             seq = read_design_seq(pdb)
         except Exception as e:  # noqa: BLE001
-            n_nopdb += 1; rows.append(dict(id=idv, status=f"pdb_fail:{e}", scaffoldEPITOPE="")); continue
-        lut = by_id.get(idv, {})
-        pos = lut.get(seq)
-        offset = 0
-        if pos is None:  # try: a dp2 seq is a substring of ours (flank offset), or vice versa
-            for dseq, dpos in lut.items():
-                if dseq in seq:
-                    pos, offset = dpos, seq.index(dseq); break
-                if seq in dseq:
-                    pos, offset = [p - dseq.index(seq) for p in dpos], 0; break
-        if pos is None:
-            n_nomatch += 1
-            rows.append(dict(id=idv, status="no_dp2_seq_match", scaffoldEPITOPE="")); continue
-        if offset: n_offset += 1
-        se = case_encode(seq, pos, offset)
+            n_nopdb += 1; rows.append(dict(token=tok, status=f"pdb_fail:{e}", scaffoldEPITOPE="")); continue
+        if pos and max(pos) >= len(seq):
+            n_oob += 1
+            rows.append(dict(token=tok, status=f"pos_oob(max={max(pos)},len={len(seq)})", scaffoldEPITOPE=""))
+            continue
+        se = case_encode(seq, pos)
         n_ok += 1
-        rows.append(dict(id=idv, target=getattr(r, args.target_col), design_seq=seq,
-                         scaffoldEPITOPE=se, n_islands=se_islands(se), status="ok"))
+        rows.append(dict(token=tok, target=getattr(r, args.target_col), design_seq=seq,
+                         scaffoldEPITOPE=se, n_islands=n_islands(se), status="ok"))
 
     out = pd.DataFrame(rows)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out, index=False)
     print(f"[case-encode] {len(sel)} selected -> {n_ok} encoded | "
-          f"no-pdb {n_nopdb} | no-dp2-match {n_nomatch} | flank-offset {n_offset}")
+          f"no-token {n_notok} | no-pdb {n_nopdb} | pos-oob {n_oob}")
     if n_ok:
-        isl = out[out.status == "ok"]["n_islands"].value_counts().to_dict()
-        print(f"[case-encode] island-count distribution among encoded: {isl}")
+        print(f"[case-encode] island-count distribution among encoded: "
+              f"{out[out.status=='ok']['n_islands'].value_counts().to_dict()}")
     print(f"[case-encode] wrote {args.out}")
-
-
-def se_islands(se: str) -> int:
-    import re
-    return len(re.findall(r"[A-Z]+", se))
 
 
 if __name__ == "__main__":
