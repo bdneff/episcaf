@@ -19,10 +19,12 @@ WS=/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff
 cd /scratch/bneff/episcaf
 mkdir -p logs results
 
-# If the mpnn_pdb paths in the selection are stale (older repo_refactored home path), enable a
-# prefix remap to the persistent workspace copy, e.g.:
-#   REMAP="--pdb-remap /home/bneff/rfd3/repo_refactored/runs/run_rfd3_mpnn:$WS/runs/run_rfd3_mpnn"
-REMAP="${REMAP:-}"
+# The selections' mpnn_pdb paths point to the OLD repo_refactored home dir (gone); the files live in
+# the persistent workspace. Remap to $WS by default; override with REMAP="" to disable.
+if [ -z "${REMAP:-}" ]; then
+  REMAP="--pdb-remap /home/bneff/rfd3/repo_refactored/runs/run_rfd3_mpnn:$WS/runs/run_rfd3_mpnn"
+fi
+echo "REMAP: $REMAP"
 
 for pair in \
   "results/dp4_C1_whole_epitope_ranked.top20.csv:results/dp4_C1_scaffoldEPITOPE.csv" \
