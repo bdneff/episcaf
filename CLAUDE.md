@@ -32,6 +32,10 @@ native-aware cylinder surrogate stands in). PI: John Altin.
   raw data, look for an existing script, a reference implementation, or the relevant
   `manuscript/sections/*.tex` — especially for anything carried over from DP3. Reach for
   the existing method before inventing one; a long data hunt is a signal the premise is wrong.
+- **On resume, re-read the record first.** When picking up after a break or context reset,
+  re-read the relevant `manuscript/sections/*.tex` and the memory/`*.md` files before acting.
+  The answer to "how does this work / where does this live" is usually already written down —
+  the manuscript is the living record; use it to get up to speed, not memory or guesswork.
 
 ## Where things live
 - Code: `episcaf_pipeline/` (generation, untouched), `episcaf_analysis/` (metrics,
