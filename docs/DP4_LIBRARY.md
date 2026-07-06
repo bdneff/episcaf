@@ -4,19 +4,25 @@ Living reference for the DP4 PepSeq library: what each component is, how designs
 where each deliverable lives. Manuscript counterpart: `manuscript/sections/dp4_library.tex`
 (`sec:dp4`). Related: `docs/CASE_ENCODING.md`, `docs/CYLINDER_PARAMS.md`.
 
-Status: all six components selected/built. Counts below are at **top-20 per group**; the final
-shipped depth (top-*n*) is set at assembly from the peptide budget (see *Budget & depth*).
+Status: all six components selected/built. **Only the ranked components (C1/C2/C3, marked †) have a
+selectable depth** — their counts are shown at **top-20 per group** and scale with the chosen shipping
+depth (top-*n*, set at assembly from the budget). C4/C5 are fixed-size; C6 (‡) is derived from C1's
+top-20 base, so it scales with C1's depth.
 
 ## Components
 
-| Comp | Component | What it is | Constructs (top-20) | Deliverable | Status |
-|---|---|---|---|---|---|
-| **C1** | known-Ab, whole epitope | best-*n* scaffolds per mAb (comparator) | 1,180 | `results/dp4_C1_whole_epitope_ranked.top20.csv` | ranked |
-| **C2** | known-Ab, single island | best-*n* per (mAb, island); 87 island contigs | 1,740 | `results/dp4_C2_single_island_ranked.top20.csv` | ranked |
-| **C3** | polyclonal 12-mer tiles | best-*n* per window, no antibody | 8,780 | `results/dp4_C3_12mer_ranked.top20.csv` | ranked |
-| **C4** | linear 30-mer controls | bare tiled peptides (no scaffold) | 2,174 | `data/libraries/dp4_tiled30mers*.csv` | built |
-| **C5** | metric-space titration | designs spread across metrics (calibration) | 3,000 | `results/dp4_C5_titration.csv` | sampled |
-| **C6** | scaffolded-epitope controls | island→Ala + scaffold-disruption | 3,071 | `results/dp4_C6_controls.csv` | built |
+| Comp | Component | What it is | Selection | Constructs | Deliverable | Status |
+|---|---|---|---|---|---|---|
+| **C1** | known-Ab, whole epitope | best-*n* scaffolds per mAb (comparator) | ranked, top-*n* per mAb | 1,180 † | `results/dp4_C1_whole_epitope_ranked.top20.csv` | ranked |
+| **C2** | known-Ab, single island | best-*n* per (mAb, island); 87 island contigs | ranked, top-*n* per island | 1,740 † | `results/dp4_C2_single_island_ranked.top20.csv` | ranked |
+| **C3** | polyclonal 12-mer tiles | best-*n* per window, no antibody | ranked, top-*n* per window | 8,780 † | `results/dp4_C3_12mer_ranked.top20.csv` | ranked |
+| **C4** | linear 30-mer controls | bare tiled peptides (no scaffold) | exhaustive tiling (fixed) | 2,174 | `data/libraries/dp4_tiled30mers_fasta.csv` | built |
+| **C5** | metric-space titration | designs spread across metrics (calibration) | farthest-point sample (fixed) | 3,000 | `results/dp4_C5_titration.csv` | sampled |
+| **C6** | scaffolded-epitope controls | island→Ala + scaffold-disruption | all C1 top-*n* base × flavors | 3,071 ‡ | `results/dp4_C6_controls.csv` | built |
+
+† **Ranked selection** — count shown at **top-20 per group**; scales with the shipped depth (top-*n*,
+elastic — see *Budget & depth*). At top-5 these shrink ~4×.
+‡ **Derived** from C1's top-20 base, so scales with C1's depth (island1→A + island2→A dual-only + scaffoldMutX4).
 
 Full composite rankings (`results/dp4_*_ranked.csv`) are regenerable and gitignored; only the top-*n*
 cuts + case-encoded sequences are tracked.
