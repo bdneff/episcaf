@@ -126,8 +126,21 @@ per mAb used for C1.
 All six components share the constant 103-mer construct and the eight-column DP2 annotated format
 (Section~\ref{sec:tiling}), so the final step concatenates them into a single ordered library file
 with global \texttt{library\_member} numbering --- a named, documented pipeline stage
-(\texttt{06\_library}) so the shipped file is regenerable from its components. That assembly is the
-last thing to run once C1/C2 selection is locked and C5's budget is set.
+(\texttt{06\_library}) so the shipped file is regenerable from its components. Selection is done
+(C1--C3 ranked, C5 sampled at \num{3000}); assembly runs once the shipping depth is chosen and the
+per-design sequences are recovered, as follows.
+
+\paragraph{Recovering the design sequences (case encoding).} Assembly and the C6 controls both need,
+for each selected design, its full amino-acid sequence with the epitope residues marked --- stored as
+a \emph{case-encoded} string (epitope uppercase, scaffold lowercase, so each contiguous uppercase run
+is one island). This has to be rebuilt: our selection tables identify designs by a hash token, but the
+epitope-position annotation lives in the design table \texttt{dp2} under a different key that was not
+carried forward, so the token$\to$design mapping is missing for all but the assayed subset. We recover
+it through the one key that always survives --- the design's own sequence: for each selected design we
+read its chain-A sequence from its structure, match it to its \texttt{dp2} row, and uppercase the
+epitope chunk-span positions (\texttt{scripts/case\_encode\_selected.py}, run once over the selected
+set on the cluster). This yields the case-encoded sequences both C6 and assembly consume, and writes
+the mapping back out so it need not be rebuilt again.
 
 The assembled peptide library is then encoded to DNA oligos for synthesis with the LadnerLab
 \texttt{oligo\_encoding} tools (\url{https://github.com/LadnerLab/Library-Design}), using the same
