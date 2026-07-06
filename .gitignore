@@ -72,3 +72,6 @@ tmp/
 # macOS
 .DS_Store
 scratch_figs/
+
+# full composite rankings are large + regenerable by scripts/stage06_select.py; keep only top-N cuts
+results/dp4_*_ranked.csv
