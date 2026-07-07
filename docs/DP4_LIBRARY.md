@@ -85,7 +85,7 @@ is exactly the `scaffoldEPITOPE` column we already produce. Status by component:
 - **C2** PENDING (Gemini) — `scripts/case_encode_c2.py` + `.sbatch`: reads af3 sequence, island span from local `n_flank`/`island_size`.
 - **C4** carries its 30-mer as `designedSequence` already.
 
-In the assembled DP2 file this casing is carried as the
+In the assembled library file this casing is carried as the
 `designedSequence` column, so the visualization casing is carried through to the assembled output.
 
 ## Component notes
@@ -111,9 +111,11 @@ In the assembled DP2 file this casing is carried as the
   positions were recovered (token → `dp2.assay_scaffolded_epitope_id` → `scaffolded_epitope_chunk_resindices`)
   and written as case-encoded sequences (`results/dp4_C{1,5}_scaffoldEPITOPE.csv`), feeding C6 + assembly.
 
-## Assembly format (DP2 annotated)
+## Assembly format (the 8-column annotated format)
 
-The final synthesis file is the **8-column DP2 annotated format** — already settled and validated on C4
+The final synthesis file is the **8-column annotated format** (the column schema of the earlier PepSeq
+library annotation; reference file `episcaf_pipeline/scaffolded_epitope_controls/reference_dp3/DP3_annot.csv`)
+— already settled and validated on C4
 (`dp4_tiled30mers_fasta.csv` is the reference instance):
 
 | column | meaning |
@@ -213,7 +215,7 @@ shrink ~4× from the top-20 figures above.
 Format is settled (above), so assembly is **not** blocked on a template anymore — only on sign-off
 on the components and the chosen depth.
 
-1. **Assembly (`06_library`)** — build each component's rows in the 8-column DP2 schema (C4 already is),
+1. **Assembly (`06_library`)** — build each component's rows in the 8-column annotated schema (C4 already is),
    concatenate, assign global `library_member` numbering. Needs: **sign-off on components/counts**
    and the **shipping depth** (top-*n*, sized from the budget). Then it's a mechanical build.
 2. **Oligo encoding** — LadnerLab `oligo_encoding` + DP3 codon weights

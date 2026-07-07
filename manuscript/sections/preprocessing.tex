@@ -21,7 +21,7 @@ bare tile at the end, which is what the assay reads.
 The tiling step is a single utility (\texttt{episcaf\_pipeline/tile\_fasta.py}) so we can
 point it at any target. It takes a sequence source (a FASTA, or the \texttt{antigen\_seq}
 column of a ledger such as \texttt{dp2.parquet}), a window length, and a step, and writes the
-assay library in the DP2 annotated format (\texttt{library\_member}, \texttt{sequence},
+assay library in the 8-column annotated format used by the DP2 PepSeq library (\texttt{library\_member}, \texttt{sequence},
 \texttt{category}, \texttt{model}, \texttt{designedSequence}, \texttt{designedSequenceLength},
 \texttt{design\_ID}, \texttt{target}). Windows are placed at the chosen step; when the last
 window stops short of the C-terminus, we add one final window so the C-terminal residues are

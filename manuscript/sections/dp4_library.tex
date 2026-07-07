@@ -3,7 +3,7 @@ This section inventories the components we contribute to the DP4 assay run and w
 for. DP4 as a whole is the larger fourth PepSeq library; the pieces assembled here are the
 designed and control constructs this project adds to it. Each component targets one of the three
 questions from Section~\ref{sec:intro}, and all of them are emitted in the same constant-length
-construct (Section~\ref{sec:tiling}) and the same DP2 annotated format, so they can be merged into
+construct (Section~\ref{sec:tiling}) and the same 8-column annotated format, so they can be merged into
 one ordered synthesis file (Section~\ref{sec:assembly}).
 
 \begin{table}[h]\centering\small
@@ -139,7 +139,7 @@ entered the DP3 set through the inclusion criteria inadvertently. The polyclonal
 different antigens and is unaffected.
 
 \subsection{Assembly into one synthesis file}\label{sec:assembly}
-All six components share the constant 103-mer construct and the eight-column DP2 annotated format
+All six components share the constant 103-mer construct and the eight-column annotated format
 (Section~\ref{sec:tiling}), so the final step concatenates them into a single ordered library file
 with global \texttt{library\_member} numbering --- a named, documented pipeline stage
 (\texttt{06\_library}) so the shipped file is regenerable from its components. Selection is done
@@ -163,4 +163,4 @@ The assembled peptide library is then encoded to DNA oligos for synthesis with t
 updated codon-weight table as DP3
 (\texttt{/tgen\_labs/Immunology/ekelley/DP3\_PepSeq\_Library\_Design/new\_codon\_weights/}). The
 encoding is the final synthesis-prep step; it is external tooling, so the pipeline ends at the
-DP2-format peptide file and hands off to it.
+annotated peptide file and hands off to it.

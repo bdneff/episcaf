@@ -101,7 +101,7 @@ python -m episcaf_analysis.score --preset twelvemer|antibody \
     --metrics-csv <metrics.csv> --out <top5.csv>
 
 # 8. ASSEMBLE  [local]  — concatenate the DP4 components (C1–C6) into one ordered
-#                         DP2-format peptide file + the name,seq export   [06_library: to build]
+#                         8-column annotated peptide file + the name,seq export   [06_library: to build]
 
 # 9. ENCODE  [cluster]  — peptide → DNA oligo (LadnerLab tool, DP3 codon weights)
 sbatch episcaf_pipeline/oligo_encoding/encode_step1_generate.sbatch   # candidates
@@ -130,7 +130,7 @@ Six components, each answering a design question (manuscript `sec:dp4`): **C1** 
 whole-epitope scaffolds; **C2** single-island scaffolds (87 contigs, the islands test);
 **C3** polyclonal-tiling scaffolds; **C4** linear tiled-30mer controls; **C5** metric-space
 sampling; **C6** scaffolded-epitope controls (island→Ala + scaffold-disruption). All emit the
-constant 103-mer in DP2 format, assemble into one ordered file (`06_library`), and encode to DNA
+constant 103-mer in the 8-column annotated format, assemble into one ordered file (`06_library`), and encode to DNA
 oligos (`episcaf_pipeline/oligo_encoding/`, stage 07). **Full reference — components, selection
 math/weights, exclusions, the 104→103 trim, status: `docs/DP4_LIBRARY.md`.**
 
