@@ -153,7 +153,7 @@ trim to 103 clips one epitope residue. Decision: **drop it and ship the rank-21 
 
 ## Reproduce (exact commands)
 
-Every deliverable is regenerable by a named script; the numbers reported (counts, coverage, the 89 X4
+Every deliverable is regenerable by a named script; the numbers reported (counts, coverage, the 93 X4
 skips) are printed by these scripts, not hand-computed. Metric CSVs live in the local sibling data dirs
 (`$D = /Users/bneff/Desktop/projects/episcaf`, see `filesystem-map`); C2 + case-encoding run on Gemini.
 
