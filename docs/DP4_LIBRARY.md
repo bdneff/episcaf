@@ -56,6 +56,32 @@ strongest within-antibody predictors of experimental enrichment (~0.35 each); ov
 carried little binding signal (0.15 each). This is a hand-set prior from an all-passing set — **C5 is
 designed to span the metric space so these weights can be re-fit on real DP4 binding** (manuscript Q2).
 
+## Exclusions — the canonical 56-mAb set (John, DP4)
+
+Apply **one** exclusion set across the known-Ab components so counts are consistent. From the 59 DP3
+known-Ab epitopes, drop three → **56**:
+- `4xwo_5P` — low assay yield
+- `7a3t_0P` — 4-residue epitope (smallest in DP3, too small to present)
+- `2h32_0P` — "not a standard antibody case" (John) — *confirm the exact reason and record it here*
+
+Applies to the **known-Ab components: C1, C2, C5, C6**. **C3** (polyclonal 1D2K/6M0J/4WAT) is
+unaffected (different antigens). **C4** (linear tiled controls) is an **open question**: drop these
+three antigens too, or keep them as linear controls? — decide with John.
+
+Tooling supports it: `stage06_select.py --drop-ids 2h32,4xwo,7a3t`, `stage06_sample_c5.py` `DROP_IDS`
+(updated to include 2h32), `build_c6_mutants.py --drop-targets 2h32,4xwo,7a3t`. The currently-committed
+deliverables predate the `2h32` drop (C1/C2/C3 are 59-set rankings; C5/C6 dropped only `4xwo`/`7a3t` = 57),
+so **the canonical 56-set is applied uniformly at the final assembly cut** (together with the chosen
+depth) — no premature re-runs.
+
+## Case-encoded `designedSequence` for visualization (John, DP4)
+
+John asked that outputs carry the design sequence with **epitope UPPERCASE, scaffold lowercase** — which
+is exactly the `scaffoldEPITOPE` column we already produce (`docs/CASE_ENCODING.md`). Status: **C1 and C5
+done** (`results/dp4_C{1,5}_scaffoldEPITOPE.csv`); **C2 and C3 need their case-encode run** (same
+mechanism; C3 is a different run). In the assembled DP2 file this casing is carried as the
+`designedSequence` column, so John's visualization ask is satisfied by the assembled output.
+
 ## Component notes
 
 - **C5 — metric-space titration** (`scripts/stage06_sample_c5.py`). Farthest-point (max–min) spread
@@ -108,6 +134,17 @@ not yet confirmed** (manuscript approximates ~104; check the 12-mer run's contig
 Trim rule for the 104 family: drop one residue from whichever terminus is **scaffold** (default
 C-terminal; N-terminal when the C-terminus is an epitope residue), so no epitope residue is lost. In C1,
 2 designs (`6qb6_0P`) have an epitope C-terminus and are handled by the N-terminal trim; C5 had none.
+The `3ux9_1P` epitope-at-both-termini case is dropped for its **rank-21** replacement (kept at 20/epitope).
+
+*Why the trim is safe (structural rationale, recorded so we remember it).* A single **terminal** residue
+is the least structurally committed position in a fold — termini fray, make few tertiary contacts, and
+don't anchor the hydrophobic core — so its contribution to stability is small, especially for hyperstable
+designed miniproteins. We cut the **scaffold** terminus, distal from the **preserved** epitope, so the
+epitope's environment/geometry (set by the intact core) is untouched. Residual risk is limited to the rare
+design whose trimmed residue caps a helix or forms a specific contact — a small *local* destabilization,
+not fold-breaking. NOTE the DP3 binding data was measured on the **104**mers, so the trim is reasoned from
+folding principles, **not re-validated**; a spot re-fold of a 103mer sample (confirm epitope RMSD unchanged)
+would close that gap cheaply. Full detail in manuscript `sec:production`.
 **One exception that cannot be trimmed either way:** `3ux9_1P` **rank 9** (token
 `0ab98e18e5c6a6de6dc3f9a25881ee10`, mpnn_id 2) — its 24-residue epitope reaches **both** termini, so any
 trim to 103 clips one epitope residue. Decision: **drop it and ship the rank-21 design for `3ux9_1P`**

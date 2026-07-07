@@ -46,10 +46,18 @@ def main() -> None:
     ap.add_argument("--group", required=True, help="comma list of grouping columns (e.g. id or id,island_index)")
     ap.add_argument("--out", required=True)
     ap.add_argument("--topk", type=int, default=0, help="if >0, also write <out>.top<k>.csv pre-cut")
+    ap.add_argument("--drop-ids", default="", help="comma id-prefixes to exclude, e.g. 2h32,4xwo,7a3t "
+                                                   "(the canonical 56-mAb known-Ab exclusion set)")
     args = ap.parse_args()
 
     p = Path(args.metrics_csv)
     df = pd.read_parquet(p) if p.suffix == ".parquet" else pd.read_csv(p, low_memory=False)
+    if args.drop_ids and "id" in df.columns:
+        pref = tuple(x.strip().lower() for x in args.drop_ids.split(",") if x.strip())
+        n0 = len(df)
+        df = df[~df["id"].astype(str).str.lower().str.startswith(pref)].copy()
+        print(f"[select] dropped {n0-len(df)} rows with id in {pref} -> {len(df)} rows, "
+              f"{df['id'].nunique()} epitopes")
     group = [g.strip() for g in args.group.split(",")]
     missing = [g for g in group if g not in df.columns]
     if missing:

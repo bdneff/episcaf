@@ -49,6 +49,18 @@ the N-terminus instead, and the single design whose epitope reaches \emph{both} 
 (\texttt{3ux9\_1P}, rank~9) is dropped and replaced by the next-ranked (\num{21}st) design for that
 epitope, keeping \num{20} per epitope. C5 had no such case.
 
+We expect this deletion to be structurally benign, and it is worth stating why, since the DP3 binding
+data we rely on was itself measured on the \num{104}mers. A single \emph{terminal} residue is the least
+structurally committed position in a folded protein --- termini fray, make few tertiary contacts, and
+do not anchor the hydrophobic core --- so its contribution to global stability is typically a small
+fraction of the fold's free energy, and these are hyperstable designed miniproteins whose stability
+resides in that core. Because we cut the \emph{scaffold} terminus, spatially distal from the preserved
+epitope, the epitope's local environment and presentation geometry --- set by the intact core --- are
+untouched. The residual risk is confined to the rare design whose trimmed residue happens to cap a helix
+or form a specific stabilizing contact, a small local destabilization rather than a fold-breaking one; we
+flag this as reasoned from folding principles rather than re-validated \emph{in silico}, and a spot-check
+re-folding a sample of the trimmed \num{103}mers would confirm the epitope RMSD is preserved.
+
 \paragraph{Contig sampling and run size.}
 A \emph{contig} pairs the fixed island(s) with one concrete scaffold-length layout, and each
 contig is sampled at \num{8} RFdiffusion3 backbones $\times$ \num{8} ProteinMPNN sequences

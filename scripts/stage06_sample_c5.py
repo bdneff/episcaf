@@ -28,7 +28,9 @@ import numpy as np
 import pandas as pd
 
 AXES = ["epitope_chunk_rmsd", "epitope_pae", "overall_rmsd", "cylinder_native_aware"]
-DROP_IDS = {"4xwo_5p", "7a3t_0p"}   # assay-dropped: low yield / epitope too small
+# Canonical known-Ab exclusion set -> 56 mAbs: 4xwo (low yield), 7a3t (4-residue epitope),
+# 2h32 (not a standard antibody case). See docs/DP4_LIBRARY.md.
+DROP_IDS = {"4xwo_5p", "7a3t_0p", "2h32_0p"}
 
 
 def fps(X: np.ndarray, k: int) -> list[int]:
