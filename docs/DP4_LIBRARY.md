@@ -96,6 +96,16 @@ Per-category `sequence` construction: **linear controls (C4)** = filler + `ENLYF
 **scaffolded designs (C1/C2/C3/C5/C6)** = the design's own 103-mer directly. Assembly concatenates all
 components in this schema with global `library_member` numbering.
 
+**104→103 truncation (epitope-preserving).** The AF3 designs are **104-residue** proteins
+(`af3_window_end=104`, as in DP2's 104mers); the synthesized construct is a **103-mer**, so assembly
+trims one residue — from whichever terminus is **scaffold** (default C-terminal; N-terminal when the
+C-terminus is an epitope residue), so no epitope residue is lost. Cases in C1: 2 designs (`6qb6_0P`)
+have an epitope residue at the C-terminus and are handled by the N-terminal trim; C5 had none.
+**One exception that cannot be trimmed either way:** `3ux9_1P` **rank 9** (token
+`0ab98e18e5c6a6de6dc3f9a25881ee10`, mpnn_id 2) — its 24-residue epitope reaches **both** termini, so any
+trim to 103 clips one epitope residue. Decision: **drop it and ship the rank-21 design for `3ux9_1P`**
+(keeps 20/epitope; the full ranking is regenerable, so rank-21 is well-defined). Apply this at assembly.
+
 ## Reproduce (exact commands)
 
 Every deliverable is regenerable by a named script; the numbers reported (counts, coverage, the 89 X4
