@@ -72,7 +72,7 @@ consistent with the scaffold arms → 56 mAb + 3 polyclonal = 59 antigens, **2,0
 
 Tooling supports it: `stage06_select.py --drop-ids 2h32,4xwo,7a3t`, `stage06_sample_c5.py` `DROP_IDS`
 (updated to include 2h32), `build_c6_mutants.py --drop-targets 2h32,4xwo,7a3t`. C4, C5, and C6 are rebuilt on the 56-set; the C1/C2 **rankings** still include all epitopes (a ranking, not a
-cut) and the C1/C5 `scaffoldEPITOPE` files predate the `2h32` drop, so the 56-set is applied to those at
+cut) and C1's `scaffoldEPITOPE` still includes all epitopes (C5 is now on the 56-set), so the 56-set is applied to those at
 the final assembly cut (together with the chosen depth).
 
 ## Case-encoded `designedSequence` for visualization
@@ -81,8 +81,8 @@ Outputs carry the design sequence with **epitope UPPERCASE, scaffold lowercase**
 is exactly the `scaffoldEPITOPE` column we already produce. Status by component:
 - **C1** done (`dp4_C1_scaffoldEPITOPE.csv`, dp2-token route, 104-mer → trim at assembly).
 - **C3** done (`dp4_C3_scaffoldEPITOPE.csv`, LOCAL — `scripts/case_encode_c3.py`, 12-mer in `design_seq`, 103-mer).
-- **C5** needs REGEN — the committed `dp4_C5_scaffoldEPITOPE.csv` predates the C5 56-set re-run; re-run `case_encode_selected.sbatch`.
-- **C2** PENDING (Gemini) — `scripts/case_encode_c2.py` + `.sbatch`: reads af3 sequence, island span from local `n_flank`/`island_size`.
+- **C2** done (`dp4_C2_scaffoldEPITOPE.csv`, `scripts/case_encode_c2.py`, af3 seq + local `n_flank`/`island_size`, 103-mer).
+- **C5** done (`dp4_C5_scaffoldEPITOPE.csv`, dp2-token route, 56-set, 104-mer → trim).
 - **C4** carries its 30-mer as `designedSequence` already.
 
 In the assembled library file this casing is carried as the
@@ -212,11 +212,12 @@ shrink ~4× from the top-20 figures above.
 
 ## Pending — assembly & encoding
 
-Format is settled (above), so assembly is **not** blocked on a template anymore — only on sign-off
-on the components and the chosen depth.
+Format is settled and the assembler is built (below); the only inputs still needed are **sign-off** on
+the components and the **shipping depth**.
 
-1. **Assembly (`06_library`)** — build each component's rows in the 8-column annotated schema (C4 already is),
-   concatenate, assign global `library_member` numbering. Needs: **sign-off on components/counts**
-   and the **shipping depth** (top-*n*, sized from the budget). Then it's a mechanical build.
+1. **Assembly (`06_library`)** — **BUILT** (`scripts/stage06_assemble.py`): concatenates the six components
+   into the 8-column annotated library, applying the 56-exclusion, the `--depth` top-*n* cut, the 104→103
+   trim, and global `library_member` numbering. `python scripts/stage06_assemble.py --depth <n>` once the
+   depth is set. Needs only the **sign-off** and the **shipping depth**.
 2. **Oligo encoding** — LadnerLab `oligo_encoding` + DP3 codon weights
    (`episcaf_pipeline/oligo_encoding/`), then the order-file step (confirm with Erin).
