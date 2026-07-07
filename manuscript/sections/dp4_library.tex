@@ -84,12 +84,12 @@ binding off this spread is what lets us learn which metrics actually predict enr
 finally fit the composite's weights (Q2, Section~\ref{sec:open}), rather than re-deriving the
 filters we started from. The sampling is implemented (\texttt{scripts/stage06\_sample\_c5.py}): a
 farthest-point (max--min) spread over the four standardized scoring axes --- epitope RMSD, epitope
-PAE, overall RMSD, and the native-aware cylinder --- sampled per mAb over the \num{57} assayable
-epitopes. We ship \num{3000} designs (about \num{53} per mAb); the sample spans \SIrange{89}{97}{\percent}
+PAE, overall RMSD, and the native-aware cylinder --- sampled per mAb over the \num{56} assayable
+epitopes. We ship \num{3000} designs (about \num{54} per mAb); the sample spans \SIrange{89}{99}{\percent}
 of each axis's full range, i.e.\ deliberately including the low-quality tail the filters reject.
 
 \subsection{C6 --- scaffolded-epitope controls}\label{sec:dp4c6}
-For the best \num{20} designs of each of the \num{57} mAbs we alanine-scan the epitope islands:
+For the best \num{20} designs of each of the \num{56} mAbs we alanine-scan the epitope islands:
 every residue of island~1 mutated to alanine, and (where the epitope has a second island) every
 residue of island~2. The unmutated designs are not part of this component --- they are already
 shipped as C1 --- so C6 is the controlled comparison against them. Mutating an island to alanine
@@ -100,7 +100,7 @@ mutation-based read of the islands question (Q1), complementary to C2's presenta
 island is \emph{necessary}. The mutations are string substitutions on the existing designs'
 case-encoded sequence (epitope residues uppercase, scaffold lowercase, each contiguous uppercase run
 an island), implemented in \texttt{episcaf\_pipeline/scaffolded\_epitope\_controls/} (a port of the
-DP3 scheme). Over the best designs of each of the \num{57} mAbs, with one island-mutant for
+DP3 scheme). Over the best designs of each of the \num{56} mAbs, with one island-mutant for
 single-island epitopes and two for multi-island ones, plus the scaffold-disruption variant below,
 this is on the order of \num{3000} constructs at the current selection depth.
 
@@ -114,16 +114,25 @@ reproducibility. We ship this four-window variant (\texttt{scaffoldMutX4}) only 
 perturbation carried over from DP3 --- and drop the single-window one to save space. Because island
 membership and the epitope-avoidance constraint are both read directly from the case-encoding, no
 separate residue-index map is needed; a design that cannot fit four disjoint scaffold windows is
-logged and skipped. In the current build this affects \num{89} of \num{1140} base designs
-(\SI{7.8}{\percent}) --- scaffolds too small or too epitope-dense to place four hexamers each
-$\ge\!4$ residues from the epitope --- so the \texttt{scaffoldMutX4} arm covers \num{1051} of the
-\num{1140} bases while the island-alanine arms cover all of them.
+logged and skipped. In the current build this affects \num{93} of \num{1120} base designs
+(\SI{8.3}{\percent}) --- scaffolds too small or too epitope-dense to place four hexamers each
+$\ge\!4$ residues from the epitope --- so the \texttt{scaffoldMutX4} arm covers \num{1027} of the
+\num{1120} bases while the island-alanine arms cover all of them.
 
 \medskip
 \noindent The controls follow the DP3 mutation scheme (reference and port in
 \texttt{episcaf\_pipeline/scaffolded\_epitope\_controls/}); the DP4 changes are all-residue island
 alanine (not every other) and the four-window scaffold variant only. The base set is the same top-$n$
 per mAb used for C1.
+
+\paragraph{The known-antibody set (\num{56}).} The antibody-based components (C1, C2, C5, C6) share one
+exclusion set applied consistently: from the \num{59} DP3 mAb epitopes we drop three, leaving \num{56}.
+Two are the assay drops of Section~\ref{sec:experimental} (\texttt{4xwo}, low antibody yield;
+\texttt{7a3t}, a \num{4}-residue epitope too small to present). The third, \texttt{2h32}, is excluded
+because it is not a conventional antibody:antigen complex at all --- it is the pre-B-cell receptor, which
+engages its ligand differently, so it is not a valid test case for antibody-epitope scaffolding; it
+entered the DP3 set through the inclusion criteria inadvertently. The polyclonal tiling (C3) is over
+different antigens and is unaffected.
 
 \subsection{Assembly into one synthesis file}\label{sec:assembly}
 All six components share the constant 103-mer construct and the eight-column DP2 annotated format

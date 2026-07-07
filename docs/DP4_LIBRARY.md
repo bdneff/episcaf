@@ -18,7 +18,7 @@ top-20 base, so it scales with C1's depth.
 | **C3** | polyclonal 12-mer tiles | best-*n* per window, no antibody | ranked, top-*n* per window | 8,780 † | `results/dp4_C3_12mer_ranked.top20.csv` | ranked |
 | **C4** | linear 30-mer controls | bare tiled peptides (no scaffold) | exhaustive tiling (fixed) | 2,174 | `data/libraries/dp4_tiled30mers_fasta.csv` | built |
 | **C5** | metric-space titration | designs spread across metrics (calibration) | farthest-point sample (fixed) | 3,000 §  | `results/dp4_C5_titration.csv` | sampled |
-| **C6** | scaffolded-epitope controls | island→Ala + scaffold-disruption | all C1 top-*n* base × flavors | 3,071 ‡§ | `results/dp4_C6_controls.csv` | built |
+| **C6** | scaffolded-epitope controls | island→Ala + scaffold-disruption | all C1 top-*n* base × flavors | 3,007 ‡§ | `results/dp4_C6_controls.csv` | built |
 
 † **Ranked selection** — count shown at **top-20 per group**; scales with the shipped depth (top-*n*,
 elastic — see *Budget & depth*). At top-5 these shrink ~4×.
@@ -62,17 +62,18 @@ Apply **one** exclusion set across the known-Ab components so counts are consist
 known-Ab epitopes, drop three → **56**:
 - `4xwo_5P` — low assay yield
 - `7a3t_0P` — 4-residue epitope (smallest in DP3, too small to present)
-- `2h32_0P` — "not a standard antibody case" (John) — *confirm the exact reason and record it here*
+- `2h32_0P` — **not a typical antibody:antigen structure — it is the pre-B cell receptor (pre-BCR)**,
+  which binds quite differently; not a valid mAb test case (John, 2026-02-22). It passed the inclusion
+  criteria by accident. All other DP3 epitopes John reviewed are well-behaved.
 
 Applies to the **known-Ab components: C1, C2, C5, C6**. **C3** (polyclonal 1D2K/6M0J/4WAT) is
 unaffected (different antigens). **C4** (linear tiled controls) is an **open question**: drop these
 three antigens too, or keep them as linear controls? — decide with John.
 
 Tooling supports it: `stage06_select.py --drop-ids 2h32,4xwo,7a3t`, `stage06_sample_c5.py` `DROP_IDS`
-(updated to include 2h32), `build_c6_mutants.py --drop-targets 2h32,4xwo,7a3t`. The currently-committed
-deliverables predate the `2h32` drop (C1/C2/C3 are 59-set rankings; C5/C6 dropped only `4xwo`/`7a3t` = 57),
-so **the canonical 56-set is applied uniformly at the final assembly cut** (together with the chosen
-depth) — no premature re-runs.
+(updated to include 2h32), `build_c6_mutants.py --drop-targets 2h32,4xwo,7a3t`. C5 and C6 are rebuilt on the 56-set; the C1/C2 **rankings** still include all epitopes (a ranking, not a
+cut) and the C1/C5 `scaffoldEPITOPE` files predate the `2h32` drop, so the 56-set is applied to those at
+the final assembly cut (together with the chosen depth).
 
 ## Case-encoded `designedSequence` for visualization (John, DP4)
 
@@ -85,15 +86,15 @@ mechanism; C3 is a different run). In the assembled DP2 file this casing is carr
 ## Component notes
 
 - **C5 — metric-space titration** (`scripts/stage06_sample_c5.py`). Farthest-point (max–min) spread
-  over the four standardized scoring axes (cylinder as accessibility), ~53 per mAb over the 57 mAbs.
-  3,000 designs spanning 89–97% of each axis's full range — deliberately including the low-quality tail
+  over the four standardized scoring axes (cylinder as accessibility), ~54 per mAb over the 56 mAbs.
+  3,000 designs spanning 89–99% of each axis's full range — deliberately including the low-quality tail
   the filters reject, so binding read off the spread calibrates the scorer.
 - **C6 — scaffolded-epitope controls** (`episcaf_pipeline/scaffolded_epitope_controls/`). Base = C1
-  top-20 over **57 mAbs** (dropped `4xwo` low-yield, `7a3t` 4-residue epitope). Not new scaffolding —
+  top-20 over **56 mAbs** (dropped `2h32` pre-BCR, `4xwo` low-yield, `7a3t` 4-residue epitope). Not new scaffolding —
   string substitution on the case-encoded sequence (port of John's DP3 R code). Flavors: every-residue
   island1→Ala, island2→Ala (dual-island only), and `scaffoldMutX4` (a `PPDDGG` hexamer in 4 scaffold
-  windows, each ≥4 residues from the epitope, seeded). **89/1,140 (7.8%)** designs can't fit 4 hexamers
-  → X4 arm covers 1,051/1,140; alanine arms cover all.
+  windows, each ≥4 residues from the epitope, seeded). **93/1,120 (8.3%)** designs can't fit 4 hexamers
+  → X4 arm covers 1,027/1,120; alanine arms cover all.
 - **C4 — linear tiled-30mer controls** (`data/libraries/dp4_tiled30mers_fasta.csv`, John-approved).
   The **full antigen sequences** of the ~60 proteins (57 mAb targets + 3 tiled antigens 1D2K/6M0J/4WAT),
   taken from the **FASTA files (no unresolved-gap holes, unlike the PDBs)**, chopped into overlapping
@@ -187,7 +188,7 @@ sbatch scripts/case_encode_selected.sbatch
 python episcaf_pipeline/scaffolded_epitope_controls/build_c6_mutants.py \
   --input results/dp4_C1_scaffoldEPITOPE.csv \
   --id-col token --target-col target --seq-col scaffoldEPITOPE \
-  --drop-targets 4xwo,7a3t --out results/dp4_C6_controls.csv
+  --drop-targets 2h32,4xwo,7a3t --out results/dp4_C6_controls.csv
 ```
 
 Scorer weights/transforms are config, not magic numbers: `episcaf_analysis/presets.py` (provenance
