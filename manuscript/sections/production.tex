@@ -35,11 +35,19 @@ length the PepSeq assay synthesizes. We call the stretches of generated scaffold
 N-terminal and C-terminal to a fixed island its \emph{flanks}; a single-island contig is
 therefore $\langle\text{N-flank}\rangle/\,\texttt{A}a\text{-}b\,/\langle\text{C-flank}\rangle$,
 and the scaffold budget the flanks share is $103-\ell$ residues for an island of length
-$\ell$. We note one unexplained convention difference: Lawson's original dual-island contigs
-were all \num{104} residues, not \num{103}. The change to \num{103} appears to have been made
-at some point without a recorded reason; we adopt \num{103} as the assay ceiling and expect a
-single terminal residue, averaged over sequence space, to be immaterial, but flag it here
-because its origin is unknown.
+$\ell$. We note one unexplained convention difference: Lawson's original contigs were
+\num{104} residues, not \num{103}, and the change to \num{103} has no recorded origin. Our
+newly-generated runs adopt \num{103} directly (the single-island run, C2), but the whole-epitope
+set \emph{reproduces} Lawson's run and so inherits his \num{104}-residue designs --- this affects
+C1 and, downstream of it, the metric-space sample C5 and the mutant controls C6, all of which draw
+on the C1 pool. We reconcile these at assembly by trimming those \num{104}-mers to \num{103}, but
+rather than assume the terminal residue is immaterial we drop the residue at whichever terminus is
+\emph{scaffold} --- the C-terminus by default, the N-terminus when the C-terminal residue is part of
+the epitope --- so no epitope residue is removed. We verified this explicitly: the C-terminal residue
+is scaffold in all but three of the \num{1180} C1 designs; two (\texttt{6qb6\_0P}) are trimmed from
+the N-terminus instead, and the single design whose epitope reaches \emph{both} termini
+(\texttt{3ux9\_1P}, rank~9) is dropped and replaced by the next-ranked (\num{21}st) design for that
+epitope, keeping \num{20} per epitope. C5 had no such case.
 
 \paragraph{Contig sampling and run size.}
 A \emph{contig} pairs the fixed island(s) with one concrete scaffold-length layout, and each

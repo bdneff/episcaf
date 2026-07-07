@@ -13,16 +13,19 @@ top-20 base, so it scales with C1's depth.
 
 | Comp | Component | What it is | Selection | Constructs | Deliverable | Status |
 |---|---|---|---|---|---|---|
-| **C1** | known-Ab, whole epitope | best-*n* scaffolds per mAb (comparator) | ranked, top-*n* per mAb | 1,180 † | `results/dp4_C1_whole_epitope_ranked.top20.csv` | ranked |
+| **C1** | known-Ab, whole epitope | best-*n* scaffolds per mAb (comparator) | ranked, top-*n* per mAb | 1,180 †§ | `results/dp4_C1_whole_epitope_ranked.top20.csv` | ranked |
 | **C2** | known-Ab, single island | best-*n* per (mAb, island); 87 island contigs | ranked, top-*n* per island | 1,740 † | `results/dp4_C2_single_island_ranked.top20.csv` | ranked |
 | **C3** | polyclonal 12-mer tiles | best-*n* per window, no antibody | ranked, top-*n* per window | 8,780 † | `results/dp4_C3_12mer_ranked.top20.csv` | ranked |
 | **C4** | linear 30-mer controls | bare tiled peptides (no scaffold) | exhaustive tiling (fixed) | 2,174 | `data/libraries/dp4_tiled30mers_fasta.csv` | built |
-| **C5** | metric-space titration | designs spread across metrics (calibration) | farthest-point sample (fixed) | 3,000 | `results/dp4_C5_titration.csv` | sampled |
-| **C6** | scaffolded-epitope controls | island→Ala + scaffold-disruption | all C1 top-*n* base × flavors | 3,071 ‡ | `results/dp4_C6_controls.csv` | built |
+| **C5** | metric-space titration | designs spread across metrics (calibration) | farthest-point sample (fixed) | 3,000 §  | `results/dp4_C5_titration.csv` | sampled |
+| **C6** | scaffolded-epitope controls | island→Ala + scaffold-disruption | all C1 top-*n* base × flavors | 3,071 ‡§ | `results/dp4_C6_controls.csv` | built |
 
 † **Ranked selection** — count shown at **top-20 per group**; scales with the shipped depth (top-*n*,
 elastic — see *Budget & depth*). At top-5 these shrink ~4×.
 ‡ **Derived** from C1's top-20 base, so scales with C1's depth (island1→A + island2→A dual-only + scaffoldMutX4).
+§ **104-mer designs** — C1 reused Lawson's 104-residue contigs, and C5/C6 derive from the C1 pool, so
+these three are 104-mers **trimmed to the 103-mer assay ceiling at assembly** (epitope-preserving; see
+*104→103 truncation*). C2/C4 are natively 103; C3's length is not yet confirmed.
 
 Full composite rankings (`results/dp4_*_ranked.csv`) are regenerable and gitignored; only the top-*n*
 cuts + case-encoded sequences are tracked.
