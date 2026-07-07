@@ -56,15 +56,15 @@ strongest within-antibody predictors of experimental enrichment (~0.35 each); ov
 carried little binding signal (0.15 each). This is a hand-set prior from an all-passing set — **C5 is
 designed to span the metric space so these weights can be re-fit on real DP4 binding** (manuscript Q2).
 
-## Exclusions — the canonical 56-mAb set (John, DP4)
+## Exclusions — the canonical 56-mAb set
 
 Apply **one** exclusion set across the known-Ab components so counts are consistent. From the 59 DP3
 known-Ab epitopes, drop three → **56**:
 - `4xwo_5P` — low assay yield
 - `7a3t_0P` — 4-residue epitope (smallest in DP3, too small to present)
 - `2h32_0P` — **not a typical antibody:antigen structure — it is the pre-B cell receptor (pre-BCR)**,
-  which binds quite differently; not a valid mAb test case (John, 2026-02-22). It passed the inclusion
-  criteria by accident. All other DP3 epitopes John reviewed are well-behaved.
+  which binds quite differently; not a valid mAb test case (recorded 2026-02-22). It passed the inclusion
+  criteria by accident. All other reviewed DP3 epitopes are well-behaved.
 
 Applies to the **known-Ab components: C1, C2, C5, C6**. **C3** (polyclonal 1D2K/6M0J/4WAT) is
 unaffected (different antigens). **C4** (linear tiled controls) **also drops the three** (decided 2026-07-07) so the linear controls stay
@@ -75,13 +75,13 @@ Tooling supports it: `stage06_select.py --drop-ids 2h32,4xwo,7a3t`, `stage06_sam
 cut) and the C1/C5 `scaffoldEPITOPE` files predate the `2h32` drop, so the 56-set is applied to those at
 the final assembly cut (together with the chosen depth).
 
-## Case-encoded `designedSequence` for visualization (John, DP4)
+## Case-encoded `designedSequence` for visualization
 
-John asked that outputs carry the design sequence with **epitope UPPERCASE, scaffold lowercase** — which
+Outputs carry the design sequence with **epitope UPPERCASE, scaffold lowercase** (for visualization) — which
 is exactly the `scaffoldEPITOPE` column we already produce (`docs/CASE_ENCODING.md`). Status: **C1 and C5
 done** (`results/dp4_C{1,5}_scaffoldEPITOPE.csv`); **C2 and C3 need their case-encode run** (same
 mechanism; C3 is a different run). In the assembled DP2 file this casing is carried as the
-`designedSequence` column, so John's visualization ask is satisfied by the assembled output.
+`designedSequence` column, so the visualization casing is carried through to the assembled output.
 
 ## Component notes
 
@@ -91,11 +91,11 @@ mechanism; C3 is a different run). In the assembled DP2 file this casing is carr
   the filters reject, so binding read off the spread calibrates the scorer.
 - **C6 — scaffolded-epitope controls** (`episcaf_pipeline/scaffolded_epitope_controls/`). Base = C1
   top-20 over **56 mAbs** (dropped `2h32` pre-BCR, `4xwo` low-yield, `7a3t` 4-residue epitope). Not new scaffolding —
-  string substitution on the case-encoded sequence (port of John's DP3 R code). Flavors: every-residue
+  string substitution on the case-encoded sequence (port of the DP3 mutation-control R code). Flavors: every-residue
   island1→Ala, island2→Ala (dual-island only), and `scaffoldMutX4` (a `PPDDGG` hexamer in 4 scaffold
   windows, each ≥4 residues from the epitope, seeded). **93/1,120 (8.3%)** designs can't fit 4 hexamers
   → X4 arm covers 1,027/1,120; alanine arms cover all.
-- **C4 — linear tiled-30mer controls** (`data/libraries/dp4_tiled30mers_fasta.csv`, John-approved).
+- **C4 — linear tiled-30mer controls** (`data/libraries/dp4_tiled30mers_fasta.csv`).
   The **full antigen sequences** of 59 antigens (56 mAb targets + 3 tiled antigens 1D2K/6M0J/4WAT; the three excluded mAbs 2h32/4xwo/7a3t are dropped here too for consistency with the 56-mAb set),
   taken from the **FASTA files (no unresolved-gap holes, unlike the PDBs)**, chopped into overlapping
   **30-mers, step = 6**. No RFD/MPNN/AF3. Each 30-mer goes at the END of a constant construct:
@@ -106,9 +106,9 @@ mechanism; C3 is a different run). In the assembled DP2 file this casing is carr
   positions were recovered (token → `dp2.assay_scaffolded_epitope_id` → `scaffolded_epitope_chunk_resindices`)
   and written as case-encoded sequences (`results/dp4_C{1,5}_scaffoldEPITOPE.csv`), feeding C6 + assembly.
 
-## Assembly format (DP2 annotated, John-approved)
+## Assembly format (DP2 annotated)
 
-The final synthesis file is the **8-column DP2 annotated format** — already settled and approved on C4
+The final synthesis file is the **8-column DP2 annotated format** — already settled and validated on C4
 (`dp4_tiled30mers_fasta.csv` is the reference instance):
 
 | column | meaning |
@@ -203,11 +203,11 @@ shrink ~4× from the top-20 figures above.
 
 ## Pending — assembly & encoding
 
-Format is settled (above), so assembly is **not** blocked on a template anymore — only on John's okay
+Format is settled (above), so assembly is **not** blocked on a template anymore — only on sign-off
 on the components and the chosen depth.
 
 1. **Assembly (`06_library`)** — build each component's rows in the 8-column DP2 schema (C4 already is),
-   concatenate, assign global `library_member` numbering. Needs: John's **okay on components/counts**
+   concatenate, assign global `library_member` numbering. Needs: **sign-off on components/counts**
    and the **shipping depth** (top-*n*, sized from the budget). Then it's a mechanical build.
 2. **Oligo encoding** — LadnerLab `oligo_encoding` + DP3 codon weights
    (`episcaf_pipeline/oligo_encoding/`), then the order-file step (confirm with Erin).
