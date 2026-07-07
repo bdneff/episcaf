@@ -135,8 +135,8 @@ components in this schema with global `library_member` numbering.
 *reproduced* Lawson's whole-epitope run, reusing his contigs** (`contig_length "104-104"`), so **C1 —
 and C5 (sampled from C1's pool) and C6 (built from C1) — are 104-residue** proteins (`af3_window_end=104`)
 that must be trimmed to the 103-mer assay ceiling. **C2 is natively 103** (we *generated* new contigs
-at 103, `build_dual_island_designs.py`, correcting Lawson's 104→103) — no trim. **C3 (12-mer): length
-not yet confirmed** (manuscript approximates ~104; check the 12-mer run's contig length before assuming).
+at 103, `build_dual_island_designs.py`, correcting Lawson's 104→103) — no trim. **C3 (12-mer): natively
+103** (confirmed — `design_seq` is 103 for all 8,780) — no trim.
 Trim rule for the 104 family: drop one residue from whichever terminus is **scaffold** (default
 C-terminal; N-terminal when the C-terminus is an epitope residue), so no epitope residue is lost. In C1,
 2 designs (`6qb6_0P`) have an epitope C-terminus and are handled by the N-terminal trim; C5 had none.
