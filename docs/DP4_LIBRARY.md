@@ -147,8 +147,10 @@ not fold-breaking. NOTE the DP3 binding data was measured on the **104**mers, so
 folding principles, **not re-validated**; a spot re-fold of a 103mer sample (confirm epitope RMSD unchanged)
 would close that gap cheaply. Full detail in manuscript `sec:production`.
 **One exception that cannot be trimmed either way:** `3ux9_1P` **rank 9** (token
-`0ab98e18e5c6a6de6dc3f9a25881ee10`, mpnn_id 2) — its 24-residue epitope reaches **both** termini, so any
-trim to 103 clips one epitope residue. Decision: **drop it and ship the rank-21 design for `3ux9_1P`**
+`0ab98e18e5c6a6de6dc3f9a25881ee10`, mpnn_id 2) — a **two-island** epitope (24 res = a 15-res island at
+positions 0–14 and a 9-res island at 95–103) whose islands sit **flush against both termini** (n_flank =
+c_flank = 0), so there's no scaffold residue to trim at either end and any trim to 103 clips one epitope
+residue. Decision: **drop it and ship the rank-21 design for `3ux9_1P`**
 (keeps 20/epitope; the full ranking is regenerable, so rank-21 is well-defined). Apply this at assembly.
 
 ## Reproduce (exact commands)

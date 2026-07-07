@@ -45,8 +45,10 @@ rather than assume the terminal residue is immaterial we drop the residue at whi
 \emph{scaffold} --- the C-terminus by default, the N-terminus when the C-terminal residue is part of
 the epitope --- so no epitope residue is removed. We verified this explicitly: the C-terminal residue
 is scaffold in all but three of the \num{1180} C1 designs; two (\texttt{6qb6\_0P}) are trimmed from
-the N-terminus instead, and the single design whose epitope reaches \emph{both} termini
-(\texttt{3ux9\_1P}, rank~9) is dropped and replaced by the next-ranked (\num{21}st) design for that
+the N-terminus instead, and the single design whose \emph{two} epitope islands sit flush against
+\emph{both} termini (\texttt{3ux9\_1P}, rank~9: a \num{15}-residue island at the N-terminus and a
+\num{9}-residue island at the C-terminus, with no flanking scaffold on the outer side of either, so
+neither end can be trimmed) is dropped and replaced by the next-ranked (\num{21}st) design for that
 epitope, keeping \num{20} per epitope. C5 had no such case.
 
 We expect this deletion to be structurally benign, and it is worth stating why, since the DP3 binding
