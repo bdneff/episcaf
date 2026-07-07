@@ -25,7 +25,7 @@ elastic — see *Budget & depth*). At top-5 these shrink ~4×.
 ‡ **Derived** from C1's top-20 base, so scales with C1's depth (island1→A + island2→A dual-only + scaffoldMutX4).
 § **104-mer designs** — C1 reused Lawson's 104-residue contigs, and C5/C6 derive from the C1 pool, so
 these three are 104-mers **trimmed to the 103-mer assay ceiling at assembly** (epitope-preserving; see
-*104→103 truncation*). C2/C4 are natively 103; C3's length is not yet confirmed.
+*104→103 truncation*). C2/C3/C4 are natively 103.
 
 Full composite rankings (`results/dp4_*_ranked.csv`) are regenerable and gitignored; only the top-*n*
 cuts + case-encoded sequences are tracked.
@@ -78,9 +78,14 @@ the final assembly cut (together with the chosen depth).
 ## Case-encoded `designedSequence` for visualization
 
 Outputs carry the design sequence with **epitope UPPERCASE, scaffold lowercase** (for visualization) — which
-is exactly the `scaffoldEPITOPE` column we already produce (`docs/CASE_ENCODING.md`). Status: **C1 and C5
-done** (`results/dp4_C{1,5}_scaffoldEPITOPE.csv`); **C2 and C3 need their case-encode run** (same
-mechanism; C3 is a different run). In the assembled DP2 file this casing is carried as the
+is exactly the `scaffoldEPITOPE` column we already produce. Status by component:
+- **C1** done (`dp4_C1_scaffoldEPITOPE.csv`, dp2-token route, 104-mer → trim at assembly).
+- **C3** done (`dp4_C3_scaffoldEPITOPE.csv`, LOCAL — `scripts/case_encode_c3.py`, 12-mer in `design_seq`, 103-mer).
+- **C5** needs REGEN — the committed `dp4_C5_scaffoldEPITOPE.csv` predates the C5 56-set re-run; re-run `case_encode_selected.sbatch`.
+- **C2** PENDING (Gemini) — `scripts/case_encode_c2.py` + `.sbatch`: reads af3 sequence, island span from local `n_flank`/`island_size`.
+- **C4** carries its 30-mer as `designedSequence` already.
+
+In the assembled DP2 file this casing is carried as the
 `designedSequence` column, so the visualization casing is carried through to the assembled output.
 
 ## Component notes
