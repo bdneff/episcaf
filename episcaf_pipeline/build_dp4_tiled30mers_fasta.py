@@ -48,13 +48,19 @@ from configs.paths import DP2_PARQUET_LOCAL  # noqa: E402
 
 MER, STEP, CATEGORY, ID_PREFIX = 30, 6, "tiled30mer", "DP4"
 TILED_ANTIGENS = {"1d2k", "4wat", "6m0j"}
+# Canonical known-Ab exclusion set -> 56 mAbs (see docs/DP4_LIBRARY.md): drop the linear controls for
+# antigens not in the scaffold arms, so C4 stays consistent with C1/C2/C5/C6. 2h32 = pre-B cell receptor
+# (not a conventional antibody), 4xwo = low assay yield, 7a3t = 4-residue epitope.
+EXCLUDE_IDS = {"2h32_0p", "4xwo_5p", "7a3t_0p"}
 
 
 def antigen_fasta_records(dp2_path):
-    """For each dp2 mAb antigen, yield (patch_id, native_window_seq, meta)."""
+    """For each dp2 mAb antigen (minus the canonical exclusions), yield (patch_id, native_window_seq, meta)."""
     dp2 = pd.read_parquet(dp2_path).drop_duplicates("id")
     for _, r in dp2.iterrows():
         pid, aseq = str(r["id"]), str(r["antigen_seq"])
+        if pid.lower() in EXCLUDE_IDS:
+            continue
         chains = parse_chains(fetch_fasta(pid[:4]))
         pick = pick_antigen_chain(aseq, chains)
         full = pick["seq"]

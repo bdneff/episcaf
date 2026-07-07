@@ -1,5 +1,4 @@
 target,old_len,new_len,recovered,protein,organism,status,tiles
-2h32_0P,117,121,4,Immunoglobulin omega chain,Homo sapiens (9606),clean,17
 2qqn_0P,154,154,0,Neuropilin-1,Homo sapiens (9606),clean,22
 2xqb_0P,113,114,1,INTERLEUKIN 15,Homo sapiens (9606),clean,15
 3lhp_1P,112,113,1,4E10_D0_1ISEA_004_N (T93),Artificial gene (32630),clean,15
@@ -9,7 +8,6 @@ target,old_len,new_len,recovered,protein,organism,status,tiles
 4kv5_3P,112,112,0,Transforming growth factor beta-1 proprotein,Homo sapiens (9606),clean,15
 4nnp_0P,278,278,0,Lipoprotein,Staphylococcus aureus subsp. aureus (158878),clean,43
 4u6v_0P,282,282,0,Alpha-hemolysin,Staphylococcus aureus subsp. aureus TCH60 (548473),clean,43
-4xwo_5P,351,353,2,ATPase GET3,Saccharomyces cerevisiae (ATCC 204508 / S288c) (559292),clean,55
 4zfg_0P,220,228,8,Angiopoietin-2,Homo sapiens (9606),clean,34
 5eu7_1P,153,153,0,Integrase,Human immunodeficiency virus 1 (11676),clean,22
 5fhx_1P,124,124,0,Interleukin-4,Homo sapiens (9606),clean,17
@@ -34,7 +32,6 @@ target,old_len,new_len,recovered,protein,organism,status,tiles
 6xxv_0P,111,118,7,S2_1.2,Homo sapiens (9606),clean,16
 6ye3_2P,131,132,1,Interleukin-2,Homo sapiens (9606),clean,18
 6ztr_0P,213,216,3,Cadherin-3,Homo sapiens (9606),clean,32
-7a3t_0P,396,428,32,Core protein,Dengue virus 3 (11069),clean,68
 7dm1_0P,334,342,8,Phosphate-binding protein PstS 1,Mycobacterium tuberculosis H37Rv (83332),clean,53
 7kql_0P,110,110,0,Hepatitis A virus cellular receptor 2,Homo sapiens (9606),clean,15
 7o52_0P,176,190,14,CD22 d6-d7 Ig domains,Homo sapiens (9606),clean,28

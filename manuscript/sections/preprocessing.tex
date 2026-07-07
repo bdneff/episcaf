@@ -53,7 +53,7 @@ Tiling the FASTA recovers \num{535} residues overall and removes that fake junct
 builder asserts every emitted tile is a substring of its source chain. The build
 (\texttt{episcaf\_pipeline/build\_dp4\_tiled30mers\_fasta.py}) reproduces the earlier library's
 tiles where they overlap (e.g.\ 7OX3 \texttt{design\_ID} 1 and 7 match exactly) and yields
-\num{2174} 30-mers from the 62 antigens.
+\num{2034} 30-mers from the 59 antigens (56 mAb + 3 tiled).
 
 \subsection{Why the design count is not (tiles $\times$ top-$k$)}
 A natural expectation is that taking the top $k$ designs per epitope gives $k$ times the

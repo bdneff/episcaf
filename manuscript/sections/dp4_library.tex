@@ -14,7 +14,7 @@ component & what it is & constructs & status \\
 C1 known antibody, whole epitope & full-epitope scaffolds, top-$n$/epitope & depth-set & ranked \\
 C2 known antibody, single island & 87 island contigs, each island alone & depth-set & ranked, per island \\
 C3 scaffolds, polyclonal tiling & top-$n$/window, no antibody & depth-set & selected, ungated \\
-C4 linear tiled-30mer controls & bare tiled peptides & 2174 & built \\
+C4 linear tiled-30mer controls & bare tiled peptides & 2034 & built \\
 C5 metric-space sampling & designs spread across metrics & \num{3000} & sampled \\
 C6 scaffolded-epitope controls & island$\to$Ala $+$ scaffold-disruption & $\sim$3k & code ported \\
 \bottomrule
@@ -23,7 +23,7 @@ C6 scaffolded-epitope controls & island$\to$Ala $+$ scaffold-disruption & $\sim$
 experiment (whole epitope vs.\ one island at a time); C6 tests the same question by mutation.
 C1--C3 are selected (ranked on the composite, Section~\ref{sec:selection}); the shipped depth
 (top-$n$ per group) is set at assembly from the peptide budget, so their final counts settle then.
-C5 is set at \num{3000} designs; C4 is the \num{2174} tiles of Section~\ref{sec:tiling}.}
+C5 is set at \num{3000} designs; C4 is the \num{2034} tiles of Section~\ref{sec:tiling}.}
 \label{tab:dp4components}
 \end{table}
 
@@ -69,8 +69,12 @@ with none of the conformational constraint a scaffold imposes. They are the base
 central scaffold-versus-linear question (Section~\ref{sec:intro}): if conformational presentation
 matters, a scaffolded design should bind its antibody more reliably than the corresponding linear
 tile. We tile the gap-free PDB FASTA chain at a 30-residue window, step 6
-(Section~\ref{sec:tiling}), giving \num{2174} tiles over \num{62} antigens
-(\texttt{data/libraries/dp4\_tiled30mers\_fasta.csv}). This component is built.
+(Section~\ref{sec:tiling}), giving \num{2034} tiles over \num{59} antigens --- the \num{56}
+known-antibody targets plus the \num{3} polyclonal antigens
+(\texttt{data/libraries/dp4\_tiled30mers\_fasta.csv}). The three non-standard cases excluded from the
+antibody arms (\texttt{2h32} the pre-B-cell receptor, \texttt{4xwo} low-yield, \texttt{7a3t} too-small;
+Section~\ref{sec:dp4c6}) are dropped here as well, so the linear controls stay consistent with the
+scaffold arms they are meant to be compared against. This component is built.
 
 \subsection{C5 --- metric-space sampling}\label{sec:dp4c5}
 The DP3 binding data is a weak prior precisely because every assayed design already passed the

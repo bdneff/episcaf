@@ -16,7 +16,7 @@ top-20 base, so it scales with C1's depth.
 | **C1** | known-Ab, whole epitope | best-*n* scaffolds per mAb (comparator) | ranked, top-*n* per mAb | 1,180 †§ | `results/dp4_C1_whole_epitope_ranked.top20.csv` | ranked |
 | **C2** | known-Ab, single island | best-*n* per (mAb, island); 87 island contigs | ranked, top-*n* per island | 1,740 † | `results/dp4_C2_single_island_ranked.top20.csv` | ranked |
 | **C3** | polyclonal 12-mer tiles | best-*n* per window, no antibody | ranked, top-*n* per window | 8,780 † | `results/dp4_C3_12mer_ranked.top20.csv` | ranked |
-| **C4** | linear 30-mer controls | bare tiled peptides (no scaffold) | exhaustive tiling (fixed) | 2,174 | `data/libraries/dp4_tiled30mers_fasta.csv` | built |
+| **C4** | linear 30-mer controls | bare tiled peptides (no scaffold) | exhaustive tiling (fixed) | 2,034 | `data/libraries/dp4_tiled30mers_fasta.csv` | built |
 | **C5** | metric-space titration | designs spread across metrics (calibration) | farthest-point sample (fixed) | 3,000 §  | `results/dp4_C5_titration.csv` | sampled |
 | **C6** | scaffolded-epitope controls | island→Ala + scaffold-disruption | all C1 top-*n* base × flavors | 3,007 ‡§ | `results/dp4_C6_controls.csv` | built |
 
@@ -67,11 +67,11 @@ known-Ab epitopes, drop three → **56**:
   criteria by accident. All other DP3 epitopes John reviewed are well-behaved.
 
 Applies to the **known-Ab components: C1, C2, C5, C6**. **C3** (polyclonal 1D2K/6M0J/4WAT) is
-unaffected (different antigens). **C4** (linear tiled controls) is an **open question**: drop these
-three antigens too, or keep them as linear controls? — decide with John.
+unaffected (different antigens). **C4** (linear tiled controls) **also drops the three** (decided 2026-07-07) so the linear controls stay
+consistent with the scaffold arms → 56 mAb + 3 polyclonal = 59 antigens, **2,034** tiles.
 
 Tooling supports it: `stage06_select.py --drop-ids 2h32,4xwo,7a3t`, `stage06_sample_c5.py` `DROP_IDS`
-(updated to include 2h32), `build_c6_mutants.py --drop-targets 2h32,4xwo,7a3t`. C5 and C6 are rebuilt on the 56-set; the C1/C2 **rankings** still include all epitopes (a ranking, not a
+(updated to include 2h32), `build_c6_mutants.py --drop-targets 2h32,4xwo,7a3t`. C4, C5, and C6 are rebuilt on the 56-set; the C1/C2 **rankings** still include all epitopes (a ranking, not a
 cut) and the C1/C5 `scaffoldEPITOPE` files predate the `2h32` drop, so the 56-set is applied to those at
 the final assembly cut (together with the chosen depth).
 
@@ -96,7 +96,7 @@ mechanism; C3 is a different run). In the assembled DP2 file this casing is carr
   windows, each ≥4 residues from the epitope, seeded). **93/1,120 (8.3%)** designs can't fit 4 hexamers
   → X4 arm covers 1,027/1,120; alanine arms cover all.
 - **C4 — linear tiled-30mer controls** (`data/libraries/dp4_tiled30mers_fasta.csv`, John-approved).
-  The **full antigen sequences** of the ~60 proteins (57 mAb targets + 3 tiled antigens 1D2K/6M0J/4WAT),
+  The **full antigen sequences** of 59 antigens (56 mAb targets + 3 tiled antigens 1D2K/6M0J/4WAT; the three excluded mAbs 2h32/4xwo/7a3t are dropped here too for consistency with the 56-mAb set),
   taken from the **FASTA files (no unresolved-gap holes, unlike the PDBs)**, chopped into overlapping
   **30-mers, step = 6**. No RFD/MPNN/AF3. Each 30-mer goes at the END of a constant construct:
   `GSGAGSGA…GSGA` filler + `ENLYFQGA` (TEV protease site) + `[30-mer]` → a constant **103-mer** that is
