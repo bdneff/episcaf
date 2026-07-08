@@ -51,7 +51,9 @@ python3 -m episcaf_pipeline stage02 --run_dir "$RUN_DIR" --pdb_dir "$PDB_DIR"
 
 MANIFEST="$RUN_DIR/02_rfd3/inputs_manifest.csv"
 N=$(($(wc -l < "$MANIFEST") - 1))   # minus header
-CHUNK="${CHUNK:-1000}"              # SLURM MaxArraySize is often ~1001; keep chunks under it
+# Chunk only if the array exceeds this cluster's real MaxArraySize (query it; fall back to 1000).
+MAXARR=$(scontrol show config 2>/dev/null | awk -F= '/MaxArraySize/{gsub(/ /,"",$2);print $2}')
+CHUNK="${CHUNK:-$(( ${MAXARR:-1000} > 1 ? ${MAXARR:-1000} - 1 : 1000 ))}"
 THROTTLE="${THROTTLE:-200}"         # cap tasks running at once (the %N suffix)
 echo
 echo ">> staged $N RFD3 input JSONs in $RUN_DIR/02_rfd3/inputs"
