@@ -38,7 +38,9 @@ accessibility term is the \emph{real} clash \texttt{af3\_n\_clash\_res} rather t
 surrogate. Whole-epitope presentation is straightforward for the \num{13} single-island epitopes
 but hard for multi-island ones --- preserving the relative geometry of separated islands is
 exactly where scaffolding struggles (Section~\ref{sec:intro}, the \texttt{2XQB} failure) --- which
-is the motivation for shipping C2 alongside it.
+is the motivation for shipping C2 alongside it. C1 is regenerated natively at the \num{103}-mer assay
+length (Section~\ref{sec:production}) rather than truncated from Lawson's \num{104}-mers, so C5 and C6,
+which derive from the C1 pool, inherit the corrected length.
 
 \subsection{C2 --- known-antibody epitopes, one island at a time}\label{sec:dp4c2}
 The single-island component scaffolds each island of the \num{46} multi-island epitopes
@@ -114,14 +116,15 @@ it intact, so a design that survives this but collapses under an island alanine-
 behaving as intended. We insert a fixed structure-disrupting hexamer (\texttt{PPDDGG}) into four
 lowercase (scaffold) windows, each required to lie at least four residues from any epitope position,
 so the epitope is untouched and the perturbation is confined to the scaffold; placement is seeded for
-reproducibility. We ship this four-window variant (\texttt{scaffoldMutX4}) only --- the stronger
+reproducibility. We ship this four-window variant (\texttt{scaffoldMutX4}) --- the stronger
 perturbation carried over from DP3 --- and drop the single-window one to save space. Because island
 membership and the epitope-avoidance constraint are both read directly from the case-encoding, no
-separate residue-index map is needed; a design that cannot fit four disjoint scaffold windows is
-logged and skipped. In the current build this affects \num{93} of \num{1120} base designs
-(\SI{8.3}{\percent}) --- scaffolds too small or too epitope-dense to place four hexamers each
-$\ge\!4$ residues from the epitope --- so the \texttt{scaffoldMutX4} arm covers \num{1027} of the
-\num{1120} bases while the island-alanine arms cover all of them.
+separate residue-index map is needed. When a scaffold is too small or too epitope-dense to fit four
+disjoint windows, we \emph{fall back to three} (\texttt{scaffoldMutX3}) rather than drop the control,
+so a design loses its scaffold control only if it cannot place even three hexamers each $\ge\!4$
+residues from the epitope. In the current build the four-window arm covers \num{1043} designs and the
+three-window fallback a further \num{43}, so \num{1086} of \num{1120} bases carry a scaffold control
+and only \num{34} (\SI{3.0}{\percent}) fit neither; the island-alanine arms cover all bases.
 
 \medskip
 \noindent The controls follow the DP3 mutation scheme (reference and port in

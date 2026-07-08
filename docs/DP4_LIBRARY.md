@@ -18,14 +18,16 @@ top-20 base, so it scales with C1's depth.
 | **C3** | polyclonal 12-mer tiles | best-*n* per window, no antibody | ranked, top-*n* per window | 8,780 † | `results/dp4_C3_12mer_ranked.top20.csv` | ranked |
 | **C4** | linear 30-mer controls | bare tiled peptides (no scaffold) | exhaustive tiling (fixed) | 2,034 | `data/libraries/dp4_tiled30mers_fasta.csv` | built |
 | **C5** | metric-space titration | designs spread across metrics (calibration) | farthest-point sample (fixed) | 3,000 §  | `results/dp4_C5_titration.csv` | sampled |
-| **C6** | scaffolded-epitope controls | island→Ala + scaffold-disruption | all C1 top-*n* base × flavors | 3,007 ‡§ | `results/dp4_C6_controls.csv` | built |
+| **C6** | scaffolded-epitope controls | island→Ala + scaffold-disruption | all C1 top-*n* base × flavors | 3,066 ‡§ | `results/dp4_C6_controls.csv` | built |
 
 † **Ranked selection** — count shown at **top-20 per group**; scales with the shipped depth (top-*n*,
 elastic — see *Budget & depth*). At top-5 these shrink ~4×.
-‡ **Derived** from C1's top-20 base, so scales with C1's depth (island1→A + island2→A dual-only + scaffoldMutX4).
-§ **104-mer designs** — C1 reused Lawson's 104-residue contigs, and C5/C6 derive from the C1 pool, so
-these three are 104-mers **trimmed to the 103-mer assay ceiling at assembly** (epitope-preserving; see
-*104→103 truncation*). C2/C3/C4 are natively 103.
+‡ **Derived** from C1's top-20 base, so scales with C1's depth (island1→A + island2→A dual-only + scaffold disruption).
+§ **104-mer designs → being regenerated at 103.** C1 reused Lawson's 104-residue contigs, and C5/C6
+derive from the C1 pool, so these three are 104-mers. Rather than trim them (DP3 saw weaker signal on
+104→103-truncated peptides), **C1 is being rerun natively at 103** (see *C1 redo at 103*); C5/C6 then
+rebuild off the new pool and no trim is needed. Until that pool lands, the assembler still trims the
+current 104-mers (see *104→103 truncation*). C2/C3/C4 are natively 103.
 
 Full composite rankings (`results/dp4_*_ranked.csv`) are regenerable and gitignored; only the top-*n*
 cuts + case-encoded sequences are tracked.
@@ -97,9 +99,11 @@ In the assembled library file this casing is carried as the
 - **C6 — scaffolded-epitope controls** (`episcaf_pipeline/scaffolded_epitope_controls/`). Base = C1
   top-20 over **56 mAbs** (dropped `2h32` pre-BCR, `4xwo` low-yield, `7a3t` 4-residue epitope). Not new scaffolding —
   string substitution on the case-encoded sequence (port of the DP3 mutation-control R code). Flavors: every-residue
-  island1→Ala, island2→Ala (dual-island only), and `scaffoldMutX4` (a `PPDDGG` hexamer in 4 scaffold
-  windows, each ≥4 residues from the epitope, seeded). **93/1,120 (8.3%)** designs can't fit 4 hexamers
-  → X4 arm covers 1,027/1,120; alanine arms cover all.
+  island1→Ala, island2→Ala (dual-island only), and scaffold disruption (`PPDDGG` hexamers in scaffold
+  windows, each ≥4 residues from the epitope, seeded). Scaffold disruption is **X4 with a graceful
+  fallback to X3** (`--scaffold-min 3`) rather than dropping the control when 4 don't fit: current build
+  X4 1,043 + X3 43 = **1,086/1,120 covered**, only **34 (3.0%)** can't fit even 3 hexamers. Alanine arms
+  cover all. **This build is off the current 104 pool → regenerates off the native-103 C1 rerun.**
 - **C4 — linear tiled-30mer controls** (`data/libraries/dp4_tiled30mers_fasta.csv`).
   The **full antigen sequences** of 59 antigens (56 mAb targets + 3 tiled antigens 1D2K/6M0J/4WAT; the three excluded mAbs 2h32/4xwo/7a3t are dropped here too for consistency with the 56-mAb set),
   taken from the **FASTA files (no unresolved-gap holes, unlike the PDBs)**, chopped into overlapping
@@ -133,7 +137,10 @@ Per-category `sequence` construction: **linear controls (C4)** = filler + `ENLYF
 **scaffolded designs (C1/C2/C3/C5/C6)** = the design's own 103-mer directly. Assembly concatenates all
 components in this schema with global `library_member` numbering.
 
-**104→103 truncation — the whole-epitope (C1) family only.** Not all components are 104-mers. **C1
+**104→103 truncation — the whole-epitope (C1) family only.** *(INTERIM — superseded once the C1-at-103
+rerun lands; see* ***C1 redo at 103*** *below. Kept as the record of what the current 104 pool needs and
+why native 103 is cleaner. The assembler still applies this until the new pool is scored.)*
+Not all components are 104-mers. **C1
 *reproduced* Lawson's whole-epitope run, reusing his contigs** (`contig_length "104-104"`), so **C1 —
 and C5 (sampled from C1's pool) and C6 (built from C1) — are 104-residue** proteins (`af3_window_end=104`)
 that must be trimmed to the 103-mer assay ceiling. **C2 is natively 103** (we *generated* new contigs
@@ -160,6 +167,32 @@ c_flank = 0), so there's no scaffold residue to trim at either end and any trim 
 residue. Decision: **drop it and ship the rank-21 design for `3ux9_1P`**
 (keeps 20/epitope; the full ranking is regenerable, so rank-21 is well-defined). Apply this at assembly.
 
+## C1 redo at 103 (native 103, supersedes the trim) — IN FLIGHT
+
+**Why.** John observed that in DP3, DP2 104-mers truncated to 103 gave generally weaker binding
+signal — likely assay run-to-run variation, but enough to make a single-residue truncation a
+liability we'd rather not carry. Since C1 is 104 and **C5/C6 derive from C1's pool, 3 of the 4
+antibody components ride on it**. So instead of trimming post-hoc we regenerate C1 natively at 103.
+
+**How (`episcaf_pipeline/build_whole_epitope_designs.py`).** Take Lawson's *exact* whole-epitope
+contigs from `dp2` (each `N-N/A…/spacer/A…/C-C`, always summing to 104) and drop **one scaffold
+residue** — the larger terminal flank, or the largest interior spacer when the islands are flush at
+both termini. Every epitope residue and Lawson's inter-island-spacing sweep are preserved; only the
+length changes, so C1 stays a faithful DP3 comparator (this is why we *edit* his contigs rather than
+resample fresh ones like C2). **Native 103 dissolves the `3ux9_1P` "can't-trim" case** — its spacer
+is shortened, both islands kept — so there is **no drop and no rank-21 substitution** anymore.
+
+**Ledger:** `results/whole_epitope_designs.csv` — **2,206 contigs**, 56 mAbs (drops 2h32/4xwo/7a3t),
+**all 103**, → 2,206 × 8 RFD3 × 8 MPNN = **141,184 designs = 141,184 AF3 structures** (~1.27× the
+single-island run). Verified: 0 island edits, exactly one scaffold residue dropped per contig; `init`
++ `stage01` compile cleanly to `contig_rfd3` at `103-103`.
+
+**Run (Gemini):** `bash scripts/run_whole_epitope_rfd3.sh` (init→stage01→stage02, prints the chunked
+RFD3 `sbatch`), then after RFD3 finishes `bash scripts/run_whole_epitope_mpnn_af3.sh runs/whole_epitope_rfd3`
+(MPNN wave → AF3 wave). Then re-run stage05 metrics + `stage06_select` for the new C1, re-case-encode
+(token→dp2), and rebuild C5/C6 off the new pool. **8VDL** (not in DP3's 59) can ride along in this same
+run as extra ledger rows once its scaffolding is specified.
+
 ## Reproduce (exact commands)
 
 Every deliverable is regenerable by a named script; the numbers reported (counts, coverage, the 93 X4
@@ -167,7 +200,14 @@ skips) are printed by these scripts, not hand-computed. Metric CSVs live in the 
 (`$D = /Users/bneff/Desktop/projects/episcaf`, see `filesystem-map`); C2 + case-encoding run on Gemini.
 
 ```bash
-# C1 (local)
+# C1 redo at 103 (local: build the ledger; Gemini: run RFD3->MPNN->AF3)
+python scripts/build_whole_epitope_designs.py --drop-targets 2h32,4xwo,7a3t \
+  --out results/whole_epitope_designs.parquet      # -> 2,206 contigs, all 103
+#   (module form: python -m episcaf_pipeline.build_whole_epitope_designs ...)
+bash scripts/run_whole_epitope_rfd3.sh             # Gemini: init->stage01->stage02 + RFD3 sbatch
+bash scripts/run_whole_epitope_mpnn_af3.sh runs/whole_epitope_rfd3   # Gemini: after RFD3 done
+
+# C1 selection (local; on the NEW 103 metrics once scored)
 python scripts/stage06_select.py --preset antibody \
   --metrics-csv $D/known_antigen/analysis/data/metrics_native_cyl_full.csv \
   --group id --topk 20 --out results/dp4_C1_whole_epitope_ranked.csv
@@ -210,14 +250,16 @@ DP4 = a 36k library that includes all minibinders → **~10–15k slots for Epis
 elastic buffer**, sized last once the final minibinder count is known. At top-5 the ranked counts
 shrink ~4× from the top-20 figures above.
 
-## Pending — assembly & encoding
+## Pending
 
-Format is settled and the assembler is built (below); the only inputs still needed are **sign-off** on
-the components and the **shipping depth**.
-
+0. **C1 redo at 103 — IN FLIGHT** (see *C1 redo at 103* above). RFD3→MPNN→AF3 on the 2,206-contig 103
+   ledger (141,184 AF3 structures), then re-score / re-select / re-case-encode C1 and rebuild C5+C6 off
+   the new pool. Once it lands, C1/C5/C6 are native 103 and the assembler's 104→103 trim is a no-op.
+   Optional add-on: fold in **8VDL** as extra ledger rows.
 1. **Assembly (`06_library`)** — **BUILT** (`scripts/stage06_assemble.py`): concatenates the six components
    into the 8-column annotated library, applying the 56-exclusion, the `--depth` top-*n* cut, the 104→103
-   trim, and global `library_member` numbering. `python scripts/stage06_assemble.py --depth <n>` once the
-   depth is set. Needs only the **sign-off** and the **shipping depth**.
+   trim (a no-op once C1 is native 103), and global `library_member` numbering.
+   `python scripts/stage06_assemble.py --depth <n>` once the depth is set. Needs the **sign-off**, the
+   **shipping depth**, and (ideally) the **103 C1 pool**.
 2. **Oligo encoding** — LadnerLab `oligo_encoding` + DP3 codon weights
    (`episcaf_pipeline/oligo_encoding/`), then the order-file step (confirm with Erin).
