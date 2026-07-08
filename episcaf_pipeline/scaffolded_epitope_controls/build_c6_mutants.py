@@ -82,6 +82,17 @@ def mutate6(seq: str, rng: random.Random, n: int = 4, max_tries: int = 1000):
     return "".join(chars)
 
 
+def mutate6_fallback(seq: str, rng: random.Random, n_max: int = 4, n_min: int = 3):
+    """Place the strongest scaffold disruption the design can fit: try n_max hexamers, degrade to
+    n_min if they don't fit (John: 'just do 3' rather than drop the control). Returns
+    (n_placed, mutated_str), or (0, None) if even n_min can't be placed."""
+    for n in range(n_max, n_min - 1, -1):
+        mut = mutate6(seq, rng, n=n)
+        if mut is not None:
+            return n, mut
+    return 0, None
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -92,6 +103,10 @@ def main() -> None:
     ap.add_argument("--out", required=True)
     ap.add_argument("--drop-targets", default="", help="comma prefixes of target ids to exclude (e.g. 4xwo,7a3t)")
     ap.add_argument("--seed", type=int, default=0, help="RNG seed for scaffold 6-mer placement")
+    ap.add_argument("--scaffold-min", type=int, default=3,
+                    help="fall back to this many disruption hexamers when 4 don't fit, rather than "
+                         "dropping the scaffold control (John: 'just do 3'). Set 4 to keep the old "
+                         "drop-if-not-4 behavior.")
     ap.add_argument("--every-other", action="store_true", help="DP3-compat: Ala every OTHER island residue")
     ap.add_argument("--include-x1", action="store_true", help="also emit _scaffoldMutX1 (DP3-compat)")
     args = ap.parse_args()
@@ -109,8 +124,7 @@ def main() -> None:
         print(f"[c6] dropped {n0-len(df)} rows with target in {pref} -> {len(df)} base designs")
     rng = random.Random(args.seed)
 
-    rows, n_isl2, n_x4_fail = [], 0, 0
-    scaff_ns = ([1, 4] if args.include_x1 else [4])
+    rows, n_isl2, n_scaff_fallback, n_scaff_fail = [], 0, 0, 0
     for r in df.itertuples(index=False):
         did = getattr(r, args.id_col); seq = str(getattr(r, args.seq_col))
         target = getattr(r, tgt) if tgt else ""
@@ -118,12 +132,18 @@ def main() -> None:
             continue
         flavors = [(f"{did}_epitopeIsland1Mut>A", mutate_to_A(seq, 1, args.every_other)),
                    (f"{did}_epitopeIsland2Mut>A", mutate_to_A(seq, 2, args.every_other))]
-        for nX in scaff_ns:
-            flavors.append((f"{did}_scaffoldMutX{nX}", mutate6(seq, rng, n=nX)))
+        if args.include_x1:
+            flavors.append((f"{did}_scaffoldMutX1", mutate6(seq, rng, n=1)))
+        # scaffold disruption: X4, degrading to X{scaffold_min} rather than dropping the control
+        n_place, mX = mutate6_fallback(seq, rng, n_max=4, n_min=args.scaffold_min)
+        if n_place:
+            flavors.append((f"{did}_scaffoldMutX{n_place}", mX))
+            if n_place < 4:
+                n_scaff_fallback += 1
+        else:
+            n_scaff_fail += 1
         for name, mut in flavors:
-            if not mut:                       # '' (no such island) or None (X4 couldn't place)
-                if name.endswith("Island2Mut>A"): pass
-                elif "scaffoldMut" in name: n_x4_fail += 1
+            if not mut:                       # '' (no such island) or None (X1 couldn't place)
                 continue
             if name.endswith("Island2Mut>A"): n_isl2 += 1
             up = mut.upper()
@@ -135,12 +155,16 @@ def main() -> None:
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out, index=False)
     n_in = len(df)
+    n_x4 = int(out.design_ID.str.contains("scaffoldMutX4").sum())
+    n_x3 = int(out.design_ID.str.contains("scaffoldMutX3").sum())
     print(f"[c6] {n_in} input designs -> {len(out)} control constructs")
     print(f"[c6]   island1->A: {(out.design_ID.str.endswith('Island1Mut>A')).sum()}  "
-          f"island2->A: {n_isl2} (dual-island only)  "
-          f"scaffoldMutX4: {(out.design_ID.str.contains('scaffoldMutX4')).sum()}")
-    if n_x4_fail:
-        print(f"[c6]   WARNING: {n_x4_fail} designs could not place 4 disruption hexamers (skipped X4)")
+          f"island2->A: {n_isl2} (dual-island only)")
+    print(f"[c6]   scaffold disruption: X4 {n_x4}, X3 (fell back from 4) {n_x3}; "
+          f"covered {n_x4 + n_x3}/{n_in} designs")
+    if n_scaff_fail:
+        print(f"[c6]   WARNING: {n_scaff_fail} designs could not place even "
+              f"{args.scaffold_min} disruption hexamers (no scaffold control)")
     print(f"[c6] wrote {args.out}")
 
 

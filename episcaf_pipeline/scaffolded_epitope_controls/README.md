@@ -29,6 +29,10 @@ DP3 flavors per design: `original`, `_scaffoldMutX1`, `_scaffoldMutX4`, `_epitop
 ## DP4 modifications
 1. **Alanine-substitute EVERY epitope residue of the focal island** (not every other) — cleaner readout.
 2. **Keep only `_scaffoldMutX4`** (drop `_scaffoldMutX1`); X4 was the stronger perturbation and saves space.
+3. **Graceful fallback X4 → X3** (`--scaffold-min 3`, the default): when a scaffold can't fit 4 disjoint
+   hexamers ≥4 from the epitope, emit `_scaffoldMutX3` rather than dropping the control entirely
+   (keeps a scaffold-disruption control for those designs; only the handful that can't fit even 3 are
+   skipped). Set `--scaffold-min 4` for the old drop-if-not-4 behavior.
 
 DP4 flavors per design: `_scaffoldMutX4`, `_epitopeIsland1Mut>A`, `_epitopeIsland2Mut>A` (island 2 only
 for dual-island). The unmutated design is not emitted here — it is already shipped as C1, and C6 is the
@@ -48,7 +52,8 @@ python episcaf_pipeline/scaffolded_epitope_controls/build_c6_mutants.py \
     --out results/dp4_C6_controls.csv
 ```
 
-Current build (C1 top-20 over the 56 mAbs): **3,007 constructs** — island1→A 1,120, island2→A 860,
-`scaffoldMutX4` 1,027 (93 of 1,120, 8.3%, can't fit four hexamers and are skipped). The library
-assembler (`scripts/stage06_assemble.py`) folds these in and trims the 104-mers to 103. Full component
-context: `docs/DP4_LIBRARY.md`.
+Current build (C1 top-20 over the 56 mAbs): **3,066 constructs** — island1→A 1,120, island2→A 860,
+scaffold disruption 1,086 (`scaffoldMutX4` 1,043 + `scaffoldMutX3` 43 fallback; only 34 of 1,120, 3.0%,
+can't fit even three hexamers and are skipped). This build is off the **current 104-mer C1 pool** and
+will be **regenerated off the native-103 C1 rerun** (see `docs/DP4_LIBRARY.md`, the C1-at-103 redo) once
+that pool is scored; at that point no 104→103 trim is needed. Full component context: `docs/DP4_LIBRARY.md`.
