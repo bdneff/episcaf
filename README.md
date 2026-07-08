@@ -134,6 +134,27 @@ constant 103-mer in the 8-column annotated format, assemble into one ordered fil
 oligos (`episcaf_pipeline/oligo_encoding/`, stage 07). **Full reference — components, selection
 math/weights, exclusions, the 104→103 trim, status: `docs/DP4_LIBRARY.md`.**
 
+## Intended cleanups (deferred)
+
+The code analog of the manuscript's open questions: structural improvements we've *chosen to defer*,
+recorded so they aren't lost. None are bugs — they're friction noticed while extending the repo, and
+we deliberately do not refactor while a run is in flight (the current C1-103 and 8VDL scaffolds).
+
+- **Unify the contig generators.** `episcaf_pipeline/build_dual_island_designs.py`,
+  `build_whole_epitope_designs.py`, and `dp4_8vdl/scripts/01_generate_contigs.py` each re-implement the
+  same idea — distribute a scaffold budget into flanks/gaps around fixed islands and emit a contig
+  string. Fold them into one parametric generator. Low priority / real regression risk; do it only if a
+  *fourth* generator would otherwise be written.
+- **Reconcile the two pipeline dialects.** episcaf's stages assume antigen-on-chain-A +
+  `epitope_resindices`; the 8VDL/PfEMP1 side is chain-C + `scaffold_segs`, bridged by
+  `dp4_8vdl/scripts/04_make_fixed_pdbs.py`. This also leaves 8VDL's run-dir layout split
+  (`dp4_8vdl/02_rfd3/<run>/` vs `dp4_8vdl/runs/<run>/03_mpnn/`). Cosmetic; unify only if the 8VDL arm grows.
+- **Group `results/` and `scripts/`** if they keep growing — both are flat and getting busy (many
+  `dp4_*` CSVs; many `stage0*`/`build_*`/`case_encode_*`). Navigable by naming for now.
+- **Manuscript reorganization** around the scientific questions (islands: one vs both; scaffold vs linear;
+  conserved-epitope breadth) rather than pipeline chronology — deferred until the current runs land so the
+  reorg is anchored to real results, not premature.
+
 ## Verify
 
 ```bash
