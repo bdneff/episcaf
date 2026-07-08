@@ -18,7 +18,7 @@ top-20 base, so it scales with C1's depth.
 | **C3** | polyclonal 12-mer tiles | best-*n* per window, no antibody | ranked, top-*n* per window | 8,780 † | `results/dp4_C3_12mer_ranked.top20.csv` | ranked |
 | **C4** | linear 30-mer controls | bare tiled peptides (no scaffold) | exhaustive tiling (fixed) | 2,034 | `data/libraries/dp4_tiled30mers_fasta.csv` | built |
 | **C5** | metric-space titration | designs spread across metrics (calibration) | farthest-point sample (fixed) | 3,000 §  | `results/dp4_C5_titration.csv` | sampled |
-| **C6** | scaffolded-epitope controls | island→Ala + scaffold-disruption | all C1 top-*n* base × flavors | 3,066 ‡§ | `results/dp4_C6_controls.csv` | built |
+| **C6** | scaffolded-epitope controls | island→Ala + scaffold-disruption | all C1 top-*n* base × flavors | 3,100 ‡§ | `results/dp4_C6_controls.csv` | built |
 
 † **Ranked selection** — count shown at **top-20 per group**; scales with the shipped depth (top-*n*,
 elastic — see *Budget & depth*). At top-5 these shrink ~4×.
@@ -101,8 +101,8 @@ In the assembled library file this casing is carried as the
   string substitution on the case-encoded sequence (port of the DP3 mutation-control R code). Flavors: every-residue
   island1→Ala, island2→Ala (dual-island only), and scaffold disruption (`PPDDGG` hexamers in scaffold
   windows, each ≥4 residues from the epitope, seeded). Scaffold disruption is **X4 with a graceful
-  fallback to X3** (`--scaffold-min 3`) rather than dropping the control when 4 don't fit: current build
-  X4 1,043 + X3 43 = **1,086/1,120 covered**, only **34 (3.0%)** can't fit even 3 hexamers. Alanine arms
+  fallback 4→3→2→1** (`--scaffold-min 1`) rather than dropping the control when 4 don't fit: current build
+  X4 1,034 + X3 53 + X2 33 = **1,120/1,120 covered** (86 fell back below 4, none dropped). Alanine arms
   cover all. **This build is off the current 104 pool → regenerates off the native-103 C1 rerun.**
 - **C4 — linear tiled-30mer controls** (`data/libraries/dp4_tiled30mers_fasta.csv`).
   The **full antigen sequences** of 59 antigens (56 mAb targets + 3 tiled antigens 1D2K/6M0J/4WAT; the three excluded mAbs 2h32/4xwo/7a3t are dropped here too for consistency with the 56-mAb set),

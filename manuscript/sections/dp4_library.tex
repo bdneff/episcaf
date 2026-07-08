@@ -119,12 +119,12 @@ so the epitope is untouched and the perturbation is confined to the scaffold; pl
 reproducibility. We ship this four-window variant (\texttt{scaffoldMutX4}) --- the stronger
 perturbation carried over from DP3 --- and drop the single-window one to save space. Because island
 membership and the epitope-avoidance constraint are both read directly from the case-encoding, no
-separate residue-index map is needed. When a scaffold is too small or too epitope-dense to fit four
-disjoint windows, we \emph{fall back to three} (\texttt{scaffoldMutX3}) rather than drop the control,
-so a design loses its scaffold control only if it cannot place even three hexamers each $\ge\!4$
-residues from the epitope. In the current build the four-window arm covers \num{1043} designs and the
-three-window fallback a further \num{43}, so \num{1086} of \num{1120} bases carry a scaffold control
-and only \num{34} (\SI{3.0}{\percent}) fit neither; the island-alanine arms cover all bases.
+separate residue-index map is needed. When a scaffold cannot fit four disjoint windows, we
+\emph{degrade the count} (\texttt{scaffoldMutX3}, \texttt{X2}, \texttt{X1}) rather than drop the control,
+so a design loses its scaffold control only if it cannot place even a single hexamer $\ge\!4$ residues
+from the epitope. In the current build the four-window arm covers \num{1034} designs, with \num{53} at
+three windows and \num{33} at two, so \emph{every} one of the \num{1120} bases carries a scaffold
+control; the island-alanine arms likewise cover all bases.
 
 \medskip
 \noindent The controls follow the DP3 mutation scheme (reference and port in

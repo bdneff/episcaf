@@ -82,9 +82,10 @@ def mutate6(seq: str, rng: random.Random, n: int = 4, max_tries: int = 1000):
     return "".join(chars)
 
 
-def mutate6_fallback(seq: str, rng: random.Random, n_max: int = 4, n_min: int = 3):
-    """Place the strongest scaffold disruption the design can fit: try n_max hexamers, degrade to
-    n_min if they don't fit (John: 'just do 3' rather than drop the control). Returns
+def mutate6_fallback(seq: str, rng: random.Random, n_max: int = 4, n_min: int = 1):
+    """Place the strongest scaffold disruption the design can fit: try n_max hexamers and degrade
+    n_max->...->n_min until they fit, rather than dropping the control. With n_min=1 a design is
+    dropped only if it cannot place even one hexamer >=4 from the epitope. Returns
     (n_placed, mutated_str), or (0, None) if even n_min can't be placed."""
     for n in range(n_max, n_min - 1, -1):
         mut = mutate6(seq, rng, n=n)
@@ -103,9 +104,11 @@ def main() -> None:
     ap.add_argument("--out", required=True)
     ap.add_argument("--drop-targets", default="", help="comma prefixes of target ids to exclude (e.g. 4xwo,7a3t)")
     ap.add_argument("--seed", type=int, default=0, help="RNG seed for scaffold 6-mer placement")
-    ap.add_argument("--scaffold-min", type=int, default=3,
-                    help="fall back to this many disruption hexamers when 4 don't fit, rather than "
-                         "dropping the scaffold control (John: 'just do 3'). Set 4 to keep the old "
+    ap.add_argument("--scaffold-min", type=int, default=1,
+                    help="floor for the scaffold-disruption fallback: try 4 hexamers and degrade "
+                         "4->3->2->1 until they fit, rather than dropping the control. Default 1 keeps "
+                         "a control for every design that can place even one hexamer; a design is "
+                         "dropped only if zero fit. Set 3 for the 'just do >=3' policy, 4 for the old "
                          "drop-if-not-4 behavior.")
     ap.add_argument("--every-other", action="store_true", help="DP3-compat: Ala every OTHER island residue")
     ap.add_argument("--include-x1", action="store_true", help="also emit _scaffoldMutX1 (DP3-compat)")
@@ -155,16 +158,18 @@ def main() -> None:
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out, index=False)
     n_in = len(df)
-    n_x4 = int(out.design_ID.str.contains("scaffoldMutX4").sum())
-    n_x3 = int(out.design_ID.str.contains("scaffoldMutX3").sum())
+    scaff = out.design_ID.str.extract(r"scaffoldMutX(\d)")[0].dropna().astype(int)
+    dist = scaff.value_counts().to_dict()                    # {n_hexamers: count}
+    covered = int(scaff.size)
     print(f"[c6] {n_in} input designs -> {len(out)} control constructs")
     print(f"[c6]   island1->A: {(out.design_ID.str.endswith('Island1Mut>A')).sum()}  "
           f"island2->A: {n_isl2} (dual-island only)")
-    print(f"[c6]   scaffold disruption: X4 {n_x4}, X3 (fell back from 4) {n_x3}; "
-          f"covered {n_x4 + n_x3}/{n_in} designs")
+    print(f"[c6]   scaffold disruption by #hexamers: "
+          + ", ".join(f"X{k} {dist[k]}" for k in sorted(dist, reverse=True))
+          + f"; covered {covered}/{n_in} ({n_scaff_fallback} fell back below 4)")
     if n_scaff_fail:
         print(f"[c6]   WARNING: {n_scaff_fail} designs could not place even "
-              f"{args.scaffold_min} disruption hexamers (no scaffold control)")
+              f"{args.scaffold_min} disruption hexamer(s) (no scaffold control)")
     print(f"[c6] wrote {args.out}")
 
 
