@@ -148,10 +148,12 @@ surface of the \emph{Plasmodium falciparum} PfEMP1 CIDR$\alpha$1.4 domain (cryst
 surface antigen that drives severe malaria and escapes immunity by antigenic variation, but the
 residues its CIDR domain uses to grip the host receptor EPCR cannot vary freely --- so a construct that
 presents that conserved contact surface is a candidate for eliciting \emph{broadly} reactive,
-variant-transcending antibodies. In \texttt{8VDL} that surface is the single contiguous stretch chain~C
-\numrange{651}{670} (\texttt{FDSFFFQVIYKFNEGEAKWN}), with functional hotspots \texttt{F655}, \texttt{F656},
-\texttt{E666}. Because the crystal also contains the cognate C7 antibody (chains H/L), this is a
-known-antibody target and the real clash term applies, exactly as for C1/C2.
+variant-transcending antibodies. The paper identifies the conserved, EPCR-binding-critical residues on
+which its broadly reactive antibodies depend: the double-phenylalanine motif \texttt{F655}/\texttt{F656}
+and a supporting glutamate \texttt{E666}. We scaffold the contiguous chain~C window
+\numrange{651}{670} (\texttt{FDSFFFQVIYKFNEGEAKWN}) that spans those hotspots, and the hotspots alone,
+as the two epitope definitions below. Because the crystal also contains the cognate C7 antibody
+(chains H/L), this is a known-antibody target and the real clash term applies, exactly as for C1/C2.
 
 We scaffold it two ways and keep the best \num{10} of each: \texttt{epitope20} fixes the whole
 \num{20}-residue island (the strongest constraint, the direct analog of C1), while \texttt{hotspots}
