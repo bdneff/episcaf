@@ -145,10 +145,13 @@ we deliberately do not refactor while a run is in flight (the current C1-103 and
   same idea — distribute a scaffold budget into flanks/gaps around fixed islands and emit a contig
   string. Fold them into one parametric generator. Low priority / real regression risk; do it only if a
   *fourth* generator would otherwise be written.
-- **Reconcile the two pipeline dialects.** episcaf's stages assume antigen-on-chain-A +
-  `epitope_resindices`; the 8VDL/PfEMP1 side is chain-C + `scaffold_segs`, bridged by
-  `dp4_8vdl/scripts/04_make_fixed_pdbs.py`. This also leaves 8VDL's run-dir layout split
-  (`dp4_8vdl/02_rfd3/<run>/` vs `dp4_8vdl/runs/<run>/03_mpnn/`). Cosmetic; unify only if the 8VDL arm grows.
+- **Two input protocols, not one dialect.** Rather than collapse the two conventions, formalize them:
+  a **standard protocol** for epitopes from IEDB / AbDb — already cleaned, antigen-on-chain-A +
+  `epitope_resindices`, which is how the bulk of our epitopes arrive (we have many formatted this way) —
+  plus a **custom-protocol** option for one-off structures that keep their own chain/numbering (like
+  8VDL: chain-C + `scaffold_segs`, bridged today by `dp4_8vdl/scripts/04_make_fixed_pdbs.py`). The custom
+  path also leaves 8VDL's run-dir layout split (`dp4_8vdl/02_rfd3/<run>/` vs `dp4_8vdl/runs/<run>/03_mpnn/`).
+  Note only — not building now.
 - **Group `results/` and `scripts/`** if they keep growing — both are flat and getting busy (many
   `dp4_*` CSVs; many `stage0*`/`build_*`/`case_encode_*`). Navigable by naming for now.
 - **Manuscript reorganization** around the scientific questions (islands: one vs both; scaffold vs linear;
