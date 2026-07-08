@@ -59,13 +59,30 @@ python scripts/01_generate_contigs.py --target hotspots  --n-contigs 10 --out 01
 python scripts/02_emit_rfd3_inputs.py --contigs_csv 01_contigs/epitope20.csv --out_dir 02_rfd3/epitope20/inputs
 python scripts/02_emit_rfd3_inputs.py --contigs_csv 01_contigs/hotspots.csv  --out_dir 02_rfd3/hotspots/inputs
 
-# 3–6. RFD3 → MPNN → AF3  (Gemini GPU; see each script's header)
-#   sbatch --array=1-N scripts/03_rfd3_array.sbatch 02_rfd3/<run>
-#   python scripts/04_submit_mpnn.py ... ; python scripts/05_emit_af3_jsons.py ... ;
-#   sbatch --array=1-N scripts/06_af3_array.sbatch 05_af3/<run>
+# 3. RFD3 (Gemini GPU) — one task per contig, 8 backbones each
+sbatch --array=1-10%200 scripts/03_rfd3_array.sbatch 02_rfd3/epitope20
+sbatch --array=1-10%200 scripts/03_rfd3_array.sbatch 02_rfd3/hotspots
 
-# 7. consolidate — score (real H/L clash), take top 10 per run, emit 8-column for DP4
-python scripts/07_consolidate.py --runs epitope20,hotspots --topk 10 --out results/dp4_8vdl_top10.csv
+# 4. FIXED backbone PDBs — the ONE 8VDL-specific step (multi-island FIXED positions), then
+#    everything downstream reuses episcaf's proven stage03/stage04 (run per-run, from repo root):
+python dp4_8vdl/scripts/04_make_fixed_pdbs.py \
+    --contigs_csv dp4_8vdl/01_contigs/epitope20.csv \
+    --rfd3_outputs_dir dp4_8vdl/02_rfd3/epitope20/outputs \
+    --out_dir dp4_8vdl/runs/epitope20/03_mpnn/fixed_pdbs
+
+# 5. MPNN (episcaf, proven) — 8 seqs/backbone
+python scripts/stage03_mpnn_submit.py --fixed_pdb_dir dp4_8vdl/runs/epitope20/03_mpnn/fixed_pdbs \
+    --outdir dp4_8vdl/runs/epitope20/03_mpnn/mpnn_pdbs --batch_size 300 --tag 8vdl_ep20
+
+# 6. AF3 (episcaf, proven)
+python scripts/stage04_af3_emit_jsons.py --mpnn_pdb_dir dp4_8vdl/runs/epitope20/03_mpnn/mpnn_pdbs \
+    --out_dir dp4_8vdl/runs/epitope20/04_af3/inputs --seed 1
+sbatch --array=1-N scripts/stage04_af3_array.sbatch dp4_8vdl/runs/epitope20   # N = ceil(#jsons/100)
+#   (repeat 4–6 for hotspots)
+
+# 7. consolidate — score (real H/L clash), take top 10 per run, emit 8-column for DP4  [TODO: 07]
+python dp4_8vdl/scripts/07_consolidate.py --runs epitope20,hotspots --topk 10 \
+    --out results/dp4_8vdl_top10.csv
 ```
 
 `data/8VDL.pdb` is the crystal (chains C/H/L), committed here so the arm is self-contained. The final
@@ -77,6 +94,10 @@ python scripts/07_consolidate.py --runs epitope20,hotspots --topk 10 --out resul
 - `--n-contigs` × 8 RFD3 × 8 MPNN designs per run; top 10 come out, so 10 contigs is ample. Note
   `epitope20` (one island, 2 scaffold segments) caps at 64 unique contigs; `hotspots` (3 segments)
   has no practical cap. RFD3 still makes 8 stochastic backbones per contig, so 10 contigs = 640 designs.
-- **Not yet wired (next increment):** `04_submit_mpnn.py` (needs the multi-island fixed-position fix,
-  not the prior art's hardcoded 12-mer), `05_emit_af3_jsons.py`, `06_af3_array.sbatch`, and
-  `07_consolidate.py` (score → top 10 → 8-column). Contigs → RFD3 (steps 1–3) are ready.
+- MPNN/AF3 are **not ported** — the only 8VDL-specific step is `04_make_fixed_pdbs.py` (computes the
+  multi-island FIXED positions and reuses episcaf's `cif_to_fixed_pdb`); steps 5–6 are episcaf's
+  just-run `stage03_mpnn_submit.py` / `stage04_*`. The prior art's `04/05/06` are superseded and not
+  carried in.
+- **Still TODO:** `07_consolidate.py` — score the AF3 outputs (antibody preset, real H/L clash),
+  take top 10 per run, emit the 8-column rows for `stage06_assemble`. I'll write it against the real
+  AF3 outputs once they land.
