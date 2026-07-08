@@ -141,6 +141,29 @@ engages its ligand differently, so it is not a valid test case for antibody-epit
 entered the DP3 set through the inclusion criteria inadvertently. The polyclonal tiling (C3) is over
 different antigens and is unaffected.
 
+\subsection{8VDL --- a PfEMP1 conserved-epitope arm}\label{sec:dp4_8vdl}
+One further arm scaffolds a conserved epitope from a different antigen entirely: the EPCR-binding
+surface of the \emph{Plasmodium falciparum} PfEMP1 CIDR$\alpha$1.4 domain (crystal structure
+\texttt{8VDL}; Reyes et al., \emph{Nature} 636:182--189, 2024). PfEMP1 is the hypervariable parasite
+surface antigen that drives severe malaria and escapes immunity by antigenic variation, but the
+residues its CIDR domain uses to grip the host receptor EPCR cannot vary freely --- so a construct that
+presents that conserved contact surface is a candidate for eliciting \emph{broadly} reactive,
+variant-transcending antibodies. In \texttt{8VDL} that surface is the single contiguous stretch chain~C
+\numrange{651}{670} (\texttt{FDSFFFQVIYKFNEGEAKWN}), with functional hotspots \texttt{F655}, \texttt{F656},
+\texttt{E666}. Because the crystal also contains the cognate C7 antibody (chains H/L), this is a
+known-antibody target and the real clash term applies, exactly as for C1/C2.
+
+We scaffold it two ways and keep the best \num{10} of each: \texttt{epitope20} fixes the whole
+\num{20}-residue island (the strongest constraint, the direct analog of C1), while \texttt{hotspots}
+fixes only the three functional residues \texttt{F655}/\texttt{F656}/\texttt{E666} and lets the design
+build everything else around them (a minimal ``hotspot graft''). Both are scaffolded into the same
+\num{103}-mer construct through the same RFdiffusion3~$\rightarrow$~ProteinMPNN~$\rightarrow$~AlphaFold3
+pipeline and ranked on the same composite; the fixed atoms carry the residues' native crystal
+coordinates, so the hotspot arm preserves their three-dimensional arrangement however the construct
+spaces them. Comparing the two in the assay asks whether the minimal hotspot cluster suffices or the
+whole epitope is needed. This arm is produced as a self-contained component (\texttt{dp4\_8vdl/}) and
+its top designs are merged into the library alongside the others at assembly.
+
 \subsection{Assembly into one synthesis file}\label{sec:assembly}
 All six components share the constant 103-mer construct and the eight-column annotated format
 (Section~\ref{sec:tiling}), so the final step concatenates them into a single ordered library file
