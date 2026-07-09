@@ -3,13 +3,13 @@
 stage03_mpnn_fixed_pdbs.py -- RFD3 CIF outputs (02_rfd3) -> backbone PDBs with FIXED epitope
 remarks (03_mpnn/fixed_pdbs), sourcing the fixed residues from OUR ledger. Part 1 of stage 03.
 
-This is the dual-island analog of the generic strip-to-fixed-PDB step. The naive version reads
-the epitope's FIXED positions from dp2's `scaffolded_epitope_chunk_resindices` (the original
-dual-island scaffolded coordinates), which are wrong here: each island is re-scaffolded into a
-NEW 103-mer contig `N/Aa-b/C`, so in the RFD3 output the island lands at residues N+1 .. N+span
-(1-based). We compute exactly that from `results/dual_island_designs.csv` (the n_flank and
-island_size of each contig), keyed by design_id, so ProteinMPNN holds the epitope fixed and
-redesigns only the scaffold.
+The epitope's FIXED positions are NOT dp2's `scaffolded_epitope_chunk_resindices` (the original
+coordinates): each epitope is re-scaffolded into a NEW 103-mer contig, so in the RFD3 output the
+islands land at positions determined by the contig's flanks/gaps. We compute those by walking the
+contig's A-segments (`fixed_from_contig`), keyed by design_id, so ProteinMPNN holds the epitope
+fixed and redesigns only the scaffold. This handles BOTH the single-island dual-island ledger
+(`results/dual_island_designs.csv`) and the multi-island whole-epitope C1-103 ledger
+(`results/whole_epitope_designs.csv`, which has no n_flank/island_size columns).
 
 Pipeline position (stage 03_mpnn, part 1): 02_rfd3 (done) -> [THIS] strip-to-backbone+FIXED ->
 stage03_mpnn_submit (ProteinMPNN) -> stage04_af3_emit_jsons -> stage04_af3_array. Output: one
@@ -47,17 +47,42 @@ def parse_design_id(stem: str):
     return m.group("id"), int(m.group("cid"))
 
 
-def load_fixed_lookup(ledger_csv: Path) -> dict:
-    """(id, contig_id) -> 0-based fixed residue indices in the scaffolded 103-mer.
+_CONTIG_TOK = re.compile(r"^(A?)(\d+)-(\d+)$")
 
-    The island occupies output residues [n_flank .. n_flank+island_size-1] (0-based); we fix
-    the whole island motif (matching Lawson's chunk-level FIXED), so MPNN designs only scaffold.
+
+def fixed_from_contig(contig_string: str) -> list:
+    """0-based positions of every epitope (A-segment) residue in the scaffolded output construct.
+
+    Walks the slash-delimited contig (``N-N/Aa-b/gap/Ac-d/C-C``), accumulating the output position;
+    each A-segment's whole span is fixed, so ProteinMPNN preserves the epitope and redesigns only
+    scaffold. Handles ONE island (dual-island run) or MANY (whole-epitope run) uniformly. For a
+    single island this equals the old ``n_flank .. n_flank+island_size`` -- so dual-island is
+    unchanged -- while multi-island contigs simply contribute one span per island.
+    """
+    pos, fixed = 0, []
+    for tok in str(contig_string).split("/"):
+        m = _CONTIG_TOK.match(tok)
+        if not m:
+            raise ValueError(f"unparseable contig token {tok!r} in {contig_string!r}")
+        a, b = int(m.group(2)), int(m.group(3))
+        if m.group(1) == "A":                       # epitope island: fix its whole span
+            fixed.extend(range(pos, pos + (b - a + 1)))
+            pos += b - a + 1
+        else:                                        # scaffold flank/spacer ('N-N' -> a residues)
+            pos += a
+    return fixed
+
+
+def load_fixed_lookup(ledger_csv: Path) -> dict:
+    """(id, contig_id) -> 0-based fixed epitope positions in the scaffolded 103-mer.
+
+    Parsed from each contig's A-segments (`fixed_from_contig`), so it works for the single-island
+    dual-island ledger AND the multi-island whole-epitope ledger (which has no n_flank/island_size).
     """
     df = pd.read_csv(ledger_csv)
     lookup = {}
     for _, r in df.iterrows():
-        n_flank, span = int(r["n_flank"]), int(r["island_size"])
-        lookup[(str(r["id"]), int(r["contig_id"]))] = list(range(n_flank, n_flank + span))
+        lookup[(str(r["id"]), int(r["contig_id"]))] = fixed_from_contig(r["contig_string"])
     return lookup
 
 
