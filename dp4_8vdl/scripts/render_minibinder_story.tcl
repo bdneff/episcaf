@@ -34,6 +34,8 @@ catch {rotate y by 15}
 proc clearreps {m} { while {[molinfo $m get numreps] > 0} { mol delrep 0 $m } }
 
 # ColorIDs: 7 green, 2 gray, 1 red, 11 purple
+set HOT {chain C and resid 655 656 666}
+
 # ---- Figure 1: antigen green, antibody gray ----
 clearreps $VD; clearreps $MB
 mol representation NewCartoon 0.30 12.0 4.5
@@ -46,11 +48,23 @@ mol selection {(chain H or chain L) and protein}
 mol addrep $VD
 render Tachyon $outdir/fig1_antibody.dat
 
-# ---- Figure 2: + conserved hotspots in red ----
+# ---- Figure 2: conserved hotspots RED in both the ribbon and the sidechains ----
+clearreps $VD; clearreps $MB
+mol representation NewCartoon 0.30 12.0 4.5
+mol material AOChalky
+mol color ColorID 7
+mol selection {chain C and protein and not (resid 655 656 666)}   ;# antigen, minus hotspots
+mol addrep $VD
+mol color ColorID 1
+mol selection $HOT                                                ;# hotspot ribbon red
+mol addrep $VD
+mol color ColorID 2
+mol selection {(chain H or chain L) and protein}                  ;# antibody gray
+mol addrep $VD
 mol representation Licorice 0.30 12.0 12.0
 mol material AOShiny
 mol color ColorID 1
-mol selection {chain C and resid 655 656 666}
+mol selection $HOT                                                ;# hotspot sidechains red
 mol addrep $VD
 render Tachyon $outdir/fig2_hotspots.dat
 

@@ -25,10 +25,21 @@ for name in "${names[@]}"; do
   raws+=("/tmp/${name}_raw.png")
 done
 
-# ONE common crop box = union of all three panels' content, so every figure keeps the same size AND
-# pixel position (the VMD view is identical across panels). Superimposed in a slideshow, nothing moves.
-BOX=$(magick "${raws[@]}" -background white -flatten -format "%@" info:)
-echo "  common crop box (union of all 3): $BOX"
+# ONE common crop box = TRUE union of all three panels' content boxes, so every figure keeps the same
+# size AND pixel position (the VMD view is identical across panels). Superimposed in a slideshow,
+# nothing moves. (Can't -flatten to get this: opaque white backgrounds hide lower layers, collapsing
+# the "union" to the top image. So union the per-image trim boxes ourselves.)
+X0=1000000; Y0=1000000; X1=0; Y1=0
+for r in "${raws[@]}"; do
+  bb=$(magick "$r" -format "%@" info:)          # WxH+X+Y content box
+  w=${bb%%x*}; t=${bb#*x}; h=${t%%+*}; t=${t#*+}; x=${t%%+*}; y=${t##*+}
+  (( x < X0 )) && X0=$x
+  (( y < Y0 )) && Y0=$y
+  (( x + w > X1 )) && X1=$((x + w))
+  (( y + h > Y1 )) && Y1=$((y + h))
+done
+BOX="$((X1 - X0))x$((Y1 - Y0))+${X0}+${Y0}"
+echo "  common crop box (true union of all 3): $BOX"
 for name in "${names[@]}"; do
   magick "/tmp/${name}_raw.png" -crop "$BOX" +repage -bordercolor white -border 60 \
       "$FIG/story_${name}.png"
