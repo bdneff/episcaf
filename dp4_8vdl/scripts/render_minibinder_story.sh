@@ -8,7 +8,7 @@ cd "$(dirname "$0")/../.."          # repo root
 
 VMD="${VMD:-/Applications/VMD.app/Contents/vmd2/lib/vmd_MACOSXARM64}"
 TACHYON="${TACHYON:-/Applications/VMD.app/Contents/vmd2/lib/tachyon_MACOSXARM64}"
-export VMDDIR="${VMDDIR:-/Applications/VMD.app/Contents/vmd2}"
+export VMDDIR="${VMDDIR:-/Applications/VMD.app/Contents/vmd2/lib}"
 RES="${RES:-1500}"
 TCL=dp4_8vdl/scripts/render_minibinder_story.tcl
 FIG=dp4_8vdl/figures

@@ -26,10 +26,13 @@ catch {display shadows on}
 catch {color Display Background white}
 catch {axes location Off}
 
-# one shared orientation for all three panels (so the intern's click-through is a clean morph)
+# Orient by rotating the COORDINATES (not the view), then `display resetview` fits EVERYTHING in
+# frame. Rotating the *view* clips an elongated antigen+Fab off the fixed render canvas (that was the
+# cut-off antibody). Both molecules are already aligned, so rotate both by the SAME matrix to keep
+# them registered. One shared orientation -> the three panels superimpose for the click-through.
+set R [transmult [transaxis z -20] [transmult [transaxis y 15] [transaxis x -90]]]
+foreach m [list $VD $MB] { set s [atomselect $m all]; $s move $R; $s delete }
 catch {display resetview}
-catch {rotate x by -90}
-catch {rotate y by 15}
 
 proc clearreps {m} { while {[molinfo $m get numreps] > 0} { mol delrep 0 $m } }
 

@@ -11,7 +11,7 @@ cd "$(dirname "$0")/../.."          # repo root
 
 VMD="${VMD:-/Applications/VMD.app/Contents/vmd2/lib/vmd_MACOSXARM64}"
 TACHYON="${TACHYON:-/Applications/VMD.app/Contents/vmd2/lib/tachyon_MACOSXARM64}"
-export VMDDIR="${VMDDIR:-/Applications/VMD.app/Contents/vmd2}"
+export VMDDIR="${VMDDIR:-/Applications/VMD.app/Contents/vmd2/lib}"
 RES="${RES:-1400}"
 # a real font file (ImageMagick can't resolve 'Helvetica' by name on macOS); first that exists
 FONT="${FONT:-}"
