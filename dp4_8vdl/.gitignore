@@ -9,3 +9,6 @@ logs/
 # arm must be self-contained / pull-and-go).
 !data/8VDL.pdb
 !01_contigs/*.csv
+
+# track committed figures
+!figures/*.png
