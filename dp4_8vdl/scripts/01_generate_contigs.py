@@ -33,6 +33,9 @@ PDB_PATH     = "data/8VDL.pdb"
 TARGETS = {
     "epitope20": [(651, 670)],            # the whole conserved EPCR-binding epitope
     "hotspots":  [(655, 656), (666, 666)],  # F655/F656 (adjacent) + E666
+    "contact":   [(652, 653), (655, 657), (659, 661), (666, 667), (669, 670), (673, 673)],
+    # ^ the AbDb/IEDB 4A contact epitope (13 residues, 6 islands; contact_epitope.py). Natively
+    #   close-packed, so generate with --native-gaps (hold native inter-island spacing, vary flanks).
 }
 
 
@@ -69,22 +72,36 @@ def main() -> None:
     ap.add_argument("--n-contigs", type=int, default=500, help="John's 'n designs' knob (contigs)")
     ap.add_argument("--total-len", type=int, default=TOTAL_LEN)
     ap.add_argument("--min-scaffold", type=int, default=MIN_SCAFFOLD)
+    ap.add_argument("--native-gaps", action="store_true",
+                    help="hold the NATIVE inter-island spacing and randomize only the N/C flanks "
+                         "(for close-packed multi-island motifs like contact, where forcing large "
+                         "random gaps between natively-adjacent islands makes strained scaffolds)")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out", required=True, type=Path)
     args = ap.parse_args()
 
     islands = TARGETS[args.target]
     motif_len = sum(b - a + 1 for a, b in islands)
-    budget = args.total_len - motif_len
-    n_seg = len(islands) + 1                       # N-flank, gaps, C-flank
     fixed_resids = sorted(r for a, b in islands for r in range(a, b + 1))
     rng = random.Random(args.seed)
+
+    # native inter-island gaps (residues between consecutive islands in the crystal)
+    native_gaps = [islands[i + 1][0] - islands[i][1] - 1 for i in range(len(islands) - 1)]
+    if args.native_gaps:
+        flank_budget = args.total_len - motif_len - sum(native_gaps)   # split across N/C flanks only
+    else:
+        budget = args.total_len - motif_len
+        n_seg = len(islands) + 1                    # N-flank, gaps, C-flank (all randomized)
 
     seen, rows = set(), []
     tries = 0
     while len(rows) < args.n_contigs and tries < args.n_contigs * 50:
         tries += 1
-        segs = random_composition(budget, n_seg, args.min_scaffold, rng)
+        if args.native_gaps:
+            n_flank, c_flank = random_composition(flank_budget, 2, args.min_scaffold, rng)
+            segs = [n_flank, *native_gaps, c_flank]
+        else:
+            segs = random_composition(budget, n_seg, args.min_scaffold, rng)
         contig = build_contig(islands, segs)
         if contig in seen:
             continue
@@ -106,8 +123,10 @@ def main() -> None:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(args.out, index=False)
 
-    print(f"target={args.target}  islands={islands}  motif={motif_len} aa  budget={budget}  "
-          f"segments={n_seg}")
+    gap_mode = (f"native gaps {native_gaps}, flanks randomized" if args.native_gaps
+                else "all segments randomized")
+    print(f"target={args.target}  islands={islands}  motif={motif_len} aa  ({len(islands)} islands)")
+    print(f"  spacing: {gap_mode}")
     print(f"wrote {len(df)} unique contigs -> {args.out}"
           + ("" if len(df) == args.n_contigs else f"  (requested {args.n_contigs}; budget-limited)"))
     print(f"  designs = {len(df)} contigs x 8 RFD3 x 8 MPNN = {len(df) * 64:,}")
