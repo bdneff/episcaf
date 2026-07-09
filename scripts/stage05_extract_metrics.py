@@ -86,20 +86,60 @@ def parse_pred(stem: str) -> Optional[Dict[str, Any]]:
     }
 
 
+_CONTIG_TOK = re.compile(r"^(A?)(\d+)-(\d+)$")
+
+
+def epi_positions_from_contig(contig_string: str) -> Tuple[List[int], List[int]]:
+    """Parallel (design_epi, native_epi) 0-based epitope positions from a scaffolding contig.
+
+    Walks the slash-delimited contig (`N-N/Aa-b/gap/Ac-d/C-C`): each A-segment is an epitope island
+    whose residues occupy consecutive positions in the scaffolded output (design_epi, cumulative) and
+    map to native chain-A positional indices a-1..b-1 (native_epi). Handles ONE island (dual-island
+    run) or MANY (whole-epitope C1-103). For a single island this reproduces the old
+    range(n_flank, n_flank+island_size) / range(a-1, a-1+island_size) exactly.
+    """
+    pos = 0
+    design_epi: List[int] = []
+    native_epi: List[int] = []
+    for tok in str(contig_string).split("/"):
+        m = _CONTIG_TOK.match(tok)
+        if not m:
+            raise ValueError(f"unparseable contig token {tok!r} in {contig_string!r}")
+        a, b = int(m.group(2)), int(m.group(3))
+        if m.group(1) == "A":                         # epitope island
+            span = b - a + 1
+            design_epi.extend(range(pos, pos + span))
+            native_epi.extend(range(a - 1, b))        # native chain-A 0-based positional
+            pos += span
+        else:                                          # scaffold flank/spacer ('N-N' -> a residues)
+            pos += a
+    return design_epi, native_epi
+
+
+def _opt_int(r, key):
+    v = r.get(key)
+    return int(v) if v is not None and pd.notna(v) else None
+
+
 def load_ledger(path: Path) -> Dict[Tuple[str, int], Dict[str, Any]]:
-    """(id, contig_id) -> {n_flank, island_size, c_flank, island_index, variant, a}."""
+    """(id, contig_id) -> {design_epi, native_epi, + optional island_index/size/variant/flanks}.
+
+    Epitope positions come from the contig's A-segments (`epi_positions_from_contig`), so this
+    handles BOTH the single-island dual-island ledger and the multi-island whole-epitope ledger
+    (which has no n_flank/island_size/island_segment columns). The island_* fields are carried
+    through for the dual-island output table and are None for the whole-epitope run.
+    """
     df = pd.read_csv(path)
     out: Dict[Tuple[str, int], Dict[str, Any]] = {}
     for _, r in df.iterrows():
-        seg = ISLAND_SEG.search(str(r["island_segment"]))
-        a = int(seg.group(1)) if seg else None
+        design_epi, native_epi = epi_positions_from_contig(str(r["contig_string"]))
         out[(str(r["id"]), int(r["contig_id"]))] = {
-            "n_flank": int(r["n_flank"]),
-            "island_size": int(r["island_size"]),
-            "c_flank": int(r["c_flank"]),
-            "island_index": int(r["island_index"]),
-            "variant": int(r["variant"]),
-            "a": a,
+            "design_epi": design_epi, "native_epi": native_epi,
+            "island_index": _opt_int(r, "island_index"),
+            "island_size": _opt_int(r, "island_size"),
+            "variant": _opt_int(r, "variant"),
+            "n_flank": _opt_int(r, "n_flank"),
+            "c_flank": _opt_int(r, "c_flank"),
         }
     return out
 
@@ -174,10 +214,9 @@ def compute_one(af3_dir: Path, mpnn_pdb: Path, info: Dict[str, Any],
     we = ws + len(mpnn_seq)
     rec["af3_window_start"] = ws
 
-    n_flank, span, a = info["n_flank"], info["island_size"], info["a"]
-    design_epi = list(range(n_flank, n_flank + span))      # design/MPNN frame
+    design_epi = list(info["design_epi"])                  # design/MPNN frame (one or many islands)
     af3_epi = [ws + i for i in design_epi]                  # AF3 frame
-    native_epi = list(range(a - 1, a - 1 + span)) if a else []   # native chain-A positional
+    native_epi = list(info["native_epi"])                  # native chain-A positional
 
     af3_res = list(ch_a)
     if af3_epi and max(af3_epi) >= len(af3_res):
@@ -307,9 +346,7 @@ def process_id(idkey: str, native_pdb: str, designs: List[Dict[str, Any]],
             base["status"] = native_status
             rows.append(base)
             continue
-        info = {"n_flank": d["n_flank"], "island_size": d["island_size"],
-                "c_flank": d["c_flank"], "island_index": d["island_index"],
-                "variant": d["variant"], "a": d["a"]}
+        info = {"design_epi": d["design_epi"], "native_epi": d["native_epi"]}
         base.update(compute_one(Path(d["af3_dir"]), Path(d["mpnn_pdb"]), info,
                                 native, clash_cutoff, exclude_dist))
         rows.append(base)
