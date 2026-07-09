@@ -33,6 +33,7 @@ catch {axes location Off}
 set R [transmult [transaxis z -20] [transmult [transaxis y 15] [transaxis x -90]]]
 foreach m [list $VD $MB] { set s [atomselect $m all]; $s move $R; $s delete }
 catch {display resetview}
+catch {scale by 0.6}   ;# resetview fits edge-to-edge (clipped the Fab bottom); zoom out for margin
 
 proc clearreps {m} { while {[molinfo $m get numreps] > 0} { mol delrep 0 $m } }
 
