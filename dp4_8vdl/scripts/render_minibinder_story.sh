@@ -16,11 +16,23 @@ mkdir -p "$FIG"
 
 "$VMD" -dispdev text -e "$TCL" -args /tmp >/dev/null 2>&1
 
-for name in fig1_antibody fig2_hotspots fig3_minibinder; do
+names=(fig1_antibody fig2_hotspots fig3_minibinder)
+raws=()
+for name in "${names[@]}"; do
   "$TACHYON" "/tmp/${name}.dat" -res "$RES" "$RES" -aasamples 12 -format TARGA \
       -o "/tmp/${name}.tga" >/dev/null 2>&1
-  sips -s format png "/tmp/${name}.tga" --out "$FIG/story_${name}.png" >/dev/null
-  magick "$FIG/story_${name}.png" -trim +repage -bordercolor white -border 5% "$FIG/story_${name}.png"
+  magick "/tmp/${name}.tga" "/tmp/${name}_raw.png"        # full canvas, NO per-image trim
+  raws+=("/tmp/${name}_raw.png")
+done
+
+# ONE common crop box = union of all three panels' content, so every figure keeps the same size AND
+# pixel position (the VMD view is identical across panels). Superimposed in a slideshow, nothing moves.
+BOX=$(magick "${raws[@]}" -background white -flatten -format "%@" info:)
+echo "  common crop box (union of all 3): $BOX"
+for name in "${names[@]}"; do
+  magick "/tmp/${name}_raw.png" -crop "$BOX" +repage -bordercolor white -border 60 \
+      "$FIG/story_${name}.png"
   echo "  wrote $FIG/story_${name}.png"
 done
-echo "3 click-through figures ready in $FIG/ (story_fig1_antibody, story_fig2_hotspots, story_fig3_minibinder)"
+echo "3 click-through figures (identical size/position) ready in $FIG/"
+identify -format "%f  %wx%h\n" "$FIG"/story_fig*.png
