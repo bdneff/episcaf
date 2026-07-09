@@ -7,7 +7,7 @@ logs/
 
 # Track the crystal and contig definitions (root .gitignore blanket-ignores *.pdb/*.csv, but this
 # arm must be self-contained / pull-and-go).
-!data/8VDL.pdb
+!data/*.pdb
 !01_contigs/*.csv
 
 # track committed figures
