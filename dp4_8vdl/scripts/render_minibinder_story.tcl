@@ -72,16 +72,24 @@ mol selection $HOT                                                ;# hotspot sid
 mol addrep $VD
 render Tachyon $outdir/fig2_hotspots.dat
 
-# ---- Figure 3: antigen green + minibinder purple (antibody removed) ----
+# ---- Figure 3: antigen green + hotspots RED + minibinder purple (antibody removed) ----
 clearreps $VD; clearreps $MB
 mol representation NewCartoon 0.30 12.0 4.5
 mol material AOChalky
 mol color ColorID 7
-mol selection {chain C and protein}
+mol selection {chain C and protein and not (resid 655 656 666)}   ;# antigen, minus hotspots
+mol addrep $VD
+mol color ColorID 1
+mol selection $HOT                                                ;# hotspot ribbon red
 mol addrep $VD
 mol color ColorID 11
-mol selection {chain B and protein}
+mol selection {chain B and protein}                              ;# minibinder purple
 mol addrep $MB
+mol representation Licorice 0.30 12.0 12.0
+mol material AOShiny
+mol color ColorID 1
+mol selection $HOT                                                ;# hotspot sidechains red
+mol addrep $VD
 render Tachyon $outdir/fig3_minibinder.dat
 
 quit
