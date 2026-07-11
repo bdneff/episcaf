@@ -136,9 +136,12 @@ def process_run(run, topk, base):
         for r in contigs.itertuples(index=False)}
     epi_ca, ab_heavy = load_native(base / "data" / "8VDL.pdb", resids)
 
+    out_root = base / "runs" / run / "04_af3" / "outputs"
+    if not out_root.is_dir():
+        print(f"[{run}] SKIP -- no AF3 outputs at {out_root} (run its MPNN->AF3 first)")
+        return pd.DataFrame()
     mpnn_idx = {p.stem.lower(): p for p in
                 (base / "runs" / run / "03_mpnn" / "mpnn_pdbs").rglob("*_fixed_dldesign_*.pdb")}
-    out_root = base / "runs" / run / "04_af3" / "outputs"
     rows, n_seen, n_bad = [], 0, 0
     for d in sorted(p for p in out_root.iterdir() if p.is_dir()):
         if next(d.glob("*_model.cif"), None) is None:
