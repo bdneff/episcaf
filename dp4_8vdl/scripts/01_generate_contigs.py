@@ -31,11 +31,14 @@ PDB_PATH     = "data/8VDL.pdb"
 
 # Fixed motif per target: a list of (start_resid, end_resid) islands on chain C, in native order.
 TARGETS = {
-    "epitope20": [(651, 670)],            # the whole conserved EPCR-binding epitope
-    "hotspots":  [(655, 656), (666, 666)],  # F655/F656 (adjacent) + E666
-    "contact":   [(652, 653), (655, 657), (659, 661), (666, 667), (669, 670), (673, 673)],
-    # ^ the AbDb/IEDB 4A contact epitope (13 residues, 6 islands; contact_epitope.py). Natively
-    #   close-packed, so generate with --native-gaps (hold native inter-island spacing, vary flanks).
+    # The conserved EPCR-binding epitope as ONE contiguous window spanning the full 4A contact
+    # footprint. The 13 contact residues (contact_epitope.py: 652,653,655-657,659-661,666,667,
+    # 669,670,673) all fall inside 652-673, so a single 22-residue island presents every one of
+    # them -- including K673, which the earlier 651-670 window missed -- and scaffolds far more
+    # cleanly than the fragmented 6-island contact motif. This supersedes BOTH the old
+    # "epitope20" (651-670) and the 6-island "contact" target: they are the same epitope.
+    "epitope":  [(652, 673)],
+    "hotspots": [(655, 656), (666, 666)],   # F655/F656 (adjacent) + E666 -- the minimal graft
 }
 
 

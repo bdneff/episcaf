@@ -31,22 +31,25 @@ so it explores a broader scaffold space for presenting it.
 Because chains H/L are the C7 antibody, this is a **known-antibody run** — the real AF3 clash filter
 (`af3_n_clash_res`) applies, exactly as for DP4 components C1/C2.
 
-## Three runs: full epitope vs. minimal hotspots vs. contact footprint
+## Two runs: full epitope vs. minimal hotspots
 
-We generate three independent contig sets and score each on its own, taking the **top 10** from each:
+We generate two independent contig sets and score each on its own, taking the **top 10** from each:
 
 | run | fixed motif | what it asks |
 |---|---|---|
-| **`epitope20`** | the whole island **C651–670** (20 aa, 1 island) | present the *entire* conserved epitope in native geometry — strongest constraint, the direct analog of C1 |
+| **`epitope`** | the contiguous window **C652–673** (22 aa, 1 island) | present the *entire* conserved epitope in native geometry — strongest constraint, the direct analog of C1 |
 | **`hotspots`** | only **F655, F656, E666** (2 islands) | present just the *functionally critical* residues, letting RFD3 design everything else — minimal constraint / hotspot graft |
-| **`contact`** | the **4 Å contact epitope**: 13 residues (652,653,655–657,659–661,666,667,669,670,673) in **6 islands** | present exactly the residues that touch the C7 Fab (the AbDb/IEDB standard definition) — the true antibody footprint, most faithful but the hardest scaffold |
 
-All are scaffolded into a constant **103-mer** (the PepSeq maximum); the fixed atoms carry the residues'
-native crystal coordinates, so each run preserves the motif's 3-D arrangement. The `contact` islands are
-natively close-packed, so it is generated with **`--native-gaps`** (hold the native inter-island spacing
-1/1/4/1/2, randomize only the flanks) rather than the large random gaps the others allow — otherwise RFD3
-would have to bridge natively-adjacent islands with strained loops. Comparing the three in the assay asks
-whether the minimal hotspots suffice, the full window is needed, or the exact contact footprint is best.
+Both are scaffolded into a constant **103-mer** (the PepSeq maximum); the fixed atoms carry the residues'
+native crystal coordinates, so each run preserves the motif's 3-D arrangement. Comparing them in the
+assay asks whether the minimal hotspots suffice, or the full epitope is needed.
+
+**On the window 652–673.** The AbDb/IEDB 4 Å contact epitope — the residues within a heavy atom of the
+C7 Fab (`contact_epitope.py`: 652,653,655–657,659–661,666,667,669,670,673) — all fall inside the
+contiguous stretch 652–673. Rather than scaffold that footprint as a fragmented six-island motif (hard
+to hold rigidly), we take the single contiguous 652–673 window, which presents every contact residue
+(including **K673**) and scaffolds cleanly as one island. This window supersedes both the earlier
+651–670 guess (which missed K673) and the six-island contact target — they are one and the same epitope.
 
 ## Pipeline (self-contained; runs on Gemini)
 
@@ -55,12 +58,11 @@ Same RFD3→ProteinMPNN→AlphaFold3 shape as the rest of episcaf, but chain-C /
 
 ```bash
 # 1. contigs — one CSV per run (--n-contigs is John's "n designs" knob; 10 each → 10×8×8=640 designs)
-python scripts/01_generate_contigs.py --target epitope20 --n-contigs 10 --out 01_contigs/epitope20.csv
-python scripts/01_generate_contigs.py --target hotspots  --n-contigs 10 --out 01_contigs/hotspots.csv
-python scripts/01_generate_contigs.py --target contact --native-gaps --n-contigs 10 --out 01_contigs/contact.csv
+python scripts/01_generate_contigs.py --target epitope  --n-contigs 10 --out 01_contigs/epitope.csv
+python scripts/01_generate_contigs.py --target hotspots --n-contigs 10 --out 01_contigs/hotspots.csv
 
 # 2. RFD3 input JSONs
-python scripts/02_emit_rfd3_inputs.py --contigs_csv 01_contigs/epitope20.csv --out_dir 02_rfd3/epitope20/inputs
+python scripts/02_emit_rfd3_inputs.py --contigs_csv 01_contigs/epitope.csv --out_dir 02_rfd3/epitope/inputs
 python scripts/02_emit_rfd3_inputs.py --contigs_csv 01_contigs/hotspots.csv  --out_dir 02_rfd3/hotspots/inputs
 
 # 3. RFD3 (Gemini GPU) — one task per contig, 8 backbones each
