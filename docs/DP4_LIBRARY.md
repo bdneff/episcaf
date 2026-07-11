@@ -23,11 +23,11 @@ top-20 base, so it scales with C1's depth.
 † **Ranked selection** — count shown at **top-20 per group**; scales with the shipped depth (top-*n*,
 elastic — see *Budget & depth*). At top-5 these shrink ~4×.
 ‡ **Derived** from C1's top-20 base, so scales with C1's depth (island1→A + island2→A dual-only + scaffold disruption).
-§ **104-mer designs → being regenerated at 103.** C1 reused Lawson's 104-residue contigs, and C5/C6
-derive from the C1 pool, so these three are 104-mers. Rather than trim them (DP3 saw weaker signal on
-104→103-truncated peptides), **C1 is being rerun natively at 103** (see *C1 redo at 103*); C5/C6 then
-rebuild off the new pool and no trim is needed. Until that pool lands, the assembler still trims the
-current 104-mers (see *104→103 truncation*). C2/C3/C4 are natively 103.
+§ **Now NATIVE 103 (redo landed 2026-07-11).** C1 originally reused Lawson's 104-residue contigs, but
+we regenerated it natively at 103 (see *C1 redo at 103*) — RFD3→MPNN→AF3 done, metrics extracted
+(140,716 designs, all `status==ok`), C1 re-selected, and C5/C6 rebuilt off the new pool. **All of
+C1/C5/C6 are now native 103-mers, so the 104→103 assembler trim is a no-op** (kept only as a guard).
+All six components are native 103.
 
 Full composite rankings (`results/dp4_*_ranked.csv`) are regenerable and gitignored; only the top-*n*
 cuts + case-encoded sequences are tracked.
@@ -167,7 +167,7 @@ c_flank = 0), so there's no scaffold residue to trim at either end and any trim 
 residue. Decision: **drop it and ship the rank-21 design for `3ux9_1P`**
 (keeps 20/epitope; the full ranking is regenerable, so rank-21 is well-defined). Apply this at assembly.
 
-## C1 redo at 103 (native 103, supersedes the trim) — IN FLIGHT
+## C1 redo at 103 (native 103, supersedes the trim) — DONE 2026-07-11
 
 **Why.** John observed that in DP3, DP2 104-mers truncated to 103 gave generally weaker binding
 signal — likely assay run-to-run variation, but enough to make a single-residue truncation a
@@ -252,10 +252,10 @@ shrink ~4× from the top-20 figures above.
 
 ## Pending
 
-0. **C1 redo at 103 — IN FLIGHT** (see *C1 redo at 103* above). RFD3→MPNN→AF3 on the 2,206-contig 103
-   ledger (141,184 AF3 structures), then re-score / re-select / re-case-encode C1 and rebuild C5+C6 off
-   the new pool. Once it lands, C1/C5/C6 are native 103 and the assembler's 104→103 trim is a no-op.
-   Optional add-on: fold in **8VDL** as extra ledger rows.
+0. **C1 redo at 103 — DONE (2026-07-11).** RFD3→MPNN→AF3 on the 2,206-contig 103 ledger → metrics
+   (140,716 designs, all `status==ok`) → re-selected C1 top-20 (1,120), re-case-encoded
+   (`case_encode_whole_epitope.py`), and rebuilt C5 (3,000) + C6 (3,100) off the new pool. **C1/C5/C6 are
+   native 103; the 104→103 trim is now a no-op.** 8VDL is a separate arm (`dp4_8vdl/`), not folded in here.
 1. **Assembly (`06_library`)** — **BUILT** (`scripts/stage06_assemble.py`): concatenates the six components
    into the 8-column annotated library, applying the 56-exclusion, the `--depth` top-*n* cut, the 104→103
    trim (a no-op once C1 is native 103), and global `library_member` numbering.
