@@ -41,3 +41,6 @@ command so anyone (or Claude Code) can reproduce it.
   `metrics_12mer.csv` (12mer), per `configs/paths.py` (`METRICS_ANTIBODY`, `METRICS_12MER`);
   off-cluster the notebook falls back to local copies. Verified the printed medians/pass-rates
   reproduce the prior figure exactly (DP3 5.00/30%, 1D2K 1.85/60%, 4WAT 0.43/84%, 6M0J 2.65/47%).
+
+| `metrics_103_island_split.png` + `metrics_104_vs_103.png` | `episcaf_analysis/viz/plot_whole_epitope_103.py` | `python episcaf_analysis/viz/plot_whole_epitope_103.py --m103 ../known_antigen/analysis/data/metrics_whole_epitope_103.csv --m104 ../known_antigen/analysis/data/metrics_native_cyl_full.csv --ledger results/whole_epitope_designs.csv --outdir manuscript/figures` |
+**native-103 characterization** — the RFD3-103 whole-epitope C1 set (`metrics_whole_epitope_103.csv`, our run scp'd from Gemini; island count joined from `results/whole_epitope_designs.csv`). `metrics_103_island_split.png`: four-filter distributions by island count (1-island 824 designs, pass 2.79%, med epi-RMSD 2.40 Å; 2-island 139,892, pass 0.50%, med 4.99 Å). `metrics_104_vs_103.png`: RFD3-104 (old C1, same 56 epitopes, 0.35%) vs RFD3-103 (ours, 0.52%) — distributions nearly identical, so the 104→103 PepSeq length constraint is metric-neutral. Overall 103 four-filter pass 727/140,716 = 0.52%.
