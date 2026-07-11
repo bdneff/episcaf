@@ -36,31 +36,10 @@ N-terminal and C-terminal to a fixed island its \emph{flanks}; a single-island c
 therefore $\langle\text{N-flank}\rangle/\,\texttt{A}a\text{-}b\,/\langle\text{C-flank}\rangle$,
 and the scaffold budget the flanks share is $103-\ell$ residues for an island of length
 $\ell$. We note one unexplained convention difference: Lawson's original contigs were
-\num{104} residues, not \num{103}, and the change to \num{103} has no recorded origin. Our
-single-island run (C2) adopts \num{103} directly, but the whole-epitope set initially
-\emph{reproduced} Lawson's run and so inherited his \num{104}-residue designs --- which propagates to
-the metric-space sample C5 and the mutant controls C6, both drawn from the C1 pool. We first reconciled
-this at assembly by trimming those \num{104}-mers to \num{103} at their \emph{scaffold} terminus (the
-C-terminus by default, the N-terminus where the C-terminal residue is epitope), so no epitope residue is
-lost. A single terminal scaffold residue is the least structurally committed position in a fold ---
-termini fray, make few tertiary contacts, and do not anchor the hydrophobic core --- so for these
-hyperstable designed miniproteins the deletion is expected to be structurally benign, the residual risk
-confined to the rare design whose trimmed residue caps a helix or forms a specific stabilizing contact.
-
-We nonetheless regenerate C1 natively at \num{103} rather than rely on that trim. The DP3 assay we build
-on included DP2 \num{104}-mers truncated to \num{103}, and these showed generally weaker binding signal
---- most plausibly assay run-to-run variation, but enough to make a post-hoc single-residue truncation a
-liability we prefer to avoid on three of the four antibody components (C1, and C5/C6 downstream of it).
-We therefore rebuild the whole-epitope pool at \num{103} directly
-(\texttt{build\_whole\_epitope\_designs.py}): we take Lawson's exact whole-epitope contigs and remove one
-\emph{scaffold} residue --- the larger terminal flank, or the largest interior inter-island spacer when
-both islands sit flush against the termini --- preserving every epitope residue and Lawson's
-inter-island-spacing sweep, so C1 remains a faithful DP3 comparator differing only in length. This gives
-\num{2206} contigs over the \num{56} mAb epitopes (\num{141184} designs, hence \num{141184} AlphaFold3
-predictions). It also dissolves the one case the trim could not handle: the epitope whose two islands are
-flush against both termini (\texttt{3ux9\_1P}) simply has its inter-island spacer shortened, keeping both
-islands intact, so no design is dropped or rank-substituted. C5 and C6 rebuild from the regenerated pool;
-until it is scored, the assembly trim above stands as the interim reconciliation.
+\num{104} residues, not \num{103}, and the change to \num{103} has no recorded origin. This
+single-island run adopts \num{103} directly; the whole-epitope C1 set is likewise built natively at
+\num{103}, rather than trimmed from Lawson's \num{104}-mers (Section~\ref{sec:c1set}), so both production
+runs are at the PepSeq length.
 
 \paragraph{Contig sampling and run size.}
 A \emph{contig} pairs the fixed island(s) with one concrete scaffold-length layout, and each
