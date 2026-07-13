@@ -19,11 +19,16 @@
 # ============================================================================
 set -euo pipefail
 
-# Erin's env (pepseq_encoding.yml) carries the H2O runtime needed to load the model.
+# Conda's activate.d scripts reference unbound vars (MKL_INTERFACE_LAYER, ...), so relax `set -u`
+# around activation. The env (pepseq_encoding.yml) carries the H2O runtime for the model.
+set +u
 source "$(conda info --base)/etc/profile.d/conda.sh" 2>/dev/null || true
 conda activate "${CONDA_ENV:-pepseq_encoding}"
+set -u
 
-TOOL_DIR=${TOOL_DIR:-/home/ekelley/bin/Library-Design/oligo_encoding}
+# REQUIRED (no default): the dir with the built `main` (or `oligo_encoding`), oligo_encoding.py, the
+# model. Pass it INLINE on the sbatch line (same value as step 1).
+TOOL_DIR=${TOOL_DIR:?set TOOL_DIR inline, e.g. TOOL_DIR=/home/bneff/Library-Design/oligo_encoding sbatch ...}
 MODEL=${MODEL:-${TOOL_DIR}/DeepLearning_model_R_1539970074840_1_20181019}   # the DP3 model
 LIB=${LIB:-DP4}
 OUT_SEQS=${OUT_SEQS:-out_seqs}        # from step 1
