@@ -31,14 +31,27 @@ Codon degeneracy means each peptide has many possible DNA encodings. The tool:
 - `examples/DP3_named_peptides.csv`, `examples/DP3_order_file.csv` — full DP3 input/output, kept
   locally as fixtures (gitignored via `*.csv`; not committed).
 
-## What is NOT here yet (the encoder tool)
-The encoder, NN selector, and model are ekelley's cluster install, referenced by the run scripts:
-`/home/ekelley/bin/Library-Design/oligo_encoding/` (`main`, `encoding_with_nn.py`, and
-`DeepLearning_model_R_1539970074840_1_20181019`). The current GitHub master
-(`github.com/LadnerLab/Library-Design/tree/master/oligo_encoding`) has diverged from this install
-(it ships `oligo_encoding.py`, not `encoding_with_nn.py`, and a `oligo_encoding` make target, not
-`main`), so to reproduce DP3 exactly we mirror **ekelley's** version, not master. [decide: vendor a
-pinned copy of that dir here, or reference the cluster install]
+## Encoder setup (one-time, on Gemini)
+Per Erin (2026-07-13): **build the encoder from the GitHub master repo, using her conda env** — the
+env carries everything needed to both compile and run (g++/OpenMP, pandas, and h2o 3.20.0.8 for the
+model). So the tool is not vendored here; it is built once on the cluster.
+
+```bash
+# 1. create the env from Erin's yml (has g++/OpenMP/pandas/h2o):
+conda env create -f /tgen_labs/Immunology/ekelley/DP3_PepSeq_Library_Design/new_codon_weights/pepseq_encoding.yml
+conda activate pepseq_encoding      # confirm the name with `conda env list`
+
+# 2. build the encoder from master (in that env, so g++/OpenMP resolve):
+git clone https://github.com/LadnerLab/Library-Design.git
+cd Library-Design/oligo_encoding && make optimized     # -> ./oligo_encoding
+export TOOL_DIR=$(pwd)               # this dir now holds: oligo_encoding, oligo_encoding.py, the model
+```
+
+The master repo ships `oligo_encoding` (the make target) and `oligo_encoding.py`, not ekelley's
+`main` / `encoding_with_nn.py`. The two sbatch scripts here **auto-detect either name** (override with
+`BIN` / `SEL`), so pointing `TOOL_DIR` at the built master dir is all that's needed. The DP3 model
+`DeepLearning_model_R_1539970074840_1_20181019` is present in the master repo. The sbatch scripts
+default `CONDA_ENV=pepseq_encoding` and activate it themselves.
 
 ## Running DP4
 The only thing that changes from DP3 is the **`-i` input**: point it at the DP4 named-peptides file
@@ -56,18 +69,25 @@ python scripts/stage07_named_peptides.py \
 ```
 
 Two parameterized SLURM scripts here drive the run (better-documented rewrites of ekelley's
-`run_pepseq_design_step{1,2}.sh`, which are kept as the pinned DP3 reference):
+`run_pepseq_design_step{1,2}.sh`, which are kept as the pinned DP3 reference). Validate on the
+50-peptide smoke-test input first (`data/libraries/dp4_named_peptides.test50.csv`, from
+`stage07_named_peptides.py --sample 50`), then run the full file:
 
 ```bash
-# on Gemini, in a working dir holding codon_weights_updated.csv + DP4_named_peptides.csv:
-sbatch episcaf_pipeline/oligo_encoding/encode_step1_generate.sbatch   # candidates -> out_seqs, output_ratio
-sbatch episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch     # NN-select  -> DP4_best_encodings
+export TOOL_DIR=/path/to/Library-Design/oligo_encoding   # the built master dir (see setup above)
+
+# smoke test (50 peptides), in a rundir holding the weights + test input:
+cp episcaf_pipeline/oligo_encoding/codon_weights_updated.csv data/libraries/dp4_named_peptides.test50.csv <rundir>/
+cd <rundir>
+INPUT=dp4_named_peptides.test50.csv sbatch <repo>/episcaf_pipeline/oligo_encoding/encode_step1_generate.sbatch
+sbatch <repo>/episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch   # after step 1 finishes
+
+# full run (12,251 peptides): same two commands with INPUT=dp4_named_peptides.csv
 ```
 
-Both default `TOOL_DIR` to ekelley's install and carry the DP3 parameters as defaults; override any
-by exporting it first (e.g. `INPUT=...`, `MODEL=...`, `GC=...`). The encoder runs on Gemini — the
-compiled `main`, the `encoding_with_nn.py` selector, and the H2O model all live there; we only
-supply the input file and reuse the DP3 config.
+The scripts carry the DP3 parameters as defaults; override any by exporting it first (`INPUT=...`,
+`TOOL_DIR=...`, `MODEL=...`, `GC=...`, `CONDA_ENV=...`). Step 1 writes `out_seqs` + `output_ratio`;
+step 2 writes `DP4_best_encodings`. The whole thing runs on Gemini in the `pepseq_encoding` env.
 
 ## The order-file gap (open item)
 Step 2 writes `*_best_encodings`. The DP3 **order file** that actually goes to synthesis

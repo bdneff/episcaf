@@ -19,7 +19,9 @@
 # ============================================================================
 set -euo pipefail
 
-# conda activate pepseq_encoding   # needs the H2O runtime to load the model
+# Erin's env (pepseq_encoding.yml) carries the H2O runtime needed to load the model.
+source "$(conda info --base)/etc/profile.d/conda.sh" 2>/dev/null || true
+conda activate "${CONDA_ENV:-pepseq_encoding}"
 
 TOOL_DIR=${TOOL_DIR:-/home/ekelley/bin/Library-Design/oligo_encoding}
 MODEL=${MODEL:-${TOOL_DIR}/DeepLearning_model_R_1539970074840_1_20181019}   # the DP3 model

@@ -27,7 +27,9 @@
 # ============================================================================
 set -euo pipefail
 
-# conda activate pepseq_encoding   # the env ekelley used for the encoder
+# Erin's env (pepseq_encoding.yml) provides g++/OpenMP/pandas/h2o for both building and running.
+source "$(conda info --base)/etc/profile.d/conda.sh" 2>/dev/null || true
+conda activate "${CONDA_ENV:-pepseq_encoding}"
 
 TOOL_DIR=${TOOL_DIR:-/home/ekelley/bin/Library-Design/oligo_encoding}
 LIB=${LIB:-DP4}
