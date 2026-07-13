@@ -43,15 +43,21 @@ conda activate pepseq_encoding      # confirm the name with `conda env list`
 
 # 2. build the encoder from master (in that env, so g++/OpenMP resolve):
 git clone https://github.com/LadnerLab/Library-Design.git
-cd Library-Design/oligo_encoding && make optimized     # -> ./oligo_encoding
-export TOOL_DIR=$(pwd)               # this dir now holds: oligo_encoding, oligo_encoding.py, the model
+cd Library-Design/oligo_encoding
+sed -i 's/oligo_ecoding/oligo_encoding/g' Makefile     # fix upstream Makefile typo (see note)
+make optimized                                         # -> builds ./main  (with -O3)
+export TOOL_DIR=$(pwd)               # this dir holds: main, oligo_encoding.py, the model
 ```
 
-The master repo ships `oligo_encoding` (the make target) and `oligo_encoding.py`, not ekelley's
-`main` / `encoding_with_nn.py`. The two sbatch scripts here **auto-detect either name** (override with
-`BIN` / `SEL`), so pointing `TOOL_DIR` at the built master dir is all that's needed. The DP3 model
-`DeepLearning_model_R_1539970074840_1_20181019` is present in the master repo. The sbatch scripts
-default `CONDA_ENV=pepseq_encoding` and activate it themselves.
+**Makefile-typo gotcha:** master's Makefile misspells its build target as `oligo_ecoding` (missing the
+`n`) in the `optimized`/`profile`/`debug` rules, so `make optimized` fails out of the box with
+`No rule to make target 'oligo_ecoding'`. The `sed` above fixes it. Note the compiled executable is
+named **`main`** (the real target `oligo_encoding` runs `... -o main`), which happens to match
+ekelley's binary name. The selector script is `oligo_encoding.py` (master) rather than ekelley's
+`encoding_with_nn.py`. The two sbatch scripts here **auto-detect both** (`main`/`oligo_encoding` and
+`encoding_with_nn.py`/`oligo_encoding.py`; override with `BIN`/`SEL`), so pointing `TOOL_DIR` at the
+built dir is all that's needed. The DP3 model `DeepLearning_model_R_1539970074840_1_20181019` is in the
+master repo. The sbatch scripts default `CONDA_ENV=pepseq_encoding` and activate it themselves.
 
 ## Running DP4
 The only thing that changes from DP3 is the **`-i` input**: point it at the DP4 named-peptides file
