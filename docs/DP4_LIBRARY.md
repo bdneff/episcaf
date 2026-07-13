@@ -10,6 +10,26 @@ case-encoded, and concatenated into `data/libraries/dp4_library.csv` — 12,251 
 C1/C2 and top-3 per window for C3; C4/C5/C6 and 8VDL are fixed size. Oligo encoding is the only
 remaining step (see Pending).
 
+## Output files
+
+The deliverable and the input to the next step:
+
+- **`data/libraries/dp4_library.csv`** — the library. All seven components merged into one file, 12,251
+  rows, in the 8-column PepSeq annotated format (schema below). This is the file to hand off. The
+  case-encoded sequence (epitope uppercase / scaffold lowercase) is the `designedSequence` column;
+  `sequence` is the plain 103-mer that gets synthesized.
+- **`data/libraries/dp4_named_peptides.csv`** — the oligo-encoder input. A two-column `name,seq` slice of
+  the library (no header), 12,251 lines, for the DNA encoding step. Not a separate result, just a reformat.
+
+Behind the library, each scaffolded component has two intermediate files in `results/` (the provenance
+the library is assembled from; the depth cut and the 56-mAb exclusion are applied at assembly, so these
+hold the full top-20 pools and are larger than the shipped counts):
+
+- **`*_ranked.top20.csv`** — the selection output: which designs were chosen and their scores (plain
+  sequence). For C5 this is `dp4_C5_titration.csv`, for C6 `dp4_C6_controls.csv`, for 8VDL `dp4_8vdl_top10.csv`.
+- **`*_scaffoldEPITOPE.csv`** — the case-encoded sequences for that component (from the `case_encode_*`
+  scripts). C4 has none (its 30-mer is already the payload); C6 encodes by substitution on C1's.
+
 ## Components
 
 | Comp | Component | What it is | Selection | Constructs | File |
