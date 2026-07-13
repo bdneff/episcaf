@@ -4,33 +4,37 @@ Living reference for the DP4 PepSeq library: what each component is, how designs
 where each deliverable lives. Manuscript counterpart: `manuscript/sections/dp4_library.tex`
 (`sec:dp4`). Related: `docs/CASE_ENCODING.md`, `docs/CYLINDER_PARAMS.md`.
 
-Status: all six components selected/built. **Only the ranked components (C1/C2/C3, marked †) have a
-selectable depth** — their counts are shown at **top-20 per group** and scale with the chosen shipping
-depth (top-*n*, set at assembly from the budget). C4/C5 are fixed-size; C6 (‡) is derived from C1's
-top-20 base, so it scales with C1's depth.
+**Status: ASSEMBLED AND SHIPPED (2026-07-13).** All seven components (C1–C6 + the 8VDL arm) are
+selected/built, case-encoded, and concatenated into the final synthesis file
+**`data/libraries/dp4_library.csv` — 12,251 constructs**, every one a 103-mer with a unique
+`library_member` and `design_ID`. The shipping depth is **top-20 per group for C1/C2** and **top-3 per
+window for C3**; C4/C5/C6 and 8VDL are fixed-size. Only **oligo encoding** remains (see *Pending*).
 
-## Components
+## Components (as shipped)
 
-| Comp | Component | What it is | Selection | Constructs | Deliverable | Status |
-|---|---|---|---|---|---|---|
-| **C1** | known-Ab, whole epitope | best-*n* scaffolds per mAb (comparator) | ranked, top-*n* per mAb | 1,180 †§ | `results/dp4_C1_whole_epitope_ranked.top20.csv` | ranked |
-| **C2** | known-Ab, single island | best-*n* per (mAb, island); 87 island contigs | ranked, top-*n* per island | 1,740 † | `results/dp4_C2_single_island_ranked.top20.csv` | ranked |
-| **C3** | polyclonal 12-mer tiles | best-*n* per window, no antibody | ranked, top-*n* per window | 8,780 † | `results/dp4_C3_12mer_ranked.top20.csv` | ranked |
-| **C4** | linear 30-mer controls | bare tiled peptides (no scaffold) | exhaustive tiling (fixed) | 2,034 | `data/libraries/dp4_tiled30mers_fasta.csv` | built |
-| **C5** | metric-space titration | designs spread across metrics (calibration) | farthest-point sample (fixed) | 3,000 §  | `results/dp4_C5_titration.csv` | sampled |
-| **C6** | scaffolded-epitope controls | island→Ala + scaffold-disruption | all C1 top-*n* base × flavors | 3,100 ‡§ | `results/dp4_C6_controls.csv` | built |
+| Comp | Component | What it is | Selection | Constructs | Deliverable |
+|---|---|---|---|---|---|
+| **C1** | known-Ab, whole epitope | best scaffolds per mAb (comparator) | ranked, **top-20** per mAb | **1,120** § | `results/dp4_C1_whole_epitope_ranked.top20.csv` |
+| **C2** | known-Ab, single island | best per (mAb, island); 87 island contigs | ranked, **top-20** per island | **1,660** | `results/dp4_C2_single_island_ranked.top20.csv` |
+| **C3** | polyclonal 12-mer tiles | best per window, no antibody | ranked, **top-3** per window † | **1,317** | `results/dp4_C3_12mer_ranked.top20.csv` |
+| **C4** | linear 30-mer controls | bare tiled peptides (no scaffold) | exhaustive tiling (fixed) | **2,034** | `data/libraries/dp4_tiled30mers_fasta.csv` |
+| **C5** | metric-space titration | designs spread across metrics (calibration) | farthest-point sample (fixed) | **3,000** § | `results/dp4_C5_titration.csv` |
+| **C6** | scaffolded-epitope controls | island→Ala + scaffold-disruption | all C1 top-20 base × flavors | **3,100** ‡§ | `results/dp4_C6_controls.csv` |
+| **8VDL** | PfEMP1 conserved epitope | two epitope definitions, scaffolded | ranked, **top-10** each | **20** | `results/dp4_8vdl_top10.csv` |
+| | | | | **12,251 total** | `data/libraries/dp4_library.csv` |
 
-† **Ranked selection** — count shown at **top-20 per group**; scales with the shipped depth (top-*n*,
-elastic — see *Budget & depth*). At top-5 these shrink ~4×.
-‡ **Derived** from C1's top-20 base, so scales with C1's depth (island1→A + island2→A dual-only + scaffold disruption).
-§ **Now NATIVE 103 (redo landed 2026-07-11).** C1 originally reused Lawson's 104-residue contigs, but
-we regenerated it natively at 103 (see *C1 redo at 103*) — RFD3→MPNN→AF3 done, metrics extracted
-(140,716 designs, all `status==ok`), C1 re-selected, and C5/C6 rebuilt off the new pool. **All of
-C1/C5/C6 are now native 103-mers, so the 104→103 assembler trim is a no-op** (kept only as a guard).
-All six components are native 103.
+† **C3 is top-3, not top-20** — the tiling steps by 6 residues so neighbouring windows overlap heavily
+(adjacent tiles cover nearly the same epitope space), so best-3 per window suffices; deeper would just
+inflate the count with near-duplicates. C1/C2 get the full top-20 the ranked files hold.
+‡ **Derived** from C1's top-20 base (island1→A + island2→A dual-only + scaffold disruption), so C6
+tracks C1's depth; built at top-20, so depth-20 needs no C6 rebuild.
+§ **Native 103 (redo landed 2026-07-11).** C1 originally reused Lawson's 104-residue contigs; we
+regenerated it natively at 103 (see *C1 redo at 103*) — RFD3→MPNN→AF3 done, metrics extracted (140,716
+designs, all `status==ok`), C1 re-selected, C5/C6 rebuilt off the new pool. **All components are native
+103-mers, so the 104→103 assembler trim is a no-op** (kept only as a guard).
 
 Full composite rankings (`results/dp4_*_ranked.csv`) are regenerable and gitignored; only the top-*n*
-cuts + case-encoded sequences are tracked.
+cuts + case-encoded sequences + the final library are tracked.
 
 ## How "best 20" is defined (C1 / C2 / C3)
 
@@ -93,17 +97,24 @@ In the assembled library file this casing is carried as the
 ## Component notes
 
 - **C5 — metric-space titration** (`scripts/stage06_sample_c5.py`). Farthest-point (max–min) spread
-  over the four standardized scoring axes (cylinder as accessibility), ~54 per mAb over the 56 mAbs.
-  3,000 designs spanning 89–99% of each axis's full range — deliberately including the low-quality tail
-  the filters reject, so binding read off the spread calibrates the scorer.
+  over the standardized scoring axes, ~54 per mAb over the 56 mAbs, 3,000 designs total — deliberately
+  including the low-quality tail the filters reject, so binding read off the spread calibrates the scorer.
+  **Accessibility is split evenly:** half the sample spans the **real AF3 clash** (`af3_n_clash_res`,
+  available because the antibody is known), half the **native-aware cylinder** surrogate, so the titration
+  calibrates both the ground-truth accessibility we have here *and* the surrogate we must rely on where no
+  antibody is known (the two halves are disjoint and sum to 3,000). Axis coverage (sample range / pool
+  range): epitope RMSD 65% (its pool max is a few unfolded outliers the sample doesn't chase), epitope PAE
+  100%, overall RMSD 98%, AF3 clash 95%, cylinder 93%. Coverage plot:
+  `manuscript/figures/c5_titration_coverage.png` (`episcaf_analysis/viz/plot_c5_titration.py`).
 - **C6 — scaffolded-epitope controls** (`episcaf_pipeline/scaffolded_epitope_controls/`). Base = C1
-  top-20 over **56 mAbs** (dropped `2h32` pre-BCR, `4xwo` low-yield, `7a3t` 4-residue epitope). Not new scaffolding —
-  string substitution on the case-encoded sequence (port of the DP3 mutation-control R code). Flavors: every-residue
-  island1→Ala, island2→Ala (dual-island only), and scaffold disruption (`PPDDGG` hexamers in scaffold
-  windows, each ≥4 residues from the epitope, seeded). Scaffold disruption is **X4 with a graceful
-  fallback 4→3→2→1** (`--scaffold-min 1`) rather than dropping the control when 4 don't fit: current build
-  X4 1,034 + X3 53 + X2 33 = **1,120/1,120 covered** (86 fell back below 4, none dropped). Alanine arms
-  cover all. **This build is off the current 104 pool → regenerates off the native-103 C1 rerun.**
+  top-20 over **56 mAbs** (dropped `2h32` pre-BCR, `4xwo` low-yield, `7a3t` 4-residue epitope). Not new
+  scaffolding — string substitution on the case-encoded sequence (port of the DP3 mutation-control R code).
+  Flavors: every-residue island1→Ala, island2→Ala (dual-island only), and scaffold disruption (`PPDDGG`
+  hexamers in scaffold windows, each ≥4 residues from the epitope, seeded). Scaffold disruption is **X4
+  with a graceful fallback 4→3→2→1** (`--scaffold-min 1`) rather than dropping the control when 4 don't
+  fit. **Shipped build (native-103 C1 pool):** 1,980 island-alanine mutants + 1,120 scaffold-disruption
+  controls = **3,100**. Scaffold-disruption fallback distribution: X4 1,034 + X3 60 + X2 25 + X1 1 =
+  **1,120/1,120 bases covered** (86 fell back below 4 windows, none dropped). Alanine arms cover all bases.
 - **C4 — linear tiled-30mer controls** (`data/libraries/dp4_tiled30mers_fasta.csv`).
   The **full antigen sequences** of 59 antigens (56 mAb targets + 3 tiled antigens 1D2K/6M0J/4WAT; the three excluded mAbs 2h32/4xwo/7a3t are dropped here too for consistency with the 56-mAb set),
   taken from the **FASTA files (no unresolved-gap holes, unlike the PDBs)**, chopped into overlapping
@@ -114,6 +125,33 @@ In the assembled library file this casing is carried as the
 - **Case-encoding** (`scripts/case_encode_selected.py`, `docs/CASE_ENCODING.md`). C1/C5 designs' epitope
   positions were recovered (token → `dp2.assay_scaffolded_epitope_id` → `scaffolded_epitope_chunk_resindices`)
   and written as case-encoded sequences (`results/dp4_C{1,5}_scaffoldEPITOPE.csv`), feeding C6 + assembly.
+
+## 8VDL — PfEMP1 conserved-epitope arm (`dp4_8vdl/`)
+
+A self-contained seventh arm, John's request, scaffolding a **conserved** epitope from a different
+antigen: the EPCR-binding surface of the *Plasmodium falciparum* PfEMP1 CIDRα1.4 domain (crystal
+`8VDL`; Reyes et al., *Nature* 636:182–189, 2024). PfEMP1 escapes immunity by antigenic variation, but
+the residues its CIDR domain uses to grip the host receptor EPCR cannot vary freely — so presenting that
+conserved contact surface is a candidate for eliciting **broadly** reactive, variant-transcending
+antibodies. The crystal contains the cognate C7 antibody (chains H/L), so this is a known-antibody target
+and the **real clash** term applies (as for C1/C2).
+
+**Two epitope definitions, top-10 each (20 total):**
+- **`epitope`** — the whole contiguous contact window **C652–C673** (22 residues; spans all 13 residues
+  with a heavy atom within 4 Å of the Fab). The strong constraint, the direct analog of C1.
+- **`hotspots`** — only the three functional residues **F655 / F656 / E666** fixed at their native crystal
+  coordinates, design builds everything else around them (a minimal "hotspot graft").
+
+**Result — a clean, testable contrast** (from `07_consolidate.py`, which aligns each predicted epitope
+onto the native chain-C frame and scores the real H/L clash there): the whole-epitope designs are
+antibody-**accessible** (top-10 epitope RMSD 0.97–1.39 Å, only 1–4 clashing residues), while the minimal
+hotspot grafts recover the three residues almost exactly (epitope RMSD 0.01–0.22 Å) but **bury** them
+under scaffold that would block the antibody (22–52 clashing residues). Comparing the two in the assay
+asks whether the minimal hotspot cluster suffices or the whole epitope is needed.
+
+Pipeline: `dp4_8vdl/scripts/` (`01_generate_contigs` → `02_emit_rfd3_inputs` → `03_rfd3_array.sbatch` →
+`04_make_fixed_pdbs` → reuses episcaf MPNN/AF3 via the `*_fixed_dldesign_*` naming contract →
+`07_consolidate.py`). Its 20 designs are merged into the library at assembly (`category=scaffolded8VDL`).
 
 ## Assembly format (the 8-column annotated format)
 
@@ -190,8 +228,8 @@ single-island run). Verified: 0 island edits, exactly one scaffold residue dropp
 **Run (Gemini):** `bash scripts/run_whole_epitope_rfd3.sh` (init→stage01→stage02, prints the chunked
 RFD3 `sbatch`), then after RFD3 finishes `bash scripts/run_whole_epitope_mpnn_af3.sh runs/whole_epitope_rfd3`
 (MPNN wave → AF3 wave). Then re-run stage05 metrics + `stage06_select` for the new C1, re-case-encode
-(token→dp2), and rebuild C5/C6 off the new pool. **8VDL** (not in DP3's 59) can ride along in this same
-run as extra ledger rows once its scaffolding is specified.
+(token→dp2), and rebuild C5/C6 off the new pool. (**8VDL** is run separately as its own arm, `dp4_8vdl/`
+— see the *8VDL* section above.)
 
 ## Reproduce (exact commands)
 
@@ -238,28 +276,36 @@ python episcaf_pipeline/scaffolded_epitope_controls/build_c6_mutants.py \
   --input results/dp4_C1_scaffoldEPITOPE.csv \
   --id-col token --target-col target --seq-col scaffoldEPITOPE \
   --drop-targets 2h32,4xwo,7a3t --out results/dp4_C6_controls.csv
+
+# 8VDL arm (Gemini: RFD3->MPNN->AF3; then consolidate top-10 per definition)
+python dp4_8vdl/scripts/07_consolidate.py --out results/dp4_8vdl_top10.csv
+
+# Assemble the final library (local) -> data/libraries/dp4_library.csv, 12,251 constructs
+python scripts/stage06_assemble.py --depth 20   # C1/C2 top-20; C3 top-3 (--c3-depth default)
 ```
 
 Scorer weights/transforms are config, not magic numbers: `episcaf_analysis/presets.py` (provenance
 above). C5 and C6 are deterministic (FPS is seed-free deterministic; C6 seeds its RNG).
 
-## Budget & depth
+## Budget & depth (decided)
 
 DP4 = a 36k library that includes all minibinders → **~10–15k slots for Episcaf designs**
-(`memory: dp4-budget`). Fixed core (C1–C4, C6) is built; **C5 + the selection depth (top-*n*) are the
-elastic buffer**, sized last once the final minibinder count is known. At top-5 the ranked counts
-shrink ~4× from the top-20 figures above.
+(`memory: dp4-budget`). **Depth is settled at top-20 for C1/C2** — the maximum the ranked files hold
+(they are top-20 cuts), and the depth C6 was built at, so no C6 rebuild is needed. With **C3 held at
+top-3** (neighbouring-tile overlap, see above), the whole library lands at **12,251 constructs**, right
+in the 10–15k budget. Per-component at the shipped depth: C1 1,120 · C2 1,660 · C3 1,317 · C4 2,034 ·
+C5 3,000 · C6 3,100 · 8VDL 20.
 
 ## Pending
 
 0. **C1 redo at 103 — DONE (2026-07-11).** RFD3→MPNN→AF3 on the 2,206-contig 103 ledger → metrics
    (140,716 designs, all `status==ok`) → re-selected C1 top-20 (1,120), re-case-encoded
    (`case_encode_whole_epitope.py`), and rebuilt C5 (3,000) + C6 (3,100) off the new pool. **C1/C5/C6 are
-   native 103; the 104→103 trim is now a no-op.** 8VDL is a separate arm (`dp4_8vdl/`), not folded in here.
-1. **Assembly (`06_library`)** — **BUILT** (`scripts/stage06_assemble.py`): concatenates the six components
-   into the 8-column annotated library, applying the 56-exclusion, the `--depth` top-*n* cut, the 104→103
-   trim (a no-op once C1 is native 103), and global `library_member` numbering.
-   `python scripts/stage06_assemble.py --depth <n>` once the depth is set. Needs the **sign-off**, the
-   **shipping depth**, and (ideally) the **103 C1 pool**.
-2. **Oligo encoding** — LadnerLab `oligo_encoding` + DP3 codon weights
+   native 103; the 104→103 trim is now a no-op.**
+1. **Assembly (`06_library`) — DONE (2026-07-13).** `scripts/stage06_assemble.py --depth 20` concatenated
+   all seven components into `data/libraries/dp4_library.csv` (**12,251** constructs), applying the
+   56-exclusion (C1/C2), the top-20/top-3 depth cuts, and global `library_member` numbering. Verified:
+   `library_member` and `design_ID` both unique, all sequences 103-mers. (C4's `design_ID`, a per-antigen
+   tile index, is namespaced `C4_<target>_t<pos>` so every `design_ID` is globally unique/traceable.)
+2. **Oligo encoding — NEXT.** LadnerLab `oligo_encoding` + DP3 codon weights
    (`episcaf_pipeline/oligo_encoding/`), then the order-file step (confirm with Erin).
