@@ -111,10 +111,15 @@ def main() -> None:
                            design_ID=getattr(r, "design_ID"), target=getattr(r, "target", "")))
     parts.append(pd.DataFrame(c6rows)); all_dropped["C6"] = c6drop
 
-    # C4 -- already DP2 8-column format, native 103, already 56
+    # C4 -- already 8-column format, native 103, already 56
+    keep8 = ["sequence", "category", "model", "designedSequence",
+             "designedSequenceLength", "design_ID", "target"]
     c4 = pd.read_csv(lib/"dp4_tiled30mers_fasta.csv", low_memory=False)
-    parts.append(c4[["sequence", "category", "model", "designedSequence",
-                     "designedSequenceLength", "design_ID", "target"]])
+    parts.append(c4[keep8])
+
+    # 8VDL arm -- already 8-column (07_consolidate), native 103, fixed top-10 per definition
+    v8 = pd.read_csv(res/"dp4_8vdl_top10.csv", low_memory=False)
+    parts.append(v8[keep8])
 
     lib_df = pd.concat(parts, ignore_index=True)
     lib_df.insert(0, "library_member", [f"DP4_{i}" for i in range(1, len(lib_df) + 1)])
@@ -124,7 +129,7 @@ def main() -> None:
 
     print(f"[assemble] depth={args.depth} -> {len(lib_df):,} library members -> {args.out}")
     print("[assemble] per-component:")
-    for p, name in zip(parts, ["C1", "C2", "C3", "C5", "C6", "C4"]):
+    for p, name in zip(parts, ["C1", "C2", "C3", "C5", "C6", "C4", "8VDL"]):
         print(f"    {name}: {len(p):,}")
     print(f"[assemble] sequence lengths: {lib_df.sequence.str.len().value_counts().to_dict()}")
     for comp, dr in all_dropped.items():
