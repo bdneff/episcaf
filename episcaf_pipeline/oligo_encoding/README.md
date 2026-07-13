@@ -41,23 +41,35 @@ model). So the tool is not vendored here; it is built once on the cluster.
 conda env create -f /tgen_labs/Immunology/ekelley/DP3_PepSeq_Library_Design/new_codon_weights/pepseq_encoding.yml
 conda activate pepseq_encoding      # confirm the name with `conda env list`
 
-# 2. build the encoder from master (in that env, so g++/OpenMP resolve):
+# 2. build the encoder from master (recipe verified 2026-07-13 -- see the three gotchas below):
 git clone https://github.com/LadnerLab/Library-Design.git
 cd Library-Design/oligo_encoding
-sed -i 's/oligo_ecoding/oligo_encoding/g' Makefile     # fix upstream Makefile typo (see note)
-make optimized                                         # -> builds ./main  (with -O3)
+sed -i 's/oligo_ecoding/oligo_encoding/g' Makefile      # (a) fix upstream Makefile typo
+module load GCC/9.3.0                                   # (b) env has no g++; conda gxx won't solve
+make optimized CC="g++ -static-libstdc++ -static-libgcc"  # (c) static C++ runtime -> ./main runs under the env
 export TOOL_DIR=$(pwd)               # this dir holds: main, oligo_encoding.py, the model
 ```
 
-**Makefile-typo gotcha:** master's Makefile misspells its build target as `oligo_ecoding` (missing the
-`n`) in the `optimized`/`profile`/`debug` rules, so `make optimized` fails out of the box with
-`No rule to make target 'oligo_ecoding'`. The `sed` above fixes it. Note the compiled executable is
-named **`main`** (the real target `oligo_encoding` runs `... -o main`), which happens to match
-ekelley's binary name. The selector script is `oligo_encoding.py` (master) rather than ekelley's
-`encoding_with_nn.py`. The two sbatch scripts here **auto-detect both** (`main`/`oligo_encoding` and
-`encoding_with_nn.py`/`oligo_encoding.py`; override with `BIN`/`SEL`), so pointing `TOOL_DIR` at the
-built dir is all that's needed. The DP3 model `DeepLearning_model_R_1539970074840_1_20181019` is in the
-master repo. The sbatch scripts default `CONDA_ENV=pepseq_encoding` and activate it themselves.
+Three gotchas hit on the first build, all handled by the lines above:
+
+- **(a) Makefile typo.** Master misspells its build target as `oligo_ecoding` (missing the `n`) in the
+  `optimized`/`profile`/`debug` rules, so `make optimized` fails with `No rule to make target
+  'oligo_ecoding'`. The `sed` fixes it. The compiled executable is named **`main`** (the real target
+  runs `... -o main`), which happens to match ekelley's binary name.
+- **(b) No compiler in the env.** `pepseq_encoding` ships no `g++` (only `/usr/bin/gcc` exists on the
+  node), and `conda install gxx_linux-64` cannot solve against the env's pinned old libs
+  (libstdcxx-ng 8.2.0 / libgomp 11.2.0). So load a cluster `GCC` module for the build instead.
+- **(c) libstdc++ skew.** The sbatch jobs activate the pinned env, whose `libstdc++` is older than the
+  build compiler's, so a normally-linked `main` would fail at runtime with a `GLIBCXX` error. Building
+  with `-static-libstdc++ -static-libgcc` bakes the C++ runtime into `main`; the only shared lib it then
+  needs is `libgomp` (OpenMP), which the env has and is backward-compatible. Verified: `./main` runs.
+
+The selector script is `oligo_encoding.py` (master) rather than ekelley's `encoding_with_nn.py`. The
+two sbatch scripts here **auto-detect both** binary (`main`/`oligo_encoding`) and selector
+(`encoding_with_nn.py`/`oligo_encoding.py`); override with `BIN`/`SEL`. The DP3 model
+`DeepLearning_model_R_1539970074840_1_20181019` is in the master repo. The sbatch scripts default
+`CONDA_ENV=pepseq_encoding` and activate it themselves, so pointing `TOOL_DIR` at the built dir is all
+that's needed.
 
 ## Running DP4
 The only thing that changes from DP3 is the **`-i` input**: point it at the DP4 named-peptides file
