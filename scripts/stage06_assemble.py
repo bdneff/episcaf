@@ -115,10 +115,13 @@ def main() -> None:
                            design_ID=getattr(r, "design_ID"), target=getattr(r, "target", "")))
     parts.append(pd.DataFrame(c6rows)); all_dropped["C6"] = c6drop
 
-    # C4 -- already 8-column format, native 103, already 56
+    # C4 -- already 8-column format, native 103, already 56. Its design_ID is a per-antigen tile-start
+    # index (1,7,13,...) that repeats across antigens, so namespace it C4_<target>_t<pos> to make it
+    # globally unique / traceable from design_ID alone (like C1_..._r#).
     keep8 = ["sequence", "category", "model", "designedSequence",
              "designedSequenceLength", "design_ID", "target"]
-    c4 = pd.read_csv(lib/"dp4_tiled30mers_fasta.csv", low_memory=False)
+    c4 = pd.read_csv(lib/"dp4_tiled30mers_fasta.csv", low_memory=False).copy()
+    c4["design_ID"] = "C4_" + c4["target"].astype(str) + "_t" + c4["design_ID"].astype(str)
     parts.append(c4[keep8])
 
     # 8VDL arm -- already 8-column (07_consolidate), native 103, fixed top-10 per definition
