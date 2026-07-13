@@ -27,7 +27,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-AXES = ["epitope_chunk_rmsd", "epitope_pae", "overall_rmsd", "cylinder_native_aware"]
+BASE_AXES = ["epitope_chunk_rmsd", "epitope_pae", "overall_rmsd"]
+# Accessibility is SPLIT: half the sample spans the REAL AF3 clash (af3_n_clash_res, available because
+# the antibody is known), half spans the native-aware cylinder surrogate, so the titration calibrates
+# BOTH accessibility measures against binding (Brandon, 2026-07-13). Each half runs its own FPS over
+# BASE_AXES + its accessibility axis; the two selections are merged and de-duplicated.
+ACCESS_AXES = ["af3_n_clash_res", "cylinder_native_aware"]
 # Canonical known-Ab exclusion set -> 56 mAbs: 4xwo (low yield), 7a3t (4-residue epitope),
 # 2h32 (not a standard antibody case). See docs/DP4_LIBRARY.md.
 DROP_IDS = {"4xwo_5p", "7a3t_0p", "2h32_0p"}
@@ -56,6 +61,22 @@ def quotas(ids: list, total: int) -> dict:
     return {g: base + (1 if i < rem else 0) for i, g in enumerate(ids)}
 
 
+def sample_half(df, access, total, group):
+    """Per-mAb FPS over BASE_AXES + one accessibility axis. Returns {original df index -> fps_order}."""
+    axes = BASE_AXES + [access]
+    d = df.dropna(subset=axes)
+    oi = d.index.to_numpy()
+    gv = d[group].to_numpy()
+    P = np.column_stack([d[a].rank(pct=True).to_numpy() for a in axes])   # percentile-standardized
+    q = quotas(sorted(pd.unique(gv)), total)
+    out = {}
+    for g in q:
+        loc = np.where(gv == g)[0]
+        for order, li in enumerate(fps(P[loc], min(q[g], len(loc)))):
+            out[int(oi[loc[li]])] = order
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -66,38 +87,35 @@ def main() -> None:
     args = ap.parse_args()
 
     df = pd.read_csv(args.metrics_csv, low_memory=False)
-    df = df[~df[args.group].astype(str).str.lower().isin(DROP_IDS)].copy()
-    for a in AXES:
+    df = df[~df[args.group].astype(str).str.lower().isin(DROP_IDS)].reset_index(drop=True)
+    for a in BASE_AXES + ACCESS_AXES:
         df[a] = pd.to_numeric(df[a], errors="coerce")
-    n0 = len(df)
-    df = df.dropna(subset=AXES).reset_index(drop=True)
-    print(f"[c5] pool {n0} -> {len(df)} after dropping NaN axes; mAbs = {df[args.group].nunique()}")
+    print(f"[c5] pool {len(df)} designs; mAbs = {df[args.group].nunique()}")
 
-    # percentile-standardize each axis over the whole kept pool
-    P = np.column_stack([df[a].rank(pct=True).to_numpy() for a in AXES])
-
-    groups = sorted(df[args.group].unique())
-    q = quotas(groups, args.total)
-    picks = []
-    for g in groups:
-        idx = df.index[df[args.group] == g].to_numpy()
-        k = min(q[g], len(idx))
-        sel_local = fps(P[idx], k)
-        for order, li in enumerate(sel_local):
-            picks.append((idx[li], g, order))
-    sel = pd.DataFrame(picks, columns=["row", args.group, "fps_order"]).set_index("row")
-    out = df.loc[sel.index].copy()
-    out["fps_order"] = sel["fps_order"].to_numpy()
+    # split the quota: half spanning the real AF3 clash, half the native-aware cylinder. The cylinder
+    # half is drawn from the pool with the af3-half removed, so the two halves are DISJOINT and sum to
+    # exactly --total (a clean "half to each" with no design counted twice).
+    h1 = args.total // 2
+    sel_af3 = sample_half(df, "af3_n_clash_res", h1, args.group)
+    sel_cyl = sample_half(df.drop(index=list(sel_af3)), "cylinder_native_aware", args.total - h1, args.group)
+    tag = {}
+    for i in sel_af3:
+        tag.setdefault(i, []).append("af3_clash")
+    for i in sel_cyl:
+        tag.setdefault(i, []).append("cylinder")
+    rows = sorted(tag)
+    out = df.loc[rows].copy()
+    out["access_sampled"] = ["+".join(tag[i]) for i in rows]
     out["category"] = "metricSpaceTitration"
 
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out, index=False)
-    print(f"[c5] sampled {len(out)} designs over {len(groups)} mAbs "
-          f"(per-mAb {min(q.values())}-{max(q.values())})")
-    # spread check: does the sample cover the pool's range on each axis?
+    n_both = sum(1 for i in rows if len(tag[i]) == 2)
+    print(f"[c5] sampled {len(sel_af3)} (af3-clash) + {len(sel_cyl)} (cylinder) "
+          f"-> {len(out)} unique ({n_both} picked by both halves)")
     print("[c5] axis coverage (sampled range / full-pool range):")
-    for a in AXES:
-        fp = df[a]; sp = out[a]
+    for a in BASE_AXES + ACCESS_AXES:
+        fp, sp = df[a].dropna(), out[a].dropna()
         cov = (sp.max() - sp.min()) / (fp.max() - fp.min() + 1e-9)
         print(f"       {a:24s} pool[{fp.min():.2f},{fp.max():.2f}] "
               f"sample[{sp.min():.2f},{sp.max():.2f}]  cover {cov:.0%}")
