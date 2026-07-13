@@ -11,19 +11,21 @@ one ordered synthesis file (Section~\ref{sec:assembly}).
 \toprule
 component & what it is & constructs & status \\
 \midrule
-C1 known antibody, whole epitope & full-epitope scaffolds, top-$n$/epitope & depth-set & ranked \\
-C2 known antibody, single island & 87 island contigs, each island alone & depth-set & ranked, per island \\
-C3 scaffolds, polyclonal tiling & top-$n$/window, no antibody & depth-set & selected, ungated \\
-C4 linear tiled-30mer controls & bare tiled peptides & 2034 & built \\
+C1 known antibody, whole epitope & full-epitope scaffolds, top-\num{20}/epitope & \num{1120} & ranked \\
+C2 known antibody, single island & 87 island contigs, each island alone & \num{1660} & ranked, per island \\
+C3 scaffolds, polyclonal tiling & top-\num{3}/window, no antibody & \num{1317} & selected, ungated \\
+C4 linear tiled-30mer controls & bare tiled peptides & \num{2034} & built \\
 C5 metric-space sampling & designs spread across metrics & \num{3000} & sampled \\
-C6 scaffolded-epitope controls & island$\to$Ala $+$ scaffold-disruption & $\sim$3k & built \\
+C6 scaffolded-epitope controls & island$\to$Ala $+$ scaffold-disruption & \num{3100} & built \\
+8VDL PfEMP1 conserved epitope & two epitope definitions, top-\num{10} each & \num{20} & ranked \\
 \bottomrule
 \end{tabular}
-\caption{The DP4 components assembled here. C1 and C2 are the two halves of the islands
-experiment (whole epitope vs.\ one island at a time); C6 tests the same question by mutation.
-C1--C3 are selected (ranked on the composite, Section~\ref{sec:selection}); the shipped depth
-(top-$n$ per group) is set at assembly from the peptide budget, so their final counts settle then.
-C5 is set at \num{3000} designs; C4 is the \num{2034} tiles of Section~\ref{sec:tiling}.}
+\caption{The DP4 components assembled here, at the shipped depth. C1 and C2 are the two halves of the
+islands experiment (whole epitope vs.\ one island at a time); C6 tests the same question by mutation.
+C1--C3 are selected (ranked on the composite, Section~\ref{sec:selection}); the shipped depth is
+top-\num{20} per group for C1/C2 and top-\num{3} per window for C3 (neighbouring tiles overlap
+heavily, so best-\num{3} covers each window). C5 is \num{3000} designs; C4 is the \num{2034} tiles of
+Section~\ref{sec:tiling}. Together with the 8VDL arm this is \num{12251} constructs.}
 \label{tab:dp4components}
 \end{table}
 
@@ -49,20 +51,23 @@ The single-island component scaffolds each island of the \num{46} multi-island e
 suffice? Shipping C1 (whole epitope) and C2 (each island alone) for the same antibodies lets the
 assay deconvolve which island, if any, carries the binding. The per-island production run
 (Section~\ref{sec:perisland}) covers \num{87} scaffolded islands (\num{5} size-1 islands are
-skipped as un-presentable); at top-5 per island that is on the order of \num{435} constructs
-(Table~\ref{tab:dualisland}). Selection is identical to C1 (composite, no gate, real-clash
-accessibility), ranked per (\texttt{id}, island) so each island competes on its own.
+skipped as un-presentable); at the shipped top-\num{20} per island (after the 56-mAb exclusion) that
+is \num{1660} constructs (Table~\ref{tab:dualisland}). Selection is identical to C1 (composite, no
+gate, real-clash accessibility), ranked per (\texttt{id}, island) so each island competes on its own.
 
 \subsection{C3 --- scaffolded epitopes from polyclonal tiling}\label{sec:dp4c3}
 For antigens with no known antibody we tile the whole protein into overlapping windows and
-scaffold each one (Section~\ref{sec:tiling}), then keep the top 5 designs per window by the
-composite. This is the polyclonal arm (Q3): we do not know where the real epitope is, so we cover
+scaffold each one (Section~\ref{sec:tiling}), then keep the top \num{3} designs per window by the
+composite. We keep only \num{3} (rather than the deeper cut C1/C2 get) because the windows step by
+\num{6} residues and so overlap heavily --- adjacent tiles already cover nearly the same epitope
+space, so best-\num{3} per window suffices without ballooning the count. This is the polyclonal arm
+(Q3): we do not know where the real epitope is, so we cover
 the antigen densely and let the assay find it. This is the one component where the antibody-clash
 filter cannot be computed, so accessibility is judged entirely by the native-aware cylinder
 surrogate (Section~\ref{sec:noab}) --- the metric the DP3 binding data singled out as the
 strongest predictor (Section~\ref{sec:whatpredicts}), which is why it now carries the most weight
-in selecting these designs. Across the three tiled antigens (1D2K, 6M0J, 4WAT) this is
-\num{951}+\num{450}+\num{780} top-5 designs (Table~\ref{tab:tilecount}).
+in selecting these designs. Across the three tiled antigens this is \num{573} (1D2K) $+$ \num{468}
+(4WAT) $+$ \num{276} (6M0J) $=$ \num{1317} top-\num{3} designs (Table~\ref{tab:tilecount}).
 
 \subsection{C4 --- linear tiled-30mer controls}\label{sec:dp4c4}
 The linear controls are the bare epitope peptides the scaffolded designs are meant to beat:
@@ -83,16 +88,49 @@ The DP3 binding data is a weak prior precisely because every assayed design alre
 four filters, so the metrics barely varied (Section~\ref{sec:experimental}). C5 fixes that by
 design: instead of shipping only the top designs, we deliberately sample designs \emph{spread
 across} the metric space --- including ones the current filters would reject --- so that epitope
-RMSD, accessibility, and PAE each take a wide range of values. Here accessibility is the cylinder
-(not the real clash): the point of this component is to learn the predictors that transfer to the
-no-antibody setting, so we sample along the same surrogate we will have to rely on there. Reading
-binding off this spread is what lets us learn which metrics actually predict enrichment and
-finally fit the composite's weights (Q2, Section~\ref{sec:open}), rather than re-deriving the
-filters we started from. The sampling is implemented (\texttt{scripts/stage06\_sample\_c5.py}): a
-farthest-point (max--min) spread over the four standardized scoring axes --- epitope RMSD, epitope
-PAE, overall RMSD, and the native-aware cylinder --- sampled per mAb over the \num{56} assayable
-epitopes. We ship \num{3000} designs (about \num{54} per mAb); the sample spans \SIrange{89}{99}{\percent}
-of each axis's full range, i.e.\ deliberately including the low-quality tail the filters reject.
+RMSD, accessibility, and PAE each take a wide range of values. Accessibility is sampled two ways, split evenly: half the designs span the \emph{real} AlphaFold3
+clash (available because the antibody is known) and half the native-aware cylinder surrogate, so the
+titration calibrates both the ground-truth accessibility we have for the antibody set and the surrogate
+we must rely on where no antibody is known. Reading binding off this spread is what lets us learn which
+metrics actually predict enrichment and finally fit the composite's weights (Q2,
+Section~\ref{sec:open}), rather than re-deriving the filters we started from. The sampling is implemented
+(\texttt{scripts/stage06\_sample\_c5.py}): a farthest-point (max--min) spread over four standardized
+scoring axes --- epitope RMSD, epitope PAE, overall RMSD, and one accessibility axis --- sampled per mAb
+over the \num{56} assayable epitopes, with the accessibility axis being the real clash for one
+(disjoint) half of the \num{3000} designs and the cylinder for the other (about \num{54} per mAb).
+
+The sample reaches deep into the tails the filters reject, covering most of each axis's full range
+(Table~\ref{tab:c5span}, Fig.~\ref{fig:c5span}).
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lccc}
+\toprule
+axis & pool range & sample range & span \\
+\midrule
+epitope RMSD (\si{\angstrom}) & 0.16--60.4 & 0.20--39.6 & \SI{65}{\percent} \\
+epitope PAE                   & 1.0--21.0  & 1.1--21.0  & \SI{100}{\percent} \\
+overall RMSD (\si{\angstrom}) & 0.31--45.5 & 0.35--44.5 & \SI{98}{\percent} \\
+AF3 clash (residues)          & 0--85      & 0--81      & \SI{95}{\percent} \\
+native-aware cylinder         & 0--57      & 0--51      & \SI{93}{\percent} \\
+\bottomrule
+\end{tabular}
+\caption{C5 titration coverage --- the fraction of each axis's full pool range the sample spans (span
+$=$ sample range $/$ pool range). All axes are near-fully spanned; epitope RMSD reads \SI{65}{\percent}
+only because its pool maximum (\SI{60}{\angstrom}) is a handful of unfolded outliers the sample does not
+chase, so the range ratio understates the coverage of the meaningful range.}
+\label{tab:c5span}
+\end{table}
+
+\begin{figure}[h]\centering
+\figorbox{c5_titration_coverage.png}{1.0}
+\caption{C5 metric-space titration, one panel per sampled axis: the full whole-epitope pool (grey) vs the
+\num{3000}-design farthest-point sample (blue). The sample tracks pool density on any single marginal ---
+it spreads in the \emph{joint} space, not per-axis --- yet reaches the tails; the red line is a
+stratified-uniform ``span this axis alone'' reference (flat by construction) showing what per-axis-uniform
+coverage would look like. Each curve is density-normalized independently. Regenerated by
+\texttt{episcaf\_analysis/viz/plot\_c5\_titration.py}.}
+\label{fig:c5span}
+\end{figure}
 
 \subsection{C6 --- scaffolded-epitope controls}\label{sec:dp4c6}
 For the best \num{20} designs of each of the \num{56} mAbs we alanine-scan the epitope islands:
@@ -108,7 +146,8 @@ case-encoded sequence (epitope residues uppercase, scaffold lowercase, each cont
 an island), implemented in \texttt{episcaf\_pipeline/scaffolded\_epitope\_controls/} (a port of the
 DP3 scheme). Over the best designs of each of the \num{56} mAbs, with one island-mutant for
 single-island epitopes and two for multi-island ones, plus the scaffold-disruption variant below,
-this is on the order of \num{3000} constructs at the current selection depth.
+this is \num{3100} constructs at the shipped top-\num{20} depth (\num{1980} island-alanine mutants
+$+$ \num{1120} scaffold-disruption controls, one per base design).
 
 \paragraph{Scaffold-disruption control.} A companion negative control mutates the \emph{scaffold}
 (not the epitope) in each design: if binding is epitope-driven, perturbing the scaffold should leave
@@ -122,9 +161,9 @@ membership and the epitope-avoidance constraint are both read directly from the 
 separate residue-index map is needed. When a scaffold cannot fit four disjoint windows, we
 \emph{degrade the count} (\texttt{scaffoldMutX3}, \texttt{X2}, \texttt{X1}) rather than drop the control,
 so a design loses its scaffold control only if it cannot place even a single hexamer $\ge\!4$ residues
-from the epitope. In the current build the four-window arm covers \num{1034} designs, with \num{53} at
-three windows and \num{33} at two, so \emph{every} one of the \num{1120} bases carries a scaffold
-control; the island-alanine arms likewise cover all bases.
+from the epitope. In the shipped build the four-window arm covers \num{1034} designs, with \num{60} at
+three windows, \num{25} at two, and \num{1} at a single window, so \emph{every} one of the \num{1120}
+bases carries a scaffold control; the island-alanine arms likewise cover all bases.
 
 \medskip
 \noindent The controls follow the DP3 mutation scheme (reference and port in
@@ -150,29 +189,40 @@ residues its CIDR domain uses to grip the host receptor EPCR cannot vary freely 
 presents that conserved contact surface is a candidate for eliciting \emph{broadly} reactive,
 variant-transcending antibodies. The paper identifies the conserved, EPCR-binding-critical residues on
 which its broadly reactive antibodies depend: the double-phenylalanine motif \texttt{F655}/\texttt{F656}
-and a supporting glutamate \texttt{E666}. We scaffold the contiguous chain~C window
-\numrange{651}{670} (\texttt{FDSFFFQVIYKFNEGEAKWN}) that spans those hotspots, and the hotspots alone,
-as the two epitope definitions below. Because the crystal also contains the cognate C7 antibody
-(chains H/L), this is a known-antibody target and the real clash term applies, exactly as for C1/C2.
+and a supporting glutamate \texttt{E666}. We scaffold two epitope definitions below --- the contiguous
+chain~C window covering the antibody's contact surface, and those conserved hotspots alone. Because the
+crystal also contains the cognate C7 antibody (chains H/L), this is a known-antibody target and the real
+clash term applies, exactly as for C1/C2.
 
-We scaffold it two ways and keep the best \num{10} of each: \texttt{epitope20} fixes the whole
-\num{20}-residue island (the strongest constraint, the direct analog of C1), while \texttt{hotspots}
-fixes only the three functional residues \texttt{F655}/\texttt{F656}/\texttt{E666} and lets the design
-build everything else around them (a minimal ``hotspot graft''). Both are scaffolded into the same
-\num{103}-mer construct through the same RFdiffusion3~$\rightarrow$~ProteinMPNN~$\rightarrow$~AlphaFold3
-pipeline and ranked on the same composite; the fixed atoms carry the residues' native crystal
-coordinates, so the hotspot arm preserves their three-dimensional arrangement however the construct
-spaces them. Comparing the two in the assay asks whether the minimal hotspot cluster suffices or the
-whole epitope is needed. This arm is produced as a self-contained component (\texttt{dp4\_8vdl/}) and
-its top designs are merged into the library alongside the others at assembly.
+We scaffold it two ways and keep the best \num{10} of each: \texttt{epitope} fixes the whole
+contiguous contact window \texttt{C652--C673} (\num{22} residues, spanning all \num{13} residues with a
+heavy atom within \SI{4}{\angstrom} of the Fab --- the strongest constraint, the direct analog of C1),
+while \texttt{hotspots} fixes only the three functional residues \texttt{F655}/\texttt{F656}/\texttt{E666}
+and lets the design build everything else around them (a minimal ``hotspot graft''). Both are scaffolded
+into the same \num{103}-mer construct through the same
+RFdiffusion3~$\rightarrow$~ProteinMPNN~$\rightarrow$~AlphaFold3 pipeline and ranked on the same composite
+(the custom consolidation \texttt{dp4\_8vdl/scripts/07\_consolidate.py} aligns each predicted epitope
+onto the native chain~C frame, then scores the real H/L clash there); the fixed atoms carry the residues'
+native crystal coordinates, so the hotspot arm preserves their three-dimensional arrangement however the
+construct spaces them. The two arms give a clean, testable contrast: the whole-epitope designs are
+antibody-\emph{accessible} --- their top \num{10} recover the epitope well (epitope RMSD
+\SIrange{0.97}{1.39}{\angstrom}) while leaving the Fab surface largely unobstructed (\numrange{1}{4}
+clashing residues) --- whereas the minimal hotspot grafts recover the three residues almost exactly
+(epitope RMSD \SIrange{0.01}{0.22}{\angstrom}) but bury them under scaffold that would block the antibody
+(\numrange{22}{52} clashing residues). Comparing the two in the assay asks whether the minimal hotspot
+cluster suffices or the whole epitope is needed. This arm is produced as a self-contained component
+(\texttt{dp4\_8vdl/}) and its \num{20} top designs are merged into the library alongside the others at
+assembly.
 
 \subsection{Assembly into one synthesis file}\label{sec:assembly}
-All six components share the constant 103-mer construct and the eight-column annotated format
-(Section~\ref{sec:tiling}), so the final step concatenates them into a single ordered library file
-with global \texttt{library\_member} numbering --- a named, documented pipeline stage
-(\texttt{06\_library}) so the shipped file is regenerable from its components. Selection is done
-(C1--C3 ranked, C5 sampled at \num{3000}); assembly runs once the shipping depth is chosen and the
-per-design sequences are recovered, as follows.
+All seven components (C1--C6 plus the 8VDL arm) share the constant 103-mer construct and the
+eight-column annotated format (Section~\ref{sec:tiling}), so the final step concatenates them into a
+single ordered library file with global \texttt{library\_member} numbering --- a named, documented
+pipeline stage (\texttt{06\_library}, \texttt{scripts/stage06\_assemble.py}) so the shipped file is
+regenerable from its components. This is done: at the shipped depth (top-\num{20} for C1/C2, top-\num{3}
+for C3) assembly emits \num{12251} constructs, each with a unique \texttt{library\_member} and
+\texttt{design\_ID}, all \num{103} residues. Selection and depth are settled as above; the remaining
+mechanics --- recovering each design's sequence --- are as follows.
 
 \paragraph{Recovering the design sequences (case encoding).} Assembly and the C6 controls both need,
 for each selected design, its full amino-acid sequence with the epitope residues marked --- stored as
