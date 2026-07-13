@@ -42,8 +42,18 @@ pinned copy of that dir here, or reference the cluster install]
 
 ## Running DP4
 The only thing that changes from DP3 is the **`-i` input**: point it at the DP4 named-peptides file
-that `06_library` exports (`library_member,sequence`, no header). Everything else — weights, model,
-GC, trials, adapters — stays as the DP3 recipe above.
+(`library_member,sequence`, no header). Everything else — weights, model, GC, trials, adapters —
+stays as the DP3 recipe above.
+
+**The input is generated:** `scripts/stage07_named_peptides.py` slices `library_member,sequence` out
+of the assembled library and validates the encoder's format (no header, unique names, standard
+residues, every line ≤ 128) → **`data/libraries/dp4_named_peptides.csv`** (12,251 lines, all 103-mers,
+line length 109–113). Regenerate with:
+
+```bash
+python scripts/stage07_named_peptides.py \
+  --library data/libraries/dp4_library.csv --out data/libraries/dp4_named_peptides.csv
+```
 
 Two parameterized SLURM scripts here drive the run (better-documented rewrites of ekelley's
 `run_pepseq_design_step{1,2}.sh`, which are kept as the pinned DP3 reference):

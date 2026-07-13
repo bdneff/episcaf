@@ -307,5 +307,8 @@ C5 3,000 · C6 3,100 · 8VDL 20.
    56-exclusion (C1/C2), the top-20/top-3 depth cuts, and global `library_member` numbering. Verified:
    `library_member` and `design_ID` both unique, all sequences 103-mers. (C4's `design_ID`, a per-antigen
    tile index, is namespaced `C4_<target>_t<pos>` so every `design_ID` is globally unique/traceable.)
-2. **Oligo encoding — NEXT.** LadnerLab `oligo_encoding` + DP3 codon weights
-   (`episcaf_pipeline/oligo_encoding/`), then the order-file step (confirm with Erin).
+2. **Oligo encoding — IN PROGRESS.** Encoder input is exported and validated:
+   `scripts/stage07_named_peptides.py` → **`data/libraries/dp4_named_peptides.csv`** (12,251 lines,
+   `name,seq`, no header, all 103-mers). Next: run the LadnerLab encoder on Gemini (`main` step 1 →
+   `encoding_with_nn.py` step 2, DP3 recipe + `codon_weights_updated.csv`; `episcaf_pipeline/oligo_encoding/`),
+   then the order-file/Twist-adapter step (confirm exact recipe with Erin).
