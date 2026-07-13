@@ -30,8 +30,19 @@ OUT=${OUT:-${LIB}_best_encodings}     # selected best encoding(s) per peptide
 SUBSAMPLE=${SUBSAMPLE:-300}           # candidates subsampled before scoring   (DP3: 300)
 NN=${NN:-1}                           # encodings kept per peptide             (DP3: 1 = single best)
 
-echo "HOST=$(hostname)  MODEL=${MODEL}  OUT=${OUT}"
-"${TOOL_DIR}/encoding_with_nn.py" \
+# NN selector script name differs by install: ekelley's is `encoding_with_nn.py`; the GitHub master
+# ships `oligo_encoding.py`. Auto-detect, or set SEL to override. (If master's flags differ from the
+# DP3 recipe below, the smoke test will surface it and we adjust -- the two are the same lineage.)
+SEL=${SEL:-}
+if [ -z "${SEL}" ]; then
+    for c in "${TOOL_DIR}/encoding_with_nn.py" "${TOOL_DIR}/oligo_encoding.py"; do
+        [ -f "${c}" ] && SEL="${c}" && break
+    done
+fi
+[ -n "${SEL}" ] || { echo "ERROR: no NN selector (encoding_with_nn.py / oligo_encoding.py) in ${TOOL_DIR}; set TOOL_DIR or SEL" >&2; exit 1; }
+
+echo "HOST=$(hostname)  SEL=${SEL}  MODEL=${MODEL}  OUT=${OUT}"
+python "${SEL}" \
     -m "${MODEL}" \
     -s "${OUT_SEQS}" \
     -r "${OUT_RATIO}" \

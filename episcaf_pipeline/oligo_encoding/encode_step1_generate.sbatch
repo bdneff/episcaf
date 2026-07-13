@@ -29,7 +29,7 @@ set -euo pipefail
 
 # conda activate pepseq_encoding   # the env ekelley used for the encoder
 
-TOOL_DIR=${TOOL_DIR:-/home/ekelley/bin/Library-Design/oligo_encoding}   # has the compiled `main`
+TOOL_DIR=${TOOL_DIR:-/home/ekelley/bin/Library-Design/oligo_encoding}
 LIB=${LIB:-DP4}
 INPUT=${INPUT:-${LIB}_named_peptides.csv}      # name,seq  (NO header) -- from the 06_library export
 WEIGHTS=${WEIGHTS:-codon_weights_updated.csv}  # aa,codon,weight,index  (same table as DP3)
@@ -40,8 +40,18 @@ N_OUT=${N_OUT:-300}        # encodings written per peptide                (DP3: 
 GC=${GC:-0.55}             # target GC ratio                             (DP3: 0.55)
 CORES=${CORES:-2}          # encoder threads                             (DP3: 2)
 
-echo "HOST=$(hostname)  TOOL_DIR=${TOOL_DIR}  INPUT=${INPUT}"
-"${TOOL_DIR}/main" \
+# Encoder binary name differs by install: ekelley's compiled it as `main`; the GitHub master
+# Makefile (`make optimized`) produces `oligo_encoding`. Auto-detect, or set BIN to override.
+BIN=${BIN:-}
+if [ -z "${BIN}" ]; then
+    for c in "${TOOL_DIR}/main" "${TOOL_DIR}/oligo_encoding"; do
+        [ -x "${c}" ] && BIN="${c}" && break
+    done
+fi
+[ -n "${BIN}" ] || { echo "ERROR: no encoder binary (main / oligo_encoding) in ${TOOL_DIR}; set TOOL_DIR or BIN" >&2; exit 1; }
+
+echo "HOST=$(hostname)  BIN=${BIN}  INPUT=${INPUT}"
+"${BIN}" \
     -i "${INPUT}" \
     -p "${WEIGHTS}" \
     -s "${OUT_SEQS}" \
