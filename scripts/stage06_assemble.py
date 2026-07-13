@@ -80,19 +80,23 @@ def scaffold_rows(comp, seq_csv, ranked_csv, category, *, trim, exclude, depth):
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--depth", type=int, default=20, help="top-n per group for the ranked components C1/C2/C3")
+    ap.add_argument("--depth", type=int, default=20, help="top-n per group (mAb/island) for C1/C2 (and C6 via C1)")
+    ap.add_argument("--c3-depth", type=int, default=3,
+                    help="top-n per 12-mer window for C3 -- fixed at 3: neighbouring tiles overlap heavily "
+                         "(step-6 windows), so adjacent tiles already cover nearly the same epitope space")
     ap.add_argument("--out", default="data/libraries/dp4_library.csv")
     args = ap.parse_args()
     res = R / "results"; lib = R / "data/libraries"
     parts, all_dropped = [], {}
 
-    # C1/C2/C3 -- ranked scaffolds (depth-cut); C1 also 104->trim + exclusion; C2 exclusion; C3 neither
-    for comp, seqf, rankf, cat, trim, exc in [
-        ("C1", res/"dp4_C1_scaffoldEPITOPE.csv", res/"dp4_C1_whole_epitope_ranked.top20.csv", "scaffoldedAbEpitope", True, True),
-        ("C2", res/"dp4_C2_scaffoldEPITOPE.csv", res/"dp4_C2_single_island_ranked.top20.csv", "scaffoldedSingleIsland", False, True),
-        ("C3", res/"dp4_C3_scaffoldEPITOPE.csv", res/"dp4_C3_12mer_ranked.top20.csv", "scaffoldedPolyclonal", False, False),
+    # C1/C2/C3 -- ranked scaffolds (depth-cut); C1 also 104->trim + exclusion; C2 exclusion; C3 neither.
+    # C1/C2 take the shipping --depth; C3 is fixed at --c3-depth (3) because neighbouring tiles overlap.
+    for comp, seqf, rankf, cat, trim, exc, dep in [
+        ("C1", res/"dp4_C1_scaffoldEPITOPE.csv", res/"dp4_C1_whole_epitope_ranked.top20.csv", "scaffoldedAbEpitope", True, True, args.depth),
+        ("C2", res/"dp4_C2_scaffoldEPITOPE.csv", res/"dp4_C2_single_island_ranked.top20.csv", "scaffoldedSingleIsland", False, True, args.depth),
+        ("C3", res/"dp4_C3_scaffoldEPITOPE.csv", res/"dp4_C3_12mer_ranked.top20.csv", "scaffoldedPolyclonal", False, False, args.c3_depth),
     ]:
-        df, dropped = scaffold_rows(comp, seqf, rankf, cat, trim=trim, exclude=exc, depth=args.depth)
+        df, dropped = scaffold_rows(comp, seqf, rankf, cat, trim=trim, exclude=exc, depth=dep)
         parts.append(df); all_dropped[comp] = dropped
 
     # C5 -- fixed sample (no depth cut), 104->trim, already 56
