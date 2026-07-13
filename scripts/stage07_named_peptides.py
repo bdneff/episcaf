@@ -26,9 +26,16 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--library", default="data/libraries/dp4_library.csv")
     ap.add_argument("--out", default="data/libraries/dp4_named_peptides.csv")
+    ap.add_argument("--sample", type=int, default=0,
+                    help="if >0, emit only N evenly-spaced rows (deterministic) as a smoke-test input "
+                         "that still spans every component; 0 = the whole library")
     args = ap.parse_args()
 
     d = pd.read_csv(args.library, low_memory=False)
+    if args.sample > 0 and args.sample < len(d):
+        step = len(d) / args.sample
+        idx = [int(i * step) for i in range(args.sample)]   # evenly spaced -> touches all categories
+        d = d.iloc[idx].reset_index(drop=True)
     name = d["library_member"].astype(str)
     seq = d["sequence"].astype(str)
 
