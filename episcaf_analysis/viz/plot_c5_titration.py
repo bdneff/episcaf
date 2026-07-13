@@ -88,14 +88,16 @@ def main():
         ax.annotate(f"spans {cover:.0f}%", xy=(0.96, 0.96), xycoords="axes fraction",
                     ha="right", va="top", fontsize=13, color="#1f77b4")
     axes[0].set_ylabel("density")
-    leg = axes[3].legend(frameon=False, loc="center right", fontsize=11,
-                         title="each curve density-normalized\nindependently (area=1) — the y-axis is\n"
-                               "per-curve, so compare shape not height")
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.suptitle("C5 metric-space titration: sample coverage of each sampled axis "
+                 f"(n={len(samp):,} vs pool {len(pool):,})", x=0.02, y=0.985, ha="left")
+    leg = fig.legend(handles, labels, loc="upper right", bbox_to_anchor=(0.995, 0.995),
+                     frameon=False, fontsize=11,
+                     title="each curve density-normalized independently (area=1);\n"
+                           "y-axis is per-curve — compare shape, not height")
     leg.get_title().set_fontsize(9)
     leg.get_title().set_color("0.35")
-    fig.suptitle("C5 metric-space titration: sample coverage of each sampled axis "
-                 f"(n={len(samp):,} vs pool {len(pool):,})", y=0.99)
-    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    fig.tight_layout(rect=(0, 0, 1, 0.86))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.out, dpi=150)
     print(f"wrote {args.out}")
