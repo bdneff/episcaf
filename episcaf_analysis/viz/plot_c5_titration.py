@@ -29,15 +29,34 @@ plt.rcParams.update({"font.size": 14, "axes.titlesize": 17, "axes.labelsize": 16
                      "xtick.labelsize": 13, "ytick.labelsize": 13, "legend.fontsize": 13,
                      "figure.titlesize": 18, "axes.linewidth": 1.1})
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from stage06_sample_c5 import fps, quotas, DROP_IDS   # noqa: E402  (reuse the exact FPS)
+
 AXES = [
-    ("epitope_chunk_rmsd",    "Epitope RMSD (Å)",     None),
-    ("epitope_pae",           "Epitope PAE",          None),
-    ("overall_rmsd",          "Overall RMSD (Å)",     None),
-    ("af3_n_clash_res",       "AF3 clash (real)",     "af3_clash"),
-    ("cylinder_native_aware", "Native-aware cylinder", "cylinder"),
+    ("epitope_chunk_rmsd",    "Epitope RMSD (Å)"),
+    ("epitope_pae",           "Epitope PAE"),
+    ("overall_rmsd",          "Overall RMSD (Å)"),
+    ("af3_n_clash_res",       "AF3 clash (real)"),
+    ("cylinder_native_aware", "Native-aware cylinder"),
 ]
-# 3rd item = the access_sampled tag of the half that TARGETED this axis (the "dedicated" sample drawn
-# to span it, without the other accessibility half's designs). None = a base axis both halves target.
+
+
+def span_1d(pool, col, total, lo, hi, nbins=25, seed=0):
+    """The 'uniform span of THIS axis alone' reference: a stratified-uniform sample of ~`total` designs,
+    an equal quota drawn from each value-bin of [lo,hi], so it is FLAT by construction wherever the pool
+    has designs (and only falls off where a bin runs dry -- the sparse extremes). This is what spanning
+    one dimension uniformly looks like, against which the joint C5 sample (which tracks pool density on
+    any single axis) is compared."""
+    v = pool[col].dropna()
+    edges = np.linspace(lo, hi, nbins + 1)
+    per = max(1, total // nbins)
+    out = []
+    for i in range(nbins):
+        m = v[(v >= edges[i]) & (v < edges[i + 1])]
+        if len(m):
+            out.append(m.sample(min(per, len(m)), random_state=seed))
+    return pd.concat(out) if out else v.iloc[[]]
 
 
 def main():
@@ -51,19 +70,18 @@ def main():
     samp = pd.read_csv(args.sample, low_memory=False)
 
     fig, axes = plt.subplots(1, len(AXES), figsize=(4.4 * len(AXES), 4.6))
-    for ax, (col, label, tag) in zip(axes, AXES):
+    for ax, (col, label) in zip(axes, AXES):
         p = pool[col].dropna()
         s = samp[col].dropna()
         hi = np.nanpercentile(p, 99)               # clip the far outlier tail so the spread is visible
         lo = float(min(p.min(), s.min()))
+        r = span_1d(pool, col, len(samp), lo, hi)  # uniform-span-of-this-axis reference (~flat)
         bins = np.linspace(lo, hi, 41)
         ax.hist(p.clip(lo, hi), bins=bins, density=True, color="0.7", alpha=0.55, label="full pool")
         ax.hist(s.clip(lo, hi), bins=bins, density=True, histtype="step", lw=2.6, color="#1f77b4",
-                label="C5 sample (all)")
-        if tag is not None:                        # the half that TARGETED this axis, alone
-            ded = samp.loc[samp["access_sampled"].astype(str).str.contains(tag), col].dropna()
-            ax.hist(ded.clip(lo, hi), bins=bins, density=True, histtype="step", lw=2.6,
-                    color="#d62728", label="sampled for this axis")
+                label="C5 sample (joint)")
+        ax.hist(r.clip(lo, hi), bins=bins, density=True, histtype="step", lw=2.4, color="#d62728",
+                label="span this axis alone")
         cover = 100 * (s.max() - s.min()) / (p.max() - p.min())
         ax.set_title(label)
         ax.set_yticks([])
