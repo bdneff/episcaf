@@ -40,6 +40,7 @@ model). So the tool is not vendored here; it is built once on the cluster.
 # 1. create the env from Erin's yml (has g++/OpenMP/pandas/h2o):
 conda env create -f /tgen_labs/Immunology/ekelley/DP3_PepSeq_Library_Design/new_codon_weights/pepseq_encoding.yml
 conda activate pepseq_encoding      # confirm the name with `conda env list`
+conda install -c conda-forge "openjdk=8" -y   # env ships no JRE; H2O (step 2) needs Java 8 -- see (d)
 
 # 2. build the encoder from master (recipe verified 2026-07-13 -- see the three gotchas below):
 git clone https://github.com/LadnerLab/Library-Design.git
@@ -50,7 +51,8 @@ make optimized CC="g++ -static-libstdc++ -static-libgcc"  # (c) static C++ runti
 export TOOL_DIR=$(pwd)               # this dir holds: main, oligo_encoding.py, the model
 ```
 
-Three gotchas hit on the first build, all handled by the lines above:
+Four gotchas hit on the first run, all handled above (the encode step is VERIFIED end-to-end on a
+50-peptide smoke test, 2026-07-14):
 
 - **(a) Makefile typo.** Master misspells its build target as `oligo_ecoding` (missing the `n`) in the
   `optimized`/`profile`/`debug` rules, so `make optimized` fails with `No rule to make target
@@ -63,6 +65,13 @@ Three gotchas hit on the first build, all handled by the lines above:
   build compiler's, so a normally-linked `main` would fail at runtime with a `GLIBCXX` error. Building
   with `-static-libstdc++ -static-libgcc` bakes the C++ runtime into `main`; the only shared lib it then
   needs is `libgomp` (OpenMP), which the env has and is backward-compatible. Verified: `./main` runs.
+- **(d) No Java → step 2 dies.** The NN selector is H2O, which is a *Java* platform driven from Python,
+  and the env ships no JRE (`H2OStartupError: Cannot find Java`). Install **Java 8** into the env --
+  h2o 3.20.0.8 is a 2018 release supporting Java 7--10, so a modern JDK is the wrong choice:
+  ```bash
+  conda install -c conda-forge "openjdk=8" -y     # into pepseq_encoding
+  ```
+  Verified: H2O 3.20.0.8 starts on OpenJDK 1.8.0_472 and scores the candidates.
 
 The selector script is `oligo_encoding.py` (master) rather than ekelley's `encoding_with_nn.py`. The
 two sbatch scripts here **auto-detect both** binary (`main`/`oligo_encoding`) and selector
