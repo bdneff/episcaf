@@ -79,14 +79,17 @@ def compute_one(af3_dir, mpnn_pdb, cpos, epi_ca, ab_heavy, cutoff=4.0):
     P = np.array([CM.ca_coord(res[i]) for i in cpos], float)
     if P.shape[0] != epi_ca.shape[0] or not np.all(np.isfinite(P)):
         return None
-    rec = {"designedSequence": seq, "epitope_chunk_rmsd": CM.rmsd_superpose(P, epi_ca),
+    # EPITOPEscaffold casing: epitope residues (the fixed contig positions) UPPER, scaffold lower --
+    # the same convention every other component ships (John, 2026-07-14).
+    epi_set = set(cpos)
+    ds = "".join(c.upper() if i in epi_set else c.lower() for i, c in enumerate(seq))
+    rec = {"designedSequence": ds, "epitope_chunk_rmsd": CM.rmsd_superpose(P, epi_ca),
            "af3_n_clash_res": None, "epitope_pae": None, "mean_pae": None, "overall_rmsd": None}
 
     # real H/L clash: predicted scaffold -> native frame via the epitope fit
     if ab_heavy.shape[0]:
         R, t = CM.kabsch_fit(P, epi_ca)
         tree = cKDTree(ab_heavy)
-        epi_set = set(cpos)
         n = 0
         for i in range(len(res)):
             if i in epi_set:
@@ -173,7 +176,9 @@ def process_run(run, topk, base):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--runs", default="epitope20,hotspots,contact")
+    ap.add_argument("--runs", default="epitope,hotspots",
+                    help="the two epitope definitions: `epitope` (contiguous C652-673) and `hotspots` "
+                         "(F655/F656/E666)")
     ap.add_argument("--topk", type=int, default=10)
     ap.add_argument("--base", type=Path, default=_HERE.parent, help="dp4_8vdl/ dir")
     ap.add_argument("--out", type=Path, required=True)
@@ -181,14 +186,22 @@ def main():
 
     parts = [process_run(r.strip(), args.topk, args.base) for r in args.runs.split(",") if r.strip()]
     top = pd.concat([p for p in parts if not p.empty], ignore_index=True)
+    # 8 standard columns + the 5 scoring columns the library ships (stage06_assemble METRICS names).
+    # `sequence` is the plain synthesized 103-mer; `designedSequence` keeps the EPITOPEscaffold casing.
+    # No cylinder_clashes column: 8VDL is a known-antibody target, so accessibility is the REAL H/L
+    # clash (af3_clashes) and the cylinder surrogate was never computed -- assembly leaves it blank.
     out = pd.DataFrame({
-        "sequence": top.designedSequence.str[:103],
+        "sequence": top.designedSequence.str[:103].str.upper(),
         "category": "scaffolded8VDL",
         "model": "RFD",
         "designedSequence": top.designedSequence,
         "designedSequenceLength": top.designedSequence.str.len(),
         "design_ID": top.design_ID,
         "target": "8VDL_" + top.run,
+        "epitope_rmsd": top.epitope_chunk_rmsd,
+        "overall_rmsd": top.overall_rmsd,
+        "epitope_pae": top.epitope_pae,
+        "af3_clashes": top.af3_n_clash_res,
     })
     args.out.parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out, index=False)

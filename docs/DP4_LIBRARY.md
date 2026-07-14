@@ -4,22 +4,23 @@ Reference for the DP4 PepSeq library: what each component is, how designs were s
 each file lives. Manuscript counterpart: `manuscript/sections/dp4_library.tex` (`sec:dp4`). Related:
 `docs/CASE_ENCODING.md`, `docs/CYLINDER_PARAMS.md`.
 
-Status (2026-07-13): assembled. The seven components (C1–C6 plus the 8VDL arm) are selected, built,
-case-encoded, and concatenated into `data/libraries/dp4_library.csv` — 12,251 constructs, each a
+Status (2026-07-14): assembled. The seven components (C1–C6 plus the 8VDL arm) are selected, built,
+case-encoded, and concatenated into `data/libraries/dp4_library.csv` — 15,324 constructs, each a
 103-mer with a unique `library_member` and `design_ID`. The shipping depth is top-20 per group for
-C1/C2 and top-3 per window for C3; C4/C5/C6 and 8VDL are fixed size. Oligo encoding is the only
+C1/C2 and top-10 per window for C3; C4/C5/C6 and 8VDL are fixed size. Oligo encoding is the only
 remaining step (see Pending).
 
 ## Output files
 
 The deliverable and the input to the next step:
 
-- **`data/libraries/dp4_library.csv`** — the library. All seven components merged into one file, 12,251
-  rows, in the 8-column PepSeq annotated format (schema below). This is the file to hand off. The
-  case-encoded sequence (epitope uppercase / scaffold lowercase) is the `designedSequence` column;
-  `sequence` is the plain 103-mer that gets synthesized.
+- **`data/libraries/dp4_library.csv`** — the library. All seven components merged into one file, 15,324
+  rows, in the 8-column PepSeq annotated format **plus 5 scoring columns** (schema below). This is the
+  file to hand off. `designedSequence` is the full 103-mer in EPITOPEscaffold casing (epitope uppercase /
+  scaffold lowercase) for every row; `sequence` is the plain uppercase 103-mer that gets synthesized.
 - **`data/libraries/dp4_named_peptides.csv`** — the oligo-encoder input. A two-column `name,seq` slice of
-  the library (no header), 12,251 lines, for the DNA encoding step. Not a separate result, just a reformat.
+  the library (no header), for the DNA encoding step. Not a separate result, just a reformat.
+  **Regenerate after any library change** (`scripts/stage07_named_peptides.py`).
 
 Behind the library, each scaffolded component has two intermediate files in `results/` (the provenance
 the library is assembled from; the depth cut and the 56-mAb exclusion are applied at assembly, so these
@@ -28,7 +29,8 @@ hold the full top-20 pools and are larger than the shipped counts):
 - **`*_ranked.top20.csv`** — the selection output: which designs were chosen and their scores (plain
   sequence). For C5 this is `dp4_C5_titration.csv`, for C6 `dp4_C6_controls.csv`, for 8VDL `dp4_8vdl_top10.csv`.
 - **`*_scaffoldEPITOPE.csv`** — the case-encoded sequences for that component (from the `case_encode_*`
-  scripts). C4 has none (its 30-mer is already the payload); C6 encodes by substitution on C1's.
+  scripts). C6 encodes by substitution on C1's. C4 and 8VDL have no such file — C4 is case-encoded at
+  assembly (tile upper / filler lower) and 8VDL by `07_consolidate` from its contig positions.
 
 ## Components
 
@@ -36,16 +38,21 @@ hold the full top-20 pools and are larger than the shipped counts):
 |---|---|---|---|---|---|
 | C1 | known-Ab, whole epitope | best scaffolds per mAb (comparator) | ranked, top-20 per mAb | 1,120 § | `results/dp4_C1_whole_epitope_ranked.top20.csv` |
 | C2 | known-Ab, single island | best per (mAb, island); 87 island contigs | ranked, top-20 per island | 1,660 | `results/dp4_C2_single_island_ranked.top20.csv` |
-| C3 | polyclonal 12-mer tiles | best per window, no antibody | ranked, top-3 per window † | 1,317 | `results/dp4_C3_12mer_ranked.top20.csv` |
+| C3 | polyclonal 12-mer tiles | best per window, no antibody | ranked, top-10 per window † | 4,390 | `results/dp4_C3_12mer_ranked.top20.csv` |
 | C4 | linear 30-mer controls | bare tiled peptides, no scaffold | exhaustive tiling | 2,034 | `data/libraries/dp4_tiled30mers_fasta.csv` |
 | C5 | metric-space titration | designs spread across metrics | farthest-point sample | 3,000 § | `results/dp4_C5_titration.csv` |
 | C6 | scaffolded-epitope controls | island→Ala + scaffold disruption | C1 top-20 base × flavors | 3,100 ‡§ | `results/dp4_C6_controls.csv` |
 | 8VDL | PfEMP1 conserved epitope | two epitope definitions | ranked, top-10 each | 20 | `results/dp4_8vdl_top10.csv` |
-| | | | | 12,251 total | `data/libraries/dp4_library.csv` |
+| | | | | 15,324 total | `data/libraries/dp4_library.csv` |
 
-† C3 is top-3, not top-20. The tiling steps by 6 residues, so neighbouring windows overlap and cover
-nearly the same epitope space; three per window is enough, and a deeper cut just adds near-duplicates.
-C1/C2 take the full top-20 the ranked files hold.
+† C3 is shipped deep (top-10). Its windows are **12-mers stepping by 2 residues**, so neighbouring tiles
+are highly redundant (adjacent windows share 10 of 12 residues) — which argues for a shallow cut. We
+ship top-10 anyway because that redundancy does not protect against the failure mode here: C3 has the
+weakest clash distribution of any component, so the per-design success probability is low and
+overlapping tiles can fail together. It is also the arm with the most to gain (a few hits in the
+no-antibody setting would be the first evidence the approach works without a known antibody), so the
+spare budget capacity is spent here (John, 2026-07-14). *(Not to be confused with C4, which tiles
+**30-mers at step 6**.)*
 
 ‡ C6 is derived from the C1 top-20 base (island1→Ala + island2→Ala for dual-island epitopes + scaffold
 disruption), so it tracks C1's depth. It was built at top-20, so depth-20 needs no C6 rebuild.
@@ -176,17 +183,35 @@ validated on C4 (`dp4_tiled30mers_fasta.csv` is the reference instance):
 | column | meaning |
 |---|---|
 | `library_member` | global id, `DP4_<N>` |
-| `sequence` | the 103-mer synthesized |
+| `sequence` | the 103-mer synthesized (plain uppercase) |
 | `category` | component type (`tiled30mer`, `scaffoldedAbEpitope`, `metricSpaceTitration`, …) |
 | `model` | `RFD` for designs, `(none)` for linear controls |
-| `designedSequence` | the payload (the 30-mer for C4; the case-encoded scaffold for C1/C2/C3/C5/C6/8VDL) |
-| `designedSequenceLength` | len(`designedSequence`) |
-| `design_ID` | per-design id |
+| `designedSequence` | the full 103-mer in **EPITOPEscaffold** casing — epitope UPPER, scaffold lower |
+| `designedSequenceLength` | len(`designedSequence`) — 103 for every row |
+| `design_ID` | per-design id (globally unique) |
 | `target` | antigen / mAb id |
+| `epitope_rmsd`, `overall_rmsd`, `epitope_pae`, `af3_clashes`, `cylinder_clashes` | the **5 scoring columns** — the metrics each design was selected on; left **blank** where a design has no such value, never imputed |
 
 `sequence` construction: for the linear controls (C4) it is filler + `ENLYFQGA` + 30-mer; for the
 scaffolded designs it is the design's own 103-mer. Assembly concatenates all components with global
 `library_member` numbering (`scripts/stage06_assemble.py`).
+
+**EPITOPEscaffold casing applies to every row**, including the linear controls: C4's `designedSequence`
+is the full 103-mer with the 30-mer tile uppercase (it is the epitope) and the `GSGA…` filler +
+`ENLYFQGA` TEV site lowercase (the scaffold). 8VDL is case-encoded from its fixed contig positions.
+
+**Which scoring columns are populated:**
+
+| component | epitope_rmsd | overall_rmsd | epitope_pae | af3_clashes | cylinder_clashes |
+|---|---|---|---|---|---|
+| C1, C2, C5 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| C3 | ✓ | ✓ | ✓ | — (no antibody) | ✓ |
+| 8VDL | ✓ | ✓ | ✓ | ✓ | — (cylinder not computed) |
+| C4, C6 | — | — | — | — | — (never folded) |
+
+C4 (linear tiles) and C6 (mutants) never went through AF3, so they have none of the five; C3 has no
+antibody, so its real clash is undefined; 8VDL is a known-antibody target scored on the real clash and
+never needed the cylinder surrogate. Blank cells are honest gaps, not missing work.
 
 Two format notes carried through assembly: (1) the 104→103 trim is now a no-op because every component is
 native 103 (background below); (2) C4's `design_ID` was a per-antigen tile-start index that repeated
@@ -282,8 +307,8 @@ python episcaf_pipeline/scaffolded_epitope_controls/build_c6_mutants.py \
 # 8VDL arm (Gemini: RFD3->MPNN->AF3; then consolidate top-10 per definition)
 python dp4_8vdl/scripts/07_consolidate.py --out results/dp4_8vdl_top10.csv
 
-# Assemble the library (local) -> data/libraries/dp4_library.csv, 12,251 constructs
-python scripts/stage06_assemble.py --depth 20   # C1/C2 top-20; C3 top-3 (--c3-depth default)
+# Assemble the library (local) -> data/libraries/dp4_library.csv, 15,324 constructs
+python scripts/stage06_assemble.py --depth 20   # C1/C2 top-20; C3 top-10 (--c3-depth default)
 
 # Export the oligo-encoder input -> data/libraries/dp4_named_peptides.csv
 python scripts/stage07_named_peptides.py \
@@ -297,9 +322,13 @@ are deterministic (FPS is seed-free deterministic; C6 seeds its RNG).
 
 DP4 is a 36k library that includes all minibinders, which leaves roughly 10–15k slots for Episcaf designs
 (`memory: dp4-budget`). Depth is set at top-20 for C1/C2 — the most the ranked files hold, and the depth
-C6 was built at, so no C6 rebuild is needed. With C3 at top-3 (window overlap, above), the library comes
-to 12,251 constructs, within the 10–15k budget. Per component: C1 1,120, C2 1,660, C3 1,317, C4 2,034,
-C5 3,000, C6 3,100, 8VDL 20.
+C6 was built at, so no C6 rebuild is needed. **C3 is top-10** (2026-07-14): John flagged that the spare
+capacity (~2k slots to reach 36k) is best spent maximizing polyclonal hits, given C3's weak clash
+distribution. That brings the library to **15,324**. Per component: C1 1,120, C2 1,660, C3 4,390,
+C4 2,034, C5 3,000, C6 3,100, 8VDL 20.
+
+C3 depth is the one elastic dial left: top-3 = 1,317, top-5 = 2,195, top-10 = 4,390 (shipped). Set it
+with `stage06_assemble.py --c3-depth <n>` if the final minibinder count moves the headroom.
 
 ## Pending
 
@@ -307,11 +336,12 @@ C5 3,000, C6 3,100, 8VDL 20.
    all `status==ok`), C1 re-selected to top-20 (1,120), re-case-encoded (`case_encode_whole_epitope.py`),
    C5 (3,000) and C6 (3,100) rebuilt on the new pool. C1/C5/C6 are native 103; the 104→103 trim is a no-op.
 1. Assembly (`06_library`) — done 2026-07-13. `scripts/stage06_assemble.py --depth 20` concatenated the
-   seven components into `data/libraries/dp4_library.csv` (12,251 constructs), applying the 56-exclusion
-   (C1/C2), the top-20 and top-3 depth cuts, and global numbering. `library_member` and `design_ID` are
-   unique and every sequence is 103 residues.
+   seven components into `data/libraries/dp4_library.csv` (15,324 constructs), applying the 56-exclusion
+   (C1/C2), the top-20 (C1/C2) and top-10 (C3) depth cuts, and global numbering. `library_member` and
+   `design_ID` are unique and every sequence is 103 residues. Ships the 8 annotation columns + the 5
+   scoring columns, with `designedSequence` in EPITOPEscaffold casing on every row.
 2. Oligo encoding — in progress. Encoder input is exported and validated:
-   `scripts/stage07_named_peptides.py` → `data/libraries/dp4_named_peptides.csv` (12,251 lines, `name,seq`,
-   no header, all 103-mers). Next: run the LadnerLab encoder on Gemini (`main` step 1 → `encoding_with_nn.py`
+   `scripts/stage07_named_peptides.py` → `data/libraries/dp4_named_peptides.csv` (`name,seq`, no header,
+   all 103-mers; regenerate after any library change). Next: run the LadnerLab encoder on Gemini (`main` step 1 → `encoding_with_nn.py`
    step 2, DP3 recipe + `codon_weights_updated.csv`; `episcaf_pipeline/oligo_encoding/`), then the order-file
    and Twist-adapter step (confirm the exact recipe with Erin).

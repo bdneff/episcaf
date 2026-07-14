@@ -13,7 +13,7 @@ component & what it is & constructs & status \\
 \midrule
 C1 known antibody, whole epitope & full-epitope scaffolds, top-\num{20}/epitope & \num{1120} & ranked \\
 C2 known antibody, single island & 87 island contigs, each island alone & \num{1660} & ranked, per island \\
-C3 scaffolds, polyclonal tiling & top-\num{3}/window, no antibody & \num{1317} & selected, ungated \\
+C3 scaffolds, polyclonal tiling & top-\num{10}/window, no antibody & \num{4390} & selected, ungated \\
 C4 linear tiled-30mer controls & bare tiled peptides & \num{2034} & built \\
 C5 metric-space sampling & designs spread across metrics & \num{3000} & sampled \\
 C6 scaffolded-epitope controls & island$\to$Ala $+$ scaffold-disruption & \num{3100} & built \\
@@ -23,9 +23,9 @@ C6 scaffolded-epitope controls & island$\to$Ala $+$ scaffold-disruption & \num{3
 \caption{The DP4 components assembled here, at the shipped depth. C1 and C2 are the two halves of the
 islands experiment (whole epitope vs.\ one island at a time); C6 tests the same question by mutation.
 C1--C3 are selected (ranked on the composite, Section~\ref{sec:selection}); the shipped depth is
-top-\num{20} per group for C1/C2 and top-\num{3} per window for C3 (neighbouring tiles overlap
-heavily, so best-\num{3} covers each window). C5 is \num{3000} designs; C4 is the \num{2034} tiles of
-Section~\ref{sec:tiling}. Together with the 8VDL arm this is \num{12251} constructs.}
+top-\num{20} per group for C1/C2 and top-\num{10} per window for C3. C5 is \num{3000} designs; C4 is
+the \num{2034} tiles of Section~\ref{sec:tiling}. Together with the 8VDL arm this is \num{15324}
+constructs.}
 \label{tab:dp4components}
 \end{table}
 
@@ -57,17 +57,24 @@ gate, real-clash accessibility), ranked per (\texttt{id}, island) so each island
 
 \subsection{C3 --- scaffolded epitopes from polyclonal tiling}\label{sec:dp4c3}
 For antigens with no known antibody we tile the whole protein into overlapping windows and
-scaffold each one (Section~\ref{sec:tiling}), then keep the top \num{3} designs per window by the
-composite. We keep only \num{3} (rather than the deeper cut C1/C2 get) because the windows step by
-\num{6} residues and so overlap heavily --- adjacent tiles already cover nearly the same epitope
-space, so best-\num{3} per window suffices without ballooning the count. This is the polyclonal arm
-(Q3): we do not know where the real epitope is, so we cover
+scaffold each one (Section~\ref{sec:tiling}), then keep the top \num{10} designs per window by the
+composite. This is the polyclonal arm (Q3): we do not know where the real epitope is, so we cover
 the antigen densely and let the assay find it. This is the one component where the antibody-clash
 filter cannot be computed, so accessibility is judged entirely by the native-aware cylinder
 surrogate (Section~\ref{sec:noab}) --- the metric the DP3 binding data singled out as the
 strongest predictor (Section~\ref{sec:whatpredicts}), which is why it now carries the most weight
-in selecting these designs. Across the three tiled antigens this is \num{573} (1D2K) $+$ \num{468}
-(4WAT) $+$ \num{276} (6M0J) $=$ \num{1317} top-\num{3} designs (Table~\ref{tab:tilecount}).
+in selecting these designs. Across the three tiled antigens this is \num{1910} (1D2K) $+$ \num{1560}
+(4WAT) $+$ \num{920} (6M0J) $=$ \num{4390} top-\num{10} designs (Table~\ref{tab:tilecount}).
+
+\paragraph{Why C3 is shipped deep.} The C3 windows are \num{12}-mers stepping by \num{2} residues, so
+neighbouring tiles are highly redundant --- adjacent windows share \num{10} of \num{12} residues, which
+argues for a shallow per-window cut. We nonetheless ship top-\num{10} rather than a shallow depth,
+because that redundancy does not protect against the failure mode we actually face here: the polyclonal
+designs have the weakest accessibility (clash) distribution of any component, so the per-design success
+probability is low, and overlapping tiles can fail together. This is also the arm with the most to gain
+--- even a handful of hits in the no-antibody setting would be the first demonstration that the
+approach works without a known antibody --- so the spare capacity in the peptide budget is spent here,
+maximizing the number of independent chances per window.
 
 \subsection{C4 --- linear tiled-30mer controls}\label{sec:dp4c4}
 The linear controls are the bare epitope peptides the scaffolded designs are meant to beat:
@@ -219,10 +226,19 @@ All seven components (C1--C6 plus the 8VDL arm) share the constant 103-mer const
 eight-column annotated format (Section~\ref{sec:tiling}), so the final step concatenates them into a
 single ordered library file with global \texttt{library\_member} numbering --- a named, documented
 pipeline stage (\texttt{06\_library}, \texttt{scripts/stage06\_assemble.py}) so the shipped file is
-regenerable from its components. This is done: at the shipped depth (top-\num{20} for C1/C2, top-\num{3}
-for C3) assembly emits \num{12251} constructs, each with a unique \texttt{library\_member} and
-\texttt{design\_ID}, all \num{103} residues. Selection and depth are settled as above; the remaining
-mechanics --- recovering each design's sequence --- are as follows.
+regenerable from its components. This is done: at the shipped depth (top-\num{20} for C1/C2,
+top-\num{10} for C3) assembly emits \num{15324} constructs, each with a unique
+\texttt{library\_member} and \texttt{design\_ID}, all \num{103} residues.
+
+Two conventions hold across every row. First, \texttt{designedSequence} is always the full 103-mer in
+\emph{EPITOPEscaffold} casing --- epitope residues uppercase, scaffold lowercase --- including the
+linear controls, where the 30-mer tile is uppercase and the \texttt{GSGA} filler and \texttt{ENLYFQGA}
+TEV site are lowercase; \texttt{sequence} carries the plain uppercase 103-mer that is synthesized.
+Second, the eight annotation columns are followed by five \emph{scoring} columns --- epitope RMSD,
+overall RMSD, epitope PAE, AF3 clashes, and cylinder clashes --- so each shipped design carries the
+metrics it was selected on. These are left blank where a design has no such value rather than imputed:
+C3 has no AF3 clash (no antibody), and C4 and C6 have none of the five, since the linear tiles and the
+mutants were never folded. The remaining mechanics --- recovering each design's sequence --- follow.
 
 \paragraph{Recovering the design sequences (case encoding).} Assembly and the C6 controls both need,
 for each selected design, its full amino-acid sequence with the epitope residues marked --- stored as
