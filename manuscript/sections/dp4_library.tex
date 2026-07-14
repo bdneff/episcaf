@@ -252,9 +252,46 @@ epitope chunk-span positions (\texttt{scripts/case\_encode\_selected.py}, run on
 set on the cluster). This yields the case-encoded sequences both C6 and assembly consume, and writes
 the mapping back out so it need not be rebuilt again.
 
-The assembled peptide library is then encoded to DNA oligos for synthesis with the LadnerLab
-\texttt{oligo\_encoding} tools (\url{https://github.com/LadnerLab/Library-Design}), using the same
+\subsection{From peptides to a DNA order: oligo encoding}\label{sec:oligo}
+
+Everything up to this point is a library of \emph{peptides}. The assay does not receive peptides,
+though --- it receives DNA. PepSeq builds each displayed peptide by transcribing and translating a DNA
+oligo, so the final step converts our \num{15324} 103-mers into the DNA that codes for them and writes
+the file a synthesis vendor (Twist) can manufacture. This subsection describes what that step does and
+why, since it is the one part of the pipeline that crosses from computation into the wet lab; the
+operational recipe and its pitfalls live in \texttt{episcaf\_pipeline/oligo\_encoding/README.md}.
+
+\paragraph{Why encoding is a choice, not a lookup.} Translating a peptide to DNA is not a table
+lookup, because the genetic code is degenerate: most amino acids are spelled by several
+interchangeable codons, so a 103-residue peptide has an astronomical number of DNA sequences that all
+translate to it. Those sequences are \emph{not} equally good to synthesize --- they differ in GC
+content, in secondary structure, and in how faithfully the vendor can build them --- so ``encode the
+library'' means \emph{choose} one good DNA spelling per peptide. We use the LadnerLab
+\texttt{oligo\_encoding} tools (\url{https://github.com/LadnerLab/Library-Design}) with the same
 updated codon-weight table as DP3
-(\texttt{/tgen\_labs/Immunology/ekelley/DP3\_PepSeq\_Library\_Design/new\_codon\_weights/}). The
-encoding is the final synthesis-prep step; it is external tooling, so the pipeline ends at the
-annotated peptide file and hands off to it.
+(\texttt{/tgen\_labs/Immunology/ekelley/DP3\_PepSeq\_Library\_Design/new\_codon\_weights/}), in two
+stages: a sampler proposes many candidate encodings per peptide, weighted by the codon table and
+targeting a GC ratio near \num{0.55}; then a pretrained model scores the candidates and keeps the
+single best one. The result is one 309-nucleotide coding sequence per peptide ($103 \times 3$).
+
+\paragraph{Adapters: the constant handles that make a pooled library usable.} The library is
+synthesized as one pool --- tens of thousands of distinct oligos mixed in a single tube, each present
+in trace amount. To do anything with that pool (amplify it, add the sequencing and display machinery,
+read it back out) one needs a fixed sequence to grab onto, but every member differs in the middle.
+The solution is to flank \emph{every} oligo with the same short constant sequences, one on each end,
+called \emph{adapters} or handles. Because they are identical across all members, a single universal
+primer pair binds them and amplifies the whole pool at once regardless of the variable coding sequence
+between; the same handles are where the assay's display and readout elements attach. An adapter is
+therefore a primer \emph{binding site}, not a primer itself --- the primer is a separate reagent, the
+adapter's reverse complement. Each final oligo is \texttt{[5\({}^\prime\) adapter]} $+$ \texttt{[309-nt
+coding sequence]} $+$ \texttt{[3\({}^\prime\) adapter]}. The adapters are fixed by the assay's primers
+rather than by our design, so they are pinned explicitly to the sequences the DP3 order used
+(\num{20} nt each, giving a \num{349}-nt oligo) rather than left to a tool default.
+
+\paragraph{The order file.} The output is the file sent to the vendor: two columns, a name and the
+adapter-flanked DNA to synthesize, one row per library member. Because a synthesis order is expensive
+and irreversible, we emit it through a checker (\texttt{scripts/stage07\_order\_file.py}) that verifies
+every row before it goes out --- correct adapters, expected length, and that the coding sequence
+translates back to exactly the peptide it claims to encode. The encoder itself is external tooling run
+on the cluster, so the computational pipeline ends at the annotated peptide file and this checked order
+file is the deliverable that hands off to synthesis.

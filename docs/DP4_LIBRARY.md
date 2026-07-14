@@ -340,8 +340,15 @@ with `stage06_assemble.py --c3-depth <n>` if the final minibinder count moves th
    (C1/C2), the top-20 (C1/C2) and top-10 (C3) depth cuts, and global numbering. `library_member` and
    `design_ID` are unique and every sequence is 103 residues. Ships the 8 annotation columns + the 5
    scoring columns, with `designedSequence` in EPITOPEscaffold casing on every row.
-2. Oligo encoding — in progress. Encoder input is exported and validated:
-   `scripts/stage07_named_peptides.py` → `data/libraries/dp4_named_peptides.csv` (`name,seq`, no header,
-   all 103-mers; regenerate after any library change). Next: run the LadnerLab encoder on Gemini (`main` step 1 → `encoding_with_nn.py`
-   step 2, DP3 recipe + `codon_weights_updated.csv`; `episcaf_pipeline/oligo_encoding/`), then the order-file
-   and Twist-adapter step (confirm the exact recipe with Erin).
+2. Oligo encoding — in progress (only the 50-peptide smoke test has run; full 15,324 pending). Encoder
+   input is exported and validated: `scripts/stage07_named_peptides.py` →
+   `data/libraries/dp4_named_peptides.csv` (`name,seq`, no header, all 103-mers; regenerate after any
+   library change). Convert the peptide library to DNA oligos with the LadnerLab encoder on Gemini
+   (step 1 sampler → step 2 NN selector, DP3 recipe + `codon_weights_updated.csv`;
+   `episcaf_pipeline/oligo_encoding/`, see its README and manuscript `sec:oligo`). The order file is
+   **not** a further encoding step — step 2 already emits the adapter-flanked oligo, so the order file is
+   a two-column slice, emitted + verified by `scripts/stage07_order_file.py`. One open item for Erin: the
+   Twist **adapter length** (DP3 shipped 20-mers → 349 nt; the GitHub-master encoder defaults to 19 →
+   347). It is pinned explicitly (`ADAPTER=` in `encode_step2_select.sbatch`, default = DP3's 20-mers);
+   likely inert either way since the primer footprint is intact, but confirm before ordering. See
+   memory `oligo-adapter-trap`.
