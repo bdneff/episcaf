@@ -136,11 +136,20 @@ master's is one base shorter at each end (missing a leading `A` and a trailing `
 the master-built encoder therefore produces **347-nt oligos where DP3 shipped 349**, with no error and
 nothing in the log to notice.
 
-Established by decoding the real DP3 order file (`examples/DP3_order_file.csv`, the oligos actually
-synthesized): all 6,000 rows are 349 nt = 20 + 309 + 20, one encoding per peptide, and the 309-nt core
-translates **exactly** to its peptide (6,000/6,000). So `encode_step2_select.sbatch` now passes
-`--adapter` **explicitly** (`ADAPTER=`, defaulting to the DP3 20-mers) rather than inheriting any
-tool default.
+Established by decoding the real DP3 order file: all 6,000 rows are 349 nt = 20 + 309 + 20, one encoding
+per peptide, and the 309-nt core translates **exactly** to its peptide (6,000/6,000). So
+`encode_step2_select.sbatch` now passes `--adapter` **explicitly** (`ADAPTER=`, defaulting to the DP3
+20-mers) rather than inheriting any tool default.
+
+**Provenance of that reference file.** The local `examples/DP3_order_file.csv` is byte-for-byte
+`/tgen_labs/Immunology/ekelley/DP3_PepSeq_Library_Design/new_codon_weights/DP3_order_file.csv`
+(md5 `bb537db52035593264b6ac2da3644d65`, verified 2026-07-14). It comes from the **new_codon_weights**
+run — the updated codon table DP4 reuses (memory `peptide-oligo-encoding`), i.e. the DP3 branch we are
+reproducing. Erin's directory also holds a `default_codon_weights/DP3_order_file.csv` (a *different*
+file, md5 `1c2ead56…`, the same peptides under the old codon table); confirm with her that
+`new_codon_weights` is the version that went to Twist. The 20-mer adapters are what to check either way.
+Adapter-check helper: decode any order file's common 5'/3' flanks + oligo length in one pass (the
+snippet lives in this finding's commit message / scratch; promote to a script if reused).
 
 ### What the adapters actually are — and how bad the difference is
 
