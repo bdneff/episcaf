@@ -37,6 +37,15 @@ OUT=${OUT:-${LIB}_best_encodings}     # selected best encoding(s) per peptide
 SUBSAMPLE=${SUBSAMPLE:-300}           # candidates subsampled before scoring   (DP3: 300)
 NN=${NN:-1}                           # encodings kept per peptide             (DP3: 1 = single best)
 
+# Twist adapters, PINNED EXPLICITLY -- do not rely on the tool's default. The two encoder installs
+# ship DIFFERENT defaults, and the difference is silent: master's oligo_encoding.py defaults to the
+# 19-mers CCTATACTTCCAAGGCGCA|GGTGACTCTCTGTCTTGGC, while the DP3 order file that was actually
+# synthesized carries 20-mers (a leading A and a trailing T more). Left to the default, a master-built
+# encoder emits 347-nt oligos where DP3 shipped 349. Verified against examples/DP3_order_file.csv:
+# 6000/6000 rows are 349 nt = 20 + 309 (103 codons) + 20, and the 309-nt core translates exactly to
+# the peptide. These are those 20-mers.
+ADAPTER=${ADAPTER:-ACCTATACTTCCAAGGCGCA|GGTGACTCTCTGTCTTGGCT}
+
 # NN selector script name differs by install: ekelley's is `encoding_with_nn.py`; the GitHub master
 # ships `oligo_encoding.py`. Auto-detect, or set SEL to override. (If master's flags differ from the
 # DP3 recipe below, the smoke test will surface it and we adjust -- the two are the same lineage.)
@@ -49,6 +58,7 @@ fi
 [ -n "${SEL}" ] || { echo "ERROR: no NN selector (encoding_with_nn.py / oligo_encoding.py) in ${TOOL_DIR}; set TOOL_DIR or SEL" >&2; exit 1; }
 
 echo "HOST=$(hostname)  SEL=${SEL}  MODEL=${MODEL}  OUT=${OUT}"
+echo "ADAPTER=${ADAPTER}"
 python "${SEL}" \
     -m "${MODEL}" \
     -s "${OUT_SEQS}" \
@@ -56,14 +66,15 @@ python "${SEL}" \
     -o "${OUT}" \
     --subsample "${SUBSAMPLE}" \
     --read_per_loop 10 \
+    --adapter "${ADAPTER}" \
     -n "${NN}"
 echo "done -> ${OUT}"
 
 # -------------------------------------------------------------------------
-# OPEN ITEM (see README "The order-file gap"): this writes ${OUT} (best encodings).
-# The DP3 *order file* that goes to synthesis (DP3_order_file.csv, columns
-# "Seq ID,nucleotide_encoding_with_twist_adapters") is a FURTHER reformat + Twist-
-# adapter step that is NOT in ekelley's two scripts. Confirm with Erin how DP3 made
-# it (likely encoding_with_nn.py's --adapter default already flanks the oligo, and
-# the order file is a column rename of ${OUT}) before treating the run as complete.
+# The order file (RESOLVED -- there is no missing script). ${OUT} already carries the
+# adapter-flanked oligo in its "Nucleotide Encoding w/ Adapters" column, so the synthesis
+# order file is a two-column slice + rename of ${OUT}, not a further encoding step:
+#     "Seq ID" -> Seq ID
+#     "Nucleotide Encoding w/ Adapters" -> nucleotide_encoding_with_twist_adapters
+# Emit it with scripts/stage07_order_file.py (which re-verifies length + translation).
 # -------------------------------------------------------------------------
