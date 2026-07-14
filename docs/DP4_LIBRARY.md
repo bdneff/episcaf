@@ -347,8 +347,7 @@ with `stage06_assemble.py --c3-depth <n>` if the final minibinder count moves th
    (step 1 sampler → step 2 NN selector, DP3 recipe + `codon_weights_updated.csv`;
    `episcaf_pipeline/oligo_encoding/`, see its README and manuscript `sec:oligo`). The order file is
    **not** a further encoding step — step 2 already emits the adapter-flanked oligo, so the order file is
-   a two-column slice, emitted + verified by `scripts/stage07_order_file.py`. One open item for Erin: the
-   Twist **adapter length** (DP3 shipped 20-mers → 349 nt; the GitHub-master encoder defaults to 19 →
-   347). It is pinned explicitly (`ADAPTER=` in `encode_step2_select.sbatch`, default = DP3's 20-mers);
-   likely inert either way since the primer footprint is intact, but confirm before ordering. See
-   memory `oligo-adapter-trap`.
+   a two-column slice, emitted + verified by `scripts/stage07_order_file.py`. **Adapter length resolved
+   2026-07-14:** Erin confirmed the standard **19**-mers (→ 347 nt); DP3's 20-mers were an anomaly, not
+   carried forward. Pinned explicitly (`ADAPTER=` in `encode_step2_select.sbatch`, default = 19-mers);
+   the smoke test already ran on 19. See memory `oligo-adapter-trap`.

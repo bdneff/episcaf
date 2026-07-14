@@ -37,14 +37,13 @@ OUT=${OUT:-${LIB}_best_encodings}     # selected best encoding(s) per peptide
 SUBSAMPLE=${SUBSAMPLE:-300}           # candidates subsampled before scoring   (DP3: 300)
 NN=${NN:-1}                           # encodings kept per peptide             (DP3: 1 = single best)
 
-# Twist adapters, PINNED EXPLICITLY -- do not rely on the tool's default. The two encoder installs
-# ship DIFFERENT defaults, and the difference is silent: master's oligo_encoding.py defaults to the
-# 19-mers CCTATACTTCCAAGGCGCA|GGTGACTCTCTGTCTTGGC, while the DP3 order file that was actually
-# synthesized carries 20-mers (a leading A and a trailing T more). Left to the default, a master-built
-# encoder emits 347-nt oligos where DP3 shipped 349. Verified against examples/DP3_order_file.csv:
-# 6000/6000 rows are 349 nt = 20 + 309 (103 codons) + 20, and the 309-nt core translates exactly to
-# the peptide. These are those 20-mers.
-ADAPTER=${ADAPTER:-ACCTATACTTCCAAGGCGCA|GGTGACTCTCTGTCTTGGCT}
+# Twist adapters, PINNED EXPLICITLY -- do not rely on the tool's default (the two encoder installs
+# ship different defaults, and the difference is silent). These are the 19-mers Erin confirmed as the
+# standard (2026-07-14): "It is usually 19. It would matter, so ... lets build with 19." The DP3 order
+# file we decoded carried 20-mers (a leading A + trailing T more, 349 nt); that appears to be a DP3
+# anomaly Erin is still tracking down, NOT the intended length. Build with 19 -> 347-nt oligos.
+# (To revert to the DP3 20-mers if she finds a reason: ACCTATACTTCCAAGGCGCA|GGTGACTCTCTGTCTTGGCT.)
+ADAPTER=${ADAPTER:-CCTATACTTCCAAGGCGCA|GGTGACTCTCTGTCTTGGC}
 
 # NN selector script name differs by install: ekelley's is `encoding_with_nn.py`; the GitHub master
 # ships `oligo_encoding.py`. Auto-detect, or set SEL to override. (If master's flags differ from the

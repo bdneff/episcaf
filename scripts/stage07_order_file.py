@@ -37,12 +37,13 @@ import argparse
 import csv
 import sys
 
-# The Twist adapters carried by the DP3 oligos that were actually synthesized. Confirmed by
-# decoding examples/DP3_order_file.csv: all 6000 oligos are 349 nt = 20 + 309 + 20, and the
-# 309-nt core translates exactly to the peptide. NOT the master encoder's default (19-mers) --
-# see episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch (ADAPTER).
-DP3_PREFIX = "ACCTATACTTCCAAGGCGCA"
-DP3_SUFFIX = "GGTGACTCTCTGTCTTGGCT"
+# The Twist adapters. Default = the 19-mers Erin confirmed as standard (2026-07-14: "usually 19 ...
+# lets build with 19"), which is also the GitHub-master encoder default. The DP3 order file we decoded
+# carried 20-mers instead (ACCTATACTTCCAAGGCGCA / GGTGACTCTCTGTCTTGGCT, 349 nt) -- a DP3 anomaly Erin
+# is still tracking down, not the intended length. To verify the DP3 file itself, pass those 20-mers
+# via --prefix/--suffix. See episcaf_pipeline/oligo_encoding/README.md and memory oligo-adapter-trap.
+STD_PREFIX = "CCTATACTTCCAAGGCGCA"
+STD_SUFFIX = "GGTGACTCTCTGTCTTGGC"
 
 ID_COL = "Seq ID"
 OLIGO_COL = "Nucleotide Encoding w/ Adapters"
@@ -154,8 +155,8 @@ def main() -> None:
     ap.add_argument("--peptides", required=True, help="the encoder input: name,seq, no header")
     ap.add_argument("--out", help="order file to write")
     ap.add_argument("--verify", action="store_true", help="check only, write nothing")
-    ap.add_argument("--prefix", default=DP3_PREFIX, help="5' Twist adapter")
-    ap.add_argument("--suffix", default=DP3_SUFFIX, help="3' Twist adapter")
+    ap.add_argument("--prefix", default=STD_PREFIX, help="5' Twist adapter (default: standard 19-mer)")
+    ap.add_argument("--suffix", default=STD_SUFFIX, help="3' Twist adapter (default: standard 19-mer)")
     args = ap.parse_args()
 
     peptides = load_peptides(args.peptides)
