@@ -291,7 +291,11 @@ rather than by our design, so they are pinned explicitly (the standard \num{19}-
 \paragraph{The order file.} The output is the file sent to the vendor: two columns, a name and the
 adapter-flanked DNA to synthesize, one row per library member. Because a synthesis order is expensive
 and irreversible, we emit it through a checker (\texttt{scripts/stage07\_order\_file.py}) that verifies
-every row before it goes out --- correct adapters, expected length, and that the coding sequence
-translates back to exactly the peptide it claims to encode. The encoder itself is external tooling run
-on the cluster, so the computational pipeline ends at the annotated peptide file and this checked order
-file is the deliverable that hands off to synthesis.
+every row before it goes out. The central check is a \emph{round-trip}: the encoder \emph{back-translates}
+each peptide to DNA (choosing codons), so we \emph{translate} that DNA back through the standard genetic
+code and require the result to equal the original peptide exactly, for all \num{15324} members. This
+catches any codon-table, framing, or bookkeeping error at the one place it would otherwise pass silently
+--- an encoding that is malformed but plausible-looking still fails the moment it does not read back to
+its own peptide. The checker also confirms the adapters and the expected oligo length on every row. The
+encoder itself is external tooling run on the cluster, so the computational pipeline ends at the
+annotated peptide file and this checked order file is the deliverable that hands off to synthesis.
