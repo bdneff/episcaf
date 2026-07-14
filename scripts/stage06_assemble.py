@@ -31,6 +31,18 @@ import pandas as pd
 R = Path(__file__).resolve().parents[1]
 EXCLUDE = ("2h32", "4xwo", "7a3t")   # canonical 56-mAb exclusion (id-prefix)
 
+# The 5 scoring fields shipped alongside the 8 standard columns (John's request). Maps the internal
+# metric name -> the shipped column name. Left EMPTY where a design has no such value: C3 has no
+# af3_clashes (no antibody); C4 (linear tiles) and C6 (mutants) were never folded, so all 5 are blank;
+# 8VDL has no cylinder. pandas writes NaN as an empty CSV cell.
+METRICS = {
+    "epitope_chunk_rmsd":    "epitope_rmsd",
+    "overall_rmsd":          "overall_rmsd",
+    "epitope_pae":           "epitope_pae",
+    "af3_n_clash_res":       "af3_clashes",
+    "cylinder_native_aware": "cylinder_clashes",
+}
+
 
 def trim_103(se: str):
     """Epitope-preserving 104->103 trim. Returns (trimmed_str, note) or (None, reason) if untrimmable."""
@@ -43,23 +55,30 @@ def trim_103(se: str):
     return None, "both_termini_epitope"  # can't trim -> drop
 
 
-def attach_rank(seq_df, ranked_csv):
-    """The scaffoldEPITOPE file is row-aligned to its ranked table (case-encode iterated it in order);
-    attach rank_in_group by position (asserted)."""
-    rk = pd.read_csv(ranked_csv, low_memory=False)
-    assert len(rk) == len(seq_df), f"row count mismatch {ranked_csv}: {len(rk)} vs {len(seq_df)}"
+def attach_source(seq_df, source_csv):
+    """The scaffoldEPITOPE file is row-aligned to its ranked/metrics table (case-encode iterated it in
+    order); attach rank_in_group (if present) and the 5 scoring metrics by position (asserted)."""
+    src = pd.read_csv(source_csv, low_memory=False)
+    assert len(src) == len(seq_df), f"row count mismatch {source_csv}: {len(src)} vs {len(seq_df)}"
     out = seq_df.copy()
-    out["rank_in_group"] = rk["rank_in_group"].to_numpy()
+    if "rank_in_group" in src:
+        out["rank_in_group"] = src["rank_in_group"].to_numpy()
+    for internal, shipped in METRICS.items():
+        if internal in src:
+            out[shipped] = src[internal].to_numpy()
     return out
 
 
-def scaffold_rows(comp, seq_csv, ranked_csv, category, *, trim, exclude, depth):
-    """Build DP2 rows for a scaffold component from its scaffoldEPITOPE file."""
+def scaffold_rows(comp, seq_csv, source_csv, category, *, trim, exclude, depth):
+    """Build DP2 rows for a scaffold component from its scaffoldEPITOPE file, carrying the 5 scoring
+    metrics from `source_csv` (its ranked table, or for C5 its titration table). `depth` is applied
+    only when the source has rank_in_group (ranked components); pass None to keep all rows (C5)."""
     d = pd.read_csv(seq_csv, low_memory=False)
     d = d[d.get("status", "ok").eq("ok")] if "status" in d else d
-    if ranked_csv:
-        d = attach_rank(d, ranked_csv)
-        d = d[d.rank_in_group <= depth]
+    if source_csv:
+        d = attach_source(d, source_csv)
+        if "rank_in_group" in d and depth is not None:
+            d = d[d.rank_in_group <= depth]
     if exclude:
         tgt = d["target"].astype(str).str.lower()
         d = d[~tgt.str.startswith(EXCLUDE)]
@@ -72,18 +91,22 @@ def scaffold_rows(comp, seq_csv, ranked_csv, category, *, trim, exclude, depth):
         did = f"{comp}_{getattr(r,'token',getattr(r,'predID',i))}"
         if hasattr(r, "rank_in_group"):
             did += f"_r{int(r.rank_in_group)}"
-        rows.append(dict(sequence=tse.upper(), category=category, model="RFD",
-                         designedSequence=tse, designedSequenceLength=len(tse),
-                         design_ID=did, target=getattr(r, "target", "")))
+        row = dict(sequence=tse.upper(), category=category, model="RFD",
+                   designedSequence=tse, designedSequenceLength=len(tse),
+                   design_ID=did, target=getattr(r, "target", ""))
+        for shipped in METRICS.values():
+            row[shipped] = getattr(r, shipped, float("nan"))
+        rows.append(row)
     return pd.DataFrame(rows), dropped
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--depth", type=int, default=20, help="top-n per group (mAb/island) for C1/C2 (and C6 via C1)")
-    ap.add_argument("--c3-depth", type=int, default=3,
-                    help="top-n per 12-mer window for C3 -- fixed at 3: neighbouring tiles overlap heavily "
-                         "(step-6 windows), so adjacent tiles already cover nearly the same epitope space")
+    ap.add_argument("--c3-depth", type=int, default=10,
+                    help="top-n per 12-mer window for C3 (default 10). C3 tiles are 12-mers stepping by "
+                         "2 residues, so windows overlap heavily; kept shallow, but set to 10 to maximise "
+                         "polyclonal coverage given the weaker clash distribution (John, 2026-07-14)")
     ap.add_argument("--out", default="data/libraries/dp4_library.csv")
     args = ap.parse_args()
     res = R / "results"; lib = R / "data/libraries"
@@ -99,9 +122,9 @@ def main() -> None:
         df, dropped = scaffold_rows(comp, seqf, rankf, cat, trim=trim, exclude=exc, depth=dep)
         parts.append(df); all_dropped[comp] = dropped
 
-    # C5 -- fixed sample (no depth cut), 104->trim, already 56
-    df, dropped = scaffold_rows("C5", res/"dp4_C5_scaffoldEPITOPE.csv", None, "metricSpaceTitration",
-                                trim=True, exclude=False, depth=args.depth)
+    # C5 -- fixed sample (no depth cut), native 103. Metrics come from the titration table (row-aligned).
+    df, dropped = scaffold_rows("C5", res/"dp4_C5_scaffoldEPITOPE.csv", res/"dp4_C5_titration.csv",
+                                "metricSpaceTitration", trim=True, exclude=False, depth=None)
     parts.append(df); all_dropped["C5"] = dropped
 
     # C6 -- controls, 104->trim, already 56 (built at top-20; rebuild if depth!=20). Uses its own DP2 cols.
@@ -115,21 +138,28 @@ def main() -> None:
                            design_ID=getattr(r, "design_ID"), target=getattr(r, "target", "")))
     parts.append(pd.DataFrame(c6rows)); all_dropped["C6"] = c6drop
 
-    # C4 -- already 8-column format, native 103, already 56. Its design_ID is a per-antigen tile-start
-    # index (1,7,13,...) that repeats across antigens, so namespace it C4_<target>_t<pos> to make it
-    # globally unique / traceable from design_ID alone (like C1_..._r#).
+    # C4 -- linear tiles, native 103, already 56. Two touch-ups: (1) designedSequence is made the FULL
+    # 103-mer construct in EPITOPEscaffold format -- the 30-mer tile (last 30 residues) uppercase (it is
+    # the epitope), the GSGA.. filler + ENLYFQGA TEV lowercase (scaffold) -- so every row's
+    # designedSequence is a 103-mer in the same casing (John, 2026-07-14); (2) design_ID is a per-antigen
+    # tile-start index (1,7,13,...) repeating across antigens, so namespace it C4_<target>_t<pos>.
     keep8 = ["sequence", "category", "model", "designedSequence",
              "designedSequenceLength", "design_ID", "target"]
     c4 = pd.read_csv(lib/"dp4_tiled30mers_fasta.csv", low_memory=False).copy()
+    c4["designedSequence"] = c4["sequence"].map(lambda s: s[:-30].lower() + s[-30:].upper())
+    c4["designedSequenceLength"] = c4["designedSequence"].str.len()
     c4["design_ID"] = "C4_" + c4["target"].astype(str) + "_t" + c4["design_ID"].astype(str)
-    parts.append(c4[keep8])
+    parts.append(c4[keep8])                     # metrics blank (linear controls, never folded)
 
-    # 8VDL arm -- already 8-column (07_consolidate), native 103, fixed top-10 per definition
+    # 8VDL arm -- 8-column + (after 07_consolidate rerun) the 5 metric columns; native 103, top-10/def
     v8 = pd.read_csv(res/"dp4_8vdl_top10.csv", low_memory=False)
-    parts.append(v8[keep8])
+    v8_cols = keep8 + [c for c in METRICS.values() if c in v8.columns]
+    parts.append(v8[v8_cols])
 
     lib_df = pd.concat(parts, ignore_index=True)
     lib_df.insert(0, "library_member", [f"DP4_{i}" for i in range(1, len(lib_df) + 1)])
+    # 8 standard columns then the 5 scoring columns; missing metric cells become blank (NaN).
+    lib_df = lib_df.reindex(columns=["library_member"] + keep8 + list(METRICS.values()))
     assert (lib_df.sequence.str.len() <= 103).all(), "a sequence exceeds 103 residues!"
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     lib_df.to_csv(args.out, index=False)
