@@ -48,15 +48,23 @@ def world_presets(group, topk, gate_overall, gate_pae):
     pctclash = {CLASH: dict(weight=.35, better="low", transform="percentile"),
                 ERMSD: {**sig(1, 4), "weight": .35}, ORMSD: {**sig(2, 2), "weight": .15},
                 EPAE: {**sig(5, 1), "weight": .15}}
-    # gated: fold-quality floor handled by pre-filter (below); rank only clash + epitope RMSD
+    # gated: HARD fold floor via pre-filter, then rank clash + epitope RMSD. Cuts the high-clash tail
+    # but DROPS designs -- on C2 it empties 3/87 islands (ships nothing). The Lawson hard-gate failure.
     gated = {CLASH: {**sig(6, .5), "weight": .60}, ERMSD: {**sig(1, 4), "weight": .40}}
+    # soft-gate: the k<infinity version of `gated`. Same fold-quality floor, but as STEEP sigmoids on
+    # overall_rmsd (midpoint 2 = Lawson) and epitope_pae (midpoint 5 = Lawson) instead of a hard cut.
+    # Misfolds are crushed toward 0 but never TO 0, so every island still ranks its best design ->
+    # full 87/87 coverage, no dropped targets. One framework, fittable on binding data.
+    softgate = {CLASH: {**sig(6, .5), "weight": .45}, ERMSD: {**sig(1, 4), "weight": .25},
+                ORMSD: {**sig(2, 4), "weight": .20}, EPAE: {**sig(5, 1.2), "weight": .10}}
     base = dict(scope="pooled", antigen_col="antigen", select=dict(group=group, topk=topk))
     return {
         "percentile (current)":                 dict(base, gate=None, metrics=pct),
         "sigmoid all, weights .35":             dict(base, gate=None, metrics=sigm),
         "sigmoid all, clash weight .50":        dict(base, gate=None, metrics=mixed),
         "sigmoid RMSD/PAE, percentile clash":   dict(base, gate=None, metrics=pctclash),
-        f"gated (fold floor o<={gate_overall} pae<{gate_pae}, rank clash+rmsd)":
+        "soft-gate (steep fold sigmoid, no drop)": dict(base, gate=None, metrics=softgate),
+        f"gated HARD (fold floor o<={gate_overall} pae<{gate_pae}, drops islands)":
                                                 dict(base, gate=None, metrics=gated, _prefilter=True),
     }
 
