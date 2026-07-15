@@ -69,8 +69,17 @@ def main():
         else pd.read_csv(args.metrics_csv, low_memory=False)
     if "status" in df.columns:
         df = df[df["status"].astype(str).str.lower().eq("ok")].copy()
-    group = next((g for g in args.group.split(",") if g in df.columns), args.group.split(",")[0])
-    print(f"loaded {len(df)} designs from {args.metrics_csv}  (group={group})")
+    # multi-column grouping (e.g. C2 selects per (id, island_index)): build a combined key column,
+    # since score.py groups by a single column. Single-column groups pass through unchanged.
+    gcols = [g for g in args.group.split(",") if g in df.columns]
+    if not gcols:
+        sys.exit(f"[worlds] none of the group columns {args.group!r} are in the CSV: {list(df.columns)}")
+    if len(gcols) > 1:
+        group = "_grp"
+        df[group] = df[gcols].astype(str).agg("|".join, axis=1)
+    else:
+        group = gcols[0]
+    print(f"loaded {len(df)} designs from {args.metrics_csv}  (group by {gcols} -> {group})")
 
     worlds = world_presets(group, args.topk, args.gate_overall, args.gate_pae)
     out = {}
