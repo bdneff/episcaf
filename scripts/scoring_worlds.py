@@ -42,15 +42,22 @@ def world_presets(group, topk, gate_overall, gate_pae):
             ORMSD: {**sig(2, 2), "weight": .15}, EPAE: {**sig(5, 1), "weight": .15}}
     mixed = {CLASH: {**sig(6, .5), "weight": .50}, ERMSD: {**sig(1, 4), "weight": .25},
              ORMSD: {**sig(2, 2), "weight": .15}, EPAE: {**sig(5, 1), "weight": .10}}
+    # "true mixed" -- sigmoid on RMSD/PAE, PERCENTILE on clash (keeps clash's full-range rank
+    # discrimination instead of squashing it). Original weights. This is the world one might first
+    # picture from the phrase "mixed transforms".
+    pctclash = {CLASH: dict(weight=.35, better="low", transform="percentile"),
+                ERMSD: {**sig(1, 4), "weight": .35}, ORMSD: {**sig(2, 2), "weight": .15},
+                EPAE: {**sig(5, 1), "weight": .15}}
     # gated: fold-quality floor handled by pre-filter (below); rank only clash + epitope RMSD
     gated = {CLASH: {**sig(6, .5), "weight": .60}, ERMSD: {**sig(1, 4), "weight": .40}}
     base = dict(scope="pooled", antigen_col="antigen", select=dict(group=group, topk=topk))
     return {
-        "percentile (current)":            dict(base, gate=None, metrics=pct),
-        "sigmoid naive (.35/.35/.15/.15)":  dict(base, gate=None, metrics=sigm),
-        "mixed (sig + clash .50)":          dict(base, gate=None, metrics=mixed),
+        "percentile (current)":                 dict(base, gate=None, metrics=pct),
+        "sigmoid all, weights .35":             dict(base, gate=None, metrics=sigm),
+        "sigmoid all, clash weight .50":        dict(base, gate=None, metrics=mixed),
+        "sigmoid RMSD/PAE, percentile clash":   dict(base, gate=None, metrics=pctclash),
         f"gated (fold floor o<={gate_overall} pae<{gate_pae}, rank clash+rmsd)":
-                                            dict(base, gate=None, metrics=gated, _prefilter=True),
+                                                dict(base, gate=None, metrics=gated, _prefilter=True),
     }
 
 
