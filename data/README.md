@@ -21,9 +21,18 @@ crystals lives on the cluster (see below).
 
 ## libraries/  (deliverables, regenerable)
 - `tiled_library_12mer.csv` — the scaffolded 12-mer library (3 antigens, 12-mer / step 2).
-- `dp4_tiled30mers.csv` (+ `_summary.csv`) — the DP4 tiled-30-mer **linear controls**
-  (59 mAb antigens + 3 tiled antigens, 30-mer / step 6, unscaffolded). Regenerate with:
-  `python -m episcaf_pipeline.build_dp4_tiled30mers`
+- `dp4_tiled30mers_fasta.csv` (+ `_fasta_summary.csv`) — the DP4 tiled-30-mer **linear controls**
+  (component C4): 59 antigens (56 mAb + 3 tiled), 30-mer / step 6, unscaffolded, tiled from the
+  gap-free PDB-FASTA chain. **This is the canonical C4 file.** Regenerate with:
+  `python -m episcaf_pipeline.build_dp4_tiled30mers_fasta`
+- `dp4_tiled30mers.csv` (+ `_summary.csv`) — **superseded** earlier build (tiled the gap-truncated
+  `antigen_seq` rather than the FASTA chain, with a spliced gap at 6okm). Kept for history; not used.
+- `dp4_library.csv` — the assembled DP4 library, 15,324 constructs (`scripts/stage06_assemble.py`).
+  `dp4_named_peptides.csv` / `dp4_order_file.csv` — the oligo-encoder input / synthesis order file
+  (`scripts/stage07_named_peptides.py`, `stage07_order_file.py`).
+- `dp4_superset_metrics.csv` — **gitignored, exploratory**: every candidate design's metrics across
+  the scaffolded arms (not just the selected subset), for poking at the overall distributions
+  (`scripts/stage06_superset.py`). Regenerable; the full version lives on the cluster under `$WS`.
 
 ## External artifacts (NOT in git)
 Too large to version; documented here for provenance.

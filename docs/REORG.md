@@ -1,5 +1,8 @@
 # REORG — design notes & deployment
 
+> **Historical snapshot** (one-time reorg record). For the current layout see `README.md`, for the
+> run order see `docs/PIPELINE.md`. Kept for the reasoning behind the structure; not a live guide.
+
 The realized layout (see `README.md`) and the reasoning behind it, plus how to put
 this repo on the cluster **without moving the 426 G of data**.
 

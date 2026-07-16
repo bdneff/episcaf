@@ -3,7 +3,7 @@
 The living manuscript. Build with:
 
 ```bash
-latexmk -pdf main.tex        # -> main.pdf   (latexmk -c to clean aux files)
+tectonic main.tex        # -> main.pdf   (this env uses tectonic, not latexmk)
 ```
 
 Edit `sections/*.tex`; keep results in sync with `results/` and figures in `figures/`

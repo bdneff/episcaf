@@ -13,7 +13,8 @@ Two settings:
 DP3 has now been **assayed**: experimental binding for 8 mAbs (`data/dp3_binding/`)
 shows the native-aware cylinder is the strongest predictor of binding among all our
 metrics — the result that sets the scorer's priors (manuscript `sec:whatpredicts`).
-The next library, **DP4**, is assembled from six components (manuscript `sec:dp4`)
+The next library, **DP4**, is assembled from seven components (C1–C6 plus the 8VDL
+PfEMP1 arm; manuscript `sec:dp4`) into `data/libraries/dp4_library.csv` (15,324 constructs)
 and handed off to the LadnerLab oligo encoder (`episcaf_pipeline/oligo_encoding/`).
 
 > **Code lives in git; data and runs live on `/tgen_labs`.** Nothing under `runs/`,
@@ -100,13 +101,20 @@ python scripts/dp3_native_cylinder.py ...                    # cylinder_native_a
 python -m episcaf_analysis.score --preset twelvemer|antibody \
     --metrics-csv <metrics.csv> --out <top5.csv>
 
-# 8. ASSEMBLE  [local]  — concatenate the DP4 components (C1–C6) into one ordered
-#                         8-column annotated peptide file + the name,seq export   [06_library: to build]
+# 8. ASSEMBLE  [local]  — concatenate the DP4 components into one ordered 8-column
+#                         annotated peptide file (data/libraries/dp4_library.csv, 15,324)
+python scripts/stage06_assemble.py --depth 20                # C1/C2 top-20, C3 top-10
+python scripts/stage07_named_peptides.py \
+    --library data/libraries/dp4_library.csv --out data/libraries/dp4_named_peptides.csv
 
-# 9. ENCODE  [cluster]  — peptide → DNA oligo (LadnerLab tool, DP3 codon weights)
+# 9. ENCODE  [cluster]  — peptide → DNA oligo (LadnerLab tool, DP3 codon weights) → order file
 sbatch episcaf_pipeline/oligo_encoding/encode_step1_generate.sbatch   # candidates
-sbatch episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch     # NN-pick the best → order file
+sbatch episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch     # NN-pick the best
+python scripts/stage07_order_file.py --best-encodings <rundir>/DP4_best_encodings \
+    --peptides data/libraries/dp4_named_peptides.csv --out data/libraries/dp4_order_file.csv
 ```
+
+The full authoritative step order (with the `stage0x` script names) is in `docs/PIPELINE.md`.
 
 Verify-as-you-go: `compute_metrics.py --validate` checks our metrics reproduce Lawson's
 stored values before any selection is trusted; the manuscript records every figure's
@@ -126,12 +134,13 @@ the metric space (manuscript `sec:open`). Tune by editing `episcaf_analysis/pres
 
 ## DP4 library (what we are shipping)
 
-Six components, each answering a design question (manuscript `sec:dp4`): **C1** known-Ab
+Seven components, each answering a design question (manuscript `sec:dp4`): **C1** known-Ab
 whole-epitope scaffolds; **C2** single-island scaffolds (87 contigs, the islands test);
 **C3** polyclonal-tiling scaffolds; **C4** linear tiled-30mer controls; **C5** metric-space
-sampling; **C6** scaffolded-epitope controls (island→Ala + scaffold-disruption). All emit the
-constant 103-mer in the 8-column annotated format, assemble into one ordered file (`06_library`), and encode to DNA
-oligos (`episcaf_pipeline/oligo_encoding/`, stage 07). **Full reference — components, selection
+sampling; **C6** scaffolded-epitope controls (island→Ala + scaffold-disruption); plus the **8VDL**
+PfEMP1 conserved-epitope arm (`dp4_8vdl/`). All emit the constant 103-mer in the 8-column annotated
+format, assemble into one ordered file (`data/libraries/dp4_library.csv`, 15,324 constructs), and encode
+to DNA oligos (`episcaf_pipeline/oligo_encoding/`, stage 07). **Full reference — components, selection
 math/weights, exclusions, the 104→103 trim, status: `docs/DP4_LIBRARY.md`.**
 
 ## Intended cleanups (deferred)

@@ -40,7 +40,7 @@ git add results/composite_12mer_top5.csv && git commit -m "results: refresh 12me
 # local: regenerate the figure + rebuild manuscript
 git pull
 python episcaf_analysis/viz/plot_fp_reduction.py --in results/... --out manuscript/figures/fp_reduction.png
-cd manuscript && latexmk -pdf main.tex
+cd manuscript && tectonic main.tex
 git add manuscript && git commit -m "manuscript: refresh fp-reduction figure + text" && git push
 ```
 

@@ -1,5 +1,8 @@
 # MIGRATION — what moved where (and what to double-check)
 
+> **Historical snapshot** of the one-time code reorg (old → new file map). For the current pipeline
+> see `docs/PIPELINE.md`; the `archive/` READMEs point at what replaced each superseded file.
+
 This repo was assembled from the `episcaf_v2_bneff` workspace code (the `code_clean`
 tarball: `episcaf_pipeline/`, `scripts/`, `legacy_*`, and top-level `.py`). Data was
 **not** touched — it stays on `/tgen_labs`, referenced via `configs/paths.py`.

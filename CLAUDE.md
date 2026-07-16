@@ -52,7 +52,7 @@ native-aware cylinder surrogate stands in). PI: John Altin.
 - `python tests/test_scoring.py`                      # scorer unit tests (no data)
 - `python episcaf_analysis/native_cylinder_core.py`   # cylinder geometry self-test
 - `python -m episcaf_analysis.score --preset twelvemer --metrics-csv <csv> --out <csv>`
-- `cd manuscript && latexmk -pdf main.tex`            # build the manuscript
+- `cd manuscript && tectonic main.tex`                # build the manuscript (not latexmk in this env)
 
 ## Fixed facts
 - Cluster env: `conda activate ~/rfd3/env/rfd3_py312` (has MDAnalysis/gemmi/scipy).
