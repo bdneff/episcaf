@@ -151,3 +151,30 @@ penalties handle more gracefully. (A gate is still available as an optional pre-
 diagnostics of Section~\ref{sec:noab}, just not in picking the designs we ship.) Two choices remain
 open and are carried to Section~\ref{sec:open}: fitting the weights against binding rather than
 hand-setting them, and moving the percentile activation to the population-independent sigmoid.
+
+\paragraph{Promoting the global-passers.} One refinement keeps the spirit of the four-filter
+without bringing back the gate. We want every design that clears \emph{all four} classical criteria
+(overall RMSD $\le 2$, epitope-chunk RMSD $\le 1$, global mean PAE $<5$, zero clash) to rank above
+every design that does not, while still ordering designs \emph{within} each tier by the composite.
+That is a lexicographic order, and it has a clean activation form: add to $S$ a gain-scaled
+\emph{pass indicator}
+\begin{equation}\label{eq:passbonus}
+S(d)\;\leftarrow\;S(d)\;+\;A\,P(d),
+\qquad
+P(d)\;=\;\prod_{c}\ \frac{1}{1+\exp\!\bigl(k\,(x_c(d)-t_c)\bigr)},
+\end{equation}
+the \emph{product} of steep sigmoids at each criterion's threshold $t_c$. The product is a soft
+logical AND: $P\approx 1$ only when every criterion passes, and a single failing factor collapses it
+to $\approx 0$ (a sum would instead rank by \emph{how many} criteria pass, not whether all do).
+Because the weighted composite lies in $[0,1]$, any gain $A>1$ floats the entire passing tier above
+the rest, while $S$ still orders designs within each tier. Both $k$ (gate steepness) and $A$ (tier
+separation) are finite dials --- as they grow the rule becomes the exact lexicographic order, kept
+finite it stays soft, so a near-miss that is otherwise excellent is not discontinuously dropped
+(the same $k$-to-hard-gate limit as the fold sigmoids above). Crucially this \emph{promotes} rather
+than excludes: an epitope with no passer simply ranks on the composite, so no target is ever lost,
+unlike the hard four-filter's \SI{0.5}{\percent} pass rate. The soft indicator is faithful to the
+classical rule --- on the C1 set it flags $725$ designs at $P>0.5$ against $727$ hard four-filter
+passers (both \SI{0.52}{\percent}) --- and, at that rate, it fires for only 15 of the 56 epitopes,
+floating their gold-standard designs to the top and leaving the rest unchanged. It uses the
+four-filter's \emph{own} metrics (the global mean PAE, not the epitope PAE the composite ranks on),
+and is configured as \texttt{pass\_bonus} in \texttt{score.py}.

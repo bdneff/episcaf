@@ -57,6 +57,11 @@ def world_presets(group, topk, gate_overall, gate_pae):
     # full 87/87 coverage, no dropped targets. One framework, fittable on binding data.
     softgate = {CLASH: {**sig(6, .5), "weight": .45}, ERMSD: {**sig(1, 4), "weight": .25},
                 ORMSD: {**sig(2, 4), "weight": .20}, EPAE: {**sig(5, 1.2), "weight": .10}}
+    # John's rule: all global-passers (clear ALL four Lawson filters) rank above all non-passers,
+    # done softly as GAIN*P + composite, P = product of steep sigmoids at the thresholds (soft AND).
+    # criteria = the four-filter's OWN metrics (global mean_pae<5, not the decomposed epitope PAE
+    # the composite ranks on); clash==0 -> midpoint 0.5.
+    PASS = dict(gain=2.0, k=12.0, criteria={ERMSD: 1.0, ORMSD: 2.0, "mean_pae": 5.0, CLASH: 0.5})
     base = dict(scope="pooled", antigen_col="antigen", select=dict(group=group, topk=topk))
     return {
         "percentile (current)":                 dict(base, gate=None, metrics=pct),
@@ -64,6 +69,7 @@ def world_presets(group, topk, gate_overall, gate_pae):
         "sigmoid all, clash weight .50":        dict(base, gate=None, metrics=mixed),
         "sigmoid RMSD/PAE, percentile clash":   dict(base, gate=None, metrics=pctclash),
         "soft-gate (steep fold sigmoid, no drop)": dict(base, gate=None, metrics=softgate),
+        "soft-gate + global-pass promotion":    dict(base, gate=None, metrics=softgate, pass_bonus=PASS),
         f"gated HARD (fold floor o<={gate_overall} pae<{gate_pae}, drops islands)":
                                                 dict(base, gate=None, metrics=gated, _prefilter=True),
     }

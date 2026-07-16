@@ -96,6 +96,26 @@ def score(df: pd.DataFrame, preset: dict) -> pd.DataFrame:
         composite = composite + (spec["weight"] / wsum) * sc.fillna(0.0)
     df["composite"] = composite
 
+    # 2b. global-pass promotion (optional): "all passers rank above all non-passers" --------------
+    # A soft, activation-only version of John's rule (no hard gate). score = GAIN*P + composite:
+    #   P (pass_indicator) = PRODUCT of steep per-criterion sigmoids at the Lawson thresholds -> a
+    #   soft AND, ~1 iff ALL pass, ~0 if any one fails (one failing factor collapses the product).
+    #   composite is a weighted average in [0,1], so any GAIN > 1 floats the whole passing tier above
+    #   the rest; within each tier the composite still ranks. k and gain are dials: -> inf gives the
+    #   exact lexicographic rule, finite keeps it soft. Never drops anything (a group with no passers
+    #   just ranks on composite). Config: pass_bonus=dict(gain, k, criteria={col: threshold}); each
+    #   criterion is "x <= threshold" (clash == 0 -> use threshold 0.5).
+    pb = preset.get("pass_bonus")
+    if pb:
+        k = float(pb.get("k", 12.0))
+        P = pd.Series(1.0, index=df.index)
+        for col, thr in pb["criteria"].items():
+            x = pd.to_numeric(df.get(col), errors="coerce")
+            z = np.clip(k * (x - float(thr)), -700.0, 700.0)   # avoid exp overflow on huge fails
+            P = P * (1.0 / (1.0 + np.exp(z))).fillna(0.0)
+        df["pass_indicator"] = P
+        df["composite"] = df["composite"] + float(pb.get("gain", 2.0)) * P
+
     # 3. select top-k per group ------------------------------------------------
     sel = preset.get("select") or {}
     group, topk = sel.get("group"), sel.get("topk")
