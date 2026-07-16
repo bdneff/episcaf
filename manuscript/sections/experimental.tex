@@ -6,7 +6,7 @@ This is the non-circular label the scorer has been waiting for (Section~\ref{sec
 this section sets out exactly what the data is, what it looks like, and --- importantly --- how
 far it can be trusted, before any weight is fit to it.
 
-\subsection{How a binding measurement is made}
+\subsection{The binding readout: cognate log-enrichment}
 The DP3 designs were carried into the PepSeq assay. Each library member is displayed as its
 constant-length construct (the \num{103}-mer of Section~\ref{sec:tiling}), and the assay reads
 out, by sequencing, how much of each member is pulled down by a given monoclonal antibody
@@ -25,7 +25,7 @@ runs or even across antibodies, which is the first reason the analysis below sta
 \emph{within} an antibody rather than pooling. The full wet-lab protocol is recorded with the
 experimental methods; here we treat the intensities as provided.
 
-\subsection{What we have}
+\subsection{The assayed set: eight antibodies, 377 cognate designs}
 Eight monoclonal antibodies, the subset of the original ten that assayed cleanly: 4xwo was
 dropped (its synthesized antibody was too low-yield) and 7a3t was dropped (its epitope was too
 small for RMSD to discriminate). Their designs remain in the library but have no usable
@@ -75,7 +75,7 @@ designs; the other six carry \num{35} between them.}
 \label{tab:dp3binding}
 \end{table}
 
-\subsection{How reliable it is, and how far it goes}
+\subsection{Three limits on what this label can teach}
 The headline is encouraging: across all eight antibodies the scaffolded designs enrich over the
 no-antibody baseline, almost all of them above the diagonal, and for the two well-sampled
 antibodies this holds for the great majority of designs. The scaffolding approach produces
