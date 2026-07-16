@@ -75,4 +75,6 @@ scratch_figs/
 
 # full composite rankings are large + regenerable by scripts/stage06_select.py; keep only top-N cuts
 results/dp4_*_ranked.csv
-dp4_superset_metrics*.csv
+# the all-designs superset (~335k rows, ~90MB): derived + regenerable by scripts/stage06_superset.py,
+# so it lives on $WS, not in git. (dp4_superset_metrics.csv = its superseded metrics-only ancestor.)
+dp4_superset*.csv
