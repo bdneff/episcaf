@@ -295,8 +295,15 @@ python scripts/stage06_sample_c5.py \
   --metrics-csv $D/known_antigen/analysis/data/metrics_whole_epitope_103.csv \
   --total 3000 --out results/dp4_C5_titration.csv
 
-# Case-encode C1 + C5 (Gemini) -> results/dp4_C{1,5}_scaffoldEPITOPE.csv
-sbatch scripts/case_encode_selected.sbatch
+# Case-encode the selections (Gemini). NOTE: the native-103 C1 uses the CONTIG-POSITION encoder
+# (case_encode_whole_epitope.py) -- NOT case_encode_selected.sbatch, which is the old token->dp2 path
+# and errors with KeyError 'token' on the 103 ranked file.
+python scripts/case_encode_whole_epitope.py \
+  --selected results/dp4_C1_whole_epitope_ranked.top20.csv \
+  --ledger   results/whole_epitope_designs.csv \
+  --out      results/dp4_C1_scaffoldEPITOPE.csv       # C1 (native 103)
+sbatch scripts/case_encode_c2.sbatch                  # C2 (single-island)
+sbatch scripts/case_encode_selected.sbatch            # C5 titration (token->dp2); C3: case_encode_c3.py
 
 # C6 (local; seeded, reproducible)
 python episcaf_pipeline/scaffolded_epitope_controls/build_c6_mutants.py \
