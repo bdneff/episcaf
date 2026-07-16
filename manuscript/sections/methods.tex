@@ -1,6 +1,6 @@
 \section{The pipeline, and reproducing Lawson's workflow}\label{sec:methods}
 
-\subsection{Pipeline}
+\subsection{The three-stage generation pipeline}
 Each contig is carried through three stages. RFdiffusion3 generates \num{8} scaffold
 backbones holding the epitope segment fixed at its contig position (one GPU task per contig,
 \texttt{n\_batches=1}). Each backbone is stripped to its $C\alpha$/backbone trace and re-sequenced

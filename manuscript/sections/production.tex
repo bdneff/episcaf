@@ -157,7 +157,7 @@ contacts-only subset stored in the ledger. The native-frame and design-frame epi
 pair one-to-one because each island A-segment is contiguous in both, which we verified holds
 for all \num{1740} ledger contigs ($b-a+1=\texttt{island\_size}$).
 
-\paragraph{How it is produced.}
+\paragraph{How the metrics table is produced.}
 The extractor caches each native complex once per epitope (not once per design) and shards the
 $\sim$46 epitopes across worker processes:
 \begin{verbatim}
@@ -174,7 +174,7 @@ It writes the parquet and a CSV alongside. A companion report,
 summary \texttt{results/dual\_island\_gate\_summary.csv} (so these numbers are regenerable,
 not pasted).
 
-\subsection{What the run yielded}\label{sec:metricsresults}
+\subsection{The run's yield}\label{sec:metricsresults}
 The full run scored \num{111322} designs across all 46 epitopes and 87 islands, every one with
 a status of \texttt{ok}. The designs are good where it matters: median epitope-chunk RMSD is
 \SI{1.20}{\angstrom} (best \SI{0.03}{\angstrom}) and median epitope PAE is $3.1$, while the
@@ -287,7 +287,7 @@ and neither the real antibody clash nor the cylinder can be placed. These design
 geometry and PAE (and so are still gated and ranked on those terms); they simply carry no
 accessibility score.
 
-\subsection{Selection}\label{sec:selection}
+\subsection{Selecting the per-island deliverable}\label{sec:selection}
 The composite scorer (Section~\ref{sec:composite}) reads this table directly. For the
 per-island deliverable we select the top \num{20} per (\texttt{id}, \texttt{island\_index}) ---
 per \emph{island}, not per epitope --- so each island is ranked on its own and the PepSeq

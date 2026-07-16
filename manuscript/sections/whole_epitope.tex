@@ -23,7 +23,7 @@ at \num{103} natively also dissolves the one case the trim could not handle: the
 islands are flush against both termini (\texttt{3ux9\_1P}) simply has its inter-island spacer shortened,
 keeping both islands intact, with no design dropped.
 
-\paragraph{The run.} This gives \num{2206} contigs over the \num{56} epitopes, each sampled at \num{8}
+\paragraph{The 103-mer run.} This gives \num{2206} contigs over the \num{56} epitopes, each sampled at \num{8}
 RFdiffusion3 backbones $\times$ \num{8} ProteinMPNN sequences $=\num{64}$ designs and pushed through
 AlphaFold3, of which \num{140716} returned a prediction. We extract every per-design metric once into a
 single table --- the C1 analog of \texttt{dp2} (\texttt{scripts/stage05\_extract\_metrics.py}) --- and
@@ -32,7 +32,7 @@ in line with the \num{104}-mer set on the same epitopes ($0.35\%$) and with Laws
 the sub-percent yield expected for whole-epitope scaffolding (Section~\ref{sec:intro}), and unchanged by
 the move to \num{103}.
 
-\paragraph{One island or two.} Splitting the set by island count (Fig.~\ref{fig:c1island}) recovers the
+\paragraph{Splitting by island count.} Splitting the set by island count (Fig.~\ref{fig:c1island}) recovers the
 expected asymmetry. The \num{13} single-island epitopes are cleaner on every metric (median epitope RMSD
 \num{2.40} vs \num{4.99}~\si{\angstrom}, median PAE \num{9.8} vs \num{12.8}) and pass at $2.79\%$ against
 $0.50\%$ for the \num{43} two-island epitopes: holding two separated patches in their native arrangement
@@ -50,7 +50,7 @@ Dotted lines are group medians; dashed lines the filter thresholds. Regenerated 
 \label{fig:c1island}
 \end{figure}
 
-\paragraph{Selection.} We rank on the re-weighted composite with no hard gate
+\paragraph{Selecting the C1 set.} We rank on the re-weighted composite with no hard gate
 (Section~\ref{sec:selection}) and keep the top \num{20} per epitope, \num{1120} designs, as C1; because
 the antibody is known, the accessibility term is the real AlphaFold3 clash rather than the cylinder
 surrogate. Case-encoding these designs, and the C5/C6 rebuilds off this pool, follow in
