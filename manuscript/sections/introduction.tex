@@ -1,110 +1,99 @@
 \section{Motivation: scaffolding B-cell epitopes}\label{sec:intro}
 
 \subsection{Why scaffold epitopes}
-This project is about \emph{B-cell epitopes}: the regions of an antigen that an antibody
-recognizes. Antibodies recognize these regions through their three-dimensional geometry,
-and many of the most interesting B-cell epitopes are discontinuous in sequence but
-contiguous in space, meaning the contacted residues are scattered along the antigen
-sequence yet fold together into a single surface patch. Linear methods cannot represent
-this. High-throughput serology platforms such as
-PepSeq tile an antigen into short, overlapping linear peptides, which works well for
-continuous, sequence-local epitopes. A linear peptide, however, cannot reconstitute a
-surface assembled from sequence-distant residues, and it discards the native conformation
-the antibody evolved to recognize.
+This project is about \emph{B-cell epitopes}: the regions of an antigen an antibody recognizes. An
+antibody reads those regions by their three-dimensional shape, and many of the most interesting ones
+are discontinuous in sequence but contiguous in space. The contacted residues are scattered along the
+antigen sequence, yet they fold together into a single surface patch. A linear representation cannot
+hold that.
 
-The central question of this project is whether \emph{scaffolding} an epitope produces a
-stronger, cleaner binding signal in the PepSeq assay than linear tiling does. By embedding
-the epitope residues in a folded protein, we can hold them in the conformation the antibody
-actually sees, and we can present distinct epitopes as separable, individually testable
-designs. If that conformational presentation matters, scaffolded designs should bind their
-cognate antibodies more reliably than the corresponding linear peptides. The longer-term
-goal is to extend PepSeq-style high-throughput assays beyond linear peptides to
+High-throughput serology platforms such as PepSeq tile an antigen into short, overlapping linear
+peptides. This works well for continuous, sequence-local epitopes. It cannot work for a discontinuous
+one: a linear peptide reconstitutes neither a surface assembled from sequence-distant residues nor the
+native conformation the antibody evolved against.
+
+The central question of this project is whether \emph{scaffolding} an epitope produces a stronger,
+cleaner binding signal in the PepSeq assay than linear tiling does. Embed the epitope residues in a
+folded protein and you hold them in the conformation the antibody actually sees, and you can present
+distinct epitopes as separable, individually testable designs. If conformational presentation matters,
+a scaffolded design should bind its cognate antibody more reliably than the corresponding linear
+peptide. That is the test. The longer-term goal is to carry PepSeq-style assays past linear peptides to
 conformational, discontinuous epitopes.
 
 \subsection{The approach}
-We extract the epitope, meaning the residues an antibody contacts, from an antibody:antigen
-crystal structure. We embed those residues into a \emph{de novo} protein scaffold with
-RFdiffusion, assign a sequence with ProteinMPNN, and then ask AlphaFold3 whether the design
-actually folds with the epitope held in its native geometry. Designs are kept or rejected
-on AlphaFold3 confidence and geometry-preservation metrics (Section~\ref{sec:methods}). The
-full production pipeline, including the Nextflow orchestration, the RFdiffusion runs, and
-the AlphaFold3 evaluation, originates in Lawson Woods' \texttt{episcaf-experiments}
-repository. Reproducing and then extending it is the starting point of this work.
+We extract the epitope --- the residues an antibody contacts --- from an antibody:antigen crystal
+structure, embed those residues into a \emph{de novo} scaffold with RFdiffusion, assign a sequence with
+ProteinMPNN, and ask AlphaFold3 whether the design folds with the epitope held in its native geometry.
+Designs are kept or rejected on AlphaFold3 confidence and geometry-preservation metrics
+(Section~\ref{sec:methods}). The production pipeline --- the Nextflow orchestration, the RFdiffusion
+runs, the AlphaFold3 evaluation --- originates in Lawson Woods' \texttt{episcaf-experiments} repository.
+Reproducing it, then extending it, is where this work starts.
 
 \subsection{Patches and islands}
-A single antibody:antigen complex can yield more than one epitope \emph{patch}, labeled
-\texttt{0P}, \texttt{1P}, and so on, where each patch is a distinct cluster of
-antibody-contacting residues drawn from the same structure. A patch is in turn made of one
-or more \emph{islands}, the spatially contiguous runs of epitope residues in
-three-dimensional space. This distinction matters because it predicts difficulty.
-Single-island patches can be enforced locally and tend to scaffold well, whereas
-multi-island patches require preserving the relative position and orientation of spatially
-separated regions, which is much harder. A concrete failure makes the point: PDB
-\texttt{2XQB}, patch \texttt{0P}, is a 56-residue epitope split across two separated
-islands, and across 2{,}624 RFdiffusion trials zero designs passed the downstream filters.
-Because this $0\%$ rate holds over thousands of attempts, it looks like a real
-computational failure, not undersampling. The cause appears procedural: contigs (the
-constraints RFdiffusion is given) enforce epitope residue identity and ordering, but they
-do not strongly constrain the distances and orientations \emph{between} islands, so the
-model can satisfy the contig and still lose the geometry an antibody needs.
+A single antibody:antigen complex can yield more than one epitope \emph{patch} (\texttt{0P},
+\texttt{1P}, and so on), each a distinct cluster of antibody-contacting residues from the same
+structure. A patch is in turn made of one or more \emph{islands}: the spatially contiguous runs of
+epitope residues in three-dimensional space. The distinction matters because it predicts difficulty. A
+single-island patch can be enforced locally and tends to scaffold well. A multi-island patch has to
+preserve the relative position and orientation of spatially separated regions, which is much harder.
 
-\subsection{Design pools and the DP4 questions}
-The project spans two PepSeq iterations. DP3 is the previous round: the known-antibody mAb
-set, where a solved antibody complex gives a ground truth for ``good.'' DP4 is the library we
-are now assembling --- several thousand 103-mers that \emph{mostly} re-target those same mAb
-epitopes (asking what a minimal epitope is and which design features predict binding) and, for
-a minority of antigens, extend to whole proteins with no known antibody. The no-antibody
-antigens are therefore one component of DP4, not the whole; but they are the component that
-forces the accessibility problem, since the antibody-clash filter cannot be computed without an
-antibody. Scoring therefore runs in two regimes:
+One case makes the point. PDB \texttt{2XQB}, patch \texttt{0P}, is a 56-residue epitope split across two
+separated islands, and across \num{2624} RFdiffusion trials zero designs passed the downstream filters.
+A $0\%$ rate over thousands of attempts is a real computational failure, not undersampling. The cause is
+procedural: contigs (the constraints RFdiffusion is given) fix epitope residue identity and ordering,
+but they do not strongly constrain the distances and orientations \emph{between} islands, so the model
+can satisfy the contig and still lose the geometry an antibody needs.
+
+\subsection{Design pools and the three DP4 questions}
+The project spans two PepSeq iterations. DP3 is the previous round: the known-antibody mAb set, where a
+solved complex gives a ground truth for ``good.'' DP4 is the library we are assembling now --- several
+thousand 103-mers that \emph{mostly} re-target those same mAb epitopes, and for a minority of antigens
+extend to whole proteins with no known antibody. The no-antibody antigens are one component of DP4, not
+the whole of it; but they are the component that forces the accessibility problem, because the
+antibody-clash filter cannot be computed without an antibody. So scoring runs in two regimes:
 \begin{itemize}
-  \item \textbf{Known antibody (all of DP3, most of DP4).} When the antigen has a solved
-  antibody complex, we know the exact epitope and we have a ground truth for ``good'': the
-  design must hold the epitope in place and must not place scaffold mass where the antibody
-  has to bind. This is the setting where we have already run designs through the assay and
-  seen some success, and where the scaffolded-versus-linear question is most directly testable.
-  \item \textbf{No antibody (one component of DP4).} For whole antigens with no solved
-  antibody we do not know where the epitope is, so we tile the sequence into overlapping
-  12-residue windows (stepping by two residues) and scaffold each window, covering the antigen
-  densely enough to catch whatever the real epitopes turn out to be. This is the polyclonal
-  arm of DP4, and the one place the native-aware cylinder surrogate (Section~\ref{sec:noab})
-  is needed, since there is no antibody to clash against.
+  \item \textbf{Known antibody} (all of DP3, most of DP4). The solved complex gives the exact epitope
+  and a ground truth for ``good'': the design must hold the epitope in place and must not put scaffold
+  mass where the antibody has to bind. This is where we have already run designs through the assay and
+  seen success, and where scaffolded-versus-linear is most directly testable.
+  \item \textbf{No antibody} (one component of DP4). Without a solved complex we do not know where the
+  epitope is, so we tile the sequence into overlapping 12-residue windows (step 2) and scaffold each,
+  covering the antigen densely enough to catch whatever the real epitopes turn out to be. This is the
+  polyclonal arm, and the one place the native-aware cylinder surrogate (Section~\ref{sec:noab}) is
+  needed --- there is no antibody to clash against.
 \end{itemize}
 
 \noindent
 DP4 is built to answer three questions, and they organize the rest of this log.
-\emph{(Q1) What is a minimal epitope?}, how many islands and residues are needed for binding:
-whether an antibody needs one epitope island or both, and the island analysis
-(Section~\ref{sec:islands}), and the per-island production run that tests it
-(Section~\ref{sec:perisland}), are aimed here. \emph{(Q2) What predicts a successful design?},
-which of epitope RMSD, scaffold RMSD, PAE, and accessibility actually track binding: this is what
-the decomposed metrics and composite scorer (Section~\ref{sec:scoring}) are for. The first
-experimental answer is already in --- the DP3 binding data (Section~\ref{sec:experimental}) shows
-accessibility and epitope RMSD are the metrics that track binding --- and DP4 is built to sharpen
-it by assaying designs spread across the feature space, so the scorer's weights can be fit rather
-than hand-set (Section~\ref{sec:open}). \emph{(Q3) Can it extend to the polyclonal setting?},
-tiling a whole antigen with no known antibody, where the cylinder surrogate
-(Section~\ref{sec:noab}) stands in for the antibody-clash filter. These design ideas
-originate with the project's earlier work; the scoring and metrics developed here are a refined
-evolution of them.
+\emph{(Q1) What is a minimal epitope?} How many islands and residues does binding need --- one island or
+both? The island analysis (Section~\ref{sec:islands}), the whole-epitope set (Section~\ref{sec:c1set}),
+and the per-island production run that tests it (Section~\ref{sec:perisland}) are aimed here.
+\emph{(Q2) What predicts a successful design?} Of epitope RMSD, scaffold RMSD, PAE, and accessibility,
+which actually track binding? This is what the decomposed metrics and composite scorer
+(Section~\ref{sec:scoring}) are for. The first experimental answer is already in: the DP3 binding data
+(Section~\ref{sec:experimental}) singles out accessibility and epitope RMSD. DP4 is built to sharpen it
+by assaying designs spread across the feature space, so the scorer's weights can be fit rather than
+hand-set (Section~\ref{sec:open}).
+\emph{(Q3) Can it extend to the polyclonal setting?} Tiling a whole antigen with no known antibody, where
+the cylinder surrogate stands in for the antibody-clash filter. These design ideas originate with the
+project's earlier work; the scoring and metrics here are a refined evolution of them.
 
 \subsection{How the rest of this log reads}
-The log runs in two halves. The first establishes the method on the known-antibody (DP3) set and
-ends with the experimental ground truth that anchors it; the second uses that footing to design
-the next library, DP4. Each section motivates the next.
+The log runs in two halves, and each section motivates the next.
 
-\emph{Part I --- method and ground truth.} We reproduce Lawson's workflow and confirm our metrics
-match his (Section~\ref{sec:methods}), tile antigens into assay constructs
-(Section~\ref{sec:tiling}), and compare the RFdiffusion1 and RFdiffusion3 design sets head to head
-(Section~\ref{sec:rfd}). We then rebuild scoring --- the inherited filters bias selection toward
-rigid folds, so we decompose the metrics into a composite that picks the best designs per epitope
-(Section~\ref{sec:scoring}) --- and recover the antibody-accessibility filter for targets with no
-antibody, using the native-aware cylinder surrogate (Section~\ref{sec:noab}). The first
-experimental binding data then closes the loop (Section~\ref{sec:experimental}): it shows which
-metrics actually predict binding, and is what sets the scorer's weights.
+\emph{Part I --- method and ground truth.} We reproduce Lawson's workflow and confirm our metrics match
+his (Section~\ref{sec:methods}), tile antigens into assay constructs (Section~\ref{sec:tiling}), and
+compare the RFdiffusion1 and RFdiffusion3 design sets head to head (Section~\ref{sec:rfd}). We then
+rebuild scoring: the inherited filters bias selection toward rigid folds, so we decompose the metrics
+into a composite that picks the best designs per epitope (Section~\ref{sec:scoring}), and recover the
+antibody-accessibility filter for targets with no antibody through the native-aware cylinder surrogate
+(Section~\ref{sec:noab}). The first experimental binding data closes the loop
+(Section~\ref{sec:experimental}): it shows which metrics actually predict binding, and it is what sets
+the scorer's weights.
 
-\emph{Part II --- designing DP4.} With the method grounded, we turn to the next library. We ask
-whether an antibody needs one epitope island or both (Section~\ref{sec:islands}), build the
-per-island production run that lets the assay answer it (Section~\ref{sec:perisland}), and lay out
-the full set of DP4 components we are shipping (Section~\ref{sec:dp4}). Open questions and next
-steps close the log (Section~\ref{sec:open}).
+\emph{Part II --- designing DP4.} With the method grounded, we turn to the next library. We ask whether
+an antibody needs one epitope island or both (Section~\ref{sec:islands}), build the whole-epitope set at
+the native 103-mer length (Section~\ref{sec:c1set}) and the per-island production run that lets the assay
+answer the islands question (Section~\ref{sec:perisland}), and lay out the full set of DP4 components we
+are shipping (Section~\ref{sec:dp4}). Open questions and next steps close the log
+(Section~\ref{sec:open}).

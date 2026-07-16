@@ -104,77 +104,94 @@ is organized as a $2\times2$ of strict and relaxed thresholds on (epitope, scaff
 flexible/flexible arm as a negative control.
 
 \subsection{Composite scorer and per-epitope selection}\label{sec:composite}
-Decomposing the metrics raises the next question: how to combine them into one ranking and take
-the best designs per epitope. The scorer (\texttt{episcaf\_analysis/score.py}) gives each design
-a weighted sum of per-metric scores,
+Decomposing the metrics raises the next question: how to combine them into one ranking and keep the
+best designs per epitope. The scorer (\texttt{episcaf\_analysis/score.py}) gives each design a weighted
+sum of per-metric activations,
 \begin{equation}\label{eq:score}
 S(d) \;=\; \sum_{m} w_m\,\varphi_m\!\bigl(x_m(d)\bigr),
 \end{equation}
-where each activation $\varphi_m$ maps a raw metric to a higher-is-better score: either a
-\emph{percentile} within the scored population (rank-based, cohort-dependent) or a \emph{sigmoid}
+where each activation $\varphi_m$ maps a raw metric to a higher-is-better score. This is a single-layer
+perceptron with a per-input nonlinearity and hand-set weights: the activations are the nonlinearities,
+the $w_m$ the weights. So ``fitting'' it later (Section~\ref{sec:open}) means learning the $w_m$ and the
+activation dials from data. The dials live in \texttt{episcaf\_analysis/presets.py}.
+
+The activation is where the design lives, and it is what we changed. We started with a \emph{percentile}:
+rank each metric within the scored population, oriented higher-is-better. Percentile is parameter-free,
+but it is scale-blind, and that is the problem. It spreads designs uniformly by rank regardless of the
+metric's real scale, so it over-resolves the dense pile of sub-\SI{1}{\angstrom} epitope-RMSD designs ---
+treating the gap between \SI{0.3}{} and \SI{0.9}{\angstrom}, both excellent, as worth as much as the gap
+between \SI{1}{} and \SI{5}{\angstrom}. That meaningless resolution competes on equal footing with
+accessibility, the one metric the binding data singles out (Section~\ref{sec:whatpredicts}). The scorer
+pays for RMSD it does not need and leaves clashes on the table. That is backwards.
+
+The fix is a \emph{sigmoid} activation,
 \begin{equation}\label{eq:sigmoid}
 \varphi(x) \;=\; \frac{1}{1+\exp\!\bigl(s\,k\,(x-x_0)\bigr)},
 \qquad s=+1\ \text{if lower is better (else } -1),
 \end{equation}
-an absolute, saturating score with a tunable midpoint $x_0$ and steepness $k$. This is exactly a
-single-layer perceptron with hand-set weights --- the activations are the per-metric
-nonlinearities, the $w_m$ are the weights --- so ``fitting'' it later
-(Section~\ref{sec:open}) means learning the $w_m$ (and $x_0,k$) from data. The dials live in
-\texttt{episcaf\_analysis/presets.py}:
+an absolute, saturating score with a midpoint $x_0$ and steepness $k$. Two moves follow. First,
+\emph{saturate the fold-quality metrics}: a steep sigmoid on overall RMSD, epitope RMSD, and epitope PAE
+at their four-filter thresholds (2, 1, 5). Below the threshold the score is nearly flat, so \SI{0.3}{}
+and \SI{0.9}{\angstrom} score the same and the term stops paying for over-optimization. A steep sigmoid
+is a soft gate: as $k\to\infty$ it becomes Lawson's hard filter, but kept finite it never drives a score
+fully to zero, so a target whose only designs are mediocre still ranks its best one. No target is
+dropped --- a hard fold floor empties \num{3} of the \num{87} single-island pools, while the soft gate
+keeps all \num{87}. Second, \emph{keep accessibility broad}: a gentle sigmoid on the clash (midpoint 6,
+where the distribution's mass sits, $k=0.5$) that ranks across the \num{1}--\num{15} band and heavily
+penalizes worse, weighted the most, since it is the metric that tracks binding. The result is the
+\texttt{antibody\_softgate} scorer:
 
 \begin{center}
 \begin{tabular}{lc}
 \toprule
 metric & weight \\
 \midrule
-accessibility      & 0.35 \\
-epitope-chunk RMSD & 0.35 \\
-overall RMSD       & 0.15 \\
-epitope PAE        & 0.15 \\
+accessibility      & 0.45 \\
+epitope-chunk RMSD & 0.25 \\
+overall RMSD       & 0.20 \\
+epitope PAE        & 0.10 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \noindent
-These weights are not arbitrary: they are set from the DP3 binding experiment
-(Section~\ref{sec:experimental}), which finds that accessibility and epitope RMSD are the two
-metrics that actually track binding, so they carry the weight and overall RMSD and PAE are kept
-small. The accessibility term itself depends on the input --- the \emph{real} clash
-\texttt{af3\_n\_clash\_res} when a known antibody is available, the native-aware cylinder surrogate
-(Section~\ref{sec:noab}) when it is not --- at the same weight either way.
+The accessibility term itself depends on the input: the \emph{real} clash \texttt{af3\_n\_clash\_res}
+when a known antibody is available, the native-aware cylinder surrogate (Section~\ref{sec:noab}) when it
+is not --- the same role either way. On the single-island set this scorer drops the median clash of the
+selected designs from 6 to 2 (and on a hard target like \texttt{6cyf} from \num{14.5} to 3) while keeping
+the fold intact and all \num{87} targets represented; on the whole-epitope set it helps mildly and never
+hurts (that arm is generation-limited --- the accessible designs mostly do not exist in the pool to be
+found).
 
-We then \textbf{rank, not gate}: transform each metric within its scope (per antigen for the
-12-mer set, pooled for the mAb set), weight-sum, and keep the top five per group. We deliberately
-apply no hard threshold first --- it would only discard designs the ranking already buries, and
-risks dropping one that is weak on a single axis but excellent overall, which the soft per-metric
-penalties handle more gracefully. (A gate is still available as an optional pre-filter, used in the
-diagnostics of Section~\ref{sec:noab}, just not in picking the designs we ship.) Two choices remain
-open and are carried to Section~\ref{sec:open}: fitting the weights against binding rather than
-hand-setting them, and moving the percentile activation to the population-independent sigmoid.
+We then \textbf{rank, not gate}: transform each metric within its scope (per antigen for the 12-mer set,
+pooled for the mAb set), weight-sum, and keep the top designs per group (top-\num{20} per island or
+epitope for the shipped antibody components). We apply no hard threshold first. It would only discard
+designs the ranking already buries, and it risks dropping one that is weak on a single axis but excellent
+overall --- exactly what the soft per-metric penalties handle gracefully. The midpoints, steepnesses, and
+weights are a prior, not a fit: they encode ``clashes kill binding, sub-\SI{1}{\angstrom} RMSD
+differences do not,'' and they are what DP4's metric-space sampling (Section~\ref{sec:open}) is built to
+replace with a fit against real binding.
 
-\paragraph{Promoting the global-passers.} One refinement keeps the spirit of the four-filter
-without bringing back the gate. We want every design that clears \emph{all four} classical criteria
-(overall RMSD $\le 2$, epitope-chunk RMSD $\le 1$, global mean PAE $<5$, zero clash) to rank above
-every design that does not, while still ordering designs \emph{within} each tier by the composite.
-That is a lexicographic order, and it has a clean activation form: add to $S$ a gain-scaled
-\emph{pass indicator}
+\paragraph{Promoting the global-passers.} One refinement keeps the spirit of the four-filter without
+bringing back the gate. Every design that clears \emph{all four} classical criteria (overall RMSD
+$\le 2$, epitope RMSD $\le 1$, global mean PAE $<5$, zero clash) should rank above every design that does
+not, while the composite still orders designs within each tier. That is a lexicographic order --- a big
+step plus a small tiebreak --- and it has a clean activation form. Add a gain-scaled \emph{pass
+indicator}:
 \begin{equation}\label{eq:passbonus}
 S(d)\;\leftarrow\;S(d)\;+\;A\,P(d),
 \qquad
-P(d)\;=\;\prod_{c}\ \frac{1}{1+\exp\!\bigl(k\,(x_c(d)-t_c)\bigr)},
+P(d)\;=\;\prod_{c}\ \frac{1}{1+\exp\!\bigl(k\,(x_c(d)-t_c)\bigr)}.
 \end{equation}
-the \emph{product} of steep sigmoids at each criterion's threshold $t_c$. The product is a soft
-logical AND: $P\approx 1$ only when every criterion passes, and a single failing factor collapses it
-to $\approx 0$ (a sum would instead rank by \emph{how many} criteria pass, not whether all do).
-Because the weighted composite lies in $[0,1]$, any gain $A>1$ floats the entire passing tier above
-the rest, while $S$ still orders designs within each tier. Both $k$ (gate steepness) and $A$ (tier
-separation) are finite dials --- as they grow the rule becomes the exact lexicographic order, kept
-finite it stays soft, so a near-miss that is otherwise excellent is not discontinuously dropped
-(the same $k$-to-hard-gate limit as the fold sigmoids above). Crucially this \emph{promotes} rather
-than excludes: an epitope with no passer simply ranks on the composite, so no target is ever lost,
-unlike the hard four-filter's \SI{0.5}{\percent} pass rate. The soft indicator is faithful to the
-classical rule --- on the C1 set it flags $725$ designs at $P>0.5$ against $727$ hard four-filter
-passers (both \SI{0.52}{\percent}) --- and, at that rate, it fires for only 15 of the 56 epitopes,
-floating their gold-standard designs to the top and leaving the rest unchanged. It uses the
-four-filter's \emph{own} metrics (the global mean PAE, not the epitope PAE the composite ranks on),
-and is configured as \texttt{pass\_bonus} in \texttt{score.py}.
+$P$ is a soft logical AND: the \emph{product} of steep sigmoids at each threshold $t_c$, $\approx 1$ only
+when every criterion passes, collapsing to $\approx 0$ the moment one fails (a sum would rank by
+\emph{how many} pass, not whether all do). Since the composite lies in $[0,1]$, any gain $A>1$ floats the
+whole passing tier above the rest. Both $k$ and $A$ are finite dials: as they grow the rule becomes
+exact, kept finite it stays soft, so a near-miss that is otherwise excellent is not discontinuously
+dropped --- the same $k$-to-gate limit as the fold sigmoids. And it \emph{promotes} rather than excludes:
+an epitope with no passer just ranks on the composite, so no target is lost. The soft indicator is
+faithful to the classical rule --- on the C1 set it flags \num{725} designs at $P>0.5$ against \num{727}
+hard four-filter passers (both \SI{0.52}{\percent}) --- and it fires for only \num{15} of the \num{56}
+epitopes, floating their gold-standard designs to the top and leaving the rest unchanged. It uses the
+four-filter's \emph{own} metrics (the global mean PAE, not the epitope PAE the composite ranks on), and
+is configured as \texttt{pass\_bonus} in \texttt{score.py}.

@@ -8,30 +8,27 @@ also shorter on average, to separate the ``contiguous-12 is easier'' confound fr
 scaffolding-difficulty effect. The per-epitope island metadata is in \texttt{dp2.parquet}
 (\texttt{epitope\_chunks}, \texttt{contig\_string}).
 
-\item \textbf{Move to a sigmoid transform (planned).} The composite currently maps each
-metric to a percentile within its population, which is non-differentiable and
-population-dependent, so it cannot be fit and a score does not transfer from one set to
-another. A sigmoid (fixed midpoint and slope $k$ per metric) gives an absolute, saturating,
-differentiable score, which both lets the weights be learned and lets a DP3-trained score
-transfer to DP4. The scorer already supports it (\texttt{transform=sigmoid} in
-\texttt{presets.py}); midpoints can be seeded from the DP3 separations (e.g.\ a cylinder
-midpoint near 15, between the clash-free and clashing medians). This is the prerequisite for
-fitting; the percentile version stays the default until then.
+\item \textbf{Fit the soft-gate dials once the label has breadth.} The move off percentile is done:
+the scorer is now the soft-gate (Section~\ref{sec:composite}), a sigmoid activation per metric, which
+is absolute, saturating, and differentiable --- so it can be fit and a DP3-trained score transfers to
+DP4. What remains is to \emph{choose the dials by data rather than by prior}. The midpoints sit at the
+four-filter thresholds and the steepnesses $k$ and weights are set by hand; the first experimental label
+has arrived (the DP3 binding data, Section~\ref{sec:experimental}) and scaffolded designs do enrich over
+the no-antibody baseline, so the premise holds. But that set cannot yet fix them: every assayed design
+already passed the four filters (no failures to contrast), its pooled metric--binding correlation is a
+between-antibody artifact, and only two of the eight antibodies are sampled deeply. The requirement for
+DP4 is specific: assay designs spread across the metric space, \emph{including ones the current filters
+reject}, so binding can be regressed on the metrics with real variance and across many epitopes. That is
+what the metric-space sampling arm (C5) is built to provide. Accessibility already earns its heavy weight
+twice over --- on DP3 the cylinder predicts the true antibody clash at AUC $0.93$
+(Section~\ref{sec:noab}), and it is the single best predictor of \emph{experimental} binding, the only
+metric whose correlation survives the between-antibody confound (Section~\ref{sec:whatpredicts}).
 
-\item \textbf{Fit the weights once the label has breadth.} The composite is a single-layer
-perceptron with hand-set weights (feed-forward, no backprop), and the natural next step is to
-learn them. The first experimental label has now arrived (the DP3 binding data,
-Section~\ref{sec:experimental}): scaffolded designs do enrich over the no-antibody baseline, so
-the premise holds. But that set cannot yet fix the weights --- every assayed design already
-passed the four filters (no failures to contrast), its pooled metric--binding correlation is a
-between-antibody artifact, and only two of the eight antibodies are sampled deeply. We therefore
-still defer the fit, and the requirement for DP4 is specific: assay designs spread across the
-metric space, \emph{including ones the current filters reject}, so that binding can be regressed
-on the metrics with real variance and across many epitopes. The cylinder weight in particular is
-already justified by data twice over: on DP3 it predicts the true antibody clash at AUC $0.93$
-(Section~\ref{sec:noab}), and it is the single best predictor of \emph{experimental} binding,
-the only metric whose correlation survives the between-antibody confound
-(Section~\ref{sec:whatpredicts}). So it earns real weight even before a global fit.
+\item \textbf{Re-select the shipped deliverables under the soft-gate scorer.} The library counts and
+components here are final, but the ranked design lists in \texttt{results/} were cut under the interim
+percentile scorer, before soft-gate was adopted. Re-run selection (\texttt{stage06\_select} $\to$
+\texttt{stage06\_assemble}) so the shipped designs are the ones soft-gate actually chooses. This changes
+which designs ship, not how many; it is held until the scorer change is signed off.
 
 \item \textbf{Confirm the canonical DP3 metrics builder.} Determine whether
 \texttt{compute\_metrics\_mpnn.py} (currently archived) is the live RFD3+MPNN metrics
