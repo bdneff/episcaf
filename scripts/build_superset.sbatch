@@ -28,9 +28,13 @@ set -euo pipefail
 WS=${WS:-/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff}
 REPO=${REPO:-/scratch/bneff/episcaf}
 
-M1=${1:-${WS}/datasets/metrics_whole_epitope_103.csv}
+# All three verified 2026-07-16 to be byte-identical (md5) to the local copies the selection ran on:
+#   C1  metrics_whole_epitope.csv     md5 dea529a2..  140,716 designs  (local name adds a _103 suffix)
+#   C3  metrics_12mer.csv             md5 e199faf6..   82,712 designs
+# so nothing needs staging -- the job reads all three in place. NOTE C1/C2 sit on EPHEMERAL /scratch.
+M1=${1:-${REPO}/runs/whole_epitope_rfd3/05_analysis/metrics_whole_epitope.csv}
 M2=${2:-${REPO}/runs/dual_island_rfd3/05_analysis/metrics_dual_island.parquet}
-M3=${3:-${WS}/datasets/metrics_12mer.csv}
+M3=${3:-${WS}/run_12mer_scaffolding/06_score/metrics_12mer.csv}
 OUT=${4:-${WS}/dp4_superset.csv}
 LIB=${LIB:-${REPO}/data/libraries/dp4_library.csv}
 
