@@ -4,11 +4,30 @@ Reference for the DP4 PepSeq library: what each component is, how designs were s
 each file lives. Manuscript counterpart: `manuscript/sections/dp4_library.tex` (`sec:dp4`). Related:
 `docs/CASE_ENCODING.md`, `docs/CYLINDER_PARAMS.md`.
 
-Status (2026-07-14): assembled. The seven components (C1–C6 plus the 8VDL arm) are selected, built,
-case-encoded, and concatenated into `data/libraries/dp4_library.csv` — 15,324 constructs, each a
-103-mer with a unique `library_member` and `design_ID`. The shipping depth is top-20 per group for
-C1/C2 and top-10 per window for C3; C4/C5/C6 and 8VDL are fixed size. Oligo encoding is the only
-remaining step (see Pending).
+Status (2026-07-16): **built, encoded, and synthesis-ready.** The seven components (C1–C6 plus the 8VDL
+arm) are selected, built, case-encoded, and concatenated into `data/libraries/dp4_library.csv` — 15,324
+constructs, each a 103-mer with a unique `library_member` and `design_ID`. The shipping depth is top-20
+per group for C1/C2 and top-10 per window for C3; C4/C5/C6 and 8VDL are fixed size. Selection ran under
+the soft-gate scorer (`antibody_softgate`). The library has since been oligo-encoded and gated into
+`data/libraries/dp4_order_file.csv` — 15,324 oligos, all verified — which is the file that goes to Twist.
+
+## Paths used in this doc
+
+Three shell variables appear throughout. Define them before running anything here:
+
+```bash
+# On the cluster (Gemini):
+export REPO=/scratch/bneff/episcaf                                       # the git checkout (DISPOSABLE
+                                                                         # -- it is a clone; re-clone it)
+export WS=/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff         # the DURABLE workspace
+
+# Locally (laptop): $D is the parent of the repo, holding the non-git sibling data dirs
+export D=/Users/bneff/Desktop/projects/episcaf                           # has known_antigen/, 12mer_tiling/
+```
+
+The rule that matters: **`/scratch` is ephemeral (swept on ~30 days); `/tgen_labs` is persistent.**
+Anything long-lived belongs under `$WS`. Never `rsync --delete` toward `/tgen_labs`, and never
+`git init` inside a data directory. Full map: memory `filesystem-map`.
 
 ## Output files
 
@@ -326,8 +345,9 @@ C5/C6 on the new pool. (8VDL is run separately; see its section above.)
 ## Reproduce (exact commands)
 
 Every file is regenerable by a named script, and the reported counts and coverage numbers are printed by
-these scripts, not computed by hand. Metric CSVs live in the local sibling data dirs
-(`$D = /Users/bneff/Desktop/projects/episcaf`, see `filesystem-map`); C2 and case-encoding run on Gemini.
+these scripts, not computed by hand. `$D`, `$REPO`, and `$WS` are defined under **Paths used in this doc**
+above — export them first. Metric CSVs live in the local sibling data dirs under `$D`; C2 and
+case-encoding run on Gemini.
 
 ```bash
 # C1 redo at 103 (local: build the ledger; Gemini: run RFD3->MPNN->AF3)

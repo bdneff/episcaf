@@ -21,13 +21,18 @@ and handed off to the LadnerLab oligo encoder (`episcaf_pipeline/oligo_encoding/
 soft-gate scorer (`antibody_softgate`, manuscript `sec:composite`), encoded to DNA, and gated into
 `data/libraries/dp4_order_file.csv` — 15,324 oligos, each 349 nt with the 20-mer adapters, every core
 verified to translate back to exactly its own peptide. That file is what goes to Twist. An all-designs
-superset (`$WS/dp4_superset.csv`, 334,750 rows) holds every candidate design, not just the ones that
-shipped, for looking at the distributions the library was drawn from. Full reference:
-`docs/DP4_LIBRARY.md`; step order: `docs/PIPELINE.md`.
+superset (`dp4_superset.csv`, 334,750 rows, on the cluster workspace — see the note below) holds every
+candidate design, not just the ones that shipped, for looking at the distributions the library was drawn
+from. Full reference: `docs/DP4_LIBRARY.md`; step order: `docs/PIPELINE.md`.
 
 > **Code lives in git; data and runs live on `/tgen_labs`.** Nothing under `runs/`,
 > `run_12mer_scaffolding/`, or `datasets/` is committed (see `.gitignore`). The code
 > finds the data through `configs/paths.py` — edit that one file per environment.
+>
+> `$WS` throughout the docs is the durable cluster workspace,
+> `/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff`; `$REPO` is the cluster checkout,
+> `/scratch/bneff/episcaf`. **`/scratch` is ephemeral** (swept on ~30 days) — the checkout there is
+> disposable, but anything long-lived must be copied to `$WS`.
 
 ## Layout
 

@@ -5,6 +5,11 @@ DNA oligo. Each step names the canonical tool; where several tools exist for one
 layouts), the alternatives are noted. Data locations live in `configs/paths.py`; the manuscript
 counterpart is `sec:methods`.
 
+**Paths.** Cluster steps assume `REPO=/scratch/bneff/episcaf` (the git checkout — disposable, it is a
+clone) and `WS=/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff` (the durable workspace).
+`/scratch` is ephemeral and swept on ~30 days; anything long-lived belongs under `$WS`. Full map:
+memory `filesystem-map`.
+
 **A note on the numbering.** Three numbering schemes coexist for historical reasons: the `stage0x`
 script-name prefixes (`scripts/stage01…stage07`), the `episcaf_pipeline/stages/` package
 (`stage01,02,04,05`), and the human 0–9 steps in `README.md`. They do **not** line up one-to-one
