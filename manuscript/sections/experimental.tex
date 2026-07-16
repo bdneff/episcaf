@@ -171,8 +171,9 @@ the accessibility surrogate --- the metric we most need for the no-antibody desi
 the only accessibility signal available --- is the one DP3 binding most supports.
 
 \textbf{This is what sets the scorer's weights} (Section~\ref{sec:composite}): accessibility and
-epitope RMSD carry the weight because they are the two metrics that track binding, and overall RMSD
-and PAE are kept small because they do not. What DP3 cannot yet do is \emph{fit} the full composite,
+epitope RMSD carry the ranking weight because they are the two metrics that track binding, while
+overall RMSD and PAE weigh less and serve mainly to gate fold quality rather than to rank. What DP3
+cannot yet do is \emph{fit} the full composite,
 because the data has no failing designs and only two antibodies are sampled deeply --- so the
 weights stay a hand-set prior, not a fit. Closing that gap is the explicit purpose of the DP4
 metric-space sampling (Section~\ref{sec:open}): deliberately assay designs spread across the metric
