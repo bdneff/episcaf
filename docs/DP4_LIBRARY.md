@@ -272,17 +272,17 @@ python scripts/build_whole_epitope_designs.py --drop-targets 2h32,4xwo,7a3t \
 bash scripts/run_whole_epitope_rfd3.sh             # Gemini: init->stage01->stage02 + RFD3 sbatch
 bash scripts/run_whole_epitope_mpnn_af3.sh runs/whole_epitope_rfd3   # Gemini: after RFD3 done
 
-# C1 selection (local; on the 103 metrics)
-python scripts/stage06_select.py --preset antibody \
-  --metrics-csv $D/known_antigen/analysis/data/metrics_native_cyl_full.csv \
+# C1 selection (on the native-103 metrics; --preset antibody_softgate is the adopted scorer)
+python scripts/stage06_select.py --preset antibody_softgate \
+  --metrics-csv $D/known_antigen/analysis/data/metrics_whole_epitope_103.csv \
   --group id --topk 20 --out results/dp4_C1_whole_epitope_ranked.csv
 
-# C2 (Gemini, at the dual-island run's metrics)
-python scripts/stage06_select.py --preset antibody \
+# C2 (Gemini, at the dual-island run's metrics; soft-gate is where it matters -- clash 6->2, 6cyf 14.5->3)
+python scripts/stage06_select.py --preset antibody_softgate \
   --metrics-csv runs/dual_island_rfd3/05_analysis/metrics_dual_island.parquet \
   --group id,island_index --topk 20 --out results/dp4_C2_single_island_ranked.csv
 
-# C3 (local)
+# C3 (local; polyclonal/no-antibody -> twelvemer preset, NOT soft-gate; cylinder accessibility)
 python scripts/stage06_select.py --preset twelvemer \
   --metrics-csv $D/12mer_tiling/analysis/data/metrics_12mer.csv \
   --group antigen,id --topk 20 --out results/dp4_C3_12mer_ranked.csv
@@ -290,9 +290,9 @@ python scripts/stage06_select.py --preset twelvemer \
 # C4 (local; defaults -> data/libraries/dp4_tiled30mers_fasta.csv)
 python -m episcaf_pipeline.build_dp4_tiled30mers_fasta
 
-# C5 (local; deterministic FPS)
+# C5 (local; deterministic FPS -- scorer-independent, samples the metric space of the 103 pool)
 python scripts/stage06_sample_c5.py \
-  --metrics-csv $D/known_antigen/analysis/data/metrics_native_cyl_full.csv \
+  --metrics-csv $D/known_antigen/analysis/data/metrics_whole_epitope_103.csv \
   --total 3000 --out results/dp4_C5_titration.csv
 
 # Case-encode C1 + C5 (Gemini) -> results/dp4_C{1,5}_scaffoldEPITOPE.csv
