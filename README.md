@@ -17,6 +17,14 @@ The next library, **DP4**, is assembled from seven components (C1–C6 plus the 
 PfEMP1 arm; manuscript `sec:dp4`) into `data/libraries/dp4_library.csv` (15,324 constructs)
 and handed off to the LadnerLab oligo encoder (`episcaf_pipeline/oligo_encoding/`).
 
+**DP4 status (2026-07-16): built, encoded, and synthesis-ready.** The library was selected under the
+soft-gate scorer (`antibody_softgate`, manuscript `sec:composite`), encoded to DNA, and gated into
+`data/libraries/dp4_order_file.csv` — 15,324 oligos, each 349 nt with the 20-mer adapters, every core
+verified to translate back to exactly its own peptide. That file is what goes to Twist. An all-designs
+superset (`$WS/dp4_superset.csv`, 334,750 rows) holds every candidate design, not just the ones that
+shipped, for looking at the distributions the library was drawn from. Full reference:
+`docs/DP4_LIBRARY.md`; step order: `docs/PIPELINE.md`.
+
 > **Code lives in git; data and runs live on `/tgen_labs`.** Nothing under `runs/`,
 > `run_12mer_scaffolding/`, or `datasets/` is committed (see `.gitignore`). The code
 > finds the data through `configs/paths.py` — edit that one file per environment.
@@ -108,10 +116,18 @@ python scripts/stage07_named_peptides.py \
     --library data/libraries/dp4_library.csv --out data/libraries/dp4_named_peptides.csv
 
 # 9. ENCODE  [cluster]  — peptide → DNA oligo (LadnerLab tool, DP3 codon weights) → order file
+#    Run both steps in the SAME working dir; step 1 is the long pole (hours). The adapters are
+#    PINNED to the 20-mers inside encode_step2_select.sbatch: the tool's own --adapter default is
+#    the 19-mer form, which silently yields 347-nt oligos. Never rely on that default.
 sbatch episcaf_pipeline/oligo_encoding/encode_step1_generate.sbatch   # candidates
 sbatch episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch     # NN-pick the best
 python scripts/stage07_order_file.py --best-encodings <rundir>/DP4_best_encodings \
     --peptides data/libraries/dp4_named_peptides.csv --out data/libraries/dp4_order_file.csv
+#    -> 15,324 oligos, all verified (349 nt, 20-mer adapters, every core translates back). To Twist.
+
+# 10. SUPERSET  [cluster, analysis]  — every candidate design (334,750), not just the 15,324 that
+#     shipped, for looking at the distributions. Must run BEFORE the /scratch run dirs are deleted.
+sbatch scripts/build_superset.sbatch                          # -> $WS/dp4_superset.csv
 ```
 
 The full authoritative step order (with the `stage0x` script names) is in `docs/PIPELINE.md`.

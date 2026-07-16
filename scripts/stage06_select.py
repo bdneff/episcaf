@@ -11,16 +11,21 @@ library assembly (filter rank_in_group <= n). Pass --topk to also write a pre-cu
 Grouping supports MULTIPLE columns (score.py groups on one), which C2 needs: the single-island
 deliverable is top-n per (id, island_index), not per id.
 
+`antibody_softgate` is the ADOPTED scorer for the known-antibody arms (C1/C2) and is what the shipped
+library was selected under. The bare `antibody` preset is the superseded percentile scorer -- kept for
+comparison, not for shipping. C3/C5 have no antibody and use `twelvemer`.
+
 Usage:
-  # C1 whole-epitope known-Ab (local): top-n per epitope
-  python scripts/stage06_select.py --preset antibody \
-      --metrics-csv known_antigen/analysis/data/metrics_native_cyl_full.csv \
-      --group id --out results/dp4_C1_whole_epitope_ranked.csv
+  # C1 whole-epitope known-Ab (local): top-n per epitope.
+  # NOTE the native-103 metrics (140,716 designs) -- NOT metrics_native_cyl_full.csv, the older run.
+  python scripts/stage06_select.py --preset antibody_softgate \
+      --metrics-csv known_antigen/analysis/data/metrics_whole_epitope_103.csv \
+      --group id --topk 20 --out results/dp4_C1_whole_epitope_ranked.csv
 
   # C2 single-island known-Ab (RUN ON GEMINI against the cluster metrics): top-n per island
-  python scripts/stage06_select.py --preset antibody \
+  python scripts/stage06_select.py --preset antibody_softgate \
       --metrics-csv <run>/05_analysis/metrics_dual_island.parquet \
-      --group id,island_index --out results/dp4_C2_single_island_ranked.csv
+      --group id,island_index --topk 20 --out results/dp4_C2_single_island_ranked.csv
 
   # C3 scaffolded 12mer tiles (local): top-n per epitope within antigen
   python scripts/stage06_select.py --preset twelvemer \
