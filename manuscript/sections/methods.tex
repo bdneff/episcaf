@@ -1,18 +1,20 @@
 \section{The pipeline, and reproducing Lawson's workflow}\label{sec:methods}
 
 \subsection{Pipeline}
-Each contig runs through three stages. RFdiffusion3 generates \num{8} scaffold backbones with the
-epitope segment fixed at its contig position (one GPU task per contig, \texttt{n\_batches=1}). Each
-backbone is stripped to its $C\alpha$/backbone trace and re-sequenced by ProteinMPNN, which is told to
-hold the epitope residues \emph{fixed} --- it designs only the scaffold --- and draws \num{8} sequences
-per backbone at temperature \num{0.1}. The epitope's fixed positions are read back from the contig,
-since an island sits at residues $N{+}1\ldots N{+}\ell$ of an $N$-flank contig. AlphaFold3 then predicts
-each sequence single-sequence (\texttt{--norun\_data\_pipeline}, one diffusion sample, seed~1), giving
-the $\num{8}\times\num{8}=\num{64}$ designs per contig that the four filters score against the designed
-structure. A few backbones fail to yield sequences in ProteinMPNN for reasons we have not yet diagnosed,
-so the realized count falls marginally short of the nominal $\num{5568}\,V$ (for the $V=\num{20}$ run,
-\num{111322} of \num{111360}). Generation code lives in \texttt{episcaf\_pipeline/} and
-\texttt{scripts/}; metrics, scoring, and visualization in \texttt{episcaf\_analysis/}.
+Each contig is carried through three stages. RFdiffusion3 generates \num{8} scaffold
+backbones holding the epitope segment fixed at its contig position (one GPU task per contig,
+\texttt{n\_batches=1}). Each backbone is stripped to its $C\alpha$/backbone trace and re-sequenced
+by ProteinMPNN, which is told to hold the epitope residues \emph{fixed} --- so it designs only
+the scaffold --- and draws \num{8} sequences per backbone (temperature \num{0.1}); the epitope's
+fixed positions are read back from the contig, since an island sits at residues $N{+}1\ldots
+N{+}\ell$ of an $N$-flank contig. AlphaFold3 then predicts each sequence single-sequence
+(\texttt{--norun\_data\_pipeline}, one diffusion sample, seed~1), giving the
+$\num{8}\times\num{8}=\num{64}$ designs per contig that the four filters score against the
+designed structure. A small number of backbones fail to yield sequences in ProteinMPNN for
+reasons we have not yet diagnosed, so the realized design count falls marginally short of the
+nominal $\num{5568}\,V$ (for the $V=\num{20}$ run, \num{111322} of \num{111360}).
+Generation code lives in \texttt{episcaf\_pipeline/} and \texttt{scripts/},
+and the metrics, scoring, and visualization code in \texttt{episcaf\_analysis/}.
 
 \paragraph{Benchmarking.} Rough per-step throughput, to size cluster wall-time requests:
 RFdiffusion3 produces a contig's \num{8} backbones in under \SI{10}{\minute} on one A100;
@@ -23,9 +25,11 @@ on our V100 nodes~[verify]. A run's wall-time then follows by multiplication ---
 \SI{8}{\hour} to leave margin.
 
 \subsection{Reproducing Lawson's baseline}\label{sec:repro}
-Before trusting any new number, verify the metrics against ground truth. \texttt{compute\_metrics.py
---validate} reads \texttt{dp2.parquet} (Lawson's stored per-design values), recomputes
-\texttt{overall\_rmsd} and \texttt{epitope\_chunk\_rmsd} from his ProteinMPNN PDBs and AlphaFold3 CIFs,
-and diffs them against the stored values. Agreement here is the precondition for everything downstream:
-it confirms our four-filter implementation (Section~\ref{sec:fourfilter}) matches the workflow we are
-extending, so a later difference reflects the design protocol, not a scoring bug.
+Before trusting any new number we re-implement Lawson's metrics and check them against his
+ground truth. \texttt{compute\_metrics.py --validate} reads \texttt{dp2.parquet} (Lawson's
+stored per-design values), recomputes \texttt{overall\_rmsd} and
+\texttt{epitope\_chunk\_rmsd} from his ProteinMPNN PDBs and AlphaFold3 CIFs, and diffs them
+against the stored values. Agreement on this diff is the precondition for everything
+downstream: it confirms that our implementation of the four filters
+(Section~\ref{sec:fourfilter}) matches the workflow we are extending, so that later
+differences reflect the design protocol rather than a scoring bug.

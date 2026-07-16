@@ -56,13 +56,14 @@ tiles where they overlap (e.g.\ 7OX3 \texttt{design\_ID} 1 and 7 match exactly) 
 \num{2034} 30-mers from the 59 antigens (56 mAb + 3 tiled).
 
 \subsection{Why the design count is not (tiles $\times$ top-$k$)}
-The natural expectation is that keeping the top $k$ designs per epitope gives $k$ times the number of
-tiles. It does not, and the gap is informative. Each tile is one epitope that RFD3 scaffolds into many
-designs (seeds $\times$ ProteinMPNN sequences), which are then AlphaFold3-validated and gated; we keep
-at most $k$ per epitope, so the selected total is $\sum_{\text{epitopes}} \min(k, n_{\text{gated}})$.
-The per-epitope yield is not the bottleneck: every surviving epitope has well over $k$ designs (median
-$\sim$190 scored). The shortfall is whole epitopes dropping out --- a tile whose residues are unresolved
-in the crystal cannot be aligned to the native antigen, so it is discarded at scoring
+A natural expectation is that taking the top $k$ designs per epitope gives $k$ times the
+number of tiles. It does not, and the gap is informative. Each tile is one epitope that RFD3
+scaffolds into many designs (seeds $\times$ ProteinMPNN sequences), which are then
+AlphaFold3-validated and gated; we keep at most $k$ per epitope, so the selected total is
+$\sum_{\text{epitopes}} \min(k, n_{\text{gated}})$. In practice the per-epitope yield is not
+the bottleneck: every epitope that survives has well over $k$ designs (median $\sim$190
+scored). The shortfall is whole epitopes that drop out, because a tile whose residues are
+unresolved in the crystal cannot be aligned to the native antigen and is discarded at scoring
 (\texttt{crystal\_epi\_incomplete}). Table~\ref{tab:tilecount} shows this for top-5 selection.
 
 \begin{table}[h]\centering
