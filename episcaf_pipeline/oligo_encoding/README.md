@@ -116,48 +116,48 @@ The scripts carry the DP3 parameters as defaults; override any by exporting it f
 `TOOL_DIR=...`, `MODEL=...`, `GC=...`, `CONDA_ENV=...`). Step 1 writes `out_seqs` + `output_ratio`;
 step 2 writes `DP4_best_encodings`. The whole thing runs on Gemini in the `pepseq_encoding` env.
 
-## The order file, and the adapter length (RESOLVED: build with 19)
+## The order file, and the adapter length (RESOLVED: 20-mers, 349 nt)
 
 There is **no missing script**. Step 2 already flanks each oligo with the Twist adapters and emits it
 as the column `Nucleotide Encoding w/ Adapters`, so the synthesis order file is a two-column slice of
 `*_best_encodings` — `Seq ID` and that column, renamed to `nucleotide_encoding_with_twist_adapters`.
 Emit it with `scripts/stage07_order_file.py`.
 
-**Use the 19-mer adapters (347-nt oligos).** `--adapter` is a *defaulted* flag, and the two encoder
+**Use the 20-mer adapters (349-nt oligos).** `--adapter` is a *defaulted* flag, and the two encoder
 installs ship **different defaults**:
 
 | install | 5′ adapter | 3′ adapter | oligo (103-mer) |
 |---|---|---|---|
-| **standard / GitHub master `oligo_encoding.py`** (**use this**) | `CCTATACTTCCAAGGCGCA` (19) | `GGTGACTCTCTGTCTTGGC` (19) | **347 nt** |
-| ekelley's install, as it happened to run for DP3 | `ACCTATACTTCCAAGGCGCA` (20) | `GGTGACTCTCTGTCTTGGCT` (20) | 349 nt |
+| DP4 spec — the same 20-mers DP3 shipped (**use this**) | `ACCTATACTTCCAAGGCGCA` (20) | `GGTGACTCTCTGTCTTGGCT` (20) | **349 nt** |
+| GitHub master `oligo_encoding.py` default | `CCTATACTTCCAAGGCGCA` (19) | `GGTGACTCTCTGTCTTGGC` (19) | 347 nt |
 
-Erin confirmed (2026-07-14): *"It is usually 19. It would matter, so I'll try to figure out what the
-deal was. So let's build with 19."* So **DP4 uses the 19-mers**, and `encode_step2_select.sbatch`
-now passes `--adapter` **explicitly** (`ADAPTER=`, defaulting to the 19-mers) rather than inheriting a
-tool default. The 20-mers the DP3 order file carried appear to be a DP3-specific anomaly Erin is still
-tracking down, not the intended length — so we do **not** copy them forward.
+John confirmed (2026-07-16): DP4 uses the **20-mers**, the same ones the DP3 order file carried, whether
+or not the length caused an issue for DP3 — 20 is the spec. A bonus of 349 nt: it sits exactly one base
+under Twist's next price tier at 350. So `encode_step2_select.sbatch` passes `--adapter` **explicitly**
+(`ADAPTER=`, defaulting to the 20-mers) rather than inheriting the master 19-mer default.
+(Erin's earlier interim call, 2026-07-14, was "build with 19"; John's decision supersedes it.)
 
-**How this came up.** Neither ekelley's DP3 script nor our first sbatch passed `--adapter`, so both
-silently took whatever their local copy defaulted to. `oligo_encoding.py` *is* `encoding_with_nn.py`
-renamed upstream (`9d3ef58`, 2025-03-27) — same script, not a rewrite — and upstream has carried the
-19-mers since at least 2022 (`e9c7de2`). So a fresh clone of master gives 19; ekelley's install, via a
-local unpushed edit, gave 20 for DP3. The gap was invisible: no error, nothing in the log, just a
-2-nt-longer oligo. Note Erin's *"it would matter"* — do not treat the length as free; the earlier
-guess here that the extra bases were probably inert (they sit outside the primer footprint) was **not**
-confirmed, and she believes length is load-bearing. Pin it; don't inherit it.
+**Why the explicit pin matters.** Neither ekelley's DP3 script nor our first sbatch passed `--adapter`,
+so both silently took whatever their local copy defaulted to. `oligo_encoding.py` *is*
+`encoding_with_nn.py` renamed upstream (`9d3ef58`, 2025-03-27) — same script, not a rewrite — and
+upstream has carried the 19-mers since at least 2022 (`e9c7de2`). So a fresh clone of master gives 19;
+ekelley's install, via a local unpushed edit, gave the 20 that DP3 actually shipped. The gap is
+invisible: no error, nothing in the log, just a 2-nt-shorter oligo. Since we build the encoder from
+master, we must pin the 20-mers explicitly or silently ship 347.
 
-**Reference-file provenance.** The local `examples/DP3_order_file.csv` (the 20-mer file, used only to
-build and self-test the checker) is byte-for-byte
+**Reference-file provenance.** The local `examples/DP3_order_file.csv` (used to build and self-test the
+checker) is byte-for-byte
 `/tgen_labs/Immunology/ekelley/DP3_PepSeq_Library_Design/new_codon_weights/DP3_order_file.csv`
-(md5 `bb537db52035593264b6ac2da3644d65`, verified 2026-07-14) — the updated-codon-table run DP4 reuses.
+(md5 `bb537db52035593264b6ac2da3644d65`, verified 2026-07-14) — the updated-codon-table run DP4 reuses,
+and it carries these 20-mers.
 
 **What the adapters are.** The adapter is a primer *binding site*, not a primer. It is the constant
 landing pad that lets one universal primer pair amplify the whole pool, whatever each member carries in
-the middle; the primer is a separate ordered reagent, the adapter's **reverse complement**. Confirmed
-against the 10x/GEM primers Heather Mead circulated (Slack, 2026-07-10):
-`rc(GCCAAGACAGAGAGTCACC) = GGTGACTCTCTGTCTTGGC`, exactly the 19-mer 3′ adapter. (An earlier note here
-speculated the 3′ adapter was *translated* as a `GDSLSW` linker — that was wrong; its function is
-priming.)
+the middle; the primer is a separate ordered reagent, the adapter's **reverse complement**. The primer
+footprint is the inner 19 nt — confirmed against the 10x/GEM primers Heather Mead circulated (Slack,
+2026-07-10): `rc(GCCAAGACAGAGAGTCACC) = GGTGACTCTCTGTCTTGGC`, exactly the 19-mer form — and the DP4
+20-mer carries one extra base outside that footprint at each end. (An earlier note here speculated the
+3′ adapter was *translated* as a `GDSLSW` linker; that was wrong, its function is priming.)
 
 ### Emitting and checking the order file
 `scripts/stage07_order_file.py` writes the order file and checks **every** row: adapters present and
@@ -171,19 +171,19 @@ python scripts/stage07_order_file.py \
   --out data/libraries/dp4_order_file.csv
 ```
 
-The checker defaults to the standard **19-mer** adapters (what DP4 ships). The DP3 example file carries
-the 20-mers, so it is verified by passing them explicitly — a self-test that the checker both accepts
-the real DP3 order (all 6,000, cores translating) and, on the 19-mer default, correctly *rejects* it:
+The checker defaults to the **20-mer** adapters (what DP4 ships), so the DP3 example file — which
+carries those same 20-mers — passes on the defaults (all 6,000 oligos, every core translating). Passing
+the 19-mer form explicitly makes it correctly *reject* the file, a self-test that the length check works:
 
 ```bash
-# passes: DP3 file checked against its own 20-mers
-python scripts/stage07_order_file.py --verify \
-  --order-file episcaf_pipeline/oligo_encoding/examples/DP3_order_file.csv \
-  --peptides episcaf_pipeline/oligo_encoding/examples/DP3_named_peptides.csv \
-  --prefix ACCTATACTTCCAAGGCGCA --suffix GGTGACTCTCTGTCTTGGCT
-
-# fails (as it should): DP3 file against the 19-mer default
+# passes: DP3 file on the 20-mer default
 python scripts/stage07_order_file.py --verify \
   --order-file episcaf_pipeline/oligo_encoding/examples/DP3_order_file.csv \
   --peptides episcaf_pipeline/oligo_encoding/examples/DP3_named_peptides.csv
+
+# fails (as it should): same file forced against the 19-mers
+python scripts/stage07_order_file.py --verify \
+  --order-file episcaf_pipeline/oligo_encoding/examples/DP3_order_file.csv \
+  --peptides episcaf_pipeline/oligo_encoding/examples/DP3_named_peptides.csv \
+  --prefix CCTATACTTCCAAGGCGCA --suffix GGTGACTCTCTGTCTTGGC
 ```

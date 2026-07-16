@@ -38,12 +38,12 @@ SUBSAMPLE=${SUBSAMPLE:-300}           # candidates subsampled before scoring   (
 NN=${NN:-1}                           # encodings kept per peptide             (DP3: 1 = single best)
 
 # Twist adapters, PINNED EXPLICITLY -- do not rely on the tool's default (the two encoder installs
-# ship different defaults, and the difference is silent). These are the 19-mers Erin confirmed as the
-# standard (2026-07-14): "It is usually 19. It would matter, so ... lets build with 19." The DP3 order
-# file we decoded carried 20-mers (a leading A + trailing T more, 349 nt); that appears to be a DP3
-# anomaly Erin is still tracking down, NOT the intended length. Build with 19 -> 347-nt oligos.
-# (To revert to the DP3 20-mers if she finds a reason: ACCTATACTTCCAAGGCGCA|GGTGACTCTCTGTCTTGGCT.)
-ADAPTER=${ADAPTER:-CCTATACTTCCAAGGCGCA|GGTGACTCTCTGTCTTGGC}
+# ship different defaults, and the difference is silent). Use the 20-mers, which John CONFIRMED
+# (2026-07-16) are the intended DP4 adapters -- the same ones the DP3 order file carried. Whether or
+# not the length caused an issue for DP3, 20-mers is the spec. Bonus: the resulting 349-nt oligo sits
+# exactly one base under Twist's next price tier at 350. (Master's default is the 19-mer / 347-nt
+# form -- do NOT inherit it.)
+ADAPTER=${ADAPTER:-ACCTATACTTCCAAGGCGCA|GGTGACTCTCTGTCTTGGCT}
 
 # NN selector script name differs by install: ekelley's is `encoding_with_nn.py`; the GitHub master
 # ships `oligo_encoding.py`. Auto-detect, or set SEL to override. (If master's flags differ from the
