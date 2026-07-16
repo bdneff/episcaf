@@ -20,11 +20,14 @@ from pathlib import Path
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 plt.rcParams.update({"font.size": 14, "axes.titlesize": 16, "axes.labelsize": 15, "xtick.labelsize": 12, "ytick.labelsize": 12, "legend.fontsize": 12, "figure.titlesize": 18})  # paper-legible fonts
 
-LOCAL = Path("/Users/bneff/Desktop/projects/episcaf")
-DP3   = LOCAL/"known_antigen/analysis/data/metrics_native_cyl_full.csv"  # full table + native-aware carve (dp3_native_cylinder.sbatch)
-DP4   = LOCAL/"12mer_tiling/analysis/data/metrics_12mer.csv"
-DP4TOP= LOCAL/"12mer_tiling/analysis/data/composite_12mer_top5_allscored.csv"
-OUT   = Path(__file__).resolve().parents[2]/"manuscript/figures/passes_overlay.png"
+import sys
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from configs.paths import LOCAL_METRICS  # noqa: E402
+DP3   = LOCAL_METRICS["native_cyl_full"]         # full table + native-aware carve
+DP4   = LOCAL_METRICS["metrics_12mer"]
+DP4TOP= LOCAL_METRICS["composite_12mer_top5"]
+OUT   = ROOT/"manuscript/figures/passes_overlay.png"
 
 def num(s): return pd.to_numeric(s, errors="coerce")
 

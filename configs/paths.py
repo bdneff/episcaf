@@ -1,8 +1,8 @@
 """Absolute data locations on the cluster — the ONLY place paths live.
 
-The repo holds no data. Edit WORKSPACE if the lab workspace moves, or point these
-at a local copy when developing off-cluster. Confirm the exact metrics filenames
-against the cluster (06_score / 04_filter contents) before relying on them.
+The repo holds no data. Edit WORKSPACE if the lab workspace moves. Cluster metrics
+filenames are confirmed below; local-dev copies (used by the figure scripts) live in
+sibling dirs outside the repo and are centralized in LOCAL_METRICS at the bottom.
 """
 from pathlib import Path
 
@@ -27,9 +27,27 @@ DP2_PARQUET_LOCAL = Path(
     "/Users/bneff/Desktop/projects/episcaf/known_antigen/analysis/full_run/dp2.parquet"
 )
 
-# canonical scoring inputs (VERIFY exact filenames on the cluster)
+# canonical scoring inputs (filenames confirmed on cluster 2026-07: metrics_12mer.csv,
+# metrics_cylinder_full.csv). METRICS_ANTIBODY points at the original 104-mer whole-epitope run;
+# the shipped C1 is the native-103 redo (metrics_whole_epitope_103.csv, see LOCAL_METRICS below).
 METRICS_12MER    = DATA["twelvemer_runs"] / "06_score" / "metrics_12mer.csv"
 METRICS_ANTIBODY = DATA["antibody_runs"] / "run_rfd3_mpnn" / "04_filter" / "metrics_cylinder_full.csv"
+
+# ---------------------------------------------------------------------------------------------
+# Local-dev copies (OFF-cluster). The manuscript figure scripts read metrics from sibling analysis
+# dirs that live OUTSIDE the repo (data stays out of git; see data/README.md). Centralized here so
+# the figure scripts stop hardcoding laptop paths. On the cluster these same tables live under
+# WORKSPACE; a newcomer without the sibling dirs cannot regenerate the DP3/12-mer figures (noted in
+# manuscript/figures/FIGURES.md).
+LOCAL_ROOT = Path("/Users/bneff/Desktop/projects/episcaf")   # sibling of the v2 repo
+LOCAL_METRICS = {
+    "rfd1_mpnn_lawson":     LOCAL_ROOT / "known_antigen/analysis/full_run/metrics_full_rfd1_mpnn_LAWSON.csv",
+    "rfd3_cylinder_full":   LOCAL_ROOT / "known_antigen/analysis/data/metrics_cylinder_full.csv",
+    "native_cyl_full":      LOCAL_ROOT / "known_antigen/analysis/data/metrics_native_cyl_full.csv",
+    "whole_epitope_103":    LOCAL_ROOT / "known_antigen/analysis/data/metrics_whole_epitope_103.csv",
+    "metrics_12mer":        LOCAL_ROOT / "12mer_tiling/analysis/data/metrics_12mer.csv",
+    "composite_12mer_top5": LOCAL_ROOT / "12mer_tiling/analysis/data/composite_12mer_top5_allscored.csv",
+}
 
 # AbDb cleaned antibody-antigen complex PDBs, one per ledger id, named "<id>.pdb"
 # (e.g. 4xwo_5P.pdb). These are the per-epitope antigen coordinate source for the design

@@ -11,10 +11,13 @@ from pathlib import Path
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 plt.rcParams.update({"font.size": 14, "axes.titlesize": 16, "axes.labelsize": 15, "xtick.labelsize": 12, "ytick.labelsize": 12, "legend.fontsize": 12, "figure.titlesize": 18})  # paper-legible fonts
 
-KA   = Path("/Users/bneff/Desktop/projects/episcaf/known_antigen/analysis")
-RFD1 = KA/"full_run/metrics_full_rfd1_mpnn_LAWSON.csv"
-RFD3 = KA/"data/metrics_cylinder_full.csv"
-OUT  = Path(__file__).resolve().parents[2]/"manuscript/figures/passes_per_epitope.png"
+import sys
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from configs.paths import LOCAL_METRICS  # noqa: E402
+RFD1 = LOCAL_METRICS["rfd1_mpnn_lawson"]
+RFD3 = LOCAL_METRICS["rfd3_cylinder_full"]
+OUT  = ROOT/"manuscript/figures/passes_per_epitope.png"
 
 def num(s): return pd.to_numeric(s, errors="coerce")
 def clash_count(x):
