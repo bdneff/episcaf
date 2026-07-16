@@ -18,6 +18,12 @@ The deliverable and the input to the next step:
   rows, in the 8-column PepSeq annotated format **plus 5 scoring columns** (schema below). This is the
   file to hand off. `designedSequence` is the full 103-mer in EPITOPEscaffold casing (epitope uppercase /
   scaffold lowercase) for every row; `sequence` is the plain uppercase 103-mer that gets synthesized.
+- **`data/libraries/dp4_order_file.csv`** — the Twist synthesis order file. 15,324 oligos, two columns
+  (`Seq ID`, `nucleotide_encoding_with_twist_adapters`). Every row verified by
+  `scripts/stage07_order_file.py`: 349 nt, the 20-mer adapters on both ends, and a core that translates
+  back to exactly its own peptide. **This is what goes to Twist.**
+- **`$WS/dp4_superset.csv`** — the all-designs superset (gitignored, ~335k rows; see below). Not a
+  deliverable — it exists for looking at the distributions the library was drawn from.
 - **`data/libraries/dp4_named_peptides.csv`** — the oligo-encoder input. A two-column `name,seq` slice of
   the library (no header), for the DNA encoding step. Not a separate result, just a reformat.
   **Regenerate after any library change** (`scripts/stage07_named_peptides.py`).
@@ -67,29 +73,87 @@ top-*n* cuts, the case-encoded sequences, and the final library are tracked.
 
 ## How "best 20" is defined (C1 / C2 / C3)
 
-Designs are ranked, not gated: there is no hard pass/fail cutoff. Each design gets one composite score,
-and I take the top *n* per group. Tooling: `scripts/stage06_select.py`; weights and transforms in
-`episcaf_analysis/presets.py`; scorer in `episcaf_analysis/score.py`.
+Designs are ranked, not gated: there is no hard pass/fail cutoff, so no target is ever dropped for want
+of a good enough design. Each design gets one composite score and I take the top *n* per group. Tooling:
+`scripts/stage06_select.py`; weights and transforms in `episcaf_analysis/presets.py`; scorer in
+`episcaf_analysis/score.py`.
 
-Each of four metrics is converted to a percentile within its population and oriented so higher is better
-(all four are lower-is-better), then weighted-summed (weights sum to 1):
+**C1/C2 use the `antibody_softgate` preset** (adopted 2026-07-16; this is what the shipped library was
+selected under). Each metric is squashed by its own sigmoid and the four are weighted-summed:
 
 ```
-composite = 0.35 · accessibility
-          + 0.35 · epitope_RMSD
-          + 0.15 · overall_RMSD
-          + 0.15 · epitope_PAE
+composite = 0.45 · sigma(af3_n_clash_res;    midpoint 6, k 0.5)    accessibility -- ranked
+          + 0.25 · sigma(epitope_chunk_rmsd; midpoint 1, k 4.0)    fidelity   -- soft gate
+          + 0.20 · sigma(overall_rmsd;       midpoint 2, k 4.0)    fold       -- soft gate
+          + 0.10 · sigma(epitope_pae;        midpoint 5, k 1.2)    confidence -- soft gate
+
+sigma(x) = 1 / (1 + exp(k * (x - midpoint)))          all four metrics are lower-is-better
 ```
 
-- Accessibility is the real AF3 clash (`af3_n_clash_res`) for C1/C2, where the antibody is known, and
-  the native-aware cylinder surrogate for C3/C5, where it is not.
-- Percentiles are pooled across the mAb set for C1/C2 and taken per-antigen for the 12-mer set (C3).
+The point of the two steepnesses: broad on clash (k 0.5) so accessibility is genuinely *ranked* across
+its range, and steep on the three fold metrics (k 4, k 1.2) so they act as **gates** — a design far the
+wrong side of the threshold scores near zero on that term. As k grows the sigmoid approaches a step, and
+in the limit this IS Lawson's hard four-filter. Keeping k finite is the whole trick: nothing is ever
+fully zeroed, so a target whose designs are all mediocre still contributes its best ones rather than
+vanishing from the library. That is what "soft gate" means here.
+
+**Global-pass promotion** (`pass_bonus`) sits on top: `composite += 2.0 * P`, where `P` is the product of
+four steep sigmoids (k 12) at the four-filter thresholds (`epitope_chunk_rmsd` 1, `overall_rmsd` 2,
+`mean_pae` 5, `af3_n_clash_res` 0.5). `P` is ~1 only if a design clears *all four* — a product, not a sum,
+so it is a soft AND rather than a count of how many filters passed. A gain of 2 exceeds the composite's
+own range, so every four-filter passer floats above every non-passer, and the composite then breaks ties
+within each band. This is John's rule ("all global-passing designs ranked above any non-global-passing")
+implemented without a hard gate.
+
+- Accessibility is the real AF3 clash (`af3_n_clash_res`) for C1/C2, where the antibody is known, and the
+  native-aware cylinder surrogate for C3/C5, where it is not.
+- **C3 uses the `twelvemer` preset, not the soft-gate** — there is no antibody, so there is no real clash
+  to gate on, and accessibility rests entirely on the cylinder.
 - Groups for "top *n*": per mAb / `id` (C1); per `(id, island_index)` (C2); per `(antigen, id)` (C3).
 
-The weights come from the DP3 binding data: accessibility and epitope RMSD were the strongest
-within-antibody predictors of enrichment (~0.35 each), while overall RMSD and PAE carried little signal
-(0.15 each). This is a hand-set prior from a set where every design already passed the filters. C5 is
-built to span the metric space so these weights can be re-fit on the real DP4 binding data (manuscript Q2).
+The weights are a hand-set prior from the DP3 binding data, where accessibility and epitope RMSD were the
+strongest within-antibody predictors of enrichment and overall RMSD and PAE carried little signal — and
+that data is itself a set in which every design had already passed the filters. C5 is built to span the
+metric space so these dials can be re-fit on the real DP4 binding data (manuscript Q2).
+
+**Selection is budget-bound, not scorer-bound** (measured on the superset, 2026-07-16). Of C1's 727
+four-filter passers only 184 shipped, which sounds like the scorer failing until you group it: the
+passers sit in just 15 of the 56 targets, and 7 of those hold more passers than their 20 slots (`7ox3_0P`
+alone has 360). `sum over targets of min(passers, 20)` is exactly 184 — the number that shipped — and in
+zero targets does a non-passing design outrank a passing one. The promotion does what it says; the
+per-target budget is what binds.
+
+## The all-designs superset (`$WS/dp4_superset.csv`)
+
+`dp4_library.csv` holds only the designs that shipped, which makes it impossible to ask the obvious
+question: what did they beat? The superset answers that. It is every candidate design in the scaffolded
+arms — **334,750** of them (C1 140,716 + C2 111,322 + C3 82,712) — carrying `dp4_library.csv`'s own
+columns plus `selected`, `library_member`, `is_global_pass`, `composite`, and `rank_in_group`. So a design
+that shipped and a design that lost sit in the same table, in the same shape, and can be compared
+directly. Of these, **7,170 shipped** (C1 1,120 + C2 1,660 + C3 4,390) and **1,134 clear the four-filter**
+(C1 727 + C2 407; C3 has no antibody, so no global pass is defined).
+
+It is ranked under the same preset that picked the library (`antibody_softgate` for C1/C2, `twelvemer`
+for C3), which makes the ranks reconcile rather than merely resemble: every selected design is exactly
+the top-*n* of its group, 56 targets × ranks 1–20 for C1 and 439 windows × ranks 1–10 for C3, with no
+gaps. That equality is worth treating as a test — if a future scorer change breaks it, the superset and
+the shipped library have drifted apart.
+
+`sequence` is filled for the selected designs (copied verbatim from `dp4_library.csv`, so the two agree
+by construction) and for the global-passing ones (read from each design's AF3 chain A), and left blank
+otherwise. Filling all 334,750 would mean reading every design PDB, and the distributions this file
+exists for live in the metrics, not the sequences. C3 is the exception and comes out fully sequenced
+(82,712), because its metrics already carry `design_seq` — free, so we take it. `designedSequence` is
+selected-only, since case-encoding was only ever run on the selections.
+
+Build it in one cluster pass with `sbatch scripts/build_superset.sbatch` (or one component at a time via
+`scripts/stage06_superset.py`); the run takes well under a minute. It must run **before** the `/scratch`
+run dirs are migrated or deleted: the sequence pass reads `runs/*/04_af3/outputs`. Gitignored at 57 MB+
+and regenerable, so it lives on `$WS`. The 8VDL arm is not included (20 shipped, its own run).
+
+Verified on the 2026-07-16 build: every shipped member matched a design in its pool (1120/1120 C1,
+1660/1660 C2, 4390/4390 C3), and every passing design's sequence was readable (543/543 C1, 233/233 C2 —
+the rest of the passers had already shipped and got theirs from the library).
 
 ## Exclusions — the 56-mAb set
 
@@ -320,6 +384,26 @@ python scripts/stage06_assemble.py --depth 20   # C1/C2 top-20; C3 top-10 (--c3-
 # Export the oligo-encoder input -> data/libraries/dp4_named_peptides.csv
 python scripts/stage07_named_peptides.py \
   --library data/libraries/dp4_library.csv --out data/libraries/dp4_named_peptides.csv
+
+# Oligo-encode the library (Gemini). Run BOTH steps in the same working dir; step 1 is the long pole
+# (C++ sampler, hours). ADAPTER is pinned to the 20-mers inside encode_step2_select.sbatch -- do NOT
+# rely on the encoder's own --adapter default, which is the 19-mer form (see oligo-adapter-trap).
+cd $REPO/runs/dp4_encoding_full     # with dp4_named_peptides.csv copied in
+JID1=$(INPUT=dp4_named_peptides.csv sbatch --parsable --time=12:00:00 \
+  $REPO/episcaf_pipeline/oligo_encoding/encode_step1_generate.sbatch)
+sbatch --dependency=afterok:$JID1 $REPO/episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch
+
+# Emit + VERIFY the Twist order file (Gemini). Checks every row: 20-mer adapters, 349 nt, and that each
+# core translates back to its own peptide. Writes nothing if any row fails.
+python $REPO/scripts/stage07_order_file.py \
+  --best-encodings $REPO/runs/dp4_encoding_full/DP4_best_encodings \
+  --peptides       $REPO/runs/dp4_encoding_full/dp4_named_peptides.csv \
+  --out            $REPO/data/libraries/dp4_order_file.csv     # -> 15,324 oligos, all verified
+
+# ALL-DESIGNS SUPERSET (Gemini; John's ask -- every candidate design, not just the selected ones).
+# One pass over C1+C2+C3 -> $WS/dp4_superset.csv (~335k rows). MUST run before the /scratch run dirs
+# are deleted: --sequences reads AF3 chain A out of runs/*/04_af3/outputs.
+sbatch scripts/build_superset.sbatch
 ```
 
 Scorer weights and transforms are config, not magic numbers (`episcaf_analysis/presets.py`). C5 and C6
@@ -347,14 +431,19 @@ with `stage06_assemble.py --c3-depth <n>` if the final minibinder count moves th
    (C1/C2), the top-20 (C1/C2) and top-10 (C3) depth cuts, and global numbering. `library_member` and
    `design_ID` are unique and every sequence is 103 residues. Ships the 8 annotation columns + the 5
    scoring columns, with `designedSequence` in EPITOPEscaffold casing on every row.
-2. Oligo encoding — in progress (only the 50-peptide smoke test has run; full 15,324 pending). Encoder
-   input is exported and validated: `scripts/stage07_named_peptides.py` →
+2. Oligo encoding — **done 2026-07-16.** Encoder input: `scripts/stage07_named_peptides.py` →
    `data/libraries/dp4_named_peptides.csv` (`name,seq`, no header, all 103-mers; regenerate after any
-   library change). Convert the peptide library to DNA oligos with the LadnerLab encoder on Gemini
-   (step 1 sampler → step 2 NN selector, DP3 recipe + `codon_weights_updated.csv`;
-   `episcaf_pipeline/oligo_encoding/`, see its README and manuscript `sec:oligo`). The order file is
-   **not** a further encoding step — step 2 already emits the adapter-flanked oligo, so the order file is
-   a two-column slice, emitted + verified by `scripts/stage07_order_file.py`. **Adapter length resolved
-   2026-07-14:** Erin confirmed the standard **19**-mers (→ 347 nt); DP3's 20-mers were an anomaly, not
-   carried forward. Pinned explicitly (`ADAPTER=` in `encode_step2_select.sbatch`, default = 19-mers);
-   the smoke test already ran on 19. See memory `oligo-adapter-trap`.
+   library change). The full 15,324 ran on Gemini in `runs/dp4_encoding_full/` with the LadnerLab
+   encoder (step 1 sampler → step 2 NN selector, DP3 recipe + `codon_weights_updated.csv`;
+   `episcaf_pipeline/oligo_encoding/`, see its README and manuscript `sec:oligo`) → `DP4_best_encodings`,
+   15,325 lines = header + all 15,324, nothing dropped. The order file is **not** a further encoding
+   step — step 2 already emits the adapter-flanked oligo, so the order file is a two-column slice,
+   emitted + verified by `scripts/stage07_order_file.py` → `data/libraries/dp4_order_file.csv`
+   (tracked in git, commit `ac212fe`). All 15,324 verified: 349 nt, 20-mer adapters both ends, every
+   core translates back to its own peptide, one encoding per peptide, none missing. **Twist-ready.**
+   **Adapter length resolved 2026-07-16: John confirmed the 20-mers** (`ACCTATACTTCCAAGGCGCA` /
+   `GGTGACTCTCTGTCTTGGCT` → 349 nt), the same ones DP3's order file carried. This **supersedes Erin's
+   interim 2026-07-14 "19"**; whether or not the length caused a DP3 issue, 20 is the spec, and 349 sits
+   one base under Twist's next price tier at 350. Pinned explicitly (`ADAPTER=` in
+   `encode_step2_select.sbatch`); the earlier 19-mer smoke test is therefore the wrong length and was
+   superseded by the full run. See memory `oligo-adapter-trap`.

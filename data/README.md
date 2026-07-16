@@ -30,9 +30,18 @@ crystals lives on the cluster (see below).
 - `dp4_library.csv` — the assembled DP4 library, 15,324 constructs (`scripts/stage06_assemble.py`).
   `dp4_named_peptides.csv` / `dp4_order_file.csv` — the oligo-encoder input / synthesis order file
   (`scripts/stage07_named_peptides.py`, `stage07_order_file.py`).
-- `dp4_superset_metrics.csv` — **gitignored, exploratory**: every candidate design's metrics across
-  the scaffolded arms (not just the selected subset), for poking at the overall distributions
-  (`scripts/stage06_superset.py`). Regenerable; the full version lives on the cluster under `$WS`.
+- `dp4_superset.csv` — **gitignored (57 MB+), lives on `$WS`**: the all-designs superset. Every
+  candidate design in the scaffolded arms (~335 k: C1 140,716 + C2 111,322 + C3 82,712), not just the
+  15,324 that shipped, in `dp4_library.csv`'s own column shape plus `selected`, `library_member`,
+  `is_global_pass`, `composite`, and `rank_in_group`. Ranked under `antibody_softgate` — the preset
+  that actually picked the library — so the ranks reconcile with what shipped. Built for looking at the
+  overall distributions and at how the selected designs sit inside the pool they came from.
+  `sequence` is filled for selected designs (copied from `dp4_library.csv`, so the two agree by
+  construction) and for global-passing ones (read from AF3 chain A); blank otherwise, because filling
+  all ~335 k means reading every design PDB and the distributions live in the metrics. Regenerate the
+  whole thing in one cluster pass with `sbatch scripts/build_superset.sbatch`, or one component at a
+  time with `scripts/stage06_superset.py`. Excludes the 8VDL arm (20 shipped, separate run).
+  (`dp4_superset_metrics.csv` was its metrics-only ancestor — C1+C3 only, stale scorer — now removed.)
 
 ## External artifacts (NOT in git)
 Too large to version; documented here for provenance.

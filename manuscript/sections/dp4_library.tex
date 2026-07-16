@@ -287,8 +287,16 @@ between; the same handles are where the assay's display and readout elements att
 therefore a primer \emph{binding site}, not a primer itself --- the primer is a separate reagent, the
 adapter's reverse complement. Each final oligo is \texttt{[5\({}^\prime\) adapter]} $+$ \texttt{[309-nt
 coding sequence]} $+$ \texttt{[3\({}^\prime\) adapter]}. The adapters are fixed by the assay's primers
-rather than by our design, so they are pinned explicitly (the standard \num{19}-mers, giving a
-\num{347}-nt oligo) rather than left to a tool default.
+rather than by our design, so they are pinned explicitly (the \num{20}-mers DP3 shipped, giving a
+\num{349}-nt oligo) rather than left to a tool default. Pinning is not fussiness. The flag that sets them
+is a \emph{defaulted} one, and the two installations of the encoder in circulation ship different
+defaults --- \num{19}-mers upstream against the \num{20}-mers DP3 actually synthesized --- so building
+from a fresh clone silently yields oligos two bases short, with nothing in the log to say so. The
+\num{19}-mer is the full primer footprint and sits inside the \num{20}-mer, so the shorter form would
+very likely still prime; the objection is not that \num{347} is known to break but that it is an
+unexplained deviation from the only construct known to work, on an order that cannot be taken back.
+A defaulted flag in someone else's tool is a dependency on which copy of the tool you happen to be
+running, and that is worth pinning wherever it reaches a physical artifact.
 
 \paragraph{The order file.} The output is the file sent to the vendor: two columns, a name and the
 adapter-flanked DNA to synthesize, one row per library member. Because a synthesis order is expensive
@@ -301,3 +309,8 @@ catches any codon-table, framing, or bookkeeping error at the one place it would
 its own peptide. The checker also confirms the adapters and the expected oligo length on every row. The
 encoder itself is external tooling run on the cluster, so the computational pipeline ends at the
 annotated peptide file and this checked order file is the deliverable that hands off to synthesis.
+
+The full library has now been through it. All \num{15324} peptides encoded, every oligo \num{349}
+nucleotides with the \num{20}-mer adapters on both ends, every core translating back to exactly the
+peptide it claims to encode, one encoding per peptide and none missing
+(\texttt{data/libraries/dp4\_order\_file.csv}).
