@@ -2,7 +2,7 @@
 """Compare two scoring presets on the same metrics file, per target.
 
 Built to answer John's question (2026-07-15): does switching RMSD/PAE to saturating sigmoids and
-penalizing clash absolutely (preset `antibody_sigmoid`) surface lower-clash designs than the current
+penalizing clash absolutely (preset `antibody_softgate`) surface lower-clash designs than the current
 percentile scorer (preset `antibody`)? Shows the top-k per target under each preset side by side, so
 the reordering — and any designs the new preset pulls in from outside the current top-k — is visible.
 
@@ -14,7 +14,7 @@ pool is on the cluster (`metrics_whole_epitope.csv`), NOT the local 104-mer `met
 Examples (on the cluster, from the repo root):
   python scripts/compare_scoring.py \
     --metrics-csv runs/whole_epitope_rfd3/05_analysis/metrics_whole_epitope.csv \
-    --preset-a antibody --preset-b antibody_sigmoid --group id --topk 10 --ids 6cyf_0P
+    --preset-a antibody --preset-b antibody_softgate --group id --topk 10 --ids 6cyf_0P
   python scripts/compare_scoring.py \
     --metrics-csv runs/dual_island_rfd3/05_analysis/metrics_dual_island.parquet \
     --group id,island_index --topk 5 --ids 6cyf_0P
@@ -61,7 +61,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--metrics-csv", required=True, help="full candidate pool (.csv or .parquet)")
     ap.add_argument("--preset-a", default="antibody", choices=sorted(PRESETS))
-    ap.add_argument("--preset-b", default="antibody_sigmoid", choices=sorted(PRESETS))
+    ap.add_argument("--preset-b", default="antibody_softgate", choices=sorted(PRESETS))
     ap.add_argument("--group", default="id", help="selection group column(s); comma-joined uses the first present")
     ap.add_argument("--topk", type=int, default=10)
     ap.add_argument("--ids", nargs="*", default=None, help="restrict the display to these id values")

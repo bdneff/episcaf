@@ -6,7 +6,7 @@ lower-clash mAb designs? Four worlds:
 
   percentile   current scorer (rank-based, scale-blind)
   sigmoid      naive: sigmoid transforms, OLD weights (.35/.35/.15/.15) -- known to backfire
-  mixed        sigmoid transforms + clash up-weighted to .50 (preset `antibody_sigmoid`)
+  mixed        sigmoid transforms + clash up-weighted to .50 (preset `antibody_softgate`)
   gated        Lawson-style fold-quality FLOOR (gate overall_rmsd + epitope_pae) then rank
                clash + epitope RMSD -- rejects the misfolded low-clash designs `mixed` can grab
 

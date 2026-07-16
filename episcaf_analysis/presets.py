@@ -59,39 +59,44 @@ ANTIBODY = dict(   # DP3 / mAb set — known antibody, so accessibility via the 
     },
 )
 
-# ---- CANDIDATE (John 2026-07-15): saturate RMSD/PAE, penalize clash absolutely ----------------
-# John flagged mAb designs that are excellent on RMSD/PAE but poor on AF3 clashes, and asked whether
-# the scorer over-optimizes RMSD at the expense of clashes that likely kill binding. Percentile is the
-# culprit: it is scale-blind, so it over-resolves the dense sub-1A RMSD pile and lets meaningless RMSD
-# gains outrank real clash reductions. Fix = saturating transforms:
-#   - RMSD/PAE -> sigmoid with midpoint at the four-filter threshold (epitope RMSD 1, overall 2, PAE 5).
-#     Below the threshold the score is ~flat, so 0.3A and 0.9A are treated the same (John's "cap"); the
-#     term stops paying for over-optimization and leaves room for accessibility to break ties.
-#   - af3_n_clash_res -> sigmoid ABSOLUTE (not percentile), midpoint 6 (the clash distribution's mass
-#     sits 0-10, median 4), k=0.5 so it discriminates across 1..~15 and heavily penalizes >12. Absolute
-#     so "this whole cohort is too clashy" is expressible. Accessibility is the one metric that tracks
-#     experimental binding (sec:whatpredicts), so penalizing it hard is the point.
+# ---- ANTIBODY_SOFTGATE: the adopted known-antibody scorer (soft gate + global-pass promotion) -----
+# Percentile (ANTIBODY, above) is scale-blind: it over-resolves the dense sub-1A RMSD pile and lets
+# meaningless RMSD gains outrank real clash reductions, even though accessibility is the one metric that
+# tracks experimental binding (sec:whatpredicts). Soft-gate fixes this with saturating activations and a
+# steep-but-finite gate on fold quality:
+#   - af3_n_clash_res: sigmoid, midpoint 6, k=0.5, weight .45 -- BROAD, so it RANKS accessibility across
+#     the 1..~15 band (the mass) and heavily penalizes >12. Weighted heavily (it predicts binding).
+#   - epitope_chunk_rmsd / overall_rmsd / epitope_pae: STEEP sigmoids at the four-filter thresholds
+#     (1, 2, 5). Steep k acts as a SOFT GATE on fold quality -- misfolds are crushed toward 0 but never
+#     TO 0, so no island is ever dropped (unlike a hard fold floor, which empties 3/87 C2 islands). As
+#     k -> inf this is Lawson's hard filter; finite k keeps it soft and coverage-safe.
+# On C2 (single-island, cluster) this cuts clash 6->2 pooled (6cyf 14.5->3) while keeping the fold and
+# all 87 islands. On C1 it helps mildly and never hurts (that arm is generation-limited). Chosen over
+# both percentile (leaves clashes on the table) and hard-weight-only mixes (backfire / misfold blowup).
 #
-# REALITY CHECK on the actual 103 C1 pool (metrics_whole_epitope_103.csv, 140,716; scripts/scoring_worlds.py):
-# the effect is SMALL. Pooled over C1 targets, mixed moves clash median only 2 -> 1 vs percentile, and for
-# a hard target (6cyf) ALL scorings give the same top-10 (clash ~7) -- its whole-epitope pool simply has no
-# lower-clash designs, so that is a GENERATION limit, not a scoring one. Earlier alarming results (a naive-
-# sigmoid "backfire" to clash 11, and a misfold blowup to overall_rmsd 9.4) were ARTIFACTS of the stale
-# 104-mer pool and DO NOT reproduce on real 103 data. So clash 0.50 here is a mild, safe tilt toward
-# accessibility, not a dramatic fix. The real test is C2 (single-island, cluster metrics_dual_island.parquet)
-# -- that is where the low-clash 6cyf designs John cited live. ALL PROVISIONAL: re-fit weights + k on DP4
+# pass_bonus = John's rule (2026-07-16): every design clearing ALL four Lawson filters ranks above every
+# design that does not. Done as a soft AND -- P = product of steep sigmoids at the thresholds, ~1 iff all
+# pass -- scaled by a gain > the composite range (weights sum to 1, scores in [0,1], so gain 2 > 1). See
+# score.py. Uses the four-filter's OWN metrics (global mean_pae<5, clash==0). Promotes, never excludes:
+# an epitope with no passer just ranks on the composite. On C1: 725 soft-passers vs 727 hard (0.52%).
+#
+# ALL midpoints = the DP3 thresholds; k / weights / gain are provisional dials to be re-fit on DP4
 # binding data (that is what C5 is for).
-ANTIBODY_SIGMOID = dict(
+ANTIBODY_SOFTGATE = dict(
     gate=None,
     scope="pooled",
     antigen_col="antigen",
     select=dict(group="id", topk=5),
     metrics={
-        "af3_n_clash_res":    dict(weight=0.50, better="low", transform="sigmoid", midpoint=6.0, k=0.5),
+        "af3_n_clash_res":    dict(weight=0.45, better="low", transform="sigmoid", midpoint=6.0, k=0.5),
         "epitope_chunk_rmsd": dict(weight=0.25, better="low", transform="sigmoid", midpoint=1.0, k=4.0),
-        "overall_rmsd":       dict(weight=0.15, better="low", transform="sigmoid", midpoint=2.0, k=2.0),
-        "epitope_pae":        dict(weight=0.10, better="low", transform="sigmoid", midpoint=5.0, k=1.0),
+        "overall_rmsd":       dict(weight=0.20, better="low", transform="sigmoid", midpoint=2.0, k=4.0),
+        "epitope_pae":        dict(weight=0.10, better="low", transform="sigmoid", midpoint=5.0, k=1.2),
     },
+    pass_bonus=dict(
+        gain=2.0, k=12.0,
+        criteria={"epitope_chunk_rmsd": 1.0, "overall_rmsd": 2.0, "mean_pae": 5.0, "af3_n_clash_res": 0.5},
+    ),
 )
 
-PRESETS = {"twelvemer": TWELVEMER, "antibody": ANTIBODY, "antibody_sigmoid": ANTIBODY_SIGMOID}
+PRESETS = {"twelvemer": TWELVEMER, "antibody": ANTIBODY, "antibody_softgate": ANTIBODY_SOFTGATE}
