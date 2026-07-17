@@ -33,3 +33,26 @@ against the stored values. Agreement on this diff is the precondition for everyt
 downstream: it confirms that our implementation of the four filters
 (Section~\ref{sec:fourfilter}) matches the workflow we are extending, so that later
 differences reflect the design protocol rather than a scoring bug.
+
+\subsection{Code and data availability}\label{sec:availability}
+The code is one git repository; the data and run outputs are not. Every figure and reported
+number is regenerable by a named script from written-down inputs, and the repository records the
+exact command for each. The generative stages (RFdiffusion3, ProteinMPNN, AlphaFold3) run as SLURM
+array jobs on the TGen cluster, from the same repository checked out on the cluster's ephemeral
+\texttt{/scratch}. The heavy outputs are then archived to a persistent workspace so they survive the
+scratch purge:
+\[
+\texttt{\$WS} \;=\; \texttt{/tgen\_labs/altin/alphafold3/workspace/episcaf\_v2\_bneff}.
+\]
+Each shipped component maps to one run directory there. The two known-antibody scaffold arms are
+\texttt{\$WS/runs/whole\_epitope\_rfd3} (C1, whole-epitope) and \texttt{\$WS/runs/dual\_island\_rfd3}
+(C2, single-island); the polyclonal tiling arm is \texttt{\$WS/run\_12mer\_scaffolding} (C3); the
+PfEMP1 arm is \texttt{\$WS/dp4\_8vdl} (8VDL). Each holds its per-design metrics table under its own
+\texttt{05\_analysis} or \texttt{06\_score} subdirectory, which is the input every selection reads. The
+three control components carry no run of their own: the linear tiled-30mers are built from the antigen
+sequences, and the metric-space titration and the scaffold-disruption controls are both derived from the
+C1 design pool. The oligo-encoding intermediates and the all-designs superset live alongside the runs
+under \texttt{\$WS}; the shipped deliverables --- the assembled library, the encoder input, and the
+verified synthesis order file --- are small and version-controlled in the repository itself, so they do
+not depend on the cluster at all. The end-to-end run order and the exact per-stage commands are in
+\texttt{docs/PIPELINE.md} and \texttt{docs/DP4\_LIBRARY.md}.
