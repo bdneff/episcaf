@@ -45,9 +45,13 @@ rsync -aWh --info=progress2,stats2 --exclude '_task_inputs/' "${SRC}/" "${DEST}/
 echo "=== rsync finished $(date) ==="
 
 # Integrity check: a dry-run second pass should find nothing left to transfer.
+# NB: grep exits 1 when it matches nothing -- which is the SUCCESS case here (0 files to transfer).
+# Under `set -o pipefail` + `set -e` that non-zero would kill the script right here, before the verdict
+# prints, so a perfect copy would look like a silent death. `|| true` swallows the no-match exit; the
+# `wc -l` still yields 0. (This bit the first several copy jobs: they all ended at the "verifying" line.)
 echo "=== verifying (dry-run; files still differing should be 0) ==="
-REMAIN="$(rsync -aWn --itemize-changes --exclude '_task_inputs/' "${SRC}/" "${DEST}/" \
-          | grep -E '^>f' | wc -l | tr -d ' ')"
+REMAIN="$( { rsync -aWn --itemize-changes --exclude '_task_inputs/' "${SRC}/" "${DEST}/" \
+             | grep -E '^>f' || true; } | wc -l | tr -d ' ')"
 echo "files still needing transfer: ${REMAIN}"
 
 echo "=== sizes (will differ by the excluded _task_inputs) ==="
