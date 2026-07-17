@@ -164,6 +164,31 @@ format, assemble into one ordered file (`data/libraries/dp4_library.csv`, 15,324
 to DNA oligos (`episcaf_pipeline/oligo_encoding/`, stage 07). **Full reference — components, selection
 math/weights, exclusions, the 104→103 trim, status: `docs/DP4_LIBRARY.md`.**
 
+## Where the run data lives (cluster)
+
+The design runs behind this library are on the TGen cluster, not in git. The durable copies live under
+the workspace `$WS = /tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff` (persistent); the working
+checkout `$REPO = /scratch/bneff/episcaf` is disposable and `/scratch` is swept on ~30 days, so treat the
+`$WS` paths below as the source of truth. Only three components (C1, C2, C3) plus the 8VDL arm have their
+own RFD3→MPNN→AF3 output; C4/C5/C6 are derived from them (see `docs/DP4_LIBRARY.md`) and carry no
+separate run.
+
+| Component | Run directory (durable, under `$WS`) | Per-design metrics |
+|---|---|---|
+| C1 whole-epitope | `runs/whole_epitope_rfd3/` | `runs/whole_epitope_rfd3/05_analysis/metrics_whole_epitope.csv` |
+| C2 single-island | `runs/dual_island_rfd3/` | `runs/dual_island_rfd3/05_analysis/metrics_dual_island.parquet` |
+| C3 polyclonal 12-mer | `run_12mer_scaffolding/` | `run_12mer_scaffolding/06_score/metrics_12mer.csv` |
+| 8VDL PfEMP1 arm | `dp4_8vdl/` | (top-10 per definition consolidated into `results/`) |
+| Oligo encoding | `runs/dp4_encoding_full/` (`DP4_best_encodings`, `out_seqs`, `output_ratio`) | — |
+| All-designs superset | `dp4_superset.csv` (334,750 rows; every candidate, not just the 15,324 shipped) | — |
+| DP3 design table | `datasets/dp2.parquet` (Lawson's ledger; C5/C6 trace back to the C1 pool) | — |
+
+C4/C5/C6 have no cluster run: **C4** is built from the antigen FASTA sequences, and **C5** (metric-space
+titration) and **C6** (alanine-scan + scaffold-disruption controls) are both derived from the C1
+`whole_epitope_rfd3` design pool. Their small selection files are tracked in `results/`. The shipped
+deliverables — `dp4_library.csv`, `dp4_named_peptides.csv`, and the verified Twist order file
+`dp4_order_file.csv` — live in git under `data/libraries/`, so they do not depend on the cluster at all.
+
 ## Intended cleanups (deferred)
 
 The code analog of the manuscript's open questions: structural improvements we've *chosen to defer*,
