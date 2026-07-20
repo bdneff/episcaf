@@ -35,8 +35,8 @@ crystals lives on the cluster (see below).
   (`scripts/stage06_assemble.py`) + 21,759 LX PfEMP1/EPCR minibinders folded in for a single-file view
   (`dp4_8vdl/scripts/08_add_minibinders.py`, `category=minibinder`, no episcaf metrics). The minibinder
   source (`LX_YYYYMMDD.csv`, ~484k generations, ~168 MB) is an external artifact under `dp4_8vdl/data/`,
-  gitignored. The 15,324 episcaf portion is what was case- and oligo-encoded; the minibinders are
-  catalogued, not (yet) in the episcaf order file.
+  gitignored. The order file covers the **whole 37,083-row library** — minibinders are oligo-encoded
+  along with the episcaf designs (decided 2026-07-20; they carry no oligos of their own).
   `dp4_named_peptides.csv` / `dp4_order_file.csv` — the oligo-encoder input / synthesis order file
   (`scripts/stage07_named_peptides.py`, `stage07_order_file.py`).
 - `dp4_superset.csv` — **gitignored (57 MB+), lives on `$WS`**: the all-designs superset. Every

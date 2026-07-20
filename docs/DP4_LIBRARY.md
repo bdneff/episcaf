@@ -15,11 +15,12 @@ the soft-gate scorer (`antibody_softgate`). The library has since been oligo-enc
 > **LX PfEMP1/EPCR minibinders** (`category=minibinder`), so the file is a single view of the whole DP4
 > library — **37,083 rows** (15,324 episcaf + 21,759 minibinder). These are a separate de-novo binder arm
 > (same PfEMP1 project as 8VDL), not scaffolded or scored by episcaf, so their five metric columns are
-> blank. The **15,324** count throughout this doc still refers to the episcaf-scaffolded portion — what
-> was selected, case-encoded, and oligo-encoded; the minibinders are catalogued here but are **not** part
-> of that episcaf order file. Added by `dp4_8vdl/scripts/08_add_minibinders.py` (idempotent; run after
-> assembly). Whether the minibinders should ALSO go through our oligo encoding is an open question — they
-> are 103-mers, so they can, but they may already carry oligos from the LX pipeline.
+> blank. The **15,324** count elsewhere in this doc refers to the episcaf-scaffolded portion — what was
+> selected and case-encoded. **The oligo order file is planned to cover the WHOLE library** (Brandon
+> 2026-07-20, pending John's confirm): all **37,083** 103-mers oligo-encoded together, minibinders
+> included (they carry no oligos of their own). `--exclude-category minibinder` reverts to episcaf-only.
+> Added by `dp4_8vdl/scripts/08_add_minibinders.py` (idempotent; run after assembly). The current
+> committed `dp4_order_file.csv` is stale (15,324, pre-minibinder) — pending re-encode at 37,083.
 
 ## Paths used in this doc
 
