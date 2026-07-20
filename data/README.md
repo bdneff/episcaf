@@ -40,20 +40,23 @@ crystals lives on the cluster (see below).
   minibinders are oligo-encoded along with the episcaf designs (decided 2026-07-20; no oligos of their own).
   `dp4_named_peptides.csv` / `dp4_order_file.csv` — the oligo-encoder input / synthesis order file
   (`scripts/stage07_named_peptides.py`, `stage07_order_file.py`).
-- `dp4_superset.csv.gz` — **committed (~28 MB gzipped)**: the all-designs superset, the main raw data.
-  The raw `.csv` (~90 MB) is gitignored and regenerated on `$WS`; the gzipped copy is versioned here.
-  Every candidate design in the scaffolded arms (~335 k: C1 140,716 + C2 111,322 + C3 82,712), not just
-  the 15,324 that shipped, in `dp4_library.csv`'s own column shape plus `selected`, `library_member`,
-  `is_global_pass`, `composite`, and `rank_in_group`. Ranked under `antibody_softgate` at the **current
-  epitope_pae midpoint 2.5** — the preset that actually picked the library — so the ranks reconcile with
-  what shipped. **Rebuild whenever the scorer or pool changes** (`sbatch scripts/build_superset.sbatch`
-  → `$WS/dp4_superset.csv`, then gzip into `data/libraries/`). Built for the overall distributions and
-  how the selected designs sit inside the pool they came from.
-  `sequence` is filled for selected designs (copied from `dp4_library.csv`, so the two agree by
-  construction) and for global-passing ones (read from AF3 chain A); blank otherwise, because filling
-  all ~335 k means reading every design PDB and the distributions live in the metrics. Regenerate the
-  whole thing in one cluster pass with `sbatch scripts/build_superset.sbatch`, or one component at a
-  time with `scripts/stage06_superset.py`. Excludes the 8VDL arm (20 shipped, separate run).
+- `dp4_superset.csv.gz` — **committed (~34 MB gzipped)**: the all-designs superset, the main raw data,
+  a TRUE superset (the shipped `dp4_library.csv` is a strict subset of it). **357,789 rows across every
+  candidate arm**: C1 140,716 + C2 111,322 + C3 82,712 + 8VDL 1,280 + 21,759 passing LX minibinders — not
+  just the 15,324 that shipped. **36 columns** = the scoring internals (`composite`, `rank_in_group`,
+  `is_global_pass`, `selected`, full PAE decomposition) + the library's synthesis/minibinder columns
+  (`model`, `designedSequenceLength`, `design_ID`, and the 13 `lx_*`). Episcaf/8VDL rows are blank in
+  `lx_*`; minibinder rows blank in the episcaf metric/scoring columns. `selected` sums to 28,949 (the
+  library's 37,083 minus the C4/C5/C6 controls, which aren't candidate-pool designs). Ranked under
+  `antibody_softgate` at the **current epitope_pae midpoint 2.5**, so ranks reconcile with what shipped.
+  **Two-step build** (rerun when the scorer or pool changes): `sbatch scripts/build_superset.sbatch`
+  (cluster → `$WS/dp4_superset.csv`, the C1/C2/C3 pool) then `python scripts/extend_superset.py` (local →
+  folds in 8VDL + passing minibinders + unions the columns), then gzip into `data/libraries/`. The raw
+  `.csv` (~116 MB) is gitignored. (The full ~484 k LX pool stays in the raw LX file; the superset carries
+  only the passing minibinders.)
+  `sequence` is filled for selected + global-passing episcaf designs (read from AF3 chain A) and for all
+  minibinders (from the LX file); blank for the rest of the episcaf pool, since filling every one means
+  reading every design PDB and the distributions live in the metrics.
   (`dp4_superset_metrics.csv` was its metrics-only ancestor — C1+C3 only, stale scorer — now removed.)
 
 ## External artifacts (NOT in git)

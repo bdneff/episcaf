@@ -55,8 +55,9 @@ The deliverable and the input to the next step:
   (`Seq ID`, `nucleotide_encoding_with_twist_adapters`). Every row verified by
   `scripts/stage07_order_file.py`: 349 nt, the 20-mer adapters on both ends, and a core that translates
   back to exactly its own peptide. **This is what goes to Twist.**
-- **`$WS/dp4_superset.csv`** — the all-designs superset (gitignored, ~335k rows; see below). Not a
-  deliverable — it exists for looking at the distributions the library was drawn from.
+- **`data/libraries/dp4_superset.csv.gz`** — the all-designs superset (committed gzipped, 357,789 rows
+  across all arms; see below). Not a deliverable — it exists for looking at the distributions the library
+  was drawn from, and it is a true superset (the shipped library is a strict subset of it).
 - **`data/libraries/dp4_named_peptides.csv`** — the oligo-encoder input. A two-column `name,seq` slice of
   the library (no header), for the DNA encoding step. Not a separate result, just a reformat.
   **Regenerate after any library change** (`scripts/stage07_named_peptides.py`).
@@ -178,12 +179,17 @@ per-target budget is what binds.
 ## The all-designs superset (`$WS/dp4_superset.csv`)
 
 `dp4_library.csv` holds only the designs that shipped, which makes it impossible to ask the obvious
-question: what did they beat? The superset answers that. It is every candidate design in the scaffolded
-arms — **334,750** of them (C1 140,716 + C2 111,322 + C3 82,712) — carrying `dp4_library.csv`'s own
-columns plus `selected`, `library_member`, `is_global_pass`, `composite`, and `rank_in_group`. So a design
-that shipped and a design that lost sit in the same table, in the same shape, and can be compared
-directly. Of these, **7,170 shipped** (C1 1,120 + C2 1,660 + C3 4,390) and **1,134 clear the four-filter**
-(C1 727 + C2 407; C3 has no antibody, so no global pass is defined).
+question: what did they beat? The superset answers that — and it is a **true superset**, so the shipped
+library is a strict subset of it. It is every candidate design across **every arm** — **357,789** rows
+(C1 140,716 + C2 111,322 + C3 82,712 + 8VDL 1,280 + 21,759 passing LX minibinders) — in the **union of
+the library's and the superset's columns** (36): the scoring internals (`selected`, `library_member`,
+`is_global_pass`, `composite`, `rank_in_group`, full PAE decomposition) plus the library's synthesis and
+minibinder columns (`model`, `designedSequenceLength`, `design_ID`, the 13 `lx_*`). Episcaf/8VDL rows are
+blank in `lx_*`; minibinder rows blank in the episcaf metric/scoring columns (never scored on our axes).
+So a design that shipped and a design that lost sit in the same table, in the same shape. Of these,
+**28,949 shipped** (C1 1,120 + C2 1,660 + C3 4,390 + 8VDL 20 + LX 21,759) — the library's 37,083 minus
+the C4/C5/C6 controls, which aren't candidate-pool designs — and the four-filter passers are C1 727 +
+C2 407 (C3/minibinders have no antibody-based global pass defined).
 
 It is ranked under the same preset that picked the library (`antibody_softgate` for C1/C2, `twelvemer`
 for C3), which makes the ranks reconcile rather than merely resemble: every selected design is exactly
@@ -193,19 +199,21 @@ the shipped library have drifted apart.
 
 `sequence` is filled for the selected designs (copied verbatim from `dp4_library.csv`, so the two agree
 by construction) and for the global-passing ones (read from each design's AF3 chain A), and left blank
-otherwise. Filling all 334,750 would mean reading every design PDB, and the distributions this file
-exists for live in the metrics, not the sequences. C3 is the exception and comes out fully sequenced
-(82,712), because its metrics already carry `design_seq` — free, so we take it. `designedSequence` is
+for the rest of the episcaf pool. Filling every one would mean reading every design PDB, and the
+distributions this file exists for live in the metrics, not the sequences. C3 is the exception and comes
+out fully sequenced (82,712), because its metrics already carry `design_seq` — free, so we take it; the
+minibinders likewise arrive fully sequenced from the LX file. `designedSequence` is
 selected-only, since case-encoding was only ever run on the selections.
 
-Build it in one cluster pass with `sbatch scripts/build_superset.sbatch` (or one component at a time via
-`scripts/stage06_superset.py`); the run takes well under a minute. The sequence pass reads
-`runs/*/04_af3/outputs`, and the C1/C2 metrics record the **absolute `/scratch` paths** those runs were
-built at — so the job passes `--af3-remap /scratch/bneff/episcaf/runs:$WS/runs` to point them at the
-durable copies made 2026-07-17. Without that remap the AF3 lookups resolve nothing once `/scratch` is
-swept; the script now hard-fails in that case rather than writing a quietly blank `sequence` column.
-Gitignored at 57 MB+ and regenerable, so it lives on `$WS`. The 8VDL arm is not included (20 shipped,
-its own run).
+Build it in **two steps**: (1) `sbatch scripts/build_superset.sbatch` (cluster) builds the C1/C2/C3
+episcaf pool → `$WS/dp4_superset.csv`, well under a minute; the sequence pass reads `runs/*/04_af3/outputs`,
+and because the C1/C2 metrics record the **absolute `/scratch` paths** those runs were built at, the job
+passes `--af3-remap /scratch/bneff/episcaf/runs:$WS/runs` to point them at the durable copies made
+2026-07-17 (without it the AF3 lookups resolve nothing once `/scratch` is swept, and the script hard-fails
+rather than writing a blank `sequence` column). (2) `python scripts/extend_superset.py` (local) folds in
+the 8VDL candidates and the passing minibinders and unions the columns → the full 357,789-row / 36-column
+superset. The raw `.csv` (~116 MB) is gitignored; the **gzipped copy (~34 MB) is committed** at
+`data/libraries/dp4_superset.csv.gz`. Both steps are idempotent.
 
 Verified on the 2026-07-16 build: every shipped member matched a design in its pool (1120/1120 C1,
 1660/1660 C2, 4390/4390 C3), and every passing design's sequence was readable (543/543 C1, 233/233 C2 —
@@ -468,10 +476,13 @@ python $REPO/scripts/stage07_order_file.py \
   --peptides       $REPO/runs/dp4_encoding_full/dp4_named_peptides.csv \
   --out            $REPO/data/libraries/dp4_order_file.csv     # -> 15,324 oligos, all verified
 
-# ALL-DESIGNS SUPERSET (Gemini; John's ask -- every candidate design, not just the selected ones).
-# One pass over C1+C2+C3 -> $WS/dp4_superset.csv (~335k rows). MUST run before the /scratch run dirs
-# are deleted: --sequences reads AF3 chain A out of runs/*/04_af3/outputs.
+# ALL-DESIGNS SUPERSET (John's ask -- every candidate design, not just the selected ones). TWO steps:
+# (1) Gemini: C1/C2/C3 pool -> $WS/dp4_superset.csv (--sequences reads AF3 chain A via the af3-remap).
 sbatch scripts/build_superset.sbatch
+# (2) local: fold in 8VDL + passing minibinders, union the columns -> the full 357,789-row superset,
+#     then gzip the committed copy. (Copy $WS/dp4_superset.csv down first, or run where it is reachable.)
+python scripts/extend_superset.py --superset $WS/dp4_superset.csv --out data/libraries/dp4_superset.csv
+gzip -c data/libraries/dp4_superset.csv > data/libraries/dp4_superset.csv.gz   # commit the .gz
 ```
 
 Scorer weights and transforms are config, not magic numbers (`episcaf_analysis/presets.py`). C5 and C6

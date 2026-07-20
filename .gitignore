@@ -75,8 +75,8 @@ scratch_figs/
 
 # full composite rankings are large + regenerable by scripts/stage06_select.py; keep only top-N cuts
 results/dp4_*_ranked.csv
-# the all-designs superset (~335k rows, ~90MB raw): the raw .csv stays out of git (regenerable by
-# scripts/stage06_superset.py, lives on $WS), but the GZIPPED copy dp4_superset.csv.gz (~28MB) IS
-# committed under data/libraries/ as the versioned raw-data artifact (John: the main raw piece of data).
-# (dp4_superset_metrics.csv = its superseded metrics-only ancestor.)
+# the all-designs superset (357,789 rows, all arms, ~116MB raw): the raw .csv stays out of git
+# (regenerable: build_superset.sbatch + extend_superset.py, lives on $WS), but the GZIPPED copy
+# dp4_superset.csv.gz (~34MB) IS committed under data/libraries/ as the versioned raw-data artifact
+# (John: the main raw piece of data). (dp4_superset_metrics.csv = its superseded metrics-only ancestor.)
 dp4_superset*.csv

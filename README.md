@@ -21,9 +21,10 @@ and handed off to the LadnerLab oligo encoder (`episcaf_pipeline/oligo_encoding/
 soft-gate scorer (`antibody_softgate`, manuscript `sec:composite`), encoded to DNA, and gated into
 `data/libraries/dp4_order_file.csv` — 15,324 oligos, each 349 nt with the 20-mer adapters, every core
 verified to translate back to exactly its own peptide. That file is what goes to Twist. An all-designs
-superset (334,750 rows) holds every candidate design, not just the ones that shipped, for looking at the
-distributions the library was drawn from — the gzipped copy is committed at
-`data/libraries/dp4_superset.csv.gz` (~28 MB); the raw `.csv` is regenerated on `$WS`. Full reference:
+superset (357,789 rows, every candidate arm: C1/C2/C3 + 8VDL + passing minibinders) holds every
+candidate design, not just the ones that shipped — a true superset, so the shipped library is a strict
+subset of it. The gzipped copy is committed at `data/libraries/dp4_superset.csv.gz` (~34 MB); the raw
+`.csv` is regenerated on `$WS`. Full reference:
 `docs/DP4_LIBRARY.md`; step order: `docs/PIPELINE.md`.
 
 > **Code lives in git; data and runs live on `/tgen_labs`.** Nothing under `runs/`,
@@ -131,8 +132,8 @@ python scripts/stage07_order_file.py --best-encodings <rundir>/DP4_best_encoding
     --peptides data/libraries/dp4_named_peptides.csv --out data/libraries/dp4_order_file.csv
 #    -> 15,324 oligos, all verified (349 nt, 20-mer adapters, every core translates back). To Twist.
 
-# 10. SUPERSET  [cluster, analysis]  — every candidate design (334,750), not just the 15,324 that
-#     shipped, for looking at the distributions. Must run BEFORE the /scratch run dirs are deleted.
+# 10. SUPERSET  [cluster + local, analysis]  — every candidate design across all arms (357,789), not
+#     just what shipped. build_superset.sbatch (C1/C2/C3) then extend_superset.py (+8VDL +minibinders).
 sbatch scripts/build_superset.sbatch                          # -> $WS/dp4_superset.csv
 ```
 
@@ -181,7 +182,7 @@ separate run.
 | C3 polyclonal 12-mer | `run_12mer_scaffolding/` | `run_12mer_scaffolding/06_score/metrics_12mer.csv` |
 | 8VDL PfEMP1 arm | `dp4_8vdl/` | (top-10 per definition consolidated into `results/`) |
 | Oligo encoding | `runs/dp4_encoding_full/` (`DP4_best_encodings`, `out_seqs`, `output_ratio`) | — |
-| All-designs superset | raw `dp4_superset.csv` regenerated here (334,750 rows); **gzipped copy committed to git** at `data/libraries/dp4_superset.csv.gz` (~28 MB) | — |
+| All-designs superset | raw `dp4_superset.csv` regenerated here (357,789 rows, all arms); **gzipped copy committed to git** at `data/libraries/dp4_superset.csv.gz` (~34 MB) | — |
 | DP3 design table | `datasets/dp2.parquet` (Lawson's ledger; C5/C6 trace back to the C1 pool) | — |
 
 C4/C5/C6 have no cluster run: **C4** is built from the antigen FASTA sequences, and **C5** (metric-space
