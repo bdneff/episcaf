@@ -9,11 +9,14 @@ episcaf stage05 assumes). Per design:
   - in that frame, count scaffold residues whose heavy atoms clash with the H/L Fab -> af3_n_clash_res
     (the REAL clash, since the antibody is known);
   - epitope PAE from the AF3 confidence; overall RMSD vs the MPNN backbone.
-Composite = antibody preset weights (0.35 clash + 0.35 epitope RMSD + 0.15 overall RMSD + 0.15 epitope
-PAE), percentile within run, lower-is-better. Top-`topk` per run -> 8-column rows for stage06_assemble.
+Composite = the shared `antibody_softgate` scorer -- the SAME soft-gate + global-pass promotion the C1/C2
+arms use (John, 2026-07-20: apply the soft-gate clash weighting to 8VDL too, so its clashers are
+penalized the way they are everywhere else). 8VDL has the known H/L Fab, so accessibility is the REAL
+clash `af3_n_clash_res`, not the cylinder surrogate. Top-`topk` per run -> 8-column rows for
+stage06_assemble; `--metrics-out` also dumps every design's scored metrics for cheap re-ranks.
 
 Runs on the cluster (gemmi + AF3 outputs). Usage (from dp4_8vdl/):
-  python scripts/07_consolidate.py --runs epitope20,hotspots,contact --topk 10 \
+  python scripts/07_consolidate.py --runs epitope,hotspots --topk 10 \
       --out ../results/dp4_8vdl_top10.csv
 """
 from __future__ import annotations
@@ -33,9 +36,9 @@ sys.path.insert(0, str(_REPO / "episcaf_analysis"))
 sys.path.insert(0, str(_HERE))
 import compute_metrics as CM                       # noqa: E402
 from contact_epitope import AA3                    # noqa: E402
+from score import score                            # noqa: E402  the shared config-driven scorer
+from presets import PRESETS                        # noqa: E402
 
-COMPOSITE = [("af3_n_clash_res", 0.35), ("epitope_chunk_rmsd", 0.35),
-             ("overall_rmsd", 0.15), ("epitope_pae", 0.15)]
 _CID = re.compile(r"_contig(\d+)")
 
 
@@ -124,11 +127,14 @@ def compute_one(af3_dir, mpnn_pdb, cpos, epi_ca, ab_heavy, cutoff=4.0):
     return rec
 
 
-def composite(df):
-    sc = pd.Series(0.0, index=df.index)
-    for col, w in COMPOSITE:
-        sc = sc + (1.0 - df[col].rank(pct=True)).fillna(0.0) * w    # lower metric -> higher score
-    return sc
+def softgate(df):
+    """Score with the SAME antibody_softgate preset the C1/C2 arms use: steep soft gates on fold
+    quality, a broad heavily-weighted REAL-clash term (af3_n_clash_res -- 8VDL has the known H/L Fab, so
+    no cylinder surrogate), and global-pass promotion. Replaces the old scale-blind percentile scorer;
+    disable the preset's own top-k select so we rank the full run and cut in process_run."""
+    preset = {k: (v.copy() if isinstance(v, dict) else v) for k, v in PRESETS["antibody_softgate"].items()}
+    preset["select"] = None
+    return score(df, preset)                        # adds 'composite' (+ pass_indicator)
 
 
 def process_run(run, topk, base):
@@ -166,12 +172,14 @@ def process_run(run, topk, base):
     df = pd.DataFrame(rows)
     print(f"[{run}] af3 dirs {n_seen}  scored {len(df)}  skipped {n_bad}")
     if df.empty:
-        return df
-    df["composite"] = composite(df)
+        return df, df
+    df = softgate(df)
     top = df.nlargest(topk, "composite").copy()
+    npass = int(df.get("pass_indicator", pd.Series(0.0, index=df.index)).gt(0.5).sum())
     print(f"[{run}] top-{topk}: epiRMSD {top.epitope_chunk_rmsd.min():.2f}-{top.epitope_chunk_rmsd.max():.2f}  "
-          f"clash {top.af3_n_clash_res.min()}-{top.af3_n_clash_res.max()}")
-    return top
+          f"clash {top.af3_n_clash_res.min()}-{top.af3_n_clash_res.max()} (was scale-blind percentile); "
+          f"{npass} four-filter passers in the run")
+    return top, df
 
 
 def main():
@@ -182,10 +190,20 @@ def main():
     ap.add_argument("--topk", type=int, default=10)
     ap.add_argument("--base", type=Path, default=_HERE.parent, help="dp4_8vdl/ dir")
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--metrics-out", type=Path, default=None,
+                    help="also dump the FULL per-design scored metrics (all designs, not just top-k), so a "
+                         "later re-rank needs no AF3 re-read. Default: <out>_allmetrics.csv beside --out")
     args = ap.parse_args()
 
     parts = [process_run(r.strip(), args.topk, args.base) for r in args.runs.split(",") if r.strip()]
-    top = pd.concat([p for p in parts if not p.empty], ignore_index=True)
+    top = pd.concat([t for t, _ in parts if not t.empty], ignore_index=True)
+
+    fulls = [f for _, f in parts if not f.empty]
+    if fulls:
+        mout = args.metrics_out or args.out.with_name(args.out.stem + "_allmetrics.csv")
+        mout.parent.mkdir(parents=True, exist_ok=True)
+        pd.concat(fulls, ignore_index=True).to_csv(mout, index=False)
+        print(f"full per-design metrics ({sum(len(f) for f in fulls)} rows) -> {mout}")
     # 8 standard columns + the 5 scoring columns the library ships (stage06_assemble METRICS names).
     # `sequence` is the plain synthesized 103-mer; `designedSequence` keeps the EPITOPEscaffold casing.
     # No cylinder_clashes column: 8VDL is a known-antibody target, so accessibility is the REAL H/L
