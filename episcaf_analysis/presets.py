@@ -66,10 +66,12 @@ ANTIBODY = dict(   # DP3 / mAb set — known antibody, so accessibility via the 
 # steep-but-finite gate on fold quality:
 #   - af3_n_clash_res: sigmoid, midpoint 6, k=0.5, weight .45 -- BROAD, so it RANKS accessibility across
 #     the 1..~15 band (the mass) and heavily penalizes >12. Weighted heavily (it predicts binding).
-#   - epitope_chunk_rmsd / overall_rmsd / epitope_pae: STEEP sigmoids at the four-filter thresholds
-#     (1, 2, 5). Steep k acts as a SOFT GATE on fold quality -- misfolds are crushed toward 0 but never
-#     TO 0, so no island is ever dropped (unlike a hard fold floor, which empties 3/87 C2 islands). As
-#     k -> inf this is Lawson's hard filter; finite k keeps it soft and coverage-safe.
+#   - epitope_chunk_rmsd / overall_rmsd: STEEP sigmoids (k=4) at the four-filter thresholds (1, 2).
+#     Steep k acts as a SOFT GATE on fold quality -- misfolds are crushed toward 0 but never TO 0, so no
+#     island is ever dropped (unlike a hard fold floor, which empties 3/87 C2 islands). As k -> inf this
+#     is Lawson's hard filter; finite k keeps it soft and coverage-safe.
+#   - epitope_pae: gentler sigmoid (k=1.2), midpoint 2.5 -- a rank nudge toward a rigid epitope, not a
+#     gate. Midpoint set from the data (see the provenance note below), NOT the global mean_pae<5.
 # On C2 (single-island, cluster) this cuts clash 6->2 pooled (6cyf 14.5->3) while keeping the fold and
 # all 87 islands. On C1 it helps mildly and never hurts (that arm is generation-limited). Chosen over
 # both percentile (leaves clashes on the table) and hard-weight-only mixes (backfire / misfold blowup).
@@ -80,8 +82,16 @@ ANTIBODY = dict(   # DP3 / mAb set — known antibody, so accessibility via the 
 # score.py. Uses the four-filter's OWN metrics (global mean_pae<5, clash==0). Promotes, never excludes:
 # an epitope with no passer just ranks on the composite. On C1: 725 soft-passers vs 727 hard (0.52%).
 #
-# ALL midpoints = the DP3 thresholds; k / weights / gain are provisional dials to be re-fit on DP4
-# binding data (that is what C5 is for).
+# Midpoints: the fold gates (epitope_chunk_rmsd 1, overall_rmsd 2) and the clash centre (6) sit at the
+# DP3 thresholds / the clash mass. epitope_pae is the EXCEPTION -- its midpoint is 2.5, set from the
+# data, NOT the global mean_pae<5 threshold. Provenance (measured 2026-07-20 on metrics_whole_epitope_103
+# .csv, 140,716 designs): epitope_pae is the intra-epitope PAE BLOCK, made of short-range pairs, so it
+# runs far below the whole-matrix mean_pae -- four-filter passers median 1.85 A, pool median 9.30. It
+# correlates with epitope_chunk_rmsd (r=0.80), so that 1.85 is partly a conditioning artifact; de-
+# confounded (pass the other three filters, NO epi-rmsd cut) it is still 1.98, and designs failing only
+# epi-rmsd sit at 3.57. So 2.5 is the half-credit point between a good epitope (~2) and a marginal one
+# (~3.6); the old 5.0 (borrowed from the global threshold) sat in the tail and barely discriminated.
+# k / weights / gain remain provisional dials to be re-fit on DP4 binding data (that is what C5 is for).
 ANTIBODY_SOFTGATE = dict(
     gate=None,
     scope="pooled",
@@ -91,7 +101,7 @@ ANTIBODY_SOFTGATE = dict(
         "af3_n_clash_res":    dict(weight=0.45, better="low", transform="sigmoid", midpoint=6.0, k=0.5),
         "epitope_chunk_rmsd": dict(weight=0.25, better="low", transform="sigmoid", midpoint=1.0, k=4.0),
         "overall_rmsd":       dict(weight=0.20, better="low", transform="sigmoid", midpoint=2.0, k=4.0),
-        "epitope_pae":        dict(weight=0.10, better="low", transform="sigmoid", midpoint=5.0, k=1.2),
+        "epitope_pae":        dict(weight=0.10, better="low", transform="sigmoid", midpoint=2.5, k=1.2),
     },
     pass_bonus=dict(
         gain=2.0, k=12.0,

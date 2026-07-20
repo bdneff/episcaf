@@ -11,8 +11,10 @@ scaffolding-difficulty effect. The per-epitope island metadata is in \texttt{dp2
 \item \textbf{Fit the soft-gate dials once the label has breadth.} The move off percentile is done:
 the scorer is now the soft-gate (Section~\ref{sec:composite}), a sigmoid activation per metric, which
 is absolute, saturating, and differentiable --- so it can be fit and a DP3-trained score transfers to
-DP4. What remains is to \emph{choose the dials by data rather than by prior}. The midpoints sit at the
-four-filter thresholds and the steepnesses $k$ and weights are set by hand; the first experimental label
+DP4. What remains is to \emph{choose the dials by data rather than by prior}. Most midpoints still sit at the
+four-filter thresholds --- epitope PAE is the one already moved onto its data (midpoint \num{2.5}), a
+first instance of the retuning this item calls for --- and the steepnesses $k$ and weights are set by
+hand; the first experimental label
 has arrived (the DP3 binding data, Section~\ref{sec:experimental}) and scaffolded designs do enrich over
 the no-antibody baseline, so the premise holds. But that set cannot yet fix them: every assayed design
 already passed the four filters (no failures to contrast), its pooled metric--binding correlation is a
@@ -24,11 +26,15 @@ twice over --- on DP3 the cylinder predicts the true antibody clash at AUC $0.93
 (Section~\ref{sec:noab}), and it is the single best predictor of \emph{experimental} binding, the only
 metric whose correlation survives the between-antibody confound (Section~\ref{sec:whatpredicts}).
 
-\item \textbf{Re-select the shipped deliverables under the soft-gate scorer.} The library counts and
-components here are final, but the ranked design lists in \texttt{results/} were cut under the interim
-percentile scorer, before soft-gate was adopted. Re-run selection (\texttt{stage06\_select} $\to$
-\texttt{stage06\_assemble}) so the shipped designs are the ones soft-gate actually chooses. This changes
-which designs ship, not how many; it is held until the scorer change is signed off.
+\item \textbf{Re-select the shipped deliverables under the retuned epitope-PAE midpoint.} The shipped
+library was selected under the soft-gate scorer --- its C1 members reproduce the
+\texttt{antibody\_softgate} ranking exactly --- so the earlier move off percentile is already realized
+in what ships, not just in the code. Since then one dial has changed: the epitope-PAE midpoint was
+retuned from 5 to \num{2.5}, set from the intra-epitope PAE distribution rather than borrowed from the
+global threshold (Section~\ref{sec:composite}). This shifts roughly one design in ten --- \num{107} of
+the \num{1120} C1 selections swap --- while leaving the counts and components unchanged. Re-run selection
+(\texttt{stage06\_select} $\to$ \texttt{stage06\_assemble}) so the shipped designs are the ones the
+current scorer chooses; nothing has gone to synthesis, so the shift costs nothing.
 
 \item \textbf{Confirm the canonical DP3 metrics builder.} Determine whether
 \texttt{compute\_metrics\_mpnn.py} (currently archived) is the live RFD3+MPNN metrics

@@ -130,17 +130,30 @@ The fix is a \emph{sigmoid} activation,
 \varphi(x) \;=\; \frac{1}{1+\exp\!\bigl(s\,k\,(x-x_0)\bigr)},
 \qquad s=+1\ \text{if lower is better (else } -1),
 \end{equation}
-an absolute, saturating score with a midpoint $x_0$ and steepness $k$, which we apply in two ways. On the
-fold-quality metrics --- overall RMSD, epitope RMSD, and epitope PAE --- we use a steep sigmoid centered
-at the four-filter threshold (2, 1, 5), so that below the threshold the score is nearly flat and
-\SI{0.3}{} and \SI{0.9}{\angstrom} score the same, and the term stops paying for over-optimization. A
+an absolute, saturating score with a midpoint $x_0$ and steepness $k$, which we apply in three registers.
+On the two fold-quality metrics --- overall RMSD and epitope RMSD --- we use a steep sigmoid centered at
+the four-filter threshold (2 and \SI{1}{\angstrom}), so that below the threshold the score is nearly flat
+and \SI{0.3}{} and \SI{0.9}{\angstrom} score the same, and the term stops paying for over-optimization. A
 steep sigmoid is really a soft gate: as $k\to\infty$ it becomes Lawson's hard filter, but kept finite it
 never drives a score fully to zero, so a target whose only designs are mediocre still ranks its best one
 and no island is dropped (a hard fold floor empties \num{3} of the \num{87} single-island pools, while
 the soft gate keeps all \num{87}). On accessibility we do the opposite and keep the sigmoid broad ---
 midpoint 6, where the clash distribution's mass sits, with a gentle $k=0.5$ --- so that it ranks across
 the meaningful \num{1}--\num{15} band rather than saturating, and we weight it the most, since it is the
-metric that tracks binding. This gives the \texttt{antibody\_softgate} scorer:
+metric that tracks binding.
+
+Epitope PAE is the third register: a gentle sigmoid ($k=1.2$) that nudges the ranking rather than gating
+it, and its midpoint is set from the data, not borrowed from a global threshold. It is the intra-epitope
+PAE block --- the predicted error \emph{among the epitope residues themselves} --- and being built from
+short-range pairs it runs well below the whole-design mean PAE that the four-filter thresholds at 5: a
+well-formed epitope sits near \SI{2}{\angstrom} (median \num{1.85} among four-filter passers, and
+\num{1.98} even with the epitope-RMSD cut removed, so the low value is not merely an artifact of the
+$r\!\approx\!0.8$ correlation between the two), a marginal one near \num{3.6}. We place the midpoint at
+\num{2.5}, the half-credit point between the two; the earlier choice of 5 sat out in the tail and barely
+discriminated. What this term rewards is a \emph{rigid} epitope, and that is a design assumption, not a
+demonstrated fact: we are betting that a scaffold presents an epitope best when it holds it still. It may
+be wrong, and we do not try to settle it by scoring --- the spanning subset (Section~\ref{sec:open}) is
+built to test it experimentally. This gives the \texttt{antibody\_softgate} scorer:
 
 \begin{center}
 \begin{tabular}{lc}

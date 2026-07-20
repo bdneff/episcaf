@@ -97,24 +97,41 @@ of a good enough design. Each design gets one composite score and I take the top
 `scripts/stage06_select.py`; weights and transforms in `episcaf_analysis/presets.py`; scorer in
 `episcaf_analysis/score.py`.
 
-**C1/C2 use the `antibody_softgate` preset** (adopted 2026-07-16; this is what the shipped library was
-selected under). Each metric is squashed by its own sigmoid and the four are weighted-summed:
+**C1/C2 use the `antibody_softgate` preset** (adopted 2026-07-16). Each metric is squashed by its own
+sigmoid and the four are weighted-summed:
+
+> **In flux (2026-07-20):** the shipped `dp4_library.csv` was selected under this preset with the
+> **epitope-PAE midpoint at 5** (its C1 members reproduce that ranking exactly). The midpoint has since
+> been retuned to **2.5** (data-driven — see below), which swaps ~107 of the 1120 C1 selections (~10%),
+> counts and components unchanged. Re-selection under 2.5 (`stage06_select` → `stage06_assemble`) is
+> pending; nothing is synthesized yet, so the shift is free. Until it runs, the code scorer (2.5) and
+> the shipped file (5) differ by design.
 
 ```
-composite = 0.45 · sigma(af3_n_clash_res;    midpoint 6, k 0.5)    accessibility -- ranked
-          + 0.25 · sigma(epitope_chunk_rmsd; midpoint 1, k 4.0)    fidelity   -- soft gate
-          + 0.20 · sigma(overall_rmsd;       midpoint 2, k 4.0)    fold       -- soft gate
-          + 0.10 · sigma(epitope_pae;        midpoint 5, k 1.2)    confidence -- soft gate
+composite = 0.45 · sigma(af3_n_clash_res;    midpoint 6,   k 0.5)   accessibility -- ranked
+          + 0.25 · sigma(epitope_chunk_rmsd; midpoint 1,   k 4.0)   fidelity      -- soft gate
+          + 0.20 · sigma(overall_rmsd;       midpoint 2,   k 4.0)   fold          -- soft gate
+          + 0.10 · sigma(epitope_pae;        midpoint 2.5, k 1.2)   epitope rigidity -- rank nudge
 
 sigma(x) = 1 / (1 + exp(k * (x - midpoint)))          all four metrics are lower-is-better
 ```
 
-The point of the two steepnesses: broad on clash (k 0.5) so accessibility is genuinely *ranked* across
-its range, and steep on the three fold metrics (k 4, k 1.2) so they act as **gates** — a design far the
-wrong side of the threshold scores near zero on that term. As k grows the sigmoid approaches a step, and
-in the limit this IS Lawson's hard four-filter. Keeping k finite is the whole trick: nothing is ever
-fully zeroed, so a target whose designs are all mediocre still contributes its best ones rather than
-vanishing from the library. That is what "soft gate" means here.
+The point of the steepnesses: broad on clash (k 0.5) so accessibility is genuinely *ranked* across its
+range, and steep on the two fold metrics (k 4) so they act as **gates** — a design far the wrong side of
+the threshold scores near zero on that term. As k grows the sigmoid approaches a step, and in the limit
+this IS Lawson's hard four-filter. Keeping k finite is the whole trick: nothing is ever fully zeroed, so
+a target whose designs are all mediocre still contributes its best ones rather than vanishing from the
+library. That is what "soft gate" means here.
+
+The `epitope_pae` term is gentler (k 1.2) — a rank *nudge*, not a gate — and its midpoint is **2.5**,
+set from the data rather than borrowed from the global `mean_pae < 5` threshold. `epitope_pae` is the
+intra-epitope PAE block (short-range pairs), so it runs well below the whole-matrix `mean_pae`: a good
+epitope sits near ~2 A (four-filter passers median 1.85; ~1.98 even with the epitope-RMSD filter
+removed, so it is not merely a conditioning artifact of the r≈0.8 epitope-PAE/RMSD correlation), while a
+marginal one sits ~3.6. So 2.5 is the half-credit point; the old 5.0 sat in the tail and barely
+discriminated. This term encodes a **design assumption** — that a scaffold presents its epitope best
+when the epitope is *rigid* — which may be wrong; the spanning subset is what tests it experimentally.
+Provenance and the measurement live in `episcaf_analysis/presets.py`.
 
 **Global-pass promotion** (`pass_bonus`) sits on top: `composite += 2.0 * P`, where `P` is the product of
 four steep sigmoids (k 12) at the four-filter thresholds (`epitope_chunk_rmsd` 1, `overall_rmsd` 2,
