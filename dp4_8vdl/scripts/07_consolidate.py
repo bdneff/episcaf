@@ -71,7 +71,7 @@ def load_native(pdb: Path, resids):
 
 
 def compute_one(af3_dir, mpnn_pdb, cpos, epi_ca, ab_heavy, cutoff=4.0):
-    cif, conf, _ = CM.find_af3_files(Path(af3_dir))
+    cif, conf, summ = CM.find_af3_files(Path(af3_dir))
     if cif is None:
         return None
     ch_a = CM.get_chain(CM.read_structure(cif), "A")
@@ -87,7 +87,8 @@ def compute_one(af3_dir, mpnn_pdb, cpos, epi_ca, ab_heavy, cutoff=4.0):
     epi_set = set(cpos)
     ds = "".join(c.upper() if i in epi_set else c.lower() for i, c in enumerate(seq))
     rec = {"designedSequence": ds, "epitope_chunk_rmsd": CM.rmsd_superpose(P, epi_ca),
-           "af3_n_clash_res": None, "epitope_pae": None, "mean_pae": None, "overall_rmsd": None}
+           "af3_n_clash_res": None, "epitope_pae": None, "scaffold_pae": None, "mean_pae": None,
+           "ptm": None, "overall_rmsd": None}
 
     # real H/L clash: predicted scaffold -> native frame via the epitope fit
     if ab_heavy.shape[0]:
@@ -111,8 +112,12 @@ def compute_one(af3_dir, mpnn_pdb, cpos, epi_ca, ab_heavy, cutoff=4.0):
                 rec["mean_pae"] = float(np.nanmean(pae))
                 epi = [i for i in cpos if i < pae.shape[0]]
                 rec["epitope_pae"] = float(np.nanmean(pae[np.ix_(epi, epi)])) if epi else None
+                scaf = [i for i in range(pae.shape[0]) if i not in epi_set]   # scaffold x scaffold block
+                rec["scaffold_pae"] = float(np.nanmean(pae[np.ix_(scaf, scaf)])) if scaf else None
         except Exception:  # noqa: BLE001
             pass
+
+    rec["ptm"] = CM.summary_scalars(Path(summ) if summ else None).get("ptm")
 
     if mpnn_pdb and Path(mpnn_pdb).exists():
         try:
@@ -174,8 +179,10 @@ def process_run(run, topk, base):
     if df.empty:
         return df, df
     df = softgate(df)
+    df["rank_in_group"] = df["composite"].rank(ascending=False, method="first").astype(int)  # within run
+    df["is_global_pass"] = df.get("pass_indicator", pd.Series(0.0, index=df.index)) > 0.5
     top = df.nlargest(topk, "composite").copy()
-    npass = int(df.get("pass_indicator", pd.Series(0.0, index=df.index)).gt(0.5).sum())
+    npass = int(df["is_global_pass"].sum())
     print(f"[{run}] top-{topk}: epiRMSD {top.epitope_chunk_rmsd.min():.2f}-{top.epitope_chunk_rmsd.max():.2f}  "
           f"clash {top.af3_n_clash_res.min()}-{top.af3_n_clash_res.max()} (was scale-blind percentile); "
           f"{npass} four-filter passers in the run")
@@ -219,7 +226,13 @@ def main():
         "epitope_rmsd": top.epitope_chunk_rmsd,
         "overall_rmsd": top.overall_rmsd,
         "epitope_pae": top.epitope_pae,
+        "scaffold_pae": top.scaffold_pae,
+        "mean_pae": top.mean_pae,
+        "ptm": top.ptm,
         "af3_clashes": top.af3_n_clash_res,
+        "composite": top.composite,
+        "rank_in_group": top.rank_in_group,
+        "is_global_pass": top.is_global_pass,
     })
     args.out.parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out, index=False)

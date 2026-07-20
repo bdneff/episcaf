@@ -164,7 +164,7 @@ def main() -> None:
 
     # 8VDL arm -- 8-column + (after 07_consolidate rerun) the 5 metric columns; native 103, top-10/def
     v8 = pd.read_csv(res/"dp4_8vdl_top10.csv", low_memory=False)
-    v8_cols = keep8 + [c for c in METRICS.values() if c in v8.columns]
+    v8_cols = keep8 + [c for c in list(METRICS.values()) + EXTRAS if c in v8.columns]
     parts.append(v8[v8_cols])
 
     lib_df = pd.concat(parts, ignore_index=True)

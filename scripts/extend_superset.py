@@ -57,9 +57,9 @@ def vdl_block(metrics_csv: Path, shipped_csv: Path) -> pd.DataFrame:
         "epitope_rmsd": a["epitope_chunk_rmsd"],
         "overall_rmsd": a["overall_rmsd"],
         "epitope_pae": a["epitope_pae"],
-        "scaffold_pae": pd.NA,
+        "scaffold_pae": a["scaffold_pae"] if "scaffold_pae" in a else pd.NA,
         "mean_pae": a["mean_pae"],
-        "ptm": pd.NA,
+        "ptm": a["ptm"] if "ptm" in a else pd.NA,
         "af3_clashes": a["af3_n_clash_res"],       # real H/L clash, no cylinder for 8VDL
         "cylinder_clashes": pd.NA,
         "composite": a["composite"],
