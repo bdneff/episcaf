@@ -429,10 +429,15 @@ python scripts/stage07_named_peptides.py \
 # Oligo-encode the library (Gemini). Run BOTH steps in the same working dir; step 1 is the long pole
 # (C++ sampler, hours). ADAPTER is pinned to the 20-mers inside encode_step2_select.sbatch -- do NOT
 # rely on the encoder's own --adapter default, which is the 19-mer form (see oligo-adapter-trap).
-cd $REPO/runs/dp4_encoding_full     # with dp4_named_peptides.csv copied in
-JID1=$(INPUT=dp4_named_peptides.csv sbatch --parsable --time=12:00:00 \
+cd $REPO/runs/dp4_encoding_full     # with dp4_named_peptides.csv + codon_weights_updated.csv present
+# TOOL_DIR is REQUIRED (no default, by design -- a bad default once ran an unexecutable binary). Point it
+# at the built LadnerLab encoder; the env var must come BEFORE `sbatch`, not after (else it is read as the
+# script path). Same TOOL_DIR for both steps. Step 2 pins the 20-mer ADAPTER internally -- do not pass it.
+TOOL=/home/bneff/Library-Design/oligo_encoding
+JID1=$(TOOL_DIR=$TOOL INPUT=dp4_named_peptides.csv sbatch --parsable --time=12:00:00 \
   $REPO/episcaf_pipeline/oligo_encoding/encode_step1_generate.sbatch)
-sbatch --dependency=afterok:$JID1 $REPO/episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch
+TOOL_DIR=$TOOL sbatch --dependency=afterok:$JID1 \
+  $REPO/episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch
 
 # Emit + VERIFY the Twist order file (Gemini). Checks every row: 20-mer adapters, 349 nt, and that each
 # core translates back to its own peptide. Writes nothing if any row fails.
