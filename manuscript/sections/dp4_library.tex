@@ -239,8 +239,9 @@ eight-column annotated format (Section~\ref{sec:tiling}), so the final step conc
 single ordered library file with global \texttt{library\_member} numbering --- a named, documented
 pipeline stage (\texttt{06\_library}, \texttt{scripts/stage06\_assemble.py}) so the shipped file is
 regenerable from its components. This is done: at the shipped depth (top-\num{20} for C1/C2,
-top-\num{10} for C3) assembly emits \num{15324} constructs, each with a unique
-\texttt{library\_member} and \texttt{design\_ID}, all \num{103} residues.
+top-\num{10} for C3) assembly emits \num{15324} episcaf constructs, each with a unique
+\texttt{library\_member} and \texttt{design\_ID}, all \num{103} residues; the \num{21759} minibinders are
+then folded in for the combined \num{37083}-row file.
 
 Two conventions hold across every row. First, \texttt{designedSequence} is always the full 103-mer in
 \emph{EPITOPEscaffold} casing --- epitope residues uppercase, scaffold lowercase --- including the
@@ -268,7 +269,9 @@ the mapping back out so it need not be rebuilt again.
 
 Everything up to this point is a library of \emph{peptides}. The assay does not receive peptides,
 though --- it receives DNA. PepSeq builds each displayed peptide by transcribing and translating a DNA
-oligo, so the final step converts our \num{15324} 103-mers into the DNA that codes for them and writes
+oligo, so the final step converts all \num{37083} 103-mers of the combined library (the \num{15324}
+episcaf constructs and the \num{21759} minibinders, encoded together into one assay) into the DNA that
+codes for them and writes
 the file a synthesis vendor (Twist) can manufacture. This subsection describes what that step does and
 why, since it is the one part of the pipeline that crosses from computation into the wet lab; the
 operational recipe and its pitfalls live in \texttt{episcaf\_pipeline/oligo\_encoding/README.md}.
@@ -313,14 +316,14 @@ adapter-flanked DNA to synthesize, one row per library member. Because a synthes
 and irreversible, we emit it through a checker (\texttt{scripts/stage07\_order\_file.py}) that verifies
 every row before it goes out. The central check is a \emph{round-trip}: the encoder \emph{back-translates}
 each peptide to DNA (choosing codons), so we \emph{translate} that DNA back through the standard genetic
-code and require the result to equal the original peptide exactly, for all \num{15324} members. This
+code and require the result to equal the original peptide exactly, for all \num{37083} members. This
 catches any codon-table, framing, or bookkeeping error at the one place it would otherwise pass silently
 --- an encoding that is malformed but plausible-looking still fails the moment it does not read back to
 its own peptide. The checker also confirms the adapters and the expected oligo length on every row. The
 encoder itself is external tooling run on the cluster, so the computational pipeline ends at the
 annotated peptide file and this checked order file is the deliverable that hands off to synthesis.
 
-The full library has now been through it. All \num{15324} peptides encoded, every oligo \num{349}
+The full library has now been through it. All \num{37083} peptides encoded, every oligo \num{349}
 nucleotides with the \num{20}-mer adapters on both ends, every core translating back to exactly the
 peptide it claims to encode, one encoding per peptide and none missing
 (\texttt{data/libraries/dp4\_order\_file.csv}).

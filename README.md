@@ -19,7 +19,7 @@ and handed off to the LadnerLab oligo encoder (`episcaf_pipeline/oligo_encoding/
 
 **DP4 status (2026-07-16): built, encoded, and synthesis-ready.** The library was selected under the
 soft-gate scorer (`antibody_softgate`, manuscript `sec:composite`), encoded to DNA, and gated into
-`data/libraries/dp4_order_file.csv` — 15,324 oligos, each 349 nt with the 20-mer adapters, every core
+`data/libraries/dp4_order_file.csv` — 37,083 oligos, each 349 nt with the 20-mer adapters, every core
 verified to translate back to exactly its own peptide. That file is what goes to Twist. An all-designs
 superset (357,789 rows, every candidate arm: C1/C2/C3 + 8VDL + passing minibinders) holds every
 candidate design, not just the ones that shipped — a true superset, so the shipped library is a strict
@@ -130,7 +130,7 @@ sbatch episcaf_pipeline/oligo_encoding/encode_step1_generate.sbatch   # candidat
 sbatch episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch     # NN-pick the best
 python scripts/stage07_order_file.py --best-encodings <rundir>/DP4_best_encodings \
     --peptides data/libraries/dp4_named_peptides.csv --out data/libraries/dp4_order_file.csv
-#    -> 15,324 oligos, all verified (349 nt, 20-mer adapters, every core translates back). To Twist.
+#    -> 37,083 oligos, all verified (349 nt, 20-mer adapters, every core translates back). To Twist.
 
 # 10. SUPERSET  [cluster + local, analysis]  — every candidate design across all arms (357,789), not
 #     just what shipped. build_superset.sbatch (C1/C2/C3) then extend_superset.py (+8VDL +minibinders).

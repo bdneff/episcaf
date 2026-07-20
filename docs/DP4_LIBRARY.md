@@ -9,7 +9,7 @@ arm) are selected, built, case-encoded, and concatenated into `data/libraries/dp
 constructs, each a 103-mer with a unique `library_member` and `design_ID`. The shipping depth is top-20
 per group for C1/C2 and top-10 per window for C3; C4/C5/C6 and 8VDL are fixed size. Selection ran under
 the soft-gate scorer (`antibody_softgate`). The library has since been oligo-encoded and gated into
-`data/libraries/dp4_order_file.csv` — 15,324 oligos, all verified — which is the file that goes to Twist.
+`data/libraries/dp4_order_file.csv` — 37,083 oligos, all verified — which is the file that goes to Twist.
 
 > **Minibinder arm added (2026-07-20).** `dp4_library.csv` now also carries the **21,759** filter-passing
 > **LX PfEMP1/EPCR minibinders** (`category=minibinder`), so the file is a single view of the whole DP4
@@ -53,7 +53,7 @@ The deliverable and the input to the next step:
   the `lx_` minibinder columns** — 33 columns, schema below. This is the
   file to hand off. `designedSequence` is the full 103-mer in EPITOPEscaffold casing (epitope uppercase /
   scaffold lowercase) for every row; `sequence` is the plain uppercase 103-mer that gets synthesized.
-- **`data/libraries/dp4_order_file.csv`** — the Twist synthesis order file. 15,324 oligos, two columns
+- **`data/libraries/dp4_order_file.csv`** — the Twist synthesis order file. 37,083 oligos, two columns
   (`Seq ID`, `nucleotide_encoding_with_twist_adapters`). Every row verified by
   `scripts/stage07_order_file.py`: 349 nt, the 20-mer adapters on both ends, and a core that translates
   back to exactly its own peptide. **This is what goes to Twist.**
@@ -504,7 +504,7 @@ TOOL_DIR=$TOOL sbatch --dependency=afterok:$JID1 \
 python $REPO/scripts/stage07_order_file.py \
   --best-encodings $REPO/runs/dp4_encoding_full/DP4_best_encodings \
   --peptides       $REPO/runs/dp4_encoding_full/dp4_named_peptides.csv \
-  --out            $REPO/data/libraries/dp4_order_file.csv     # -> 15,324 oligos, all verified
+  --out            $REPO/data/libraries/dp4_order_file.csv     # -> 37,083 oligos, all verified
 
 # ALL-DESIGNS SUPERSET (John's ask -- every candidate design, not just the selected ones). ONE cluster
 # pass: build C1/C2/C3 -> extend with 8VDL + passing minibinders -> gzip. Needs the LX source on-cluster
@@ -536,17 +536,19 @@ with `stage06_assemble.py --c3-depth <n>` if the final minibinder count moves th
 1. Assembly (`06_library`) — done 2026-07-13. `scripts/stage06_assemble.py --depth 20` concatenated the
    seven components into `data/libraries/dp4_library.csv` (15,324 constructs), applying the 56-exclusion
    (C1/C2), the top-20 (C1/C2) and top-10 (C3) depth cuts, and global numbering. `library_member` and
-   `design_ID` are unique and every sequence is 103 residues. Ships the 8 annotation columns + the 5
-   scoring columns, with `designedSequence` in EPITOPEscaffold casing on every row.
-2. Oligo encoding — **done 2026-07-16.** Encoder input: `scripts/stage07_named_peptides.py` →
+   `design_ID` are unique and every sequence is 103 residues. Ships the full **33-column schema** (see the
+   column dictionary): 8 annotation columns + the metric/scoring set + the 13 `lx_` minibinder columns,
+   with `designedSequence` in EPITOPEscaffold casing on every scaffolded row.
+2. Oligo encoding — **whole library encoded 2026-07-20** (37,083 = 15,324 episcaf + 21,759 minibinders;
+   supersedes the 2026-07-16 episcaf-only 15,324 encode after the 2.5 re-selection + soft-gate 8VDL +
+   minibinder addition). Encoder input: `scripts/stage07_named_peptides.py` →
    `data/libraries/dp4_named_peptides.csv` (`name,seq`, no header, all 103-mers; regenerate after any
-   library change). The full 15,324 ran on Gemini in `runs/dp4_encoding_full/` with the LadnerLab
-   encoder (step 1 sampler → step 2 NN selector, DP3 recipe + `codon_weights_updated.csv`;
-   `episcaf_pipeline/oligo_encoding/`, see its README and manuscript `sec:oligo`) → `DP4_best_encodings`,
-   15,325 lines = header + all 15,324, nothing dropped. The order file is **not** a further encoding
-   step — step 2 already emits the adapter-flanked oligo, so the order file is a two-column slice,
-   emitted + verified by `scripts/stage07_order_file.py` → `data/libraries/dp4_order_file.csv`
-   (tracked in git, commit `ac212fe`). All 15,324 verified: 349 nt, 20-mer adapters both ends, every
+   library change). Ran on Gemini in `runs/dp4_encoding_full/` with the LadnerLab encoder (step 1 sampler
+   → step 2 NN selector, DP3 recipe + `codon_weights_updated.csv`; `episcaf_pipeline/oligo_encoding/`, see
+   its README and manuscript `sec:oligo`) → `DP4_best_encodings`, all 37,083, nothing dropped. The order
+   file is **not** a further encoding step — step 2 already emits the adapter-flanked oligo, so the order
+   file is a two-column slice, emitted + verified by `scripts/stage07_order_file.py` →
+   `data/libraries/dp4_order_file.csv`. All 37,083 verified: 349 nt, 20-mer adapters both ends, every
    core translates back to its own peptide, one encoding per peptide, none missing. **Twist-ready.**
    **Adapter length resolved 2026-07-16: John confirmed the 20-mers** (`ACCTATACTTCCAAGGCGCA` /
    `GGTGACTCTCTGTCTTGGCT` → 349 nt), the same ones DP3's order file carried. This **supersedes Erin's
