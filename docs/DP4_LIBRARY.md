@@ -316,19 +316,41 @@ The synthesis file uses the 8-column annotated format (the column schema of the 
 annotation; reference `episcaf_pipeline/scaffolded_epitope_controls/reference_dp3/DP3_annot.csv`),
 validated on C4 (`dp4_tiled30mers_fasta.csv` is the reference instance):
 
-| column | meaning |
-|---|---|
-| `library_member` | global id, `DP4_<N>` |
-| `sequence` | the 103-mer synthesized (plain uppercase) |
-| `category` | component type (`tiled30mer`, `scaffoldedAbEpitope`, `metricSpaceTitration`, …) |
-| `model` | `RFD` for designs, `(none)` for linear controls |
-| `designedSequence` | the full 103-mer in **EPITOPEscaffold** casing — epitope UPPER, scaffold lower |
-| `designedSequenceLength` | len(`designedSequence`) — 103 for every row |
-| `design_ID` | per-design id (globally unique) |
-| `target` | antigen / mAb id |
-| `epitope_rmsd`, `overall_rmsd`, `epitope_pae`, `scaffold_pae`, `mean_pae`, `ptm`, `af3_clashes`, `cylinder_clashes` | the **metric set** — RMSDs, the full PAE decomposition, ptm, and both clash flavors; blank where a design has no such value, never imputed |
-| `composite`, `rank_in_group`, `is_global_pass`, `island_index` | the **scoring columns** — the soft-gate composite, its within-group rank, the four-filter pass flag, and (C2) the island index; C1/C2/C3 only |
-| `lx_*` (13) | every native LatentX column on the minibinder rows (`lx_plddt`, `lx_pae`, `lx_rmsd`, `lx_iptm`, `lx_hotspots`, …); blank on episcaf rows |
+### Column dictionary (33 columns)
+
+Every column, what it means, and **which rows are blank and why** — nothing is ever imputed, so a blank
+is always "not measured for this kind of design," never "measured as zero." The fill pattern is measured
+from the file itself (`● filled, · blank`; components: C1 whole-epitope, C2 single-island, C3 polyclonal
+12-mer, C4 linear tiles, C5 titration, C6 mutant controls, 8V = 8VDL, LX = minibinders):
+
+| column | meaning | C1 C2 C3 C4 C5 C6 8V LX | why blank where it is |
+|---|---|---|---|
+| `library_member` | global id `DP4_<N>` | ● ● ● ● ● ● ● ● | never blank |
+| `sequence` | the 103-mer synthesized (plain uppercase) | ● ● ● ● ● ● ● ● | never blank — this is what's ordered |
+| `category` | component type (`scaffoldedAbEpitope`, `minibinder`, …) | ● ● ● ● ● ● ● ● | never blank |
+| `model` | design method: `RFD` (RFdiffusion), `LX` (LatentX minibinder), `(none)` (C4 linear) | ● ● ● ● ● ● ● ● | never blank |
+| `designedSequence` | the 103-mer in **EPITOPEscaffold** casing (epitope UPPER, scaffold lower); for minibinders = the plain sequence (no epitope to case) | ● ● ● ● ● ● ● ● | never blank |
+| `designedSequenceLength` | `len(designedSequence)` — 103 everywhere | ● ● ● ● ● ● ● ● | never blank |
+| `design_ID` | per-design id (globally unique) | ● ● ● ● ● ● ● ● | never blank |
+| `target` | antigen / mAb id (minibinders: `fold_pfemp1_epcr_*`) | ● ● ● ● ● ● ● ● | never blank |
+| `epitope_rmsd` | epitope-backbone RMSD to native | ● ● ● · ● · ● · | **C4/C6 were never folded** (linear tiles / sequence-only mutants); **LX** not scored on our axes |
+| `overall_rmsd` | whole-construct backbone RMSD | ● ● ● · ● · ● · | same as above |
+| `epitope_pae` | intra-epitope PAE block | ● ● ● · ● · ● · | same as above |
+| `scaffold_pae` | scaffold×scaffold PAE block | ● ● ● · ● · ● · | same as above (8VDL: added 2026-07-20) |
+| `mean_pae` | whole-matrix PAE (the four-filter's "overall PAE") | ● ● ● · ● · ● · | same as above |
+| `ptm` | AF3 predicted TM-score | ● ● ● · ● · ● · | same as above |
+| `af3_clashes` | **real** antibody (H/L) clash-residue count | ● ● · · ● · ● · | **C3 has no antibody** (polyclonal) → uses the cylinder instead; C4/C6/LX unfolded/unscored |
+| `cylinder_clashes` | **cylinder-surrogate** clash (accessibility proxy) | ● ● ● · ● · · · | **8VDL has the real Fab** so no surrogate was computed; C4/C6/LX unfolded/unscored. C1/C2/C5 carry BOTH clash flavors (the whole-epitope pipeline computes both) |
+| `composite` | the `antibody_softgate` (or `twelvemer` for C3) composite score | ● ● ● · · · ● · | **C5 is a farthest-point metric-space sample, not composite-ranked**; C4/C6/LX not ranked |
+| `rank_in_group` | rank within the design's selection group (1 = best) | ● ● ● · · · ● · | same as `composite` — only the composite-ranked arms |
+| `is_global_pass` | clears all four Lawson filters (soft-AND > 0.5) | ● ● · · · · ● · | **C3 has no antibody**, so no antibody-based global pass is defined; C4/C5/C6/LX not applicable |
+| `island_index` | which island (0-based) the design scaffolds | · ● · · · · · · | **only C2 is per-island**; C1 scaffolds the whole epitope (no split), everything else is single-target |
+| `lx_*` (13 cols) | every native LatentX column (`lx_plddt`, `lx_pae`, `lx_rmsd`, `lx_ipae`, `lx_iptm`, `lx_plddt_binder`, `lx_hotspots`, `lx_uuid`, …) | · · · · · · · ● | **only the minibinders have a LatentX record**; all episcaf rows are blank here (`lx_iptm` is also blank on many LX rows — LatentX left it empty at the source) |
+
+Two non-obvious blanks worth remembering: **C5 has no `composite`/`rank`** because it is sampled to
+*span* the metric space, not to top-rank it (that is the whole point of the titration arm); and **C3 has
+no `is_global_pass` or `af3_clashes`** because it is the polyclonal / no-antibody arm, where accessibility
+is the cylinder surrogate and there is no single antibody to define a clash or a four-filter pass against.
 
 `sequence` construction: for the linear controls (C4) it is filler + `ENLYFQGA` + 30-mer; for the
 scaffolded designs it is the design's own 103-mer. Assembly concatenates all components with global
