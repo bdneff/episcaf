@@ -56,21 +56,38 @@ cd "${REPO}"
 # nothing once /scratch is swept (the script now hard-fails on that rather than writing blanks).
 REMAP=${REMAP:-/scratch/bneff/episcaf/runs:${WS}/runs}
 
-# C1 writes (overwrites) the file; C2 and C3 append. --sequences reads AF3 chain A for every
-# global-passing design that did not already ship (selected designs get their sequence copied
-# verbatim from dp4_library.csv, so the superset agrees with the library by construction).
+# The C1/C2/C3 episcaf pool is built into an INTERMEDIATE (episcaf-only); the extend step below then
+# folds in 8VDL + the passing minibinders to produce the ONE canonical OUT. Naming the intermediate
+# distinctly avoids the trap where "$WS/dp4_superset.csv" meant two different things (partial vs full).
+EPISCAF="${OUT%.csv}_episcaf.csv"
+LX=${LX:-dp4_8vdl/data/LX_20260626.csv}     # the LatentX minibinder source (must be present on-cluster)
+
+# C1 writes (overwrites) the intermediate; C2 and C3 append. --sequences reads AF3 chain A for every
+# global-passing design that did not already ship (selected designs get their sequence copied verbatim
+# from dp4_library.csv, so the superset agrees with the library by construction).
 echo "=== C1 $(date) ==="
 python scripts/stage06_superset.py --component C1 --metrics-csv "${M1}" \
-    --library "${LIB}" --sequences --af3-remap "${REMAP}" --out "${OUT}"
+    --library "${LIB}" --sequences --af3-remap "${REMAP}" --out "${EPISCAF}"
 
 echo "=== C2 $(date) ==="
 python scripts/stage06_superset.py --component C2 --metrics-csv "${M2}" \
-    --library "${LIB}" --sequences --af3-remap "${REMAP}" --append --out "${OUT}"
+    --library "${LIB}" --sequences --af3-remap "${REMAP}" --append --out "${EPISCAF}"
 
 echo "=== C3 $(date) ==="
 python scripts/stage06_superset.py --component C3 --metrics-csv "${M3}" \
-    --library "${LIB}" --append --out "${OUT}"
+    --library "${LIB}" --append --out "${EPISCAF}"
+
+# Fold in 8VDL + passing minibinders and union the columns -> the FULL canonical superset. Needs the LX
+# file on-cluster; fail loudly if it is missing rather than silently emitting an episcaf-only superset.
+echo "=== extend (8VDL + minibinders) $(date) ==="
+[[ -e "${LX}" ]] || { echo "ERROR: LX minibinder source not found at ${LX}. Upload it (rsync) to the "\
+"cluster, or pass LX=<path>. It is gitignored (~168MB), so it does not arrive via git."; exit 1; }
+python scripts/extend_superset.py --superset "${EPISCAF}" --lx "${LX}" --out "${OUT}"
+
+echo "=== gzip the committed copy $(date) ==="
+gzip -c "${OUT}" > "${REPO}/data/libraries/dp4_superset.csv.gz"
+echo "commit data/libraries/dp4_superset.csv.gz from ${REPO}"
 
 echo "=== done $(date) ==="
-wc -l "${OUT}"
+wc -l "${EPISCAF}" "${OUT}"
 echo "superset -> ${OUT}"

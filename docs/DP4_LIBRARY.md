@@ -207,15 +207,19 @@ out fully sequenced (82,712), because its metrics already carry `design_seq` —
 minibinders likewise arrive fully sequenced from the LX file. `designedSequence` is
 selected-only, since case-encoding was only ever run on the selections.
 
-Build it in **two steps**: (1) `sbatch scripts/build_superset.sbatch` (cluster) builds the C1/C2/C3
-episcaf pool → `$WS/dp4_superset.csv`, well under a minute; the sequence pass reads `runs/*/04_af3/outputs`,
-and because the C1/C2 metrics record the **absolute `/scratch` paths** those runs were built at, the job
-passes `--af3-remap /scratch/bneff/episcaf/runs:$WS/runs` to point them at the durable copies made
-2026-07-17 (without it the AF3 lookups resolve nothing once `/scratch` is swept, and the script hard-fails
-rather than writing a blank `sequence` column). (2) `python scripts/extend_superset.py` (local) folds in
-the 8VDL candidates and the passing minibinders and unions the columns → the full 357,789-row / 36-column
-superset. The raw `.csv` (~116 MB) is gitignored; the **gzipped copy (~34 MB) is committed** at
-`data/libraries/dp4_superset.csv.gz`. Both steps are idempotent.
+Build it in **one cluster pass**: `sbatch scripts/build_superset.sbatch` does everything —
+(a) the C1/C2/C3 episcaf pool into an `*_episcaf.csv` intermediate (the sequence pass reads
+`runs/*/04_af3/outputs`, and because the C1/C2 metrics record the **absolute `/scratch` paths** those runs
+were built at, the job passes `--af3-remap /scratch/bneff/episcaf/runs:$WS/runs` to point them at the
+durable copies — without it the AF3 lookups resolve nothing once `/scratch` is swept, and it hard-fails
+rather than writing a blank `sequence` column); (b) `extend_superset.py` folds in the 8VDL candidates and
+the passing minibinders and unions the columns → the full **357,789-row / 36-column** `$WS/dp4_superset.csv`;
+(c) gzips it to `data/libraries/dp4_superset.csv.gz` for you to commit. So `$WS/dp4_superset.csv` and the
+committed `.gz` are **the same file** — no more partial-vs-full confusion. The extend step needs the LX
+minibinder source on the cluster (`dp4_8vdl/data/LX_*.csv`, ~168 MB, gitignored — `rsync` it up once); the
+job fails loudly if it is missing. The raw `.csv` (~116 MB) is gitignored; the gzipped copy (~34 MB) is
+committed. Everything is idempotent. `scripts/extend_superset.py` can also be run standalone if the
+episcaf intermediate already exists.
 
 Verified on the 2026-07-16 build: every shipped member matched a design in its pool (1120/1120 C1,
 1660/1660 C2, 4390/4390 C3), and every passing design's sequence was readable (543/543 C1, 233/233 C2 —
@@ -502,13 +506,11 @@ python $REPO/scripts/stage07_order_file.py \
   --peptides       $REPO/runs/dp4_encoding_full/dp4_named_peptides.csv \
   --out            $REPO/data/libraries/dp4_order_file.csv     # -> 15,324 oligos, all verified
 
-# ALL-DESIGNS SUPERSET (John's ask -- every candidate design, not just the selected ones). TWO steps:
-# (1) Gemini: C1/C2/C3 pool -> $WS/dp4_superset.csv (--sequences reads AF3 chain A via the af3-remap).
+# ALL-DESIGNS SUPERSET (John's ask -- every candidate design, not just the selected ones). ONE cluster
+# pass: build C1/C2/C3 -> extend with 8VDL + passing minibinders -> gzip. Needs the LX source on-cluster
+# (rsync dp4_8vdl/data/LX_*.csv up once, ~168MB, gitignored). Emits $WS/dp4_superset.csv (== the .gz).
 sbatch scripts/build_superset.sbatch
-# (2) local: fold in 8VDL + passing minibinders, union the columns -> the full 357,789-row superset,
-#     then gzip the committed copy. (Copy $WS/dp4_superset.csv down first, or run where it is reachable.)
-python scripts/extend_superset.py --superset $WS/dp4_superset.csv --out data/libraries/dp4_superset.csv
-gzip -c data/libraries/dp4_superset.csv > data/libraries/dp4_superset.csv.gz   # commit the .gz
+git add data/libraries/dp4_superset.csv.gz && git commit -m "superset: rebuild" && git push
 ```
 
 Scorer weights and transforms are config, not magic numbers (`episcaf_analysis/presets.py`). C5 and C6

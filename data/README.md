@@ -52,10 +52,11 @@ crystals lives on the cluster (see below).
   `lx_*`; minibinder rows blank in the episcaf metric/scoring columns. `selected` sums to 28,949 (the
   library's 37,083 minus the C4/C5/C6 controls, which aren't candidate-pool designs). Ranked under
   `antibody_softgate` at the **current epitope_pae midpoint 2.5**, so ranks reconcile with what shipped.
-  **Two-step build** (rerun when the scorer or pool changes): `sbatch scripts/build_superset.sbatch`
-  (cluster → `$WS/dp4_superset.csv`, the C1/C2/C3 pool) then `python scripts/extend_superset.py` (local →
-  folds in 8VDL + passing minibinders + unions the columns), then gzip into `data/libraries/`. The raw
-  `.csv` (~116 MB) is gitignored. (The full ~484 k LX pool stays in the raw LX file; the superset carries
+  **One-pass cluster build** (rerun when the scorer or pool changes): `sbatch scripts/build_superset.sbatch`
+  builds the C1/C2/C3 pool, folds in 8VDL + passing minibinders (`extend_superset.py`), and gzips it — so
+  `$WS/dp4_superset.csv` and the committed `.gz` are the same file. Needs the LX source on-cluster
+  (`dp4_8vdl/data/LX_*.csv`, gitignored). The raw `.csv` (~116 MB) is gitignored. (The full ~484 k LX pool
+  stays in the raw LX file; the superset carries
   only the passing minibinders.)
   `sequence` is filled for selected + global-passing episcaf designs (read from AF3 chain A) and for all
   minibinders (from the LX file); blank for the rest of the episcaf pool, since filling every one means
