@@ -7,8 +7,9 @@ be poked at and the selected rows compared against the pool they came from:
 
   component            C1 / C2 / C3
   category, target, predID, island_index          identity (as in dp4_library.csv)
-  epitope_rmsd, overall_rmsd, epitope_pae,
-  af3_clashes, cylinder_clashes, mean_pae, ptm    the metrics (blank where a component lacks one)
+  epitope_rmsd, overall_rmsd,
+  epitope_pae, scaffold_pae, mean_pae             the PAE decomposition (see PAE below)
+  af3_clashes, cylinder_clashes, ptm              the metrics (blank where a component lacks one)
   composite, rank_in_group                        soft-gate composite + rank within selection group
   is_global_pass                                  clears ALL four Lawson filters (C1/C2 only)
   selected, library_member                        did this design ship, and as which member
@@ -16,6 +17,12 @@ be poked at and the selected rows compared against the pool they came from:
 
 Ranked under `antibody_softgate` (C1/C2) -- the preset that ACTUALLY picked the shipped library --
 so `composite`/`rank_in_group` reconcile with what shipped. C3 uses `twelvemer` (no antibody).
+
+PAE. `mean_pae` is the OVERALL PAE -- the whole AF3 PAE matrix averaged -- and it is the metric the
+published RFD/Lawson four-filter thresholds at < 5 (kept here as the point of comparison, not gated).
+`epitope_pae` is the epitope block only (what the soft-gate weights, 0.10); `scaffold_pae` is the
+rest, so overall reads as its two parts. All are PAE (inter-residue error), NOT pLDDT (per-residue
+confidence, the AF3-viewer coloring) -- we do not currently extract pLDDT.
 
 SEQUENCES. Filled for SELECTED designs (copied verbatim from dp4_library.csv, so the superset
 agrees with what shipped by construction) and, with --sequences, for GLOBAL-PASSING designs (read
@@ -71,8 +78,13 @@ RENAME = {
     "af3_n_clash_res": "af3_clashes",
     "cylinder_native_aware": "cylinder_clashes",
 }
+# PAE is carried as the full three-way decomposition AF3 gives us, none of it filtered on here:
+#   mean_pae     -- OVERALL, the whole PAE matrix averaged. This is the metric the published RFD
+#                   filters use (four-filter: < 5); kept as the point of comparison, not a gate.
+#   epitope_pae  -- the epitope block only (what the soft-gate scorer actually weights, at 0.10)
+#   scaffold_pae -- the rest of the chain, so overall can be read as its two parts
 OUT_COLS = ["component", "category", "target", "predID", "island_index",
-            "epitope_rmsd", "overall_rmsd", "epitope_pae", "mean_pae", "ptm",
+            "epitope_rmsd", "overall_rmsd", "epitope_pae", "scaffold_pae", "mean_pae", "ptm",
             "af3_clashes", "cylinder_clashes",
             "composite", "rank_in_group", "is_global_pass",
             "selected", "library_member", "sequence", "designedSequence"]
