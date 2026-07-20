@@ -14,11 +14,14 @@ the soft-gate scorer (`antibody_softgate`). The library has since been oligo-enc
 > **Minibinder arm added (2026-07-20).** `dp4_library.csv` now also carries the **21,759** filter-passing
 > **LX PfEMP1/EPCR minibinders** (`category=minibinder`), so the file is a single view of the whole DP4
 > library — **37,083 rows** (15,324 episcaf + 21,759 minibinder). These are a separate de-novo binder arm
-> (same PfEMP1 project as 8VDL), not scaffolded or scored by episcaf, so their five metric columns are
-> blank. The **15,324** count elsewhere in this doc refers to the episcaf-scaffolded portion — what was
-> selected and case-encoded. **The oligo order file is planned to cover the WHOLE library** (Brandon
-> 2026-07-20, pending John's confirm): all **37,083** 103-mers oligo-encoded together, minibinders
-> included (they carry no oligos of their own). `--exclude-category minibinder` reverts to episcaf-only.
+> (same PfEMP1 project as 8VDL), not scaffolded or scored by episcaf, so their five episcaf-metric columns
+> are blank — but **every native LatentX column is carried as `lx_<name>`** (plddt, pae, rmsd, ipae,
+> iptm, plddt_binder, hotspots, uuid, …) for post-hoc analysis, so the file has 26 columns (episcaf rows
+> are blank in the `lx_` columns). The **15,324** count elsewhere in this doc refers to the episcaf-scaffolded portion — what was
+> selected and case-encoded. **The oligo order file covers the WHOLE library** (confirmed 2026-07-20):
+> all **37,083** 103-mers are oligo-encoded together into one PepSeq assay, minibinders included (they
+> carry no oligos of their own). This is how the lab runs PepSeq — several projects combined into a
+> single assay, tracked in one file. `--exclude-category minibinder` would revert to episcaf-only.
 > Added by `dp4_8vdl/scripts/08_add_minibinders.py` (idempotent; run after assembly). The current
 > committed `dp4_order_file.csv` is stale (15,324, pre-minibinder) — pending re-encode at 37,083.
 

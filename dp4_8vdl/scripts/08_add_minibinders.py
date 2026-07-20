@@ -20,7 +20,9 @@ Column map (LX -> library):
   target             -> target              (kept verbatim, e.g. fold_pfemp1_epcr_model_0, for traceability)
   (constant "LX")    -> model
   (constant CATEGORY)-> category
-  epitope_rmsd, overall_rmsd, epitope_pae, af3_clashes, cylinder_clashes -> BLANK
+  epitope_rmsd, overall_rmsd, epitope_pae, af3_clashes, cylinder_clashes -> BLANK (our axes, never scored)
+  EVERY LX column     -> lx_<name>  (all native LatentX columns kept for post-hoc analysis: plddt, pae,
+                                     rmsd, ipae, iptm, plddt_binder, hotspots, uuid, ... ; episcaf rows NaN)
 
 Idempotent: strips any existing rows of this category first, appends fresh, then renumbers
 library_member so the episcaf block keeps DP4_1..DP4_<n> (unchanged order) and the minibinders continue
@@ -57,6 +59,7 @@ def read_lx(path: Path) -> pd.DataFrame:
 
 
 def to_library_rows(passing: pd.DataFrame, category: str) -> pd.DataFrame:
+    passing = passing.reset_index(drop=True)
     seq = passing["sequence"].astype(str).str.upper()
     out = pd.DataFrame({
         "library_member": pd.NA,                    # assigned after concat
@@ -69,8 +72,14 @@ def to_library_rows(passing: pd.DataFrame, category: str) -> pd.DataFrame:
         "target": passing["target"].astype(str),
     })
     for c in METRIC_COLS:
-        out[c] = pd.NA                              # never scored on our axes -> blank, not imputed
-    return out[LIB_COLS]
+        out[c] = pd.NA                              # never scored on OUR axes -> blank, not imputed
+    out = out[LIB_COLS]
+    # Carry EVERY native LatentX column (John, 2026-07-20: keep them for post-hoc analysis), prefixed
+    # `lx_` so they never collide with the library schema and their provenance is explicit. Episcaf rows
+    # get NaN here (they have no LX metrics); minibinder rows carry the full LX record (plddt, pae, rmsd,
+    # ipae, iptm, plddt_binder, hotspots, uuid, batch_uuid, binder_file, ...).
+    lx = passing.add_prefix("lx_")
+    return pd.concat([out, lx], axis=1)
 
 
 def main() -> None:
@@ -82,19 +91,24 @@ def main() -> None:
     args = ap.parse_args()
 
     lib = pd.read_csv(args.library, low_memory=False)
-    if list(lib.columns) != LIB_COLS:
-        raise SystemExit(f"[minibinders] library schema drift.\n  expected {LIB_COLS}\n  found    {list(lib.columns)}")
+    missing = [c for c in LIB_COLS if c not in lib.columns]
+    if missing:
+        raise SystemExit(f"[minibinders] library missing standard columns {missing}\n  found {list(lib.columns)}")
 
-    # idempotent: drop any prior minibinder block, keep the episcaf rows in their existing order
-    episcaf = lib[lib["category"] != args.category].copy()
+    # idempotent: drop any prior minibinder block, and keep only the STANDARD columns for the episcaf
+    # rows (strips any lx_* left from a previous run) so the episcaf side never carries stale LX data.
+    episcaf = lib[lib["category"] != args.category][LIB_COLS].copy()
     mini = to_library_rows(read_lx(Path(args.lx)), args.category)
 
-    combined = pd.concat([episcaf, mini], ignore_index=True)
+    combined = pd.concat([episcaf, mini], ignore_index=True)          # episcaf lx_* -> NaN
     combined["library_member"] = [f"DP4_{i}" for i in range(1, len(combined) + 1)]
+    lxcols = [c for c in combined.columns if c.startswith("lx_")]     # standard 13 first, then lx_*
+    combined = combined[LIB_COLS + lxcols]
 
     out = Path(args.out or args.library)
     combined.to_csv(out, index=False)
-    print(f"[minibinders] episcaf {len(episcaf)} + {args.category} {len(mini)} = {len(combined)} rows -> {out}")
+    print(f"[minibinders] episcaf {len(episcaf)} + {args.category} {len(mini)} = {len(combined)} rows, "
+          f"{len(lxcols)} lx_ columns carried -> {out}")
     print("[minibinders] category counts:")
     print(combined["category"].value_counts().to_string())
 
