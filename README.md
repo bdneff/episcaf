@@ -13,17 +13,20 @@ Two settings:
 DP3 has now been **assayed**: experimental binding for 8 mAbs (`data/dp3_binding/`)
 shows the native-aware cylinder is the strongest predictor of binding among all our
 metrics — the result that sets the scorer's priors (manuscript `sec:whatpredicts`).
-The next library, **DP4**, is assembled from seven components (C1–C6 plus the 8VDL
-PfEMP1 arm; manuscript `sec:dp4`) into `data/libraries/dp4_library.csv` (15,324 constructs)
-and handed off to the LadnerLab oligo encoder (`episcaf_pipeline/oligo_encoding/`).
+The next library, **DP4**, is assembled from seven episcaf components (C1–C6 plus the 8VDL
+PfEMP1 arm; manuscript `sec:dp4`) — 15,324 episcaf constructs — and combined with a **21,759-row LX
+PfEMP1/EPCR minibinder arm** into one file, `data/libraries/dp4_library.csv` (**37,083 rows**), handed
+off whole to the LadnerLab oligo encoder (`episcaf_pipeline/oligo_encoding/`).
 
-**DP4 status (2026-07-16): built, encoded, and synthesis-ready.** The library was selected under the
-soft-gate scorer (`antibody_softgate`, manuscript `sec:composite`), encoded to DNA, and gated into
-`data/libraries/dp4_order_file.csv` — 37,083 oligos, each 349 nt with the 20-mer adapters, every core
+**DP4 status (2026-07-20): built, encoded, and synthesis-ready.** The episcaf library was selected under
+the soft-gate scorer (`antibody_softgate`, epitope-PAE midpoint 2.5, manuscript `sec:composite`); the
+whole library (episcaf + minibinders, encoded together into one PepSeq assay) was encoded to DNA and gated
+into `data/libraries/dp4_order_file.csv` — 37,083 oligos, each 349 nt with the 20-mer adapters, every core
 verified to translate back to exactly its own peptide. That file is what goes to Twist. An all-designs
-superset (357,789 rows, every candidate arm: C1/C2/C3 + 8VDL + passing minibinders) holds every
-candidate design, not just the ones that shipped — a true superset, so the shipped library is a strict
-subset of it. The gzipped copy is committed at `data/libraries/dp4_superset.csv.gz` (~34 MB); the raw
+superset (357,789 rows, every candidate arm: C1/C2/C3 + 8VDL + passing minibinders) holds every candidate
+design, not just the ones that shipped. It's a true superset for the *candidate-pool* arms — every shipped
+C1/C2/C3/8VDL/minibinder design is in it (the C4/C5/C6 controls aren't candidate designs, so they aren't).
+The gzipped copy is committed at `data/libraries/dp4_superset.csv.gz` (~34 MB); the raw
 `.csv` is regenerated on `$WS`. Full reference:
 `docs/DP4_LIBRARY.md`; step order: `docs/PIPELINE.md`.
 
@@ -116,9 +119,10 @@ python scripts/dp3_native_cylinder.py ...                    # cylinder_native_a
 python -m episcaf_analysis.score --preset twelvemer|antibody \
     --metrics-csv <metrics.csv> --out <top5.csv>
 
-# 8. ASSEMBLE  [local]  — concatenate the DP4 components into one ordered 8-column
-#                         annotated peptide file (data/libraries/dp4_library.csv, 15,324)
-python scripts/stage06_assemble.py --depth 20                # C1/C2 top-20, C3 top-10
+# 8. ASSEMBLE  [local]  — concatenate the episcaf components into data/libraries/dp4_library.csv
+#                         (33-col schema; 15,324 episcaf rows), then fold in the LX minibinders -> 37,083
+python scripts/stage06_assemble.py --depth 20                # C1/C2 top-20, C3 top-10 (15,324 episcaf)
+python dp4_8vdl/scripts/08_add_minibinders.py --lx dp4_8vdl/data/LX_20260626.csv   # -> 37,083 rows
 python scripts/stage07_named_peptides.py \
     --library data/libraries/dp4_library.csv --out data/libraries/dp4_named_peptides.csv
 
@@ -161,10 +165,13 @@ Seven components, each answering a design question (manuscript `sec:dp4`): **C1*
 whole-epitope scaffolds; **C2** single-island scaffolds (87 contigs, the islands test);
 **C3** polyclonal-tiling scaffolds; **C4** linear tiled-30mer controls; **C5** metric-space
 sampling; **C6** scaffolded-epitope controls (island→Ala + scaffold-disruption); plus the **8VDL**
-PfEMP1 conserved-epitope arm (`dp4_8vdl/`). All emit the constant 103-mer in the 8-column annotated
-format, assemble into one ordered file (`data/libraries/dp4_library.csv`, 15,324 constructs), and encode
-to DNA oligos (`episcaf_pipeline/oligo_encoding/`, stage 07). **Full reference — components, selection
-math/weights, exclusions, the 104→103 trim, status: `docs/DP4_LIBRARY.md`.**
+PfEMP1 conserved-epitope arm (`dp4_8vdl/`). These are the **15,324 episcaf** constructs. Folded in
+alongside them is a **21,759-row LX PfEMP1/EPCR minibinder arm** (de-novo binders on the same antigen,
+from a separate LatentX effort — not episcaf-scored, carried with their own `lx_*` metrics), so the
+shipped `data/libraries/dp4_library.csv` is **37,083 rows** — two projects in one PepSeq assay. All rows
+are the constant 103-mer; the file carries the full 33-column schema and encodes to DNA oligos
+(`episcaf_pipeline/oligo_encoding/`, stage 07). **Full reference — components, selection math/weights,
+exclusions, the minibinder arm, the column dictionary, status: `docs/DP4_LIBRARY.md`.**
 
 ## Where the run data lives (cluster)
 
@@ -195,7 +202,8 @@ deliverables — `dp4_library.csv`, `dp4_named_peptides.csv`, and the verified T
 
 The code analog of the manuscript's open questions: structural improvements we've *chosen to defer*,
 recorded so they aren't lost. None are bugs — they're friction noticed while extending the repo, and
-we deliberately do not refactor while a run is in flight (the current C1-103 and 8VDL scaffolds).
+we deliberately did not refactor while the generation runs were in flight (the C1-103 and 8VDL scaffolds,
+both now complete and shipped).
 
 - **Unify the contig generators.** `episcaf_pipeline/build_dual_island_designs.py`,
   `build_whole_epitope_designs.py`, and `dp4_8vdl/scripts/01_generate_contigs.py` each re-implement the
@@ -212,8 +220,8 @@ we deliberately do not refactor while a run is in flight (the current C1-103 and
 - **Group `results/` and `scripts/`** if they keep growing — both are flat and getting busy (many
   `dp4_*` CSVs; many `stage0*`/`build_*`/`case_encode_*`). Navigable by naming for now.
 - **Manuscript reorganization** around the scientific questions (islands: one vs both; scaffold vs linear;
-  conserved-epitope breadth) rather than pipeline chronology — deferred until the current runs land so the
-  reorg is anchored to real results, not premature.
+  conserved-epitope breadth) rather than pipeline chronology. The runs it was waiting on have landed, so
+  this can now be anchored to real results whenever it's taken up.
 
 ## Verify
 

@@ -46,7 +46,9 @@ native-aware cylinder surrogate stands in). PI: John Altin.
   `/scratch`. Full map in memory `filesystem-map`.
 - Small derived results that figures depend on: `results/` (tracked).
 - Living manuscript: `manuscript/` (LaTeX → `manuscript/main.pdf`).
-- Reference docs: `docs/REORG.md`, `docs/MIGRATION.md`, `docs/WORKFLOW.md`.
+- Reference docs: `docs/PIPELINE.md` (the authoritative end-to-end run order), `docs/DP4_LIBRARY.md`
+  (the deliverable's full reference), `docs/WORKFLOW.md` (git/compute loop); `docs/REORG.md` and
+  `docs/MIGRATION.md` are dated historical records.
 
 ## Commands that verify
 - `python tests/test_scoring.py`                      # scorer unit tests (no data)

@@ -79,7 +79,7 @@ yielding \num{8} backbones that ProteinMPNN then re-sequences \num{8} ways.
 \subsection{One metrics table for every decision}\label{sec:metrics}
 With the run designed above and pushed through RFdiffusion3 $\rightarrow$ ProteinMPNN
 $\rightarrow$ AlphaFold3, we extract every per-design metric \emph{once} into a single table
-and make all downstream choices (composite scoring, top-5 per island) from it, so the analysis
+and make all downstream choices (composite scoring, top-\num{20} per island) from it, so the analysis
 is never recomputed. This is our analog of Lawson's \texttt{dp2.parquet}: one row per design,
 written by \texttt{scripts/stage05\_extract\_metrics.py} from the \texttt{04\_af3/outputs}
 predictions, the per-island ledger (\texttt{results/dual\_island\_designs.csv}), and the native
@@ -127,18 +127,18 @@ column & meaning & role \\
 \texttt{predID}, \texttt{af3\_dir} & design stem, output path     & join key \\
 \midrule
 \multicolumn{3}{l}{\emph{Geometry (backbone RMSD, Kabsch-superposed)}}\\
-\texttt{epitope\_chunk\_rmsd} & design vs AF3, epitope only ($\le 1$) & gate + 0.35 \\
-\texttt{overall\_rmsd}        & design vs AF3, full scaffold ($\le 2$) & 0.15 \\
+\texttt{epitope\_chunk\_rmsd} & design vs AF3, epitope only ($\le 1$) & soft gate, 0.25 \\
+\texttt{overall\_rmsd}        & design vs AF3, full scaffold ($\le 2$) & soft gate, 0.20 \\
 \midrule
 \multicolumn{3}{l}{\emph{Confidence (AlphaFold3)}}\\
-\texttt{epitope\_pae}  & mean PAE over epitope residues   & 0.25 \\
+\texttt{epitope\_pae}  & mean PAE over epitope residues   & 0.10 \\
 \texttt{scaffold\_pae} & mean PAE over the scaffold        & diagnostic \\
 \texttt{mean\_pae}     & global mean PAE ($<5$, four-filter) & diagnostic \\
 \texttt{ptm}, \texttt{ranking\_score} & AF3 summary scalars & diagnostic \\
 \midrule
 \multicolumn{3}{l}{\emph{Accessibility (this run has both)}}\\
-\texttt{af3\_n\_clash\_res} & real antibody clash count ($=0$) & ground truth \\
-\texttt{cylinder\_ca\_clashes}   & scaffold C$\alpha$ in the cylinder & 0.25 (plain) \\
+\texttt{af3\_n\_clash\_res} & real antibody clash count ($=0$) & \textbf{0.45} (accessibility) \\
+\texttt{cylinder\_ca\_clashes}   & scaffold C$\alpha$ in the cylinder & surrogate (unweighted here) \\
 \texttt{cylinder\_native\_aware} & same, native volume carved out     & surrogate \\
 \texttt{native\_in\_cylinder}    & native non-epitope C$\alpha$ in cylinder & test \\
 \bottomrule
@@ -253,13 +253,13 @@ crystal-gap designs of \num{111322}), so their all- and valid-rates coincide. Re
 \texttt{scripts/compare\_passrates.py}.}\label{tab:disentangle}
 \end{center}
 
-\paragraph{Top-5 per island is reachable almost everywhere.}
-Ranking within the gate, \textbf{83 of the 87 islands have at least five designs to advance}.
-The four that fall short (Table~\ref{tab:shortislands}) are \emph{all large islands, 21--28
-residues} --- the island-size difficulty of Section~\ref{sec:islands} surfacing directly in
-the deliverable: the biggest islands are the hardest to scaffold cleanly, and three of them
-produce no gated design at all. For these we advance whatever clears the gate (fewer than
-five, or none) and say so, rather than padding the set with designs that miss the bar.
+\paragraph{Most islands fill their depth; a few large ones produce almost nothing.}
+The shipped depth is top-\num{20} per island. Even against a much shallower floor of five,
+\textbf{83 of the 87 islands clear it}; the four that cannot (Table~\ref{tab:shortislands}) are
+\emph{all large islands, 21--28 residues} --- the island-size difficulty of Section~\ref{sec:islands}
+surfacing directly in the deliverable: the biggest islands are the hardest to scaffold cleanly, and
+three of them produce no gated design at all. For these we advance whatever clears the gate (a handful,
+or none) and say so, rather than padding the set with designs that miss the bar.
 
 \begin{center}
 \begin{tabular}{llrr}
@@ -272,8 +272,8 @@ epitope & island & island size (aa) & gated designs (of \num{1280}) \\
 \texttt{8t58\_0P} & 1 & 26 & 1 \\
 \bottomrule
 \end{tabular}
-\captionof{table}{The four islands short of a full top-5 (gate epitope RMSD
-$\le \SI{2.5}{\angstrom}$); all are large. Full per-island counts in
+\captionof{table}{The four islands that clear the gate (epitope RMSD $\le \SI{2.5}{\angstrom}$) with fewer
+than five designs --- far short of the shipped top-\num{20}; all are large. Full per-island counts in
 \texttt{results/dual\_island\_gate\_summary.csv}.}\label{tab:shortislands}
 \end{center}
 

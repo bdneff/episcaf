@@ -4,27 +4,26 @@ Reference for the DP4 PepSeq library: what each component is, how designs were s
 each file lives. Manuscript counterpart: `manuscript/sections/dp4_library.tex` (`sec:dp4`). Related:
 `docs/CASE_ENCODING.md`, `docs/CYLINDER_PARAMS.md`.
 
-Status (2026-07-16): **built, encoded, and synthesis-ready.** The seven components (C1–C6 plus the 8VDL
-arm) are selected, built, case-encoded, and concatenated into `data/libraries/dp4_library.csv` — 15,324
-constructs, each a 103-mer with a unique `library_member` and `design_ID`. The shipping depth is top-20
-per group for C1/C2 and top-10 per window for C3; C4/C5/C6 and 8VDL are fixed size. Selection ran under
-the soft-gate scorer (`antibody_softgate`). The library has since been oligo-encoded and gated into
-`data/libraries/dp4_order_file.csv` — 37,083 oligos, all verified — which is the file that goes to Twist.
+Status (2026-07-20): **built, encoded, gated, and synthesis-ready.** `data/libraries/dp4_library.csv` is
+the combined library: **37,083 rows** = **15,324 episcaf** constructs (the seven components C1–C6 + 8VDL)
+plus **21,759 LX PfEMP1/EPCR minibinders** (`category=minibinder`, a separate de-novo binder arm folded in
+so the whole DP4 library is one file). Each row is a 103-mer with a unique `library_member` and
+`design_ID`. The episcaf shipping depth is top-20 per group for C1/C2 and top-10 per window for C3;
+C4/C5/C6 and 8VDL are fixed size. Selection ran under the soft-gate scorer (`antibody_softgate`, epitope-
+PAE midpoint 2.5). The library was oligo-encoded and gated into `data/libraries/dp4_order_file.csv` —
+**37,083 oligos, all verified** — the file that goes to Twist.
 
-> **Minibinder arm added (2026-07-20).** `dp4_library.csv` now also carries the **21,759** filter-passing
-> **LX PfEMP1/EPCR minibinders** (`category=minibinder`), so the file is a single view of the whole DP4
-> library — **37,083 rows** (15,324 episcaf + 21,759 minibinder). These are a separate de-novo binder arm
-> (same PfEMP1 project as 8VDL), not scaffolded or scored by episcaf, so their five episcaf-metric columns
-> are blank — but **every native LatentX column is carried as `lx_<name>`** (plddt, pae, rmsd, ipae,
-> iptm, plddt_binder, hotspots, uuid, …) for post-hoc analysis. The library also carries the full metric
-> + scoring set (not condensed to the lean 5): the PAE decomposition, ptm, `composite`, `rank_in_group`,
-> `is_global_pass`, `island_index`. **33 columns** total (episcaf rows blank in `lx_`). The **15,324** count elsewhere in this doc refers to the episcaf-scaffolded portion — what was
-> selected and case-encoded. **The oligo order file covers the WHOLE library** (confirmed 2026-07-20):
-> all **37,083** 103-mers are oligo-encoded together into one PepSeq assay, minibinders included (they
-> carry no oligos of their own). This is how the lab runs PepSeq — several projects combined into a
-> single assay, tracked in one file. `--exclude-category minibinder` would revert to episcaf-only.
-> Added by `dp4_8vdl/scripts/08_add_minibinders.py` (idempotent; run after assembly). The current
-> committed `dp4_order_file.csv` is stale (15,324, pre-minibinder) — pending re-encode at 37,083.
+> **Two things to know reading the numbers.** (1) **15,324 vs 37,083:** "15,324" always means the
+> episcaf-scaffolded portion — what the scoring and selection below concern; the encoding and the order
+> file cover the whole **37,083** (episcaf + minibinders encoded together into one PepSeq assay — the lab
+> runs one pooled oligo library per assay, so two projects on the same antigen share one synthesis order).
+> (2) **Columns:** the library carries the **full 33-column** set (not the lean 5): 8 identity + 8 metrics
+> (RMSDs, the PAE decomposition epitope/scaffold/mean, ptm, both clash flavors) + 4 scoring (`composite`,
+> `rank_in_group`, `is_global_pass`, `island_index`) + 13 `lx_*` minibinder metrics. Minibinder rows are
+> blank in the 12 episcaf metric/scoring columns (never scored on our axes) and carry the `lx_*`; episcaf
+> rows are blank in `lx_*`. See the column dictionary below for which columns are blank where, and why.
+> Minibinders added by `dp4_8vdl/scripts/08_add_minibinders.py` (idempotent; run after assembly);
+> `stage07_named_peptides.py --exclude-category minibinder` would revert the encode to episcaf-only.
 
 ## Paths used in this doc
 
@@ -119,12 +118,11 @@ of a good enough design. Each design gets one composite score and I take the top
 **C1/C2 use the `antibody_softgate` preset** (adopted 2026-07-16). Each metric is squashed by its own
 sigmoid and the four are weighted-summed:
 
-> **In flux (2026-07-20):** the shipped `dp4_library.csv` was selected under this preset with the
-> **epitope-PAE midpoint at 5** (its C1 members reproduce that ranking exactly). The midpoint has since
-> been retuned to **2.5** (data-driven — see below), which swaps ~107 of the 1120 C1 selections (~10%),
-> counts and components unchanged. Re-selection under 2.5 (`stage06_select` → `stage06_assemble`) is
-> pending; nothing is synthesized yet, so the shift is free. Until it runs, the code scorer (2.5) and
-> the shipped file (5) differ by design.
+> **Midpoint history (2026-07-20):** the epitope-PAE midpoint was originally 5 (borrowed from the global
+> `mean_pae < 5` threshold), then **retuned to 2.5**, set from the data (see below). That swapped ~107 of
+> the 1120 C1 selections (~10%), counts and components unchanged. The library was **re-selected,
+> re-assembled, and re-encoded at 2.5**, so the shipped `dp4_library.csv` and order file already reflect
+> 2.5 — the code scorer and the shipped file agree.
 
 ```
 composite = 0.45 · sigma(af3_n_clash_res;    midpoint 6,   k 0.5)   accessibility -- ranked
@@ -364,18 +362,11 @@ scaffolded designs it is the design's own 103-mer. Assembly concatenates all com
 is the full 103-mer with the 30-mer tile uppercase (it is the epitope) and the `GSGA…` filler +
 `ENLYFQGA` TEV site lowercase (the scaffold). 8VDL is case-encoded from its fixed contig positions.
 
-**Which scoring columns are populated:**
-
-| component | epitope_rmsd | overall_rmsd | epitope_pae | af3_clashes | cylinder_clashes |
-|---|---|---|---|---|---|
-| C1, C2, C5 | ✓ | ✓ | ✓ | ✓ | ✓ |
-| C3 | ✓ | ✓ | ✓ | — (no antibody) | ✓ |
-| 8VDL | ✓ | ✓ | ✓ | ✓ | — (cylinder not computed) |
-| C4, C6 | — | — | — | — | — (never folded) |
-
-C4 (linear tiles) and C6 (mutants) never went through AF3, so they have none of the five; C3 has no
-antibody, so its real clash is undefined; 8VDL is a known-antibody target scored on the real clash and
-never needed the cylinder surrogate. Blank cells are honest gaps, not missing work.
+**Which columns are populated for which component** is given in full by the 33-column dictionary above
+(measured fill matrix + the reason for every blank). In short: C1/C2/C5 carry both clash flavors; C3 has
+no `af3_clashes` (no antibody) but has the cylinder; 8VDL has the real clash but no cylinder; C4 (linear
+tiles) and C6 (mutants) never went through AF3, so all fold metrics are blank; only C2 has `island_index`;
+C5 has no `composite`/`rank` (it is a metric-space sample). Blank cells are honest gaps, not missing work.
 
 Two format notes carried through assembly: (1) the 104→103 trim is now a no-op because every component is
 native 103 (background below); (2) C4's `design_ID` was a per-antigen tile-start index that repeated
@@ -432,8 +423,10 @@ case-encoding run on Gemini.
 
 ```bash
 # C1 redo at 103 (local: build the ledger; Gemini: run RFD3->MPNN->AF3)
-python scripts/build_whole_epitope_designs.py --drop-targets 2h32,4xwo,7a3t \
-  --out results/whole_epitope_designs.parquet      # -> 2,206 contigs, all 103
+python episcaf_pipeline/build_whole_epitope_designs.py --drop-targets 2h32,4xwo,7a3t \
+  --out results/whole_epitope_designs.parquet   # -> 2,206 contigs; also writes the .csv sibling the
+                                                #    case-encoder reads (2,206 x 8 x 8 = 141,184 designs
+                                                #    generated; 140,716 land status==ok after AF3)
 bash scripts/run_whole_epitope_rfd3.sh             # Gemini: init->stage01->stage02 + RFD3 sbatch
 bash scripts/run_whole_epitope_mpnn_af3.sh runs/whole_epitope_rfd3   # Gemini: after RFD3 done
 
@@ -476,15 +469,19 @@ python episcaf_pipeline/scaffolded_epitope_controls/build_c6_mutants.py \
   --id-col token --target-col target --seq-col scaffoldEPITOPE \
   --drop-targets 2h32,4xwo,7a3t --out results/dp4_C6_controls.csv
 
-# 8VDL arm (Gemini: RFD3->MPNN->AF3; then consolidate top-10 per definition)
-python dp4_8vdl/scripts/07_consolidate.py --out results/dp4_8vdl_top10.csv
+# 8VDL arm (Gemini: RFD3->MPNN->AF3; then consolidate top-10 per definition under antibody_softgate)
+python dp4_8vdl/scripts/07_consolidate.py --runs epitope,hotspots --topk 10 --out results/dp4_8vdl_top10.csv
 
-# Assemble the library (local) -> data/libraries/dp4_library.csv, 15,324 constructs
+# Assemble the episcaf library (local) -> data/libraries/dp4_library.csv, 15,324 episcaf constructs
 python scripts/stage06_assemble.py --depth 20   # C1/C2 top-20; C3 top-10 (--c3-depth default)
 
-# Export the oligo-encoder input -> data/libraries/dp4_named_peptides.csv
+# Fold in the passing LX minibinders -> 37,083 rows (needs the LX source; see the minibinder arm above)
+python dp4_8vdl/scripts/08_add_minibinders.py --lx dp4_8vdl/data/LX_20260626.csv
+
+# Export the oligo-encoder input (whole 37,083-row library) -> data/libraries/dp4_named_peptides.csv
 python scripts/stage07_named_peptides.py \
   --library data/libraries/dp4_library.csv --out data/libraries/dp4_named_peptides.csv
+  # add `--exclude-category minibinder` to encode only the 15,324 episcaf portion instead
 
 # Oligo-encode the library (Gemini). Run BOTH steps in the same working dir; step 1 is the long pole
 # (C++ sampler, hours). ADAPTER is pinned to the 20-mers inside encode_step2_select.sbatch -- do NOT
@@ -518,23 +515,28 @@ are deterministic (FPS is seed-free deterministic; C6 seeds its RNG).
 
 ## Budget and depth
 
-DP4 is a 36k library that includes all minibinders, which leaves roughly 10–15k slots for Episcaf designs
+DP4 is a ~37k-row library (37,083) that includes all minibinders, which leaves roughly 10–15k slots for Episcaf designs
 (`memory: dp4-budget`). Depth is set at top-20 for C1/C2 — the most the ranked files hold, and the depth
 C6 was built at, so no C6 rebuild is needed. **C3 is top-10** (2026-07-14): John flagged that the spare
 capacity (~2k slots to reach 36k) is best spent maximizing polyclonal hits, given C3's weak clash
-distribution. That brings the library to **15,324**. Per component: C1 1,120, C2 1,660, C3 4,390,
-C4 2,034, C5 3,000, C6 3,100, 8VDL 20.
+distribution. That brings the episcaf portion to **15,324**. Per component: C1 1,120, C2 1,660, C3 4,390,
+C4 2,034, C5 3,000, C6 3,100, 8VDL 20. (Plus the 21,759 LX minibinders folded in at assembly = 37,083
+total rows.)
 
 C3 depth is the one elastic dial left: top-3 = 1,317, top-5 = 2,195, top-10 = 4,390 (shipped). Set it
 with `stage06_assemble.py --c3-depth <n>` if the final minibinder count moves the headroom.
 
-## Pending
+## Build log (all steps complete)
+
+*(This section is the completed build history, not open work — every item below is done. The whole
+library, 37,083 rows, is assembled, encoded, gated, and shipped as of 2026-07-20.)*
 
 0. C1 redo at 103 — done 2026-07-11. RFD3→MPNN→AF3 on the 2,206-contig ledger, metrics (140,716 designs,
    all `status==ok`), C1 re-selected to top-20 (1,120), re-case-encoded (`case_encode_whole_epitope.py`),
    C5 (3,000) and C6 (3,100) rebuilt on the new pool. C1/C5/C6 are native 103; the 104→103 trim is a no-op.
 1. Assembly (`06_library`) — done 2026-07-13. `scripts/stage06_assemble.py --depth 20` concatenated the
-   seven components into `data/libraries/dp4_library.csv` (15,324 constructs), applying the 56-exclusion
+   seven components into `data/libraries/dp4_library.csv` (15,324 episcaf constructs; the 21,759
+   minibinders are folded in next by `08_add_minibinders.py` for 37,083), applying the 56-exclusion
    (C1/C2), the top-20 (C1/C2) and top-10 (C3) depth cuts, and global numbering. `library_member` and
    `design_ID` are unique and every sequence is 103 residues. Ships the full **33-column schema** (see the
    column dictionary): 8 annotation columns + the metric/scoring set + the 13 `lx_` minibinder columns,

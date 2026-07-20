@@ -26,15 +26,16 @@ twice over --- on DP3 the cylinder predicts the true antibody clash at AUC $0.93
 (Section~\ref{sec:noab}), and it is the single best predictor of \emph{experimental} binding, the only
 metric whose correlation survives the between-antibody confound (Section~\ref{sec:whatpredicts}).
 
-\item \textbf{Re-select the shipped deliverables under the retuned epitope-PAE midpoint.} The shipped
-library was selected under the soft-gate scorer --- its C1 members reproduce the
-\texttt{antibody\_softgate} ranking exactly --- so the earlier move off percentile is already realized
-in what ships, not just in the code. Since then one dial has changed: the epitope-PAE midpoint was
-retuned from 5 to \num{2.5}, set from the intra-epitope PAE distribution rather than borrowed from the
-global threshold (Section~\ref{sec:composite}). This shifts roughly one design in ten --- \num{107} of
-the \num{1120} C1 selections swap --- while leaving the counts and components unchanged. Re-run selection
-(\texttt{stage06\_select} $\to$ \texttt{stage06\_assemble}) so the shipped designs are the ones the
-current scorer chooses; nothing has gone to synthesis, so the shift costs nothing.
+\item \textbf{Adopting the soft-gate scorer and retuning its epitope-PAE midpoint (done).} The shipped
+library is selected under the soft-gate scorer --- its C1 members reproduce the
+\texttt{antibody\_softgate} ranking exactly, so the move off the percentile scorer is realized in what
+ships, not just in the code. One dial was then retuned: the epitope-PAE midpoint moved from 5 to
+\num{2.5}, set from the intra-epitope PAE distribution rather than borrowed from the global threshold
+(Section~\ref{sec:composite}). That shifted roughly one design in ten --- \num{107} of the \num{1120} C1
+selections --- with counts and components unchanged, and the library was re-selected, re-assembled, and
+re-encoded at that setting. The remaining open work is not re-selection but \emph{fitting} the dials to
+data: the midpoints, steepnesses, and weights are still a prior, to be replaced by a fit against the DP4
+binding readout (previous item).
 
 \item \textbf{Confirm the canonical DP3 metrics builder.} Determine whether
 \texttt{compute\_metrics\_mpnn.py} (currently archived) is the live RFD3+MPNN metrics

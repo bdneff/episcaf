@@ -22,10 +22,10 @@ Geometry definition (the in/out test) is in the manuscript §`sec:cyldef` and
 These values were **inherited / hand-set and never swept against ground truth** on record. Two
 concrete symptoms of the gap:
 
-- **`exclude_dist` is inconsistent in the code.** `native_cylinder_core.py` defaults it to `4.0`
-  (functions at lines ~56, ~102), while every actual DP3 / 12-mer run passes `1.0`
-  (`build_12mer_metrics.py`, `dp3_native_cylinder.py`, the presets). The `1.0` runs are the ones
-  the manuscript reports; the `4.0` default is stale. **Do not trust the core default — pass 1.0.**
+- **`exclude_dist` default is `1.0`** (`native_cylinder_core.py`, both functions ~line 56 and ~104),
+  which is the value every DP3 / 12-mer run uses (`build_12mer_metrics.py`, `dp3_native_cylinder.py`,
+  the presets) and the one the manuscript reports. (It once defaulted to a stale `4.0`; that was
+  corrected to `1.0`, so the core default and the runs now agree.)
 - **`OFFSET = −4` puts the cylinder base 4 Å *below* the epitope**, which the 8pww probe
   (`scripts/cylinder_fp_probe.py`) showed scoops up near-epitope scaffold *below* the paratope,
   inflating the count with false positives (0/13 flagged atoms were within 4 Å of the real
@@ -110,5 +110,5 @@ ground truth we ultimately care about, so **1.0 stays** -- and it is now validat
 change needed.
 
 **Geometry:** the sweep found offset/radius/height near-optimal at the inherited (−4, 16, 40), gain
-noise-level, so **no geometry change**. The stale `exclude_dist=4.0` default in
-`native_cylinder_core.py` is fixed to 1.0 (will move to 1.5 if the confirmations above hold).
+noise-level, so **no geometry change**. The `exclude_dist` default in `native_cylinder_core.py` is `1.0`
+(corrected from the old stale `4.0`); the binding cross-check above resolved firmly to 1.0, so it stays.

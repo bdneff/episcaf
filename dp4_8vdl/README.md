@@ -4,26 +4,29 @@ Self-contained arm that scaffolds the conserved EPCR-binding epitope of **PfEMP1
 (structure **8VDL**) and folds the top designs into the DP4 PepSeq library. It is kept as its own
 subdirectory with its own Gemini job because it belongs to the sibling *minibinder / PfEMP1* project
 (`~/Desktop/projects/minibinder`); it rides into DP4 only for synthesis, and is **consolidated from
-the repo root at the end** (score → top 10 per run → 8-column annotated format → `stage06_assemble`).
+the repo root at the end** (score under `antibody_softgate` → top 10 per run → the full metric/scoring
+column set → `stage06_assemble`).
 
-## The epitope region — and why this 20-mer
+## The epitope region — the conserved EPCR-binding surface
 
 ```
 Target : 8VDL  (HB3VAR03 CIDRα1.4 + C7 Fab; Reyes et al., Nature 636:182–189, 2024)
 Chain  : C   (the CIDR antigen; chains H/L are the C7 antibody)
-Epitope: residues 651–670  =  FDSFFFQVIYKFNEGEAKWN   (20 aa, one contiguous island)
+Epitope: residues 652–673  (22 aa, one contiguous island) — the scaffolded window (see "On the window" below)
 Hotspots (paper): F655, F656, E666
 ```
 
 PfEMP1 is the hypervariable *P. falciparum* surface antigen that drives severe malaria and escapes
 immunity by antigenic variation. But the residues its CIDRα1 domain uses to grip the host receptor
 **EPCR cannot vary freely** — so a binder or antibody aimed at that conserved contact surface could
-recognize **many PfEMP1 variants at once**. In 8VDL that conserved, EPCR-binding contact surface is
-the single contiguous stretch **chain C 651–670**; the 2024 paper singles out **F655/F656/E666** as
-the functional hotspots within it. We take this **20-residue contiguous chain as the epitope region**
+recognize **many PfEMP1 variants at once**. In 8VDL that conserved, EPCR-binding contact surface is the
+single contiguous stretch **chain C 652–673**; the 2024 paper singles out **F655/F656/E666** as the
+functional hotspots within it. We take this **22-residue contiguous window as the epitope region**
 because it is the conserved, functionally constrained EPCR-binding surface the whole broadly-acting
-strategy is built on — and because it is contiguous and fully resolved in the crystal (all 20 Cα
-present), so it scaffolds as one clean island with no gap-bridging guesswork. A Rosetta predecessor
+strategy is built on — and because it is contiguous and fully resolved in the crystal, so it scaffolds
+as one clean island with no gap-bridging guesswork. (An earlier **651–670** framing was a 20-mer guess
+that missed the contact residue K673; 652–673 is the corrected window — see "On the window" below.)
+A Rosetta predecessor
 (6SNY) scaffolded this epitope and recapitulated EPCR-binding geometry but elicited weaker
 adhesion-inhibitory antibodies than the native protein; RFD3 is not constrained to a particular fold,
 so it explores a broader scaffold space for presenting it.
@@ -66,29 +69,29 @@ python scripts/02_emit_rfd3_inputs.py --contigs_csv 01_contigs/epitope.csv --out
 python scripts/02_emit_rfd3_inputs.py --contigs_csv 01_contigs/hotspots.csv  --out_dir 02_rfd3/hotspots/inputs
 
 # 3. RFD3 (Gemini GPU) — one task per contig, 8 backbones each
-sbatch --array=1-10%200 scripts/03_rfd3_array.sbatch 02_rfd3/epitope20
+sbatch --array=1-10%200 scripts/03_rfd3_array.sbatch 02_rfd3/epitope
 sbatch --array=1-10%200 scripts/03_rfd3_array.sbatch 02_rfd3/hotspots
 
 # 4. FIXED backbone PDBs — the ONE 8VDL-specific step (multi-island FIXED positions), then
 #    everything downstream reuses episcaf's proven stage03/stage04 (run per-run, from repo root):
 python dp4_8vdl/scripts/04_make_fixed_pdbs.py \
-    --contigs_csv dp4_8vdl/01_contigs/epitope20.csv \
-    --rfd3_outputs_dir dp4_8vdl/02_rfd3/epitope20/outputs \
-    --out_dir dp4_8vdl/runs/epitope20/03_mpnn/fixed_pdbs
+    --contigs_csv dp4_8vdl/01_contigs/epitope.csv \
+    --rfd3_outputs_dir dp4_8vdl/02_rfd3/epitope/outputs \
+    --out_dir dp4_8vdl/runs/epitope/03_mpnn/fixed_pdbs
 
 # 5. MPNN (episcaf, proven) — 8 seqs/backbone
-python scripts/stage03_mpnn_submit.py --fixed_pdb_dir dp4_8vdl/runs/epitope20/03_mpnn/fixed_pdbs \
-    --outdir dp4_8vdl/runs/epitope20/03_mpnn/mpnn_pdbs --batch_size 300 --tag 8vdl_ep20
+python scripts/stage03_mpnn_submit.py --fixed_pdb_dir dp4_8vdl/runs/epitope/03_mpnn/fixed_pdbs \
+    --outdir dp4_8vdl/runs/epitope/03_mpnn/mpnn_pdbs --batch_size 300 --tag 8vdl_ep20
 
 # 6. AF3 (episcaf, proven)
-python scripts/stage04_af3_emit_jsons.py --mpnn_pdb_dir dp4_8vdl/runs/epitope20/03_mpnn/mpnn_pdbs \
-    --out_dir dp4_8vdl/runs/epitope20/04_af3/inputs --seed 1
-sbatch --array=1-N scripts/stage04_af3_array.sbatch dp4_8vdl/runs/epitope20   # N = ceil(#jsons/100)
+python scripts/stage04_af3_emit_jsons.py --mpnn_pdb_dir dp4_8vdl/runs/epitope/03_mpnn/mpnn_pdbs \
+    --out_dir dp4_8vdl/runs/epitope/04_af3/inputs --seed 1
+sbatch --array=1-N scripts/stage04_af3_array.sbatch dp4_8vdl/runs/epitope   # N = ceil(#jsons/100)
 #   (repeat 4–6 for hotspots)
 
-# 7. consolidate — score (real H/L clash), take top 10 per run, emit 8-column for DP4  [TODO: 07]
-python dp4_8vdl/scripts/07_consolidate.py --runs epitope20,hotspots --topk 10 \
-    --out results/dp4_8vdl_top10.csv
+# 7. consolidate — rank under antibody_softgate (real H/L clash), top 10 per run, full metric/scoring set
+python dp4_8vdl/scripts/07_consolidate.py --runs epitope,hotspots --topk 10 \
+    --out results/dp4_8vdl_top10.csv   # also writes *_allmetrics.csv (all 1,280 candidates)
 ```
 
 `data/8VDL.pdb` is the crystal (chains C/H/L), committed here so the arm is self-contained. The final
@@ -98,15 +101,18 @@ python dp4_8vdl/scripts/07_consolidate.py --runs epitope20,hotspots --topk 10 \
 - The RFD3/AF3 `sbatch` are adapted from the minibinder project; the stale hardcoded `--chdir` has
   been removed (they inherit the submit dir), but dry-run once on the current cluster before the full array.
 - `--n-contigs` × 8 RFD3 × 8 MPNN designs per run; top 10 come out, so 10 contigs is ample. Note
-  `epitope20` (one island, 2 scaffold segments) caps at 64 unique contigs; `hotspots` (3 segments)
+  `epitope` (one island, 2 scaffold segments) caps at 64 unique contigs; `hotspots` (3 segments)
   has no practical cap. RFD3 still makes 8 stochastic backbones per contig, so 10 contigs = 640 designs.
 - MPNN/AF3 are **not ported** — the only 8VDL-specific step is `04_make_fixed_pdbs.py` (computes the
   multi-island FIXED positions and reuses episcaf's `cif_to_fixed_pdb`); steps 5–6 are episcaf's
   just-run `stage03_mpnn_submit.py` / `stage04_*`. The prior art's `04/05/06` are superseded and not
   carried in.
-- **Still TODO:** `07_consolidate.py` — score the AF3 outputs (antibody preset, real H/L clash),
-  take top 10 per run, emit the 8-column rows for `stage06_assemble`. I'll write it against the real
-  AF3 outputs once they land.
+- **`07_consolidate.py` (done):** scores the AF3 outputs under `antibody_softgate` (real H/L clash, not
+  the cylinder), ranks top 10 per run, and emits the full metric/scoring set — epitope/scaffold/mean PAE,
+  ptm, composite, rank_in_group, is_global_pass — for `stage06_assemble`, plus a `*_allmetrics.csv` with
+  every candidate. The `epitope` arm is antibody-accessible (top-10 clash 1–2); the `hotspots` arm is
+  **generation-limited** (top-10 clash 39–71; the whole 640-design pool clashes, floor 14) — shipped as a
+  documented negative result on the minimal-hotspot-graft idea (manuscript `sec:dp4_8vdl`).
 
 ## LX minibinder arm (the PfEMP1/EPCR de-novo binders)
 
@@ -117,8 +123,9 @@ separate from the 8VDL *scaffolds* above, but folded into the shared DP4 deliver
   ~21.8k pass. 103-mer sequences, targets `fold_pfemp1_epcr_*`. **Gitignored** (~168 MB); an external
   artifact, provenance recorded here.
 - **`scripts/08_add_minibinders.py`** — folds the *passing* LX designs into `data/libraries/dp4_library.csv`
-  (`category=minibinder`), mapping sequence/uuid/target into the library shape and leaving the five
-  episcaf metric columns blank (they were never scored on our axes). Idempotent; run after
+  (`category=minibinder`), mapping sequence/uuid/target into the library shape, leaving the 12 episcaf
+  metric/scoring columns blank (never scored on our axes), and carrying every native LX column as `lx_*`
+  (plddt, pae, rmsd, iptm, hotspots, …) for post-hoc analysis. Idempotent; run after
   `scripts/stage06_assemble.py`. Takes the library from 15,324 → 37,083 rows.
 - These are **not** episcaf-scaffolded (no episcaf metrics), but they ARE oligo-encoded **along with**
   the episcaf designs — one order file over the whole 37,083-row library (confirmed 2026-07-20; they
