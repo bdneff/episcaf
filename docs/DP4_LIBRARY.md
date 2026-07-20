@@ -11,6 +11,16 @@ per group for C1/C2 and top-10 per window for C3; C4/C5/C6 and 8VDL are fixed si
 the soft-gate scorer (`antibody_softgate`). The library has since been oligo-encoded and gated into
 `data/libraries/dp4_order_file.csv` — 15,324 oligos, all verified — which is the file that goes to Twist.
 
+> **Minibinder arm added (2026-07-20).** `dp4_library.csv` now also carries the **21,759** filter-passing
+> **LX PfEMP1/EPCR minibinders** (`category=minibinder`), so the file is a single view of the whole DP4
+> library — **37,083 rows** (15,324 episcaf + 21,759 minibinder). These are a separate de-novo binder arm
+> (same PfEMP1 project as 8VDL), not scaffolded or scored by episcaf, so their five metric columns are
+> blank. The **15,324** count throughout this doc still refers to the episcaf-scaffolded portion — what
+> was selected, case-encoded, and oligo-encoded; the minibinders are catalogued here but are **not** part
+> of that episcaf order file. Added by `dp4_8vdl/scripts/08_add_minibinders.py` (idempotent; run after
+> assembly). Whether the minibinders should ALSO go through our oligo encoding is an open question — they
+> are 103-mers, so they can, but they may already carry oligos from the LX pipeline.
+
 ## Paths used in this doc
 
 Three shell variables appear throughout. Define them before running anything here:
@@ -68,7 +78,9 @@ hold the full top-20 pools and are larger than the shipped counts):
 | C5 | metric-space titration | designs spread across metrics | farthest-point sample | 3,000 § | `results/dp4_C5_titration.csv` |
 | C6 | scaffolded-epitope controls | island→Ala + scaffold disruption | C1 top-20 base × flavors | 3,100 ‡§ | `results/dp4_C6_controls.csv` |
 | 8VDL | PfEMP1 conserved epitope | two epitope definitions | ranked, top-10 each | 20 | `results/dp4_8vdl_top10.csv` |
-| | | | | 15,324 total | `data/libraries/dp4_library.csv` |
+| | | | | **15,324 episcaf** | `data/libraries/dp4_library.csv` (episcaf portion) |
+| LX | PfEMP1/EPCR minibinders | de-novo binders (not scaffolded) | LX-filter passers | 21,759 | `dp4_8vdl/scripts/08_add_minibinders.py` (source gitignored) |
+| | | | | **37,083 total** | `data/libraries/dp4_library.csv` (whole file) |
 
 † C3 is shipped deep (top-10). Its windows are **12-mers stepping by 2 residues**, so neighbouring tiles
 are highly redundant (adjacent windows share 10 of 12 residues) — which argues for a shallow cut. We

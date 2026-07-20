@@ -107,3 +107,18 @@ python dp4_8vdl/scripts/07_consolidate.py --runs epitope20,hotspots --topk 10 \
 - **Still TODO:** `07_consolidate.py` — score the AF3 outputs (antibody preset, real H/L clash),
   take top 10 per run, emit the 8-column rows for `stage06_assemble`. I'll write it against the real
   AF3 outputs once they land.
+
+## LX minibinder arm (the PfEMP1/EPCR de-novo binders)
+
+The same PfEMP1/EPCR project also produced a large set of **de-novo minibinders** (the "LX" designs) —
+separate from the 8VDL *scaffolds* above, but folded into the shared DP4 deliverable.
+
+- **Source:** `dp4_8vdl/data/LX_YYYYMMDD.csv` — ~484k generations with the LX filter flag `passes`;
+  ~21.8k pass. 103-mer sequences, targets `fold_pfemp1_epcr_*`. **Gitignored** (~168 MB); an external
+  artifact, provenance recorded here.
+- **`scripts/08_add_minibinders.py`** — folds the *passing* LX designs into `data/libraries/dp4_library.csv`
+  (`category=minibinder`), mapping sequence/uuid/target into the library shape and leaving the five
+  episcaf metric columns blank (they were never scored on our axes). Idempotent; run after
+  `scripts/stage06_assemble.py`. Takes the library from 15,324 → 37,083 rows.
+- These are **not** episcaf-scaffolded and are **not** in the episcaf oligo order file. Whether they
+  should also go through our 103-mer oligo encoding is open (they can; they may already carry oligos).

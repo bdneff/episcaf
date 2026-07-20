@@ -31,7 +31,12 @@ crystals lives on the cluster (see below).
   `python -m episcaf_pipeline.build_dp4_tiled30mers_fasta`
 - `dp4_tiled30mers.csv` (+ `_summary.csv`) — **superseded** earlier build (tiled the gap-truncated
   `antigen_seq` rather than the FASTA chain, with a spliced gap at 6okm). Kept for history; not used.
-- `dp4_library.csv` — the assembled DP4 library, 15,324 constructs (`scripts/stage06_assemble.py`).
+- `dp4_library.csv` — the assembled DP4 library. **37,083 rows** = 15,324 episcaf constructs
+  (`scripts/stage06_assemble.py`) + 21,759 LX PfEMP1/EPCR minibinders folded in for a single-file view
+  (`dp4_8vdl/scripts/08_add_minibinders.py`, `category=minibinder`, no episcaf metrics). The minibinder
+  source (`LX_YYYYMMDD.csv`, ~484k generations, ~168 MB) is an external artifact under `dp4_8vdl/data/`,
+  gitignored. The 15,324 episcaf portion is what was case- and oligo-encoded; the minibinders are
+  catalogued, not (yet) in the episcaf order file.
   `dp4_named_peptides.csv` / `dp4_order_file.csv` — the oligo-encoder input / synthesis order file
   (`scripts/stage07_named_peptides.py`, `stage07_order_file.py`).
 - `dp4_superset.csv` — **gitignored (57 MB+), lives on `$WS`**: the all-designs superset. Every
