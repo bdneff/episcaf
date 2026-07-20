@@ -40,12 +40,15 @@ crystals lives on the cluster (see below).
   minibinders are oligo-encoded along with the episcaf designs (decided 2026-07-20; no oligos of their own).
   `dp4_named_peptides.csv` / `dp4_order_file.csv` — the oligo-encoder input / synthesis order file
   (`scripts/stage07_named_peptides.py`, `stage07_order_file.py`).
-- `dp4_superset.csv` — **gitignored (57 MB+), lives on `$WS`**: the all-designs superset. Every
-  candidate design in the scaffolded arms (~335 k: C1 140,716 + C2 111,322 + C3 82,712), not just the
-  15,324 that shipped, in `dp4_library.csv`'s own column shape plus `selected`, `library_member`,
-  `is_global_pass`, `composite`, and `rank_in_group`. Ranked under `antibody_softgate` — the preset
-  that actually picked the library — so the ranks reconcile with what shipped. Built for looking at the
-  overall distributions and at how the selected designs sit inside the pool they came from.
+- `dp4_superset.csv.gz` — **committed (~28 MB gzipped)**: the all-designs superset, the main raw data.
+  The raw `.csv` (~90 MB) is gitignored and regenerated on `$WS`; the gzipped copy is versioned here.
+  Every candidate design in the scaffolded arms (~335 k: C1 140,716 + C2 111,322 + C3 82,712), not just
+  the 15,324 that shipped, in `dp4_library.csv`'s own column shape plus `selected`, `library_member`,
+  `is_global_pass`, `composite`, and `rank_in_group`. Ranked under `antibody_softgate` at the **current
+  epitope_pae midpoint 2.5** — the preset that actually picked the library — so the ranks reconcile with
+  what shipped. **Rebuild whenever the scorer or pool changes** (`sbatch scripts/build_superset.sbatch`
+  → `$WS/dp4_superset.csv`, then gzip into `data/libraries/`). Built for the overall distributions and
+  how the selected designs sit inside the pool they came from.
   `sequence` is filled for selected designs (copied from `dp4_library.csv`, so the two agree by
   construction) and for global-passing ones (read from AF3 chain A); blank otherwise, because filling
   all ~335 k means reading every design PDB and the distributions live in the metrics. Regenerate the
