@@ -34,7 +34,9 @@ repository. Reproducing and then extending it is the starting point of this work
 \subsection{Patches and islands}
 A single antibody:antigen complex can yield more than one epitope \emph{patch}, labeled
 \texttt{0P}, \texttt{1P}, and so on, where each patch is a distinct cluster of
-antibody-contacting residues drawn from the same structure. A patch is in turn made of one
+antibody-contacting residues drawn from the same structure. Throughout, one patch is one target ---
+``epitope'', a patch, and its \texttt{0P}/\texttt{1P} id all refer to the same thing, so an id like
+\texttt{7ox3\_0P} names one epitope. A patch is in turn made of one
 or more \emph{islands}, the spatially contiguous runs of epitope residues in
 three-dimensional space. This distinction matters because it predicts difficulty.
 Single-island patches can be enforced locally and tend to scaffold well, whereas

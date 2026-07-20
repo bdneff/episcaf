@@ -202,15 +202,16 @@ logical AND, close to 1 only when every criterion passes and collapsing toward 0
 them fails, whereas a sum would instead rank designs by how many criteria they pass rather than whether
 they pass all of them. Because the composite lies in $[0,1]$, any gain $A>1$ floats the whole passing
 tier above the rest while the composite continues to order the designs within each tier. Both $k$ and $A$
-are finite dials, so the rule becomes exact as they grow but stays soft when they are kept finite, and a
+are finite dials, so the rule becomes exact as they grow but stays soft when they are kept finite: a
 near-miss that is otherwise excellent is never discontinuously dropped --- the same $k$-to-gate limit as
-the fold sigmoids above. The point is that it promotes rather than excludes: an epitope with no passer
-simply ranks on the composite, so no target is ever lost. The soft indicator stays faithful to the
-classical rule --- on the C1 set it flags \num{725} designs at $P>0.5$ against \num{727} hard four-filter
-passers, both \SI{0.52}{\percent} --- and at that rate it fires for only \num{15} of the \num{56}
-epitopes, floating their gold-standard designs to the top and leaving the rest untouched. It uses the
-four-filter's \emph{own} metrics (the global mean PAE, not the epitope PAE the composite ranks on), and
-is configured as \texttt{pass\_bonus} in \texttt{score.py}.
+the fold sigmoids above --- so the term promotes rather than excludes, and an epitope with no passer
+simply ranks on the composite. No target is ever lost.
+
+Empirically the soft indicator stays faithful to the classical rule. On the C1 set it flags \num{725}
+designs at $P>0.5$ against \num{727} hard four-filter passers, both \SI{0.52}{\percent}, and at that rate
+it fires for only \num{15} of the \num{56} epitopes --- floating their gold-standard designs to the top
+and leaving the rest untouched. It uses the four-filter's \emph{own} metrics (the global mean PAE, not
+the epitope PAE the composite ranks on), and is configured as \texttt{pass\_bonus} in \texttt{score.py}.
 
 \paragraph{What promotion buys once the budget is fixed.} Promotion decides the order, but the library
 has a fixed number of slots per epitope, and those two facts together produce a result worth stating
@@ -221,10 +222,13 @@ is allotted --- 7OX3\_0P alone has \num{360}. Summing $\min(\text{passers},\,20)
 exactly \num{184}, the number that ships, and in no target does a non-passing design outrank a passing
 one. Selection here is budget-bound, not scorer-bound. The rule is doing what it was asked to do; the
 per-epitope depth is what decides how much of the passing tier survives, which is the dial to argue about
-if we want more of it. What this does not show is that twenty is the right depth --- only that the
-promotion is faithful at the depth we chose, and that the passing designs are concentrated rather than
-spread, so raising depth would buy more gold-standard designs from a handful of epitopes and none at all
-from the other \num{41}.
+if we want more of it. The depth itself comes from the budget: DP4 is a $\sim$\num{37000}-member pool
+shared with the minibinder arm, which leaves on the order of \num{10000}--\num{15000} slots for the
+scaffolded components, and top-\num{20} per epitope for C1/C2 is what fits that allotment (Section
+\ref{sec:dp4}). So twenty is a budget choice, not a claim that twenty is optimal --- what the superset
+check does show is only that the promotion is faithful at the depth we chose, and that the passing
+designs are concentrated rather than spread, so raising depth would buy more gold-standard designs from a
+handful of epitopes and none at all from the other \num{41}.
 
 These counts come from the all-designs superset (\texttt{scripts/build\_superset.sbatch}), which scores
 and ranks every candidate design under this same preset and flags which ones shipped. It spans every

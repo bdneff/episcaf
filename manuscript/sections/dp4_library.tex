@@ -145,21 +145,22 @@ coverage would look like. Each curve is density-normalized independently. Regene
 \end{figure}
 
 \subsection{C6 --- scaffolded-epitope controls}\label{sec:dp4c6}
-For the best \num{20} designs of each of the \num{56} mAbs we alanine-scan the epitope islands:
-every residue of island~1 mutated to alanine, and (where the epitope has a second island) every
-residue of island~2. The unmutated designs are not part of this component --- they are already
-shipped as C1 --- so C6 is the controlled comparison against them. Mutating an island to alanine
-strips its side-chain chemistry while leaving the fold intact, so if binding drops when island~1 is
-alanine-substituted the antibody requires island~1, and likewise for island~2. This is the
-mutation-based read of the islands question (Q1), complementary to C2's presentation-based read
-(each island scaffolded alone): C2 asks whether one island \emph{suffices}, C6 asks whether each
-island is \emph{necessary}. The mutations are string substitutions on the existing designs'
-case-encoded sequence (epitope residues uppercase, scaffold lowercase, each contiguous uppercase run
-an island), implemented in \texttt{episcaf\_pipeline/scaffolded\_epitope\_controls/} (a port of the
-DP3 scheme). Over the best designs of each of the \num{56} mAbs, with one island-mutant for
-single-island epitopes and two for multi-island ones, plus the scaffold-disruption variant below,
-this is \num{3100} constructs at the shipped top-\num{20} depth (\num{1980} island-alanine mutants
-$+$ \num{1120} scaffold-disruption controls, one per base design).
+C6 is the mutation-based read of the islands question (Q1), and it is the complement of C2: where C2
+scaffolds each island alone to ask whether one island \emph{suffices}, C6 knocks out an island inside the
+intact design to ask whether each island is \emph{necessary}. The unmutated designs are not part of this
+component --- they already ship as C1 --- so C6 is the controlled comparison against them.
+
+Mechanically, for the best \num{20} designs of each of the \num{56} mAbs we alanine-scan the epitope
+islands: every residue of island~1 mutated to alanine, and (where the epitope has a second island) every
+residue of island~2. Alanine strips a residue's side-chain chemistry while leaving the fold intact, so if
+binding drops when island~1 is alanine-substituted the antibody requires island~1, and likewise for
+island~2. The mutations are string substitutions on the existing designs' case-encoded sequence (epitope
+residues uppercase, scaffold lowercase, each contiguous uppercase run an island), implemented in
+\texttt{episcaf\_pipeline/scaffolded\_epitope\_controls/} (a port of the DP3 scheme). Over the best
+designs of each of the \num{56} mAbs, with one island-mutant for single-island epitopes and two for
+multi-island ones, plus the scaffold-disruption variant below, this is \num{3100} constructs at the
+shipped top-\num{20} depth (\num{1980} island-alanine mutants $+$ \num{1120} scaffold-disruption controls,
+one per base design).
 
 \paragraph{Scaffold-disruption control.} A companion negative control mutates the \emph{scaffold}
 (not the epitope) in each design: if binding is epitope-driven, perturbing the scaffold should leave
@@ -315,18 +316,22 @@ called \emph{adapters} or handles. Because they are identical across all members
 primer pair binds them and amplifies the whole pool at once regardless of the variable coding sequence
 between; the same handles are where the assay's display and readout elements attach. An adapter is
 therefore a primer \emph{binding site}, not a primer itself --- the primer is a separate reagent, the
-adapter's reverse complement. Each final oligo is \texttt{[5\({}^\prime\) adapter]} $+$ \texttt{[309-nt
-coding sequence]} $+$ \texttt{[3\({}^\prime\) adapter]}. The adapters are fixed by the assay's primers
-rather than by our design, so they are pinned explicitly (the \num{20}-mers DP3 shipped, giving a
-\num{349}-nt oligo) rather than left to a tool default. Pinning is not fussiness. The flag that sets them
-is a \emph{defaulted} one, and the two installations of the encoder in circulation ship different
-defaults --- \num{19}-mers upstream against the \num{20}-mers DP3 actually synthesized --- so building
-from a fresh clone silently yields oligos two bases short, with nothing in the log to say so. The
-\num{19}-mer is the full primer footprint and sits inside the \num{20}-mer, so the shorter form would
-very likely still prime; the objection is not that \num{347} is known to break but that it is an
-unexplained deviation from the only construct known to work, on an order that cannot be taken back.
-A defaulted flag in someone else's tool is a dependency on which copy of the tool you happen to be
-running, and that is worth pinning wherever it reaches a physical artifact.
+adapter's reverse complement.
+
+Each final oligo is \texttt{[5\({}^\prime\) adapter]} $+$ \texttt{[309-nt coding sequence]} $+$
+\texttt{[3\({}^\prime\) adapter]}. The adapters are fixed by the assay's primers rather than by our
+design, so we pin them explicitly --- the \num{20}-mers DP3 shipped, giving a \num{349}-nt oligo ---
+rather than leave them to a tool default.
+
+That pinning is not fussiness. The flag that sets the adapters is a \emph{defaulted} one, and the two
+installations of the encoder in circulation ship different defaults --- \num{19}-mers upstream against
+the \num{20}-mers DP3 actually synthesized --- so building from a fresh clone silently yields oligos two
+bases short, with nothing in the log to say so. The \num{19}-mer is the full primer footprint and sits
+inside the \num{20}-mer, so the shorter form would very likely still prime; the objection is not that
+\num{347} is known to break but that it is an unexplained deviation from the only construct known to
+work, on an order that cannot be taken back. A defaulted flag in someone else's tool is a dependency on
+which copy of the tool you happen to be running, and that is worth pinning wherever it reaches a physical
+artifact.
 
 \paragraph{The order file.} The output is the file sent to the vendor: two columns, a name and the
 adapter-flanked DNA to synthesize, one row per library member. Because a synthesis order is expensive
