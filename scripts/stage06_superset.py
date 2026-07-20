@@ -197,7 +197,7 @@ def build(component: str, path: str, library: str | None, want_seqs: bool,
                 raise SystemExit(
                     f"[{component}] asked for {int(need.sum())} AF3 sequences and resolved 0.\n"
                     f"  af3_dir example: {scored.loc[need, 'af3_dir'].iloc[0]}\n"
-                    f"  If the run moved (e.g. /scratch -> $WS), pass --af3-remap OLD=NEW.")
+                    f"  If the run moved (e.g. /scratch -> $WS), pass --af3-remap OLD:NEW.")
 
     for c in OUT_COLS:
         if c not in scored.columns:
@@ -212,18 +212,20 @@ def main() -> None:
     ap.add_argument("--library", help="dp4_library.csv -- adds `selected` + the shipped sequences")
     ap.add_argument("--sequences", action="store_true",
                     help="also read AF3 chain-A sequence for global-passing designs (cluster only)")
-    ap.add_argument("--af3-remap", metavar="OLD=NEW",
+    ap.add_argument("--af3-remap", metavar="OLD:NEW", default="",
                     help="rewrite this af3_dir path prefix when the recorded directory is gone "
-                         "(the metrics bake in absolute paths; C1/C2 moved /scratch -> $WS)")
+                         "(the metrics bake in absolute paths; C1/C2 moved /scratch -> $WS). "
+                         "Same OLD:NEW form as case_encode_c2.py --af3-remap / "
+                         "case_encode_selected.py --pdb-remap")
     ap.add_argument("--out", required=True)
     ap.add_argument("--append", action="store_true", help="append to --out instead of overwriting")
     args = ap.parse_args()
 
     remap = None
     if args.af3_remap:
-        if "=" not in args.af3_remap:
-            ap.error("--af3-remap wants OLD=NEW")
-        old, new = args.af3_remap.split("=", 1)
+        if ":" not in args.af3_remap:
+            ap.error("--af3-remap wants OLD:NEW")
+        old, new = args.af3_remap.split(":", 1)
         remap = (old, new)
 
     out = build(args.component, args.metrics_csv, args.library, args.sequences, remap)

@@ -29,9 +29,22 @@ DP2_PARQUET_LOCAL = Path(
 
 # canonical scoring inputs (filenames confirmed on cluster 2026-07: metrics_12mer.csv,
 # metrics_cylinder_full.csv). METRICS_ANTIBODY points at the original 104-mer whole-epitope run;
-# the shipped C1 is the native-103 redo (metrics_whole_epitope_103.csv, see LOCAL_METRICS below).
+# the shipped C1 is the native-103 redo (METRICS_C1 below).
 METRICS_12MER    = DATA["twelvemer_runs"] / "06_score" / "metrics_12mer.csv"
 METRICS_ANTIBODY = DATA["antibody_runs"] / "run_rfd3_mpnn" / "04_filter" / "metrics_cylinder_full.csv"
+
+# The three metrics tables the SHIPPED DP4 library was selected from, in their durable homes. C1 and
+# C2 were built on /scratch and copied here 2026-07-17 (/scratch is swept on ~30 days); md5-verified
+# byte-identical to the local copies the selection ran on. NOTE these tables' own `af3_dir` column
+# still records the old /scratch paths -- scripts that follow it take an OLD:NEW --af3-remap.
+METRICS_C1 = DATA["antibody_runs"] / "whole_epitope_rfd3" / "05_analysis" / "metrics_whole_epitope.csv"
+METRICS_C2 = DATA["antibody_runs"] / "dual_island_rfd3" / "05_analysis" / "metrics_dual_island.parquet"
+METRICS_C3 = METRICS_12MER
+
+# Where the runs those metrics came from now live, and the prefix swap that redirects a stale
+# af3_dir/mpnn_pdb path onto them. Keep in sync with scripts/build_superset.sbatch REMAP.
+SCRATCH_RUNS_OLD = "/scratch/bneff/episcaf/runs"
+AF3_REMAP = f"{SCRATCH_RUNS_OLD}:{DATA['antibody_runs']}"
 
 # ---------------------------------------------------------------------------------------------
 # Local-dev copies (OFF-cluster). The manuscript figure scripts read metrics from sibling analysis

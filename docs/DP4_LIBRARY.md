@@ -168,7 +168,7 @@ selected-only, since case-encoding was only ever run on the selections.
 Build it in one cluster pass with `sbatch scripts/build_superset.sbatch` (or one component at a time via
 `scripts/stage06_superset.py`); the run takes well under a minute. The sequence pass reads
 `runs/*/04_af3/outputs`, and the C1/C2 metrics record the **absolute `/scratch` paths** those runs were
-built at — so the job passes `--af3-remap /scratch/bneff/episcaf/runs=$WS/runs` to point them at the
+built at — so the job passes `--af3-remap /scratch/bneff/episcaf/runs:$WS/runs` to point them at the
 durable copies made 2026-07-17. Without that remap the AF3 lookups resolve nothing once `/scratch` is
 swept; the script now hard-fails in that case rather than writing a quietly blank `sequence` column.
 Gitignored at 57 MB+ and regenerable, so it lives on `$WS`. The 8VDL arm is not included (20 shipped,

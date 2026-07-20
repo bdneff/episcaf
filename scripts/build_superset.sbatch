@@ -12,8 +12,8 @@
 # (John, 2026-07-16: "a super-set version of dp4_library.csv ... include all designs").
 #
 # WHY THE CLUSTER: C2's metrics only exist here, and --sequences reads each passing design's AF3
-# chain A from runs/*/04_af3/outputs -- which live on /scratch. So this MUST run before those
-# run dirs are removed from scratch (see scripts/copy_run_to_tgen.sbatch).
+# chain A from runs/*/04_af3/outputs. Those runs were copied to durable $WS on 2026-07-17, so the
+# job reads them there via --af3-remap (the metrics still record the old /scratch paths).
 #
 # Output: ONE dp4_superset.csv (~335k rows) written straight to durable $WS.
 #
@@ -54,7 +54,7 @@ cd "${REPO}"
 # The C1/C2 metrics bake in ABSOLUTE af3_dir paths pointing at the /scratch run dirs they were built
 # from. Those runs now live under $WS, so remap the prefix; without it --sequences silently resolves
 # nothing once /scratch is swept (the script now hard-fails on that rather than writing blanks).
-REMAP=${REMAP:-/scratch/bneff/episcaf/runs=${WS}/runs}
+REMAP=${REMAP:-/scratch/bneff/episcaf/runs:${WS}/runs}
 
 # C1 writes (overwrites) the file; C2 and C3 append. --sequences reads AF3 chain A for every
 # global-passing design that did not already ship (selected designs get their sequence copied

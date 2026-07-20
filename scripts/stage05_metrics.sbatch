@@ -21,7 +21,9 @@
 # Usage:
 #   sbatch scripts/stage05_metrics.sbatch <run_dir> [out_parquet] [native_dir] [ledger_csv]
 # e.g.
-#   sbatch scripts/stage05_metrics.sbatch /scratch/bneff/episcaf/runs/dual_island_rfd3
+#   WS=/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff
+#   sbatch scripts/stage05_metrics.sbatch $WS/runs/dual_island_rfd3
+# (the completed runs live under $WS; /scratch is swept on ~30 days)
 
 set -euo pipefail
 module load Mamba/25.3.0-3

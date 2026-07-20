@@ -7,7 +7,7 @@
 #SBATCH --error=logs/case_encode_%j.err
 # Rebuild the case-encoded scaffoldEPITOPE for the selected whole-epitope designs (C1 + C5),
 # healing the lost token->design mapping by matching each design's sequence to its dp2 row.
-# Reads design PDBs -> needs the cluster. Submit from /scratch/bneff/episcaf after `git pull`:
+# Reads design PDBs -> needs the cluster. Submit from the repo checkout after `git pull`:
 #     mkdir -p logs && sbatch scripts/case_encode_selected.sbatch
 # Walltime sized ~generously (reading ~4.2k small PDBs + one dp2 load ~ 15 min); see memory
 # cluster-job-walltime. Output feeds build_c6_mutants.py and library assembly.
@@ -15,8 +15,8 @@ set -eo pipefail        # NOT -u: the cluster's /etc/bashrc uses an unbound var 
 source ~/.bashrc
 conda activate ~/rfd3/env/rfd3_py312
 
-WS=/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff
-cd /scratch/bneff/episcaf
+WS=${WS:-/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff}
+cd "${REPO:-/scratch/bneff/episcaf}"        # the git checkout: disposable, re-clone anywhere
 mkdir -p logs results
 
 # dp2 that carries OUR rerun tokens (assay_scaffolded_epitope_id). Try the $WS copy first; if the log
