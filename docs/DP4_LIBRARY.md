@@ -16,8 +16,9 @@ the soft-gate scorer (`antibody_softgate`). The library has since been oligo-enc
 > library — **37,083 rows** (15,324 episcaf + 21,759 minibinder). These are a separate de-novo binder arm
 > (same PfEMP1 project as 8VDL), not scaffolded or scored by episcaf, so their five episcaf-metric columns
 > are blank — but **every native LatentX column is carried as `lx_<name>`** (plddt, pae, rmsd, ipae,
-> iptm, plddt_binder, hotspots, uuid, …) for post-hoc analysis, so the file has 26 columns (episcaf rows
-> are blank in the `lx_` columns). The **15,324** count elsewhere in this doc refers to the episcaf-scaffolded portion — what was
+> iptm, plddt_binder, hotspots, uuid, …) for post-hoc analysis. The library also carries the full metric
+> + scoring set (not condensed to the lean 5): the PAE decomposition, ptm, `composite`, `rank_in_group`,
+> `is_global_pass`, `island_index`. **33 columns** total (episcaf rows blank in `lx_`). The **15,324** count elsewhere in this doc refers to the episcaf-scaffolded portion — what was
 > selected and case-encoded. **The oligo order file covers the WHOLE library** (confirmed 2026-07-20):
 > all **37,083** 103-mers are oligo-encoded together into one PepSeq assay, minibinders included (they
 > carry no oligos of their own). This is how the lab runs PepSeq — several projects combined into a
@@ -47,8 +48,9 @@ Anything long-lived belongs under `$WS`. Never `rsync --delete` toward `/tgen_la
 
 The deliverable and the input to the next step:
 
-- **`data/libraries/dp4_library.csv`** — the library. All seven components merged into one file, 15,324
-  rows, in the 8-column PepSeq annotated format **plus 5 scoring columns** (schema below). This is the
+- **`data/libraries/dp4_library.csv`** — the library. All seven components (+ minibinders) merged into
+  one file, 37,083 rows, in the 8-column PepSeq annotated format **plus the full metric + scoring set and
+  the `lx_` minibinder columns** — 33 columns, schema below. This is the
   file to hand off. `designedSequence` is the full 103-mer in EPITOPEscaffold casing (epitope uppercase /
   scaffold lowercase) for every row; `sequence` is the plain uppercase 103-mer that gets synthesized.
 - **`data/libraries/dp4_order_file.csv`** — the Twist synthesis order file. 15,324 oligos, two columns
@@ -324,7 +326,9 @@ validated on C4 (`dp4_tiled30mers_fasta.csv` is the reference instance):
 | `designedSequenceLength` | len(`designedSequence`) — 103 for every row |
 | `design_ID` | per-design id (globally unique) |
 | `target` | antigen / mAb id |
-| `epitope_rmsd`, `overall_rmsd`, `epitope_pae`, `af3_clashes`, `cylinder_clashes` | the **5 scoring columns** — the metrics each design was selected on; left **blank** where a design has no such value, never imputed |
+| `epitope_rmsd`, `overall_rmsd`, `epitope_pae`, `scaffold_pae`, `mean_pae`, `ptm`, `af3_clashes`, `cylinder_clashes` | the **metric set** — RMSDs, the full PAE decomposition, ptm, and both clash flavors; blank where a design has no such value, never imputed |
+| `composite`, `rank_in_group`, `is_global_pass`, `island_index` | the **scoring columns** — the soft-gate composite, its within-group rank, the four-filter pass flag, and (C2) the island index; C1/C2/C3 only |
+| `lx_*` (13) | every native LatentX column on the minibinder rows (`lx_plddt`, `lx_pae`, `lx_rmsd`, `lx_iptm`, `lx_hotspots`, …); blank on episcaf rows |
 
 `sequence` construction: for the linear controls (C4) it is filler + `ENLYFQGA` + 30-mer; for the
 scaffolded designs it is the design's own 103-mer. Assembly concatenates all components with global

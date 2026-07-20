@@ -31,17 +31,23 @@ import pandas as pd
 R = Path(__file__).resolve().parents[1]
 EXCLUDE = ("2h32", "4xwo", "7a3t")   # canonical 56-mAb exclusion (id-prefix)
 
-# The 5 scoring fields shipped alongside the 8 standard columns (John's request). Maps the internal
-# metric name -> the shipped column name. Left EMPTY where a design has no such value: C3 has no
-# af3_clashes (no antibody); C4 (linear tiles) and C6 (mutants) were never folded, so all 5 are blank;
-# 8VDL has no cylinder. pandas writes NaN as an empty CSV cell.
+# The metric fields shipped alongside the 8 standard columns. Maps the internal metric name -> the
+# shipped column name. Left EMPTY where a design has no such value: C3 has no af3_clashes (no antibody);
+# C4 (linear tiles) and C6 (mutants) were never folded, so all are blank; 8VDL has no cylinder; only
+# C1/C2/C3 carry the PAE decomposition + ptm. pandas writes NaN as an empty CSV cell. (John, 2026-07-20:
+# don't condense -- carry the full metric set the superset has, not just the lean 5.)
 METRICS = {
     "epitope_chunk_rmsd":    "epitope_rmsd",
     "overall_rmsd":          "overall_rmsd",
     "epitope_pae":           "epitope_pae",
+    "scaffold_pae":          "scaffold_pae",
+    "mean_pae":              "mean_pae",
+    "ptm":                   "ptm",
     "af3_n_clash_res":       "af3_clashes",
     "cylinder_native_aware": "cylinder_clashes",
 }
+# Scoring / identity columns carried through from the ranked tables (C1/C2/C3), blank elsewhere.
+EXTRAS = ["composite", "rank_in_group", "is_global_pass", "island_index"]
 
 
 def trim_103(se: str):
@@ -57,15 +63,18 @@ def trim_103(se: str):
 
 def attach_source(seq_df, source_csv):
     """The scaffoldEPITOPE file is row-aligned to its ranked/metrics table (case-encode iterated it in
-    order); attach rank_in_group (if present) and the 5 scoring metrics by position (asserted)."""
+    order); attach the metric columns + the scoring/identity extras by position (asserted)."""
     src = pd.read_csv(source_csv, low_memory=False)
     assert len(src) == len(seq_df), f"row count mismatch {source_csv}: {len(src)} vs {len(seq_df)}"
     out = seq_df.copy()
-    if "rank_in_group" in src:
-        out["rank_in_group"] = src["rank_in_group"].to_numpy()
     for internal, shipped in METRICS.items():
         if internal in src:
             out[shipped] = src[internal].to_numpy()
+    for c in ("composite", "rank_in_group", "island_index"):
+        if c in src:
+            out[c] = src[c].to_numpy()
+    if "pass_indicator" in src:      # -> is_global_pass, the four-filter soft-AND crossing 0.5
+        out["is_global_pass"] = (pd.to_numeric(src["pass_indicator"], errors="coerce") > 0.5).to_numpy()
     return out
 
 
@@ -96,6 +105,8 @@ def scaffold_rows(comp, seq_csv, source_csv, category, *, trim, exclude, depth):
                    design_ID=did, target=getattr(r, "target", ""))
         for shipped in METRICS.values():
             row[shipped] = getattr(r, shipped, float("nan"))
+        for c in EXTRAS:
+            row[c] = getattr(r, c, float("nan"))
         rows.append(row)
     return pd.DataFrame(rows), dropped
 
@@ -158,8 +169,8 @@ def main() -> None:
 
     lib_df = pd.concat(parts, ignore_index=True)
     lib_df.insert(0, "library_member", [f"DP4_{i}" for i in range(1, len(lib_df) + 1)])
-    # 8 standard columns then the 5 scoring columns; missing metric cells become blank (NaN).
-    lib_df = lib_df.reindex(columns=["library_member"] + keep8 + list(METRICS.values()))
+    # 8 standard columns, then the metric columns, then the scoring/identity extras; missing cells blank.
+    lib_df = lib_df.reindex(columns=["library_member"] + keep8 + list(METRICS.values()) + EXTRAS)
     assert (lib_df.sequence.str.len() <= 103).all(), "a sequence exceeds 103 residues!"
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     lib_df.to_csv(args.out, index=False)

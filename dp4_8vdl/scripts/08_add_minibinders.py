@@ -38,10 +38,15 @@ from pathlib import Path
 import pandas as pd
 
 CATEGORY = "minibinder"
+# The standard library schema (kept in sync with scripts/stage06_assemble.py). 8 identity columns, then
+# the metric columns, then the scoring/identity extras. Minibinders fill only the 8 identity columns;
+# everything after `target` is blank for them (never scored on our axes).
 LIB_COLS = ["library_member", "sequence", "category", "model", "designedSequence",
             "designedSequenceLength", "design_ID", "target",
-            "epitope_rmsd", "overall_rmsd", "epitope_pae", "af3_clashes", "cylinder_clashes"]
-METRIC_COLS = ["epitope_rmsd", "overall_rmsd", "epitope_pae", "af3_clashes", "cylinder_clashes"]
+            "epitope_rmsd", "overall_rmsd", "epitope_pae", "scaffold_pae", "mean_pae", "ptm",
+            "af3_clashes", "cylinder_clashes",
+            "composite", "rank_in_group", "is_global_pass", "island_index"]
+METRIC_COLS = LIB_COLS[8:]      # everything after the 8 identity columns -> blank for minibinders
 
 
 def read_lx(path: Path) -> pd.DataFrame:
