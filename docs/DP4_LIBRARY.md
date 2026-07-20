@@ -166,9 +166,13 @@ exists for live in the metrics, not the sequences. C3 is the exception and comes
 selected-only, since case-encoding was only ever run on the selections.
 
 Build it in one cluster pass with `sbatch scripts/build_superset.sbatch` (or one component at a time via
-`scripts/stage06_superset.py`); the run takes well under a minute. It must run **before** the `/scratch`
-run dirs are migrated or deleted: the sequence pass reads `runs/*/04_af3/outputs`. Gitignored at 57 MB+
-and regenerable, so it lives on `$WS`. The 8VDL arm is not included (20 shipped, its own run).
+`scripts/stage06_superset.py`); the run takes well under a minute. The sequence pass reads
+`runs/*/04_af3/outputs`, and the C1/C2 metrics record the **absolute `/scratch` paths** those runs were
+built at — so the job passes `--af3-remap /scratch/bneff/episcaf/runs=$WS/runs` to point them at the
+durable copies made 2026-07-17. Without that remap the AF3 lookups resolve nothing once `/scratch` is
+swept; the script now hard-fails in that case rather than writing a quietly blank `sequence` column.
+Gitignored at 57 MB+ and regenerable, so it lives on `$WS`. The 8VDL arm is not included (20 shipped,
+its own run).
 
 Verified on the 2026-07-16 build: every shipped member matched a design in its pool (1120/1120 C1,
 1660/1660 C2, 4390/4390 C3), and every passing design's sequence was readable (543/543 C1, 233/233 C2 —

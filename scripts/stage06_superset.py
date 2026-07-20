@@ -85,8 +85,13 @@ def lib_key(design_id: str) -> str:
     return re.sub(r"_r\d+$", "", re.sub(r"^C\d+_", "", str(design_id)))
 
 
-def add_sequences(scored: pd.DataFrame, mask: pd.Series) -> int:
-    """Read AF3 chain-A sequence for `mask` rows. Cluster-only (needs gemmi + the AF3 outputs)."""
+def add_sequences(scored: pd.DataFrame, mask: pd.Series, remap: tuple[str, str] | None = None) -> int:
+    """Read AF3 chain-A sequence for `mask` rows. Cluster-only (needs gemmi + the AF3 outputs).
+
+    `af3_dir` holds ABSOLUTE paths baked in when the metrics were built -- for C1/C2 that was
+    /scratch, which is swept on ~30 days. The runs now live under $WS, so `remap=(old, new)`
+    rewrites that prefix when the recorded directory is gone. See --af3-remap.
+    """
     from pathlib import Path
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -98,6 +103,8 @@ def add_sequences(scored: pd.DataFrame, mask: pd.Series) -> int:
         d = scored.at[i, "af3_dir"]
         if not isinstance(d, str) or not d:
             continue
+        if remap and not os.path.isdir(d) and d.startswith(remap[0]):
+            d = remap[1] + d[len(remap[0]):]
         cif, _, _ = CM.find_af3_files(Path(d))
         if cif is None:
             continue
@@ -106,7 +113,8 @@ def add_sequences(scored: pd.DataFrame, mask: pd.Series) -> int:
     return n
 
 
-def build(component: str, path: str, library: str | None, want_seqs: bool) -> pd.DataFrame:
+def build(component: str, path: str, library: str | None, want_seqs: bool,
+          remap: tuple[str, str] | None = None) -> pd.DataFrame:
     spec = COMPONENTS[component]
     df = pd.read_parquet(path) if path.endswith(".parquet") else pd.read_csv(path, low_memory=False)
     if "status" in df.columns:
@@ -181,8 +189,15 @@ def build(component: str, path: str, library: str | None, want_seqs: bool) -> pd
         if "af3_dir" not in scored.columns:
             print(f"[{component}] WARNING: no af3_dir column; cannot fill sequences", file=sys.stderr)
         elif need.any():
-            got = add_sequences(scored, need)
+            got = add_sequences(scored, need, remap)
             print(f"[{component}] read AF3 sequences for {got} / {int(need.sum())} passing designs")
+            # Resolving nothing means the AF3 outputs moved or were swept -- not "no passers".
+            # Fail loudly rather than writing a superset whose `sequence` column is quietly empty.
+            if got == 0:
+                raise SystemExit(
+                    f"[{component}] asked for {int(need.sum())} AF3 sequences and resolved 0.\n"
+                    f"  af3_dir example: {scored.loc[need, 'af3_dir'].iloc[0]}\n"
+                    f"  If the run moved (e.g. /scratch -> $WS), pass --af3-remap OLD=NEW.")
 
     for c in OUT_COLS:
         if c not in scored.columns:
@@ -197,11 +212,21 @@ def main() -> None:
     ap.add_argument("--library", help="dp4_library.csv -- adds `selected` + the shipped sequences")
     ap.add_argument("--sequences", action="store_true",
                     help="also read AF3 chain-A sequence for global-passing designs (cluster only)")
+    ap.add_argument("--af3-remap", metavar="OLD=NEW",
+                    help="rewrite this af3_dir path prefix when the recorded directory is gone "
+                         "(the metrics bake in absolute paths; C1/C2 moved /scratch -> $WS)")
     ap.add_argument("--out", required=True)
     ap.add_argument("--append", action="store_true", help="append to --out instead of overwriting")
     args = ap.parse_args()
 
-    out = build(args.component, args.metrics_csv, args.library, args.sequences)
+    remap = None
+    if args.af3_remap:
+        if "=" not in args.af3_remap:
+            ap.error("--af3-remap wants OLD=NEW")
+        old, new = args.af3_remap.split("=", 1)
+        remap = (old, new)
+
+    out = build(args.component, args.metrics_csv, args.library, args.sequences, remap)
     header = not (args.append and os.path.exists(args.out))
     out.to_csv(args.out, mode="a" if args.append else "w", header=header, index=False)
     gp = out["is_global_pass"]
