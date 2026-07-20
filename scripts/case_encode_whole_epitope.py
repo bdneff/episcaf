@@ -34,8 +34,13 @@ def main() -> None:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--selected", required=True, help="C1 top-n CSV from stage06_select")
     ap.add_argument("--ledger", default="results/whole_epitope_designs.csv")
+    ap.add_argument("--af3-remap", default="", metavar="OLD:NEW",
+                    help="rewrite this af3_dir prefix when the recorded dir is gone (the C1 metrics bake "
+                         "in absolute /scratch paths; the run moved to $WS). Same OLD:NEW form as "
+                         "case_encode_c2.py / stage06_superset.py")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
+    remap = args.af3_remap.split(":", 1) if args.af3_remap else None
 
     sel = pd.read_csv(args.selected)
     led = pd.read_csv(args.ledger)
@@ -50,7 +55,10 @@ def main() -> None:
         if de is None:
             n_bad += 1
             continue
-        cif, _, _ = CM.find_af3_files(Path(r.af3_dir))
+        d = str(r.af3_dir)
+        if remap and not Path(d).is_dir() and d.startswith(remap[0]):
+            d = remap[1] + d[len(remap[0]):]
+        cif, _, _ = CM.find_af3_files(Path(d))
         if cif is None:
             n_bad += 1
             continue
@@ -72,6 +80,13 @@ def main() -> None:
         })
 
     out = pd.DataFrame(rows)
+    # Resolving nothing means the AF3 outputs moved/were swept, not "no designs" -- fail loudly rather
+    # than writing an empty scaffoldEPITOPE file that would then silently empty C6 + the C1 library rows.
+    if len(sel) and out.empty:
+        ex = str(next(iter(sel["af3_dir"]), ""))
+        raise SystemExit(f"[case-encode] {len(sel)} selected, 0 encoded -- every af3_dir failed to "
+                         f"resolve.\n  example: {ex}\n  If the run moved (/scratch -> $WS), pass "
+                         f"--af3-remap OLD:NEW.")
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out, index=False)
     lens = out.scaffoldEPITOPE.str.len()
