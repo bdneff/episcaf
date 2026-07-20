@@ -279,12 +279,18 @@ Two epitope definitions, top-10 each (20 total):
 - `hotspots` — only F655, F656, and E666, fixed at their native crystal coordinates, with the design
   building around them (a minimal hotspot graft).
 
-Scoring is by `07_consolidate.py`, which aligns each predicted epitope onto the native chain-C frame and
-counts the real H/L clash there. The two definitions separate cleanly: the whole-epitope designs stay
-accessible (top-10 epitope RMSD 0.97–1.39 Å, 1–4 clashing residues), while the hotspot grafts recover
-the three residues almost exactly (epitope RMSD 0.01–0.22 Å) but bury them under scaffold that would
-block the antibody (22–52 clashing residues). The assay can then test whether the minimal hotspot cluster
-is enough or the whole epitope is needed.
+Scoring is by `07_consolidate.py`, which aligns each predicted epitope onto the native chain-C frame,
+counts the real H/L clash there, and (2026-07-20) ranks under the **same `antibody_softgate` scorer as
+C1/C2** — real Fab clash, no cylinder surrogate. The two definitions separate cleanly, and the hotspot
+one fails informatively:
+- **epitope** (contiguous C652–673): top-10 epitope RMSD 0.97–1.36 Å, **1–2** clashing residues — the
+  soft-gate found accessible designs.
+- **hotspots** (F655/F656/E666): top-10 epitope RMSD 0.04–0.11 Å but **39–71** clashing residues. This
+  is **not** a selection artifact — across all **640** hotspot designs the clash floor is **14** and
+  none fall below 10, so an accessible minimal-hotspot graft was never generated (generation-limited,
+  the same phenomenon as C1). The three discontiguous residues appear to force the scaffold into the
+  Fab footprint. We ship the top-10 anyway as a **documented negative result** — a limitation of the
+  minimal-graft approach, not a scorer failure. (Per-design metrics: `results/dp4_8vdl_top10_allmetrics.csv`.)
 
 Pipeline: `dp4_8vdl/scripts/` (`01_generate_contigs` → `02_emit_rfd3_inputs` → `03_rfd3_array.sbatch` →
 `04_make_fixed_pdbs`, then the shared episcaf MPNN/AF3 via the `*_fixed_dldesign_*` naming contract, then

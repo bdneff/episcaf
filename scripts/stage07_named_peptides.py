@@ -29,9 +29,17 @@ def main() -> None:
     ap.add_argument("--sample", type=int, default=0,
                     help="if >0, emit only N evenly-spaced rows (deterministic) as a smoke-test input "
                          "that still spans every component; 0 = the whole library")
+    ap.add_argument("--exclude-category", default="",
+                    help="comma list of categories to drop before encoding, e.g. `minibinder` to encode "
+                         "only the episcaf portion (the minibinders may carry their own oligos)")
     args = ap.parse_args()
 
     d = pd.read_csv(args.library, low_memory=False)
+    if args.exclude_category:
+        drop = {c.strip() for c in args.exclude_category.split(",") if c.strip()}
+        n0 = len(d)
+        d = d[~d["category"].astype(str).isin(drop)].reset_index(drop=True)
+        print(f"[stage07] excluded {n0 - len(d)} rows in categories {sorted(drop)} -> {len(d)} rows")
     if args.sample > 0 and args.sample < len(d):
         step = len(d) / args.sample
         idx = [int(i * step) for i in range(args.sample)]   # evenly spaced -> touches all categories

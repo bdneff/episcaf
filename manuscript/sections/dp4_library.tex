@@ -212,19 +212,26 @@ heavy atom within \SI{4}{\angstrom} of the Fab --- the strongest constraint, the
 while \texttt{hotspots} fixes only the three functional residues \texttt{F655}/\texttt{F656}/\texttt{E666}
 and lets the design build everything else around them (a minimal ``hotspot graft''). Both are scaffolded
 into the same \num{103}-mer construct through the same
-RFdiffusion3~$\rightarrow$~ProteinMPNN~$\rightarrow$~AlphaFold3 pipeline and ranked on the same composite
-(the custom consolidation \texttt{dp4\_8vdl/scripts/07\_consolidate.py} aligns each predicted epitope
-onto the native chain~C frame, then scores the real H/L clash there); the fixed atoms carry the residues'
-native crystal coordinates, so the hotspot arm preserves their three-dimensional arrangement however the
-construct spaces them. The two arms give a clean, testable contrast: the whole-epitope designs are
-antibody-\emph{accessible} --- their top \num{10} recover the epitope well (epitope RMSD
-\SIrange{0.97}{1.39}{\angstrom}) while leaving the Fab surface largely unobstructed (\numrange{1}{4}
-clashing residues) --- whereas the minimal hotspot grafts recover the three residues almost exactly
-(epitope RMSD \SIrange{0.01}{0.22}{\angstrom}) but bury them under scaffold that would block the antibody
-(\numrange{22}{52} clashing residues). Comparing the two in the assay asks whether the minimal hotspot
-cluster suffices or the whole epitope is needed. This arm is produced as a self-contained component
-(\texttt{dp4\_8vdl/}) and its \num{20} top designs are merged into the library alongside the others at
-assembly.
+RFdiffusion3~$\rightarrow$~ProteinMPNN~$\rightarrow$~AlphaFold3 pipeline and ranked under the same
+soft-gate composite the antibody arms use (Section~\ref{sec:composite}; the custom consolidation
+\texttt{dp4\_8vdl/scripts/07\_consolidate.py} aligns each predicted epitope onto the native chain~C
+frame and scores the real H/L clash there, so accessibility is the true Fab clash, not the cylinder
+surrogate). The fixed atoms carry the residues' native crystal coordinates, so the hotspot arm preserves
+their three-dimensional arrangement however the construct spaces them. The two arms give a clean,
+testable contrast --- and, as it turns out, one of them fails informatively. The whole-epitope designs
+are antibody-\emph{accessible}: their top \num{10} recover the epitope well (epitope RMSD
+\SIrange{0.97}{1.36}{\angstrom}) while leaving the Fab surface largely unobstructed (\numrange{1}{2}
+clashing residues). The minimal hotspot grafts recover the three residues almost exactly (epitope RMSD
+\SIrange{0.04}{0.11}{\angstrom}) but bury them under scaffold that would block the antibody
+(\numrange{39}{71} clashing residues). Crucially this is \emph{not} a selection artifact: across all
+\num{640} hotspot designs the clash floor is \num{14} and not one falls below \num{10}, so an accessible
+minimal-hotspot graft was never generated --- the scorer is choosing the best of a pool in which every
+member clashes. The three discontiguous residues appear to force the scaffold into the antibody's own
+footprint, whereas the contiguous epitope leaves room to build clear of it. So the hotspot arm stands as
+a demonstrated limitation of the minimal-graft idea: presenting isolated conserved residues in native
+geometry seems to demand occupying the surface the antibody needs. We ship its top \num{10} anyway, as
+that negative result. This arm is a self-contained component (\texttt{dp4\_8vdl/}); its \num{20} top
+designs are merged into the library alongside the others at assembly.
 
 \subsection{Assembly into one synthesis file}\label{sec:assembly}
 All seven components (C1--C6 plus the 8VDL arm) share the constant 103-mer construct and the
