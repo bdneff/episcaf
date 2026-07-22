@@ -87,8 +87,8 @@ stays as the DP3 recipe above.
 
 **The input is generated:** `scripts/stage07_named_peptides.py` slices `library_member,sequence` out
 of the assembled library and validates the encoder's format (no header, unique names, standard
-residues, every line ≤ 128) → **`data/libraries/dp4_named_peptides.csv`** (15,324 lines, all 103-mers,
-line length 109–113). Regenerate with:
+residues, every line ≤ 128) → **`data/libraries/dp4_named_peptides.csv`** (35,962 lines — the whole
+post-cull library, episcaf + minibinders — all 103-mers, line length 109–113). Regenerate with:
 
 ```bash
 python scripts/stage07_named_peptides.py \
@@ -109,7 +109,7 @@ cd <rundir>
 INPUT=dp4_named_peptides.test50.csv sbatch <repo>/episcaf_pipeline/oligo_encoding/encode_step1_generate.sbatch
 sbatch <repo>/episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch   # after step 1 finishes
 
-# full run (15,324 peptides): same two commands with INPUT=dp4_named_peptides.csv
+# full run (35,962 peptides): same two commands with INPUT=dp4_named_peptides.csv
 ```
 
 The scripts carry the DP3 parameters as defaults; override any by exporting it first (`INPUT=...`,

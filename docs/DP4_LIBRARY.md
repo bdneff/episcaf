@@ -600,7 +600,9 @@ library, 35,962 rows, is assembled, encoded, gated, and shipped as of 2026-07-21
    file is **not** a further encoding step — step 2 already emits the adapter-flanked oligo, so the order
    file is a two-column slice, emitted + verified by `scripts/stage07_order_file.py` →
    `data/libraries/dp4_order_file.csv`. All 37,083 verified: 349 nt, 20-mer adapters both ends, every
-   core translates back to its own peptide, one encoding per peptide, none missing. **Twist-ready.**
+   core translates back to its own peptide, one encoding per peptide, none missing. *(Step 3 below then
+   culls this to the shipped **35,962** by dropping the culled rows from the order file by sequence — no
+   re-encode; the 37,083 encodings still exist, the order file is the 35,962 subset.)* **Twist-ready.**
    **Adapter length resolved 2026-07-16: John confirmed the 20-mers** (`ACCTATACTTCCAAGGCGCA` /
    `GGTGACTCTCTGTCTTGGCT` → 349 nt), the same ones DP3's order file carried. This **supersedes Erin's
    interim 2026-07-14 "19"**; whether or not the length caused a DP3 issue, 20 is the spec, and 349 sits
