@@ -54,8 +54,8 @@ crystals lives on the cluster (see below).
   `antibody_softgate` at the **current epitope_pae midpoint 2.5**, so ranks reconcile with what shipped.
   **One-pass cluster build** (rerun when the scorer or pool changes): `sbatch scripts/build_superset.sbatch`
   builds the C1/C2/C3 pool, folds in 8VDL + passing minibinders (`extend_superset.py`), and gzips it — so
-  `$WS/dp4_superset.csv` and the committed `.gz` are the same file. Needs the LX source on-cluster
-  (`dp4_8vdl/data/LX_*.csv`, gitignored). The raw `.csv` (~116 MB) is gitignored. (The full ~484 k LX pool
+  `$WS/dp4_superset.csv` and the committed `.gz` are the same file. The extend step reads minibinders from
+  the committed `dp4_library.csv`, so no external file is needed. The raw `.csv` (~116 MB) is gitignored. (The full ~484 k LX pool
   stays in the raw LX file; the superset carries
   only the passing minibinders.)
   `sequence` is filled for selected + global-passing episcaf designs (read from AF3 chain A) and for all

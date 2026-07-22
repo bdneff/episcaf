@@ -60,7 +60,6 @@ REMAP=${REMAP:-/scratch/bneff/episcaf/runs:${WS}/runs}
 # folds in 8VDL + the passing minibinders to produce the ONE canonical OUT. Naming the intermediate
 # distinctly avoids the trap where "$WS/dp4_superset.csv" meant two different things (partial vs full).
 EPISCAF="${OUT%.csv}_episcaf.csv"
-LX=${LX:-dp4_8vdl/data/LX_20260626.csv}     # the LatentX minibinder source (must be present on-cluster)
 
 # C1 writes (overwrites) the intermediate; C2 and C3 append. --sequences reads AF3 chain A for every
 # global-passing design that did not already ship (selected designs get their sequence copied verbatim
@@ -77,12 +76,11 @@ echo "=== C3 $(date) ==="
 python scripts/stage06_superset.py --component C3 --metrics-csv "${M3}" \
     --library "${LIB}" --append --out "${EPISCAF}"
 
-# Fold in 8VDL + passing minibinders and union the columns -> the FULL canonical superset. Needs the LX
-# file on-cluster; fail loudly if it is missing rather than silently emitting an episcaf-only superset.
+# Fold in 8VDL + the passing minibinders and union the columns -> the FULL canonical superset. extend
+# reads the minibinders from the committed dp4_library.csv and 8VDL from results/dp4_8vdl_top10*.csv, so
+# it needs NO external files -- the raw LX source does not have to be on the cluster.
 echo "=== extend (8VDL + minibinders) $(date) ==="
-[[ -e "${LX}" ]] || { echo "ERROR: LX minibinder source not found at ${LX}. Upload it (rsync) to the "\
-"cluster, or pass LX=<path>. It is gitignored (~168MB), so it does not arrive via git."; exit 1; }
-python scripts/extend_superset.py --superset "${EPISCAF}" --lx "${LX}" --out "${OUT}"
+python scripts/extend_superset.py --superset "${EPISCAF}" --library "${LIB}" --out "${OUT}"
 
 echo "=== gzip the committed copy $(date) ==="
 gzip -c "${OUT}" > "${REPO}/data/libraries/dp4_superset.csv.gz"

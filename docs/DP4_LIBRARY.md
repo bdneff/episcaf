@@ -553,8 +553,8 @@ python $REPO/scripts/stage07_order_file.py --by-sequence \
   # names by translated sequence and drops the culled ones -- NO re-encode (every survivor was encoded).
 
 # ALL-DESIGNS SUPERSET (John's ask -- every candidate design, not just the selected ones). ONE cluster
-# pass: build C1/C2/C3 -> extend with 8VDL + passing minibinders -> gzip. Needs the LX source on-cluster
-# (rsync dp4_8vdl/data/LX_*.csv up once, ~168MB, gitignored). Emits $WS/dp4_superset.csv (== the .gz).
+# pass: build C1/C2/C3 -> extend with 8VDL + passing minibinders -> gzip. extend reads the minibinders
+# from the committed dp4_library.csv, so NO external file is needed. Emits $WS/dp4_superset.csv (== the .gz).
 sbatch scripts/build_superset.sbatch
 git add data/libraries/dp4_superset.csv.gz && git commit -m "superset: rebuild" && git push
 ```
