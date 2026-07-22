@@ -21,8 +21,14 @@ Usage:
 from __future__ import annotations
 import argparse
 import gzip
+import re
 from pathlib import Path
 import pandas as pd
+
+# collapse the doubled RFD3-name block (same rule as stage06_assemble.py) so 8VDL IDs read once.
+_DOUBLE = re.compile(r"(.+?)_\1(_\d+_model)")
+def collapse_id(s):
+    return _DOUBLE.sub(r"\1\2", str(s))
 
 SUPERSET_COLS = ["component", "category", "target", "predID", "island_index",
                  "epitope_rmsd", "overall_rmsd", "epitope_pae", "scaffold_pae", "mean_pae", "ptm",
@@ -44,7 +50,8 @@ def read_any(path: Path) -> pd.DataFrame:
 def vdl_block(metrics_csv: Path, shipped_csv: Path) -> pd.DataFrame:
     """8VDL candidates -> superset rows. rank within run by composite; selected = the shipped design_IDs."""
     a = pd.read_csv(metrics_csv, low_memory=False)
-    shipped = set(pd.read_csv(shipped_csv)["design_ID"].astype(str))
+    a["design_ID"] = a["design_ID"].astype(str).map(collapse_id)          # un-double 8VDL IDs
+    shipped = set(pd.read_csv(shipped_csv)["design_ID"].astype(str).map(collapse_id))
     a["rank_in_group"] = (a.groupby("run")["composite"].rank(ascending=False, method="first").astype(int))
     ds = a["designedSequence"].astype(str)
     out = pd.DataFrame({

@@ -81,6 +81,40 @@ def peptide_name(seq_id: str) -> str:
     return seq_id.rsplit("_", 1)[0]
 
 
+def remap_by_sequence(enc_rows, peptides, prefix, suffix):
+    """Rebuild order rows keyed by SEQUENCE, not by name. Used when the library was re-numbered/culled
+    after encoding: the surviving peptides are unchanged sequences, so each takes the oligo already
+    computed for that sequence, relabelled with its new name. Drops encodings whose peptide is no longer
+    in the library. One oligo per peptide (first encoding wins for a sequence that had several)."""
+    # sequence -> (oligo, original seq_id), first occurrence
+    by_seq: dict[str, tuple[str, str]] = {}
+    for r in enc_rows:
+        oligo = r["oligo"]
+        if not (oligo.startswith(prefix) and oligo.endswith(suffix)):
+            continue
+        core = oligo[len(prefix): len(oligo) - len(suffix)]
+        try:
+            seq = translate(core)
+        except (ValueError, KeyError):
+            continue
+        by_seq.setdefault(seq, (oligo, r["id"]))
+    out, missing = [], []
+    for name, seq in peptides.items():
+        hit = by_seq.get(seq)
+        if hit is None:
+            missing.append(name)
+            continue
+        oligo, orig_id = hit
+        idx = orig_id.rsplit("_", 1)[1] if "_" in orig_id else "1"   # keep the _<index> suffix format
+        out.append({"id": f"{name}_{idx}", "oligo": oligo})
+    if missing:
+        raise SystemExit(f"[by-sequence] {len(missing)} library peptides have no encoding "
+                         f"(e.g. {', '.join(missing[:5])}) -- the encodings predate these sequences?")
+    print(f"[by-sequence] matched {len(out)} peptides to existing encodings "
+          f"({len(enc_rows)} encodings in, {len(enc_rows)-len(out)} dropped as no-longer-in-library)")
+    return out
+
+
 def check_rows(rows, peptides, prefix, suffix, label):
     """Check every oligo's adapters, length, and that its core translates to its peptide."""
     expected_len = None
@@ -155,6 +189,9 @@ def main() -> None:
     ap.add_argument("--verify", action="store_true", help="check only, write nothing")
     ap.add_argument("--prefix", default=STD_PREFIX, help="5' Twist adapter (default: DP4 20-mer)")
     ap.add_argument("--suffix", default=STD_SUFFIX, help="3' Twist adapter (default: DP4 20-mer)")
+    ap.add_argument("--by-sequence", action="store_true",
+                    help="match encodings to the peptide file by SEQUENCE and relabel (use when the "
+                         "library was re-numbered/culled after encoding -- no re-encode needed)")
     args = ap.parse_args()
 
     peptides = load_peptides(args.peptides)
@@ -178,6 +215,9 @@ def main() -> None:
                     f"{args.best_encodings}: missing column {col!r}. Found: {reader.fieldnames}"
                 )
         rows = [{"id": r[ID_COL], "oligo": r[OLIGO_COL]} for r in reader]
+
+    if args.by_sequence:
+        rows = remap_by_sequence(rows, peptides, args.prefix, args.suffix)
 
     check_rows(rows, peptides, args.prefix, args.suffix, args.best_encodings)
 

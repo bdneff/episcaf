@@ -25,11 +25,20 @@ Usage:
 """
 from __future__ import annotations
 import argparse
+import re
 from pathlib import Path
 import pandas as pd
 
 R = Path(__file__).resolve().parents[1]
 EXCLUDE = ("2h32", "4xwo", "7a3t")   # canonical 56-mAb exclusion (id-prefix)
+
+# The predID doubles the RFD3 backbone name (an AF3-output-dir naming artifact): <name>_<name>_<d>_model
+# ... for every design-producing arm (C1/C2/C5 and 8VDL, which double differently). Collapse the block
+# that repeats immediately before the `_<digit>_model` structure tag. Cosmetic; sequences/metrics
+# untouched. Kept identical in stage06_superset.py / extend_superset.py so the superset join still matches.
+_DOUBLE = re.compile(r"(.+?)_\1(_\d+_model)")
+def collapse_id(s: str) -> str:
+    return _DOUBLE.sub(r"\1\2", str(s))
 
 # The metric fields shipped alongside the 8 standard columns. Maps the internal metric name -> the
 # shipped column name. Left EMPTY where a design has no such value: C3 has no af3_clashes (no antibody);
@@ -70,7 +79,7 @@ def attach_source(seq_df, source_csv):
     for internal, shipped in METRICS.items():
         if internal in src:
             out[shipped] = src[internal].to_numpy()
-    for c in ("composite", "rank_in_group", "island_index"):
+    for c in ("composite", "rank_in_group", "island_index", "af3_clash_status"):
         if c in src:
             out[c] = src[c].to_numpy()
     if "pass_indicator" in src:      # -> is_global_pass, the four-filter soft-AND crossing 0.5
@@ -88,6 +97,16 @@ def scaffold_rows(comp, seq_csv, source_csv, category, *, trim, exclude, depth):
         d = attach_source(d, source_csv)
         if "rank_in_group" in d and depth is not None:
             d = d[d.rank_in_group <= depth]
+        # Drop designs whose accessibility could not be computed: a <3-residue island gives too few
+        # epitope CA pairs to define the design->native rigid-body fit, so both the real clash and the
+        # cylinder come out blank (stage05: too_few_epitope_pairs). John, 2026-07-21: cull these -- a
+        # 2-residue island scaffolded alone is a marginal target and ships with no accessibility metric.
+        if "af3_clash_status" in d:
+            n0 = len(d)
+            d = d[d["af3_clash_status"].astype(str) != "too_few_epitope_pairs"]
+            if n0 - len(d):
+                print(f"[{comp}] dropped {n0-len(d)} designs with uncomputable accessibility "
+                      f"(too_few_epitope_pairs)")
     if exclude:
         tgt = d["target"].astype(str).str.lower()
         d = d[~tgt.str.startswith(EXCLUDE)]
@@ -168,10 +187,21 @@ def main() -> None:
     parts.append(v8[v8_cols])
 
     lib_df = pd.concat(parts, ignore_index=True)
+
+    # Dedup by peptide sequence, keeping the FIRST occurrence. Parts are concatenated C1,C2,C3,C5,C6,C4,
+    # 8VDL, so a peptide picked by both C1 (top ranking) and C5 (metric-space sample of the same pool) is
+    # kept as its C1 row and the C5 duplicate is dropped -- no point ordering the same peptide twice
+    # (John, 2026-07-21). The C5 point is still covered: the same peptide is assayed under its C1 barcode.
+    n0 = len(lib_df)
+    lib_df = lib_df.drop_duplicates(subset="sequence", keep="first").reset_index(drop=True)
+    print(f"[assemble] dropped {n0-len(lib_df)} duplicate-sequence rows (picked by >1 component)")
+
+    lib_df["design_ID"] = lib_df["design_ID"].map(collapse_id)   # un-double the AF3-artifact predIDs
     lib_df.insert(0, "library_member", [f"DP4_{i}" for i in range(1, len(lib_df) + 1)])
     # 8 standard columns, then the metric columns, then the scoring/identity extras; missing cells blank.
     lib_df = lib_df.reindex(columns=["library_member"] + keep8 + list(METRICS.values()) + EXTRAS)
     assert (lib_df.sequence.str.len() <= 103).all(), "a sequence exceeds 103 residues!"
+    assert lib_df.sequence.is_unique, "duplicate sequences remain after dedup"
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     lib_df.to_csv(args.out, index=False)
 

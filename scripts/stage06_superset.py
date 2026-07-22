@@ -92,8 +92,15 @@ OUT_COLS = ["component", "category", "target", "predID", "island_index",
 FOUR_FILTER = {"epitope_chunk_rmsd": 1.0, "overall_rmsd": 2.0, "mean_pae": 5.0, "af3_n_clash_res": 0.0}
 
 
+# collapse the doubled RFD3-name block in a predID (same rule as stage06_assemble.py -- keep in sync so
+# the superset's predID matches the library's collapsed design_ID for the `selected` join).
+_DOUBLE = re.compile(r"(.+?)_\1(_\d+_model)")
+def collapse_id(s: str) -> str:
+    return _DOUBLE.sub(r"\1\2", str(s))
+
+
 def lib_key(design_id: str) -> str:
-    """`C1_<predID>_r3` -> `<predID>`. See JOIN NOTE in the module docstring."""
+    """`C1_<predID>_r3` -> `<predID>` (design_ID already collapsed upstream). See JOIN NOTE."""
     return re.sub(r"_r\d+$", "", re.sub(r"^C\d+_", "", str(design_id)))
 
 
@@ -163,6 +170,7 @@ def build(component: str, path: str, library: str | None, want_seqs: bool,
         if "af3_dir" not in scored.columns:
             raise SystemExit(f"[{component}] metrics has neither predID nor af3_dir; cannot identify designs")
         scored["predID"] = scored["af3_dir"].astype(str).map(os.path.basename)
+    scored["predID"] = scored["predID"].astype(str).map(collapse_id)   # match the library's collapsed IDs
 
     scored["component"] = component
     scored["category"] = spec["category"]
