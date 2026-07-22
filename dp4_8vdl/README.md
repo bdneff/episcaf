@@ -126,9 +126,9 @@ separate from the 8VDL *scaffolds* above, but folded into the shared DP4 deliver
   (`category=minibinder`), mapping sequence/uuid/target into the library shape, leaving the 12 episcaf
   metric/scoring columns blank (never scored on our axes), and carrying every native LX column as `lx_*`
   (plddt, pae, rmsd, iptm, hotspots, …) for post-hoc analysis. Idempotent; run after
-  `scripts/stage06_assemble.py`. Takes the library from 15,324 → 37,083 rows.
+  `scripts/stage06_assemble.py`. Takes the library from 14,203 episcaf → 35,962 rows.
 - These are **not** episcaf-scaffolded (no episcaf metrics), but they ARE oligo-encoded **along with**
-  the episcaf designs — one order file over the whole 37,083-row library (confirmed 2026-07-20; they
+  the episcaf designs — one order file over the whole 35,962-row library (confirmed 2026-07-20; they
   carry no oligos of their own). This is the lab's PepSeq model: several projects combined into a single
   assay. Encode via `stage07_named_peptides.py` on the full library; `--exclude-category minibinder`
   would revert to episcaf-only.

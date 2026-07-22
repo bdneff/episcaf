@@ -31,7 +31,7 @@ crystals lives on the cluster (see below).
   `python -m episcaf_pipeline.build_dp4_tiled30mers_fasta`
 - `dp4_tiled30mers.csv` (+ `_summary.csv`) — **superseded** earlier build (tiled the gap-truncated
   `antigen_seq` rather than the FASTA chain, with a spliced gap at 6okm). Kept for history; not used.
-- `dp4_library.csv` — the assembled DP4 library. **37,083 rows** = 15,324 episcaf constructs
+- `dp4_library.csv` — the assembled DP4 library. **35,962 rows** = 14,203 episcaf constructs (after the 2026-07-21 cull; see docs/DP4_LIBRARY.md)
   (`scripts/stage06_assemble.py`) + 21,759 LX PfEMP1/EPCR minibinders folded in for a single-file view
   (`dp4_8vdl/scripts/08_add_minibinders.py`, `category=minibinder`, no episcaf metrics). The minibinder
   source (`LX_YYYYMMDD.csv`, ~484k generations, ~168 MB) is an external artifact under `dp4_8vdl/data/`,
@@ -39,18 +39,18 @@ crystals lives on the cluster (see below).
   PAE, ptm, both clash flavors, `composite`, `rank_in_group`, `is_global_pass`, `island_index`; plus every
   native LatentX column as `lx_<name>` on the minibinder rows — **33 columns** total (episcaf rows blank in
   `lx_`, minibinders blank in the episcaf metric/scoring columns). The order file covers the **whole
-  37,083-row library** —
+  35,962-row library** —
   minibinders are oligo-encoded along with the episcaf designs (decided 2026-07-20; no oligos of their own).
   `dp4_named_peptides.csv` / `dp4_order_file.csv` — the oligo-encoder input / synthesis order file
   (`scripts/stage07_named_peptides.py`, `stage07_order_file.py`).
 - `dp4_superset.csv.gz` — **committed (~34 MB gzipped)**: the all-designs superset, the main raw data,
   a TRUE superset (the shipped `dp4_library.csv` is a strict subset of it). **357,789 rows across every
   candidate arm**: C1 140,716 + C2 111,322 + C3 82,712 + 8VDL 1,280 + 21,759 passing LX minibinders — not
-  just the 15,324 that shipped. **36 columns** = the scoring internals (`composite`, `rank_in_group`,
+  just the ones that shipped. **36 columns** = the scoring internals (`composite`, `rank_in_group`,
   `is_global_pass`, `selected`, full PAE decomposition) + the library's synthesis/minibinder columns
   (`model`, `designedSequenceLength`, `design_ID`, and the 13 `lx_*`). Episcaf/8VDL rows are blank in
-  `lx_*`; minibinder rows blank in the episcaf metric/scoring columns. `selected` sums to 28,949 (the
-  library's 37,083 minus the C4/C5/C6 controls, which aren't candidate-pool designs). Ranked under
+  `lx_*`; minibinder rows blank in the episcaf metric/scoring columns. `selected` sums to 28,889 (the
+  library's 35,962 minus the C4/C5/C6 controls, which aren't candidate-pool designs). Ranked under
   `antibody_softgate` at the **current epitope_pae midpoint 2.5**, so ranks reconcile with what shipped.
   **One-pass cluster build** (rerun when the scorer or pool changes): `sbatch scripts/build_superset.sbatch`
   builds the C1/C2/C3 pool, folds in 8VDL + passing minibinders (`extend_superset.py`), and gzips it — so

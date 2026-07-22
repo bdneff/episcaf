@@ -14,15 +14,17 @@ DP3 has now been **assayed**: experimental binding for 8 mAbs (`data/dp3_binding
 shows the native-aware cylinder is the strongest predictor of binding among all our
 metrics — the result that sets the scorer's priors (manuscript `sec:whatpredicts`).
 The next library, **DP4**, is assembled from seven episcaf components (C1–C6 plus the 8VDL
-PfEMP1 arm; manuscript `sec:dp4`) — 15,324 episcaf constructs — and combined with a **21,759-row LX
-PfEMP1/EPCR minibinder arm** into one file, `data/libraries/dp4_library.csv` (**37,083 rows**), handed
+PfEMP1 arm; manuscript `sec:dp4`) — 14,203 episcaf constructs — and combined with a **21,759-row LX
+PfEMP1/EPCR minibinder arm** into one file, `data/libraries/dp4_library.csv` (**35,962 rows**), handed
 off whole to the LadnerLab oligo encoder (`episcaf_pipeline/oligo_encoding/`).
 
-**DP4 status (2026-07-20): built, encoded, and synthesis-ready.** The episcaf library was selected under
-the soft-gate scorer (`antibody_softgate`, epitope-PAE midpoint 2.5, manuscript `sec:composite`); the
+**DP4 status (2026-07-21): built, encoded, gated, and synthesis-ready.** The episcaf library was selected
+under the soft-gate scorer (`antibody_softgate`, epitope-PAE midpoint 2.5, manuscript `sec:composite`); the
 whole library (episcaf + minibinders, encoded together into one PepSeq assay) was encoded to DNA and gated
-into `data/libraries/dp4_order_file.csv` — 37,083 oligos, each 349 nt with the 20-mer adapters, every core
-verified to translate back to exactly its own peptide. That file is what goes to Twist. An all-designs
+into `data/libraries/dp4_order_file.csv` — 35,962 oligos, each 349 nt with the 20-mer adapters, every core
+verified to translate back to exactly its own peptide. (Built at 37,083, then culled to 35,962 on
+2026-07-21 — C6 controls to top-15, dedup of the picked-twice, drop of 60 no-accessibility designs; see
+`docs/DP4_LIBRARY.md` → *Cull to 35,962*.) That file is what goes to Twist. An all-designs
 superset (357,789 rows, every candidate arm: C1/C2/C3 + 8VDL + passing minibinders) holds every candidate
 design, not just the ones that shipped. It's a true superset for the *candidate-pool* arms — every shipped
 C1/C2/C3/8VDL/minibinder design is in it (the C4/C5/C6 controls aren't candidate designs, so they aren't).
@@ -120,9 +122,9 @@ python -m episcaf_analysis.score --preset twelvemer|antibody \
     --metrics-csv <metrics.csv> --out <top5.csv>
 
 # 8. ASSEMBLE  [local]  — concatenate the episcaf components into data/libraries/dp4_library.csv
-#                         (33-col schema; 15,324 episcaf rows), then fold in the LX minibinders -> 37,083
-python scripts/stage06_assemble.py --depth 20                # C1/C2 top-20, C3 top-10 (15,324 episcaf)
-python dp4_8vdl/scripts/08_add_minibinders.py --lx dp4_8vdl/data/LX_20260626.csv   # -> 37,083 rows
+#                         (33-col schema; 14,203 episcaf rows), then fold in the LX minibinders -> 35,962
+python scripts/stage06_assemble.py --depth 20                # C1/C2 top-20, C3 top-10 (14,203 episcaf, after cull)
+python dp4_8vdl/scripts/08_add_minibinders.py --lx dp4_8vdl/data/LX_20260626.csv   # -> 35,962 rows
 python scripts/stage07_named_peptides.py \
     --library data/libraries/dp4_library.csv --out data/libraries/dp4_named_peptides.csv
 
@@ -134,7 +136,7 @@ sbatch episcaf_pipeline/oligo_encoding/encode_step1_generate.sbatch   # candidat
 sbatch episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch     # NN-pick the best
 python scripts/stage07_order_file.py --best-encodings <rundir>/DP4_best_encodings \
     --peptides data/libraries/dp4_named_peptides.csv --out data/libraries/dp4_order_file.csv
-#    -> 37,083 oligos, all verified (349 nt, 20-mer adapters, every core translates back). To Twist.
+#    -> 35,962 oligos, all verified (349 nt, 20-mer adapters, every core translates back). To Twist.
 
 # 10. SUPERSET  [cluster + local, analysis]  — every candidate design across all arms (357,789), not
 #     just what shipped. build_superset.sbatch (C1/C2/C3) then extend_superset.py (+8VDL +minibinders).
@@ -165,10 +167,10 @@ Seven components, each answering a design question (manuscript `sec:dp4`): **C1*
 whole-epitope scaffolds; **C2** single-island scaffolds (87 contigs, the islands test);
 **C3** polyclonal-tiling scaffolds; **C4** linear tiled-30mer controls; **C5** metric-space
 sampling; **C6** scaffolded-epitope controls (island→Ala + scaffold-disruption); plus the **8VDL**
-PfEMP1 conserved-epitope arm (`dp4_8vdl/`). These are the **15,324 episcaf** constructs. Folded in
+PfEMP1 conserved-epitope arm (`dp4_8vdl/`). These are the **14,203 episcaf** constructs (after the 2026-07-21 cull; see docs/DP4_LIBRARY.md). Folded in
 alongside them is a **21,759-row LX PfEMP1/EPCR minibinder arm** (de-novo binders on the same antigen,
 from a separate LatentX effort — not episcaf-scored, carried with their own `lx_*` metrics), so the
-shipped `data/libraries/dp4_library.csv` is **37,083 rows** — two projects in one PepSeq assay. All rows
+shipped `data/libraries/dp4_library.csv` is **35,962 rows** — two projects in one PepSeq assay. All rows
 are the constant 103-mer; the file carries the full 33-column schema and encodes to DNA oligos
 (`episcaf_pipeline/oligo_encoding/`, stage 07). **Full reference — components, selection math/weights,
 exclusions, the minibinder arm, the column dictionary, status: `docs/DP4_LIBRARY.md`.**

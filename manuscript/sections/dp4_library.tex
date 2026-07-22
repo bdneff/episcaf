@@ -12,23 +12,24 @@ one ordered synthesis file (Section~\ref{sec:assembly}).
 component & what it is & constructs & status \\
 \midrule
 C1 known antibody, whole epitope & full-epitope scaffolds, top-\num{20}/epitope & \num{1120} & ranked \\
-C2 known antibody, single island & 87 island contigs, each island alone & \num{1660} & ranked, per island \\
+C2 known antibody, single island & 87 island contigs, each island alone & \num{1600} & ranked, per island \\
 C3 scaffolds, polyclonal tiling & top-\num{10}/window, no antibody & \num{4390} & selected, ungated \\
-C4 linear tiled-30mer controls & bare tiled peptides & \num{2034} & built \\
-C5 metric-space sampling & designs spread across metrics & \num{3000} & sampled \\
-C6 scaffolded-epitope controls & island$\to$Ala $+$ scaffold-disruption & \num{3100} & built \\
+C4 linear tiled-30mer controls & bare tiled peptides & \num{2033} & built \\
+C5 metric-space sampling & designs spread across metrics & \num{2715} & sampled \\
+C6 scaffolded-epitope controls & island$\to$Ala $+$ scaffold-disruption & \num{2325} & built \\
 8VDL PfEMP1 conserved epitope & two epitope definitions, top-\num{10} each & \num{20} & ranked \\
 \bottomrule
 \end{tabular}
 \caption{The DP4 components assembled here, at the shipped depth. C1 and C2 are the two halves of the
 islands experiment (whole epitope vs.\ one island at a time); C6 tests the same question by mutation.
 C1--C3 are selected (ranked on the composite, Section~\ref{sec:selection}); the shipped depth is
-top-\num{20} per group for C1/C2 and top-\num{10} per window for C3. C5 is \num{3000} designs; C4 is
-the \num{2034} tiles of Section~\ref{sec:tiling}. Together with the 8VDL arm this is \num{15324}
-constructs. The delivered \texttt{dp4\_library.csv} additionally carries the \num{21759} filter-passing
+top-\num{20} per group for C1/C2 and top-\num{10} per window for C3. C5 is sampled at \num{3000} and C4
+built at \num{2034} tiles (Section~\ref{sec:tiling}); the counts in the table are the shipped totals after
+the 2026-07-21 cull (Section~\ref{sec:assembly}). Together with the 8VDL arm this is \num{14203}
+shipped constructs. The delivered \texttt{dp4\_library.csv} additionally carries the \num{21759} filter-passing
 LX PfEMP1/EPCR minibinders --- a separate de-novo binder arm, not scaffolded or scored here --- for a
-single-file view of the whole library (\num{37083} rows); the \num{15324} above is the episcaf portion
-the scoring concerns, while the oligo encoding and order file cover the whole \num{37083}.}
+single-file view of the whole library (\num{35962} rows); the \num{14203} above is the episcaf portion
+the scoring concerns, while the oligo encoding and order file cover the whole \num{35962}.}
 \label{tab:dp4components}
 \end{table}
 
@@ -55,7 +56,7 @@ suffice? Shipping C1 (whole epitope) and C2 (each island alone) for the same ant
 assay deconvolve which island, if any, carries the binding. The per-island production run
 (Section~\ref{sec:perisland}) covers \num{87} scaffolded islands (\num{5} size-1 islands are
 skipped as un-presentable); at the shipped top-\num{20} per island (after the 56-mAb exclusion) that
-is \num{1660} constructs (Table~\ref{tab:dualisland}). Selection is identical to C1 (composite, no
+is \num{1600} shipped constructs (Table~\ref{tab:dualisland}). Selection is identical to C1 (composite, no
 gate, real-clash accessibility), ranked per (\texttt{id}, island) so each island competes on its own.
 
 \subsection{C3 --- scaffolded epitopes from polyclonal tiling}\label{sec:dp4c3}
@@ -158,9 +159,10 @@ island~2. The mutations are string substitutions on the existing designs' case-e
 residues uppercase, scaffold lowercase, each contiguous uppercase run an island), implemented in
 \texttt{episcaf\_pipeline/scaffolded\_epitope\_controls/} (a port of the DP3 scheme). Over the best
 designs of each of the \num{56} mAbs, with one island-mutant for single-island epitopes and two for
-multi-island ones, plus the scaffold-disruption variant below, this is \num{3100} constructs at the
-shipped top-\num{20} depth (\num{1980} island-alanine mutants $+$ \num{1120} scaffold-disruption controls,
-one per base design).
+multi-island ones, plus the scaffold-disruption variant below, this is \num{3100} constructs at a top-20
+base (\num{1980} island-alanine mutants $+$ \num{1120} scaffold-disruption controls, one per base design).
+The shipped depth is top-\num{15} (\num{2325} constructs) --- C6 was the biggest block for what are
+controls, so it was scaled down in the cull (Section~\ref{sec:assembly}).
 
 \paragraph{Scaffold-disruption control.} A companion negative control mutates the \emph{scaffold}
 (not the epitope) in each design: if binding is epitope-driven, perturbing the scaffold should leave
@@ -240,7 +242,7 @@ eight-column annotated format (Section~\ref{sec:tiling}), so the final step conc
 single ordered library file with global \texttt{library\_member} numbering --- a named, documented
 pipeline stage (\texttt{06\_library}, \texttt{scripts/stage06\_assemble.py}) so the shipped file is
 regenerable from its components. This is done: at the shipped depth (top-\num{20} for C1/C2,
-top-\num{10} for C3) assembly emits \num{15324} episcaf constructs, each with a unique
+top-\num{10} for C3) assembly emits \num{14203} episcaf constructs, each with a unique
 \texttt{library\_member} and \texttt{design\_ID}, all \num{103} residues.
 
 \paragraph{The minibinder arm, and one assay for two projects.} Folded in at the same step are
@@ -252,9 +254,25 @@ their \num{13} native \texttt{lx\_*} metrics (per-residue and interface pLDDT, P
 target hotspots) on their own rows, preserved for later analysis. They are in the same file, and the same
 synthesis order, for a practical reason: PepSeq builds one pooled oligo library per assay, so combining
 two projects that target the same antigen into a single order shares the synthesis and the downstream
-readout rather than paying for two. The combined file is \num{37083} rows (\num{15324} episcaf
-$+$ \num{21759} minibinder); the \num{15324} is what the scoring and selection above concern, while the
-encoding and order file cover all \num{37083}.
+readout rather than paying for two. The combined file is \num{35962} rows (\num{14203} episcaf
+$+$ \num{21759} minibinder); the \num{14203} is what the scoring and selection above concern, while the
+encoding and order file cover all \num{35962}.
+
+\paragraph{The cull to \num{35962}.} The library was first assembled at \num{37083} and then, after
+review, cut to the shipped \num{35962} by four changes, none of which required re-encoding (every
+surviving peptide keeps the oligo already computed for its sequence, matched back by sequence). (i) The
+C6 controls were scaled from a top-\num{20} to a top-\num{15} base per antibody --- C6 was the single
+largest block for what are controls --- keeping all three control flavors but recovering $\sim\!\num{775}$
+peptides. To preserve the exact encoded sequences we \emph{filtered} the built C6 rather than rebuilding
+it (rebuilding re-randomizes the scaffold-disruption controls, whose hexamer placement is drawn from a
+global RNG). (ii) \num{286} peptides picked by more than one component were de-duplicated --- chiefly a C1
+top design also drawn by C5's metric-space sample of the same pool --- so each peptide is ordered once.
+(iii) The \num{60} designs from three single-island targets with a \num{2}-residue island were dropped:
+two residues give too few epitope C$\alpha$ pairs to define the design-to-native fit, so their
+accessibility (both the real clash and the cylinder) is uncomputable, and they had shipped with no
+accessibility signal. (iv) A cosmetic naming artifact in \texttt{design\_ID} (a doubled RFdiffusion
+backbone name from the AlphaFold3 output-directory convention) was collapsed. The final composition is
+in Table~\ref{tab:dp4components}.
 
 Two conventions hold across every row. First, \texttt{designedSequence} is always the full 103-mer in
 \emph{EPITOPEscaffold} casing --- epitope residues uppercase, scaffold lowercase --- including the
@@ -287,7 +305,7 @@ the mapping back out so it need not be rebuilt again.
 
 Everything up to this point is a library of \emph{peptides}. The assay does not receive peptides,
 though --- it receives DNA. PepSeq builds each displayed peptide by transcribing and translating a DNA
-oligo, so the final step converts all \num{37083} 103-mers of the combined library (the \num{15324}
+oligo, so the final step converts all \num{35962} 103-mers of the combined library (the \num{14203}
 episcaf constructs and the \num{21759} minibinders, encoded together into one assay) into the DNA that
 codes for them and writes
 the file a synthesis vendor (Twist) can manufacture. This subsection describes what that step does and
@@ -338,14 +356,14 @@ adapter-flanked DNA to synthesize, one row per library member. Because a synthes
 and irreversible, we emit it through a checker (\texttt{scripts/stage07\_order\_file.py}) that verifies
 every row before it goes out. The central check is a \emph{round-trip}: the encoder \emph{back-translates}
 each peptide to DNA (choosing codons), so we \emph{translate} that DNA back through the standard genetic
-code and require the result to equal the original peptide exactly, for all \num{37083} members. This
+code and require the result to equal the original peptide exactly, for all \num{35962} members. This
 catches any codon-table, framing, or bookkeeping error at the one place it would otherwise pass silently
 --- an encoding that is malformed but plausible-looking still fails the moment it does not read back to
 its own peptide. The checker also confirms the adapters and the expected oligo length on every row. The
 encoder itself is external tooling run on the cluster, so the computational pipeline ends at the
 annotated peptide file and this checked order file is the deliverable that hands off to synthesis.
 
-The full library has now been through it. All \num{37083} peptides encoded, every oligo \num{349}
+The full library has now been through it. All \num{35962} peptides encoded, every oligo \num{349}
 nucleotides with the \num{20}-mer adapters on both ends, every core translating back to exactly the
 peptide it claims to encode, one encoding per peptide and none missing
 (\texttt{data/libraries/dp4\_order\_file.csv}).
