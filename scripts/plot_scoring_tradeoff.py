@@ -86,7 +86,7 @@ SELECTION = [
     "   never TO 0, so every target still ships its best.",
     r"$\bf{Depth\ =\ top}$-$n$ per group:  C1 top-20 / epitope,  C2 top-20 / island,  C3 top-10 / window.",
     r"$\bf{Global\text{-}pass\ promotion.}$  Any design clearing all four Lawson filters (epitope RMSD $\leq$1,",
-    "   overall $\leq$2, mean PAE < 5, clash = 0) is floated above every non-passer (a soft AND).",
+    r"   overall $\leq$2, mean PAE < 5, clash = 0) is floated above every non-passer (a soft AND).",
     r"$\bf{Midpoints}$ sit at the four-filter thresholds; the epitope-PAE midpoint was retuned to 2.5 from",
     "   the data (good epitopes sit ~2 A, not 5). Weights/steepness are a prior, to be fit on DP4 binding.",
 ]
