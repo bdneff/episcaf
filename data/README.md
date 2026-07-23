@@ -42,7 +42,17 @@ crystals lives on the cluster (see below).
   36,000-row library** —
   minibinders are oligo-encoded along with the episcaf designs (decided 2026-07-20; no oligos of their own).
   `dp4_named_peptides.csv` / `dp4_order_file.csv` — the oligo-encoder input / synthesis order file
-  (`scripts/stage07_named_peptides.py`, `stage07_order_file.py`).
+  (`scripts/stage07_named_peptides.py`, `stage07_order_file.py`). The encoder input must be **LF, never
+  CRLF** — a CRLF file makes the encoder silently reject every peptide (see `docs/DP4_LIBRARY.md`).
+- `dp4_quote_file.csv` — the **vendor-quote** view of the order file: 36,000 rows of `name,sequence`
+  with flat zero-padded names (`DP4_00001`…`DP4_36000`) and the identical 349-mers
+  (`scripts/stage07_quote_file.py`). Vendors quote off a plain 2-column list and the sequences need not
+  be final, so this can go out while checking continues. It is generated *from* the order file and never
+  re-derives a sequence, so the two cannot drift — it carries no information the order file lacks (it
+  drops the `_<encoding_id>` suffix), and exists only to match the requested 2-column format.
+- `dp4_named_peptides.new38.csv` — the 38 peptides added by the 2026-07-23 top-up, i.e. the only ones
+  that needed encoding (`scripts/stage07_new_peptides.py`). Kept as the record of that top-up; regenerate
+  for any future growth rather than re-encoding the whole library.
 - `dp4_superset.csv.gz` — **committed (~34 MB gzipped)**: the all-designs superset, the main raw data,
   a TRUE superset (the shipped `dp4_library.csv` is a strict subset of it). **357,789 rows across every
   candidate arm**: C1 140,716 + C2 111,322 + C3 82,712 + 8VDL 1,280 + 21,759 passing LX minibinders — not

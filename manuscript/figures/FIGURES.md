@@ -53,3 +53,19 @@ command so anyone (or Claude Code) can reproduce it.
 
 | `c5_titration_coverage.png` | `episcaf_analysis/viz/plot_c5_titration.py` | `python episcaf_analysis/viz/plot_c5_titration.py --pool ../known_antigen/analysis/data/metrics_whole_epitope_103.csv --sample results/dp4_C5_titration.csv --out manuscript/figures/c5_titration_coverage.png` |
 **C5 titration coverage** — five panels, one per sampled axis (epitope RMSD, epitope PAE, overall RMSD, **AF3 clash (real)**, native-aware cylinder): full pool (grey) vs the C5 farthest-point sample (blue, n=3,000). Accessibility is now **split** — half the sample spans the real AF3 clash, half the cylinder (`stage06_sample_c5.py`, disjoint halves) — the **red line** is the "span this one axis alone" reference — a stratified-uniform sample (equal quota per value-bin), flat by construction. The joint C5 sample (blue) tracks pool density on any single marginal even though it spreads in the joint space; the flat red shows what per-axis-uniform coverage would look like. Spans (sample range / pool range): epitope RMSD 65%, PAE 100%, overall RMSD 98%, AF3 clash 95%, cylinder 93%.
+
+| `scoring_tradeoff.png` (scratch figure, not \input by the manuscript) | `scripts/plot_scoring_tradeoff.py` | `python scripts/plot_scoring_tradeoff.py --c1 $D/known_antigen/analysis/data/metrics_whole_epitope_103.csv --vdl results/dp4_8vdl_top10_allmetrics.csv --out scratch_figs/scoring_tradeoff.png` |
+**Soft-gate vs the alternatives, and where the selection lands** — an explainer figure built for
+reviewing the scoring change, not a manuscript figure (it lives in the gitignored `scratch_figs/`, so
+only the script is committed). Header panels give what each metric measures, the soft-gate score itself
+(the formula, and the weight/midpoint/steepness table read **live** from `episcaf_analysis/presets.py`,
+so it tracks the epitope-PAE midpoint retune to 2.5), and the selection policy (rank-don't-gate, top-*n*
+per group, global-pass promotion, midpoints at the four-filter thresholds). Below that, one scatter row
+per component/target on the two axes that matter — epitope RMSD (x) against **real Fab clash** (y), so
+lower-left is best — showing the median of the top-*k* actually selected by three scorers: the old
+scale-blind percentile, a plain sigmoid at clash weight .50, and the adopted soft-gate. Confirms the
+soft-gate buys accessibility without giving up fold fidelity, and that `8VDL_hotspots` is
+generation-limited rather than mis-scored (every scorer is stuck at high clash there).
+Add `--c2 $WS/runs/dual_island_rfd3/05_analysis/metrics_dual_island.parquet` for the C2/single-island
+row — that pool is cluster-only, so the local run covers C1 + 8VDL and the full 5-row version is
+produced on Gemini.

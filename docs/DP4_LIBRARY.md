@@ -610,7 +610,11 @@ python scripts/stage07_named_peptides.py \
 # Oligo-encode the library (Gemini). Run BOTH steps in the same working dir; step 1 is the long pole
 # (C++ sampler, hours). ADAPTER is pinned to the 20-mers inside encode_step2_select.sbatch -- do NOT
 # rely on the encoder's own --adapter default, which is the 19-mer form (see oligo-adapter-trap).
-cd $REPO/runs/dp4_encoding_full     # with dp4_named_peptides.csv + codon_weights_updated.csv present
+# Run in a FRESH rundir under the DURABLE $WS, not $REPO (/scratch sweeps at ~30 days, and reusing a
+# rundir name is how the whole-library encodings ended up shadowed by an older file -- see the
+# "Which DP4_best_encodings?" box below). Copy the input + weights in first.
+mkdir -p $WS/runs/dp4_encoding_<tag> && cd $WS/runs/dp4_encoding_<tag>
+cp $REPO/data/libraries/dp4_named_peptides.csv $REPO/episcaf_pipeline/oligo_encoding/codon_weights_updated.csv .
 # TOOL_DIR is REQUIRED (no default, by design -- a bad default once ran an unexecutable binary). Point it
 # at the built LadnerLab encoder; the env var must come BEFORE `sbatch`, not after (else it is read as the
 # script path). Same TOOL_DIR for both steps. Step 2 pins the 20-mer ADAPTER internally -- do not pass it.
@@ -723,7 +727,10 @@ culled to 35,962 on 07-21, topped up to 36,000 on 07-23.)*
    supersedes the 2026-07-16 episcaf-only 15,324 encode after the 2.5 re-selection + soft-gate 8VDL +
    minibinder addition). Encoder input: `scripts/stage07_named_peptides.py` →
    `data/libraries/dp4_named_peptides.csv` (`name,seq`, no header, all 103-mers; regenerate after any
-   library change). Ran on Gemini in `runs/dp4_encoding_full/` with the LadnerLab encoder (step 1 sampler
+   library change). Ran on Gemini in `/scratch/bneff/episcaf/runs/dp4_encoding_full/` — note **`/scratch`**,
+   not `$WS`: this ran after the migration, so it was NOT captured by it, and the same-named `$WS` dir holds
+   the earlier episcaf-only encode. Rescued to `$WS/.../DP4_best_encodings.wholelib_37083` on 2026-07-23
+   (see the "Which `DP4_best_encodings`?" box). Encoder: the LadnerLab tool (step 1 sampler
    → step 2 NN selector, DP3 recipe + `codon_weights_updated.csv`; `episcaf_pipeline/oligo_encoding/`, see
    its README and manuscript `sec:oligo`) → `DP4_best_encodings`, all 37,083, nothing dropped. The order
    file is **not** a further encoding step — step 2 already emits the adapter-flanked oligo, so the order

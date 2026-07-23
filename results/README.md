@@ -14,7 +14,9 @@ script that produces it. Metric-CSV inputs (the `$D` sibling dirs, or the cluste
 | `dp4_C{1,2,3,5}_scaffoldEPITOPE.csv` | `case_encode_selected.sbatch` / `case_encode_whole_epitope.py` / `case_encode_c2.py` / `case_encode_c3.py` (case-encode the selected designs) |
 | `dp4_C5_titration.csv` | `scripts/stage06_sample_c5.py` (farthest-point titration over the scoring axes) |
 | `dp4_C6_controls.csv` | `episcaf_pipeline/scaffolded_epitope_controls/build_c6_mutants.py` (island→Ala + scaffold disruption) |
-| `dp4_8vdl_top10.csv` | `dp4_8vdl/scripts/07_consolidate.py` (PfEMP1 arm, top-10 per definition) |
+| `dp4_8vdl_top29.csv` | `dp4_8vdl/scripts/07_consolidate.py --topk 29 --from-metrics ...` (PfEMP1 arm, **the shipped selection**: top-29 per definition, 58 designs) |
+| `dp4_8vdl_top10.csv` | `dp4_8vdl/scripts/07_consolidate.py` (PfEMP1 arm, top-10 per definition — superseded by the top-29 file at the 2026-07-23 top-up) |
+| `dp4_8vdl_top10_allmetrics.csv` | same script, `--metrics-out` (ALL 1,280 scored 8VDL designs; this dump is what makes a depth change a local re-rank with no AF3 re-read) |
 | `dual_island_designs.csv` | `episcaf_pipeline/build_dual_island_designs.py` (C2 per-island design ledger) |
 | `dual_island_targets.csv` | `episcaf_analysis/dual_island_targets.py` (92 island defs; `tab:dualisland`) |
 | `dual_island_gate_summary.csv` | `scripts/stage05_summarize.py` (per-island four-filter breakdown; `tab:funnel`) |
