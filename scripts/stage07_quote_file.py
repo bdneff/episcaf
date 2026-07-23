@@ -103,12 +103,17 @@ def main() -> None:
 
     width = max(5, len(str(len(rows))))
     out.parent.mkdir(parents=True, exist_ok=True)
-    with out.open("w", newline="") as fh:
-        w = csv.writer(fh)
+    # Written by hand, NOT csv.writer: its default `excel` dialect emits \r\n, and every other file we
+    # ship is LF. A stray CR is exactly what made the encoder reject all 38 top-up peptides on
+    # 2026-07-23 (memory `oligo-encoder-silent-failures`), so don't reintroduce it here.
+    with out.open("w", newline="\n") as fh:
         if not args.no_header:
-            w.writerow(["name", "sequence"])
+            fh.write("name,sequence\n")
         for n, s in rows:
-            w.writerow([f"DP4_{n:0{width}d}", s])
+            fh.write(f"DP4_{n:0{width}d},{s}\n")
+
+    if b"\r" in out.read_bytes():
+        sys.exit(f"ERROR: {out} contains CR")
 
     print(f"[quote] wrote {len(rows):,} oligos ({args.length} nt, 20-mer adapters verified) -> {out}")
     print(f"[quote] names DP4_{1:0{width}d}..DP4_{len(rows):0{width}d}"
