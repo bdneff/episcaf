@@ -137,6 +137,10 @@ def main() -> None:
                     help="top-n per 12-mer window for C3 (default 10). C3 tiles are 12-mers stepping by "
                          "2 residues, so windows overlap heavily; kept shallow, but set to 10 to maximise "
                          "polyclonal coverage given the weaker clash distribution (John, 2026-07-14)")
+    ap.add_argument("--vdl", default="results/dp4_8vdl_top29.csv",
+                    help="the 8VDL selection file from dp4_8vdl/scripts/07_consolidate.py (repo-relative). "
+                         "Default is the top-29/run selection that spends the leftover order slots; the "
+                         "earlier shipped depth was results/dp4_8vdl_top10.csv")
     ap.add_argument("--out", default="data/libraries/dp4_library.csv")
     args = ap.parse_args()
     res = R / "results"; lib = R / "data/libraries"
@@ -181,8 +185,10 @@ def main() -> None:
     c4["design_ID"] = "C4_" + c4["target"].astype(str) + "_t" + c4["design_ID"].astype(str)
     parts.append(c4[keep8])                     # metrics blank (linear controls, never folded)
 
-    # 8VDL arm -- 8-column + (after 07_consolidate rerun) the 5 metric columns; native 103, top-10/def
-    v8 = pd.read_csv(res/"dp4_8vdl_top10.csv", low_memory=False)
+    # 8VDL arm -- 8-column + (after 07_consolidate rerun) the 5 metric columns; native 103. Depth is a
+    # flag (--vdl): shipped top-10/run through 2026-07-21, deepened to top-29/run on 2026-07-22 to spend
+    # the leftover order slots on the 8VDL arms (John, 2026-07-22).
+    v8 = pd.read_csv(R / args.vdl, low_memory=False)
     v8_cols = keep8 + [c for c in list(METRICS.values()) + EXTRAS if c in v8.columns]
     parts.append(v8[v8_cols])
 

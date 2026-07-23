@@ -189,28 +189,10 @@ def process_run(run, topk, base):
     return top, df
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--runs", default="epitope,hotspots",
-                    help="the two epitope definitions: `epitope` (contiguous C652-673) and `hotspots` "
-                         "(F655/F656/E666)")
-    ap.add_argument("--topk", type=int, default=10)
-    ap.add_argument("--base", type=Path, default=_HERE.parent, help="dp4_8vdl/ dir")
-    ap.add_argument("--out", type=Path, required=True)
-    ap.add_argument("--metrics-out", type=Path, default=None,
-                    help="also dump the FULL per-design scored metrics (all designs, not just top-k), so a "
-                         "later re-rank needs no AF3 re-read. Default: <out>_allmetrics.csv beside --out")
-    args = ap.parse_args()
-
-    parts = [process_run(r.strip(), args.topk, args.base) for r in args.runs.split(",") if r.strip()]
-    top = pd.concat([t for t, _ in parts if not t.empty], ignore_index=True)
-
-    fulls = [f for _, f in parts if not f.empty]
-    if fulls:
-        mout = args.metrics_out or args.out.with_name(args.out.stem + "_allmetrics.csv")
-        mout.parent.mkdir(parents=True, exist_ok=True)
-        pd.concat(fulls, ignore_index=True).to_csv(mout, index=False)
-        print(f"full per-design metrics ({sum(len(f) for f in fulls)} rows) -> {mout}")
+def emit(top, out_path):
+    """Build the stage06_assemble-shaped selection file from a `top` frame (per-run top-k rows, with the
+    softgate `composite`/`rank_in_group`/`is_global_pass` already attached). Shared by the fresh-scoring
+    path and the --from-metrics re-rank path so both emit an identical column layout."""
     # 8 standard columns + the 5 scoring columns the library ships (stage06_assemble METRICS names).
     # `sequence` is the plain synthesized 103-mer; `designedSequence` keeps the EPITOPEscaffold casing.
     # No cylinder_clashes column: 8VDL is a known-antibody target, so accessibility is the REAL H/L
@@ -234,9 +216,57 @@ def main():
         "rank_in_group": top.rank_in_group,
         "is_global_pass": top.is_global_pass,
     })
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    out.to_csv(args.out, index=False)
-    print(f"\nwrote {len(out)} rows ({out.target.value_counts().to_dict()}) -> {args.out}")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out.to_csv(out_path, index=False)
+    print(f"\nwrote {len(out)} rows ({out.target.value_counts().to_dict()}) -> {out_path}")
+
+
+def rerank_from_metrics(metrics_csv, topk, runs):
+    """Re-slice a deeper (or shallower) top-k from an existing --metrics-out dump -- NO AF3 re-read (the
+    dump already holds every design's softgate `composite` and per-run `rank_in_group`). The cut is
+    deterministic: `rank_in_group <= topk` is exactly `nlargest(topk, composite)` (method='first'), so
+    this reproduces a fresh --topk run bit-for-bit. This is the documented purpose of the metrics dump."""
+    df = pd.read_csv(metrics_csv)
+    keep = {r.strip() for r in runs.split(",") if r.strip()}
+    df = df[df.run.isin(keep)]
+    top = df[df.rank_in_group <= topk].sort_values(["run", "rank_in_group"]).reset_index(drop=True)
+    for run, g in top.groupby("run"):
+        print(f"[{run}] re-rank top-{topk}: epiRMSD {g.epitope_chunk_rmsd.min():.2f}-"
+              f"{g.epitope_chunk_rmsd.max():.2f}  clash {int(g.af3_n_clash_res.min())}-"
+              f"{int(g.af3_n_clash_res.max())}  ({int(g.is_global_pass.sum())} four-filter passers)")
+    return top
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--runs", default="epitope,hotspots",
+                    help="the two epitope definitions: `epitope` (contiguous C652-673) and `hotspots` "
+                         "(F655/F656/E666)")
+    ap.add_argument("--topk", type=int, default=10)
+    ap.add_argument("--base", type=Path, default=_HERE.parent, help="dp4_8vdl/ dir")
+    ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--from-metrics", type=Path, default=None,
+                    help="re-rank from an existing --metrics-out dump instead of re-reading AF3 -- deepens "
+                         "or shrinks the per-run top-k with no cluster round-trip (deterministic re-slice)")
+    ap.add_argument("--metrics-out", type=Path, default=None,
+                    help="also dump the FULL per-design scored metrics (all designs, not just top-k), so a "
+                         "later re-rank needs no AF3 re-read. Default: <out>_allmetrics.csv beside --out")
+    args = ap.parse_args()
+
+    if args.from_metrics is not None:
+        emit(rerank_from_metrics(args.from_metrics, args.topk, args.runs), args.out)
+        return
+
+    parts = [process_run(r.strip(), args.topk, args.base) for r in args.runs.split(",") if r.strip()]
+    top = pd.concat([t for t, _ in parts if not t.empty], ignore_index=True)
+
+    fulls = [f for _, f in parts if not f.empty]
+    if fulls:
+        mout = args.metrics_out or args.out.with_name(args.out.stem + "_allmetrics.csv")
+        mout.parent.mkdir(parents=True, exist_ok=True)
+        pd.concat(fulls, ignore_index=True).to_csv(mout, index=False)
+        print(f"full per-design metrics ({sum(len(f) for f in fulls)} rows) -> {mout}")
+    emit(top, args.out)
 
 
 if __name__ == "__main__":
