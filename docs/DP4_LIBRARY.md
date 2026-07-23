@@ -4,19 +4,21 @@ Reference for the DP4 PepSeq library: what each component is, how designs were s
 each file lives. Manuscript counterpart: `manuscript/sections/dp4_library.tex` (`sec:dp4`). Related:
 `docs/CASE_ENCODING.md`, `docs/CYLINDER_PARAMS.md`.
 
-Status (2026-07-21): **built, encoded, gated, and synthesis-ready.** `data/libraries/dp4_library.csv` is
-the combined library: **35,962 rows** = **14,203 episcaf** constructs (the seven components C1–C6 + 8VDL)
+Status (2026-07-23): **built, encoded, gated, and synthesis-ready.** `data/libraries/dp4_library.csv` is
+the combined library: **36,000 rows** = **14,241 episcaf** constructs (the seven components C1–C6 + 8VDL)
 plus **21,759 LX PfEMP1/EPCR minibinders** (`category=minibinder`, a separate de-novo binder arm folded in
 so the whole DP4 library is one file). Each row is a 103-mer with a unique `library_member` and
 `design_ID`. The episcaf shipping depth is top-20 per group for C1/C2 and top-10 per window for C3;
-C4/C5/C6 and 8VDL are fixed size. Selection ran under the soft-gate scorer (`antibody_softgate`, epitope-
-PAE midpoint 2.5). The library was oligo-encoded and gated into `data/libraries/dp4_order_file.csv` —
-**35,962 oligos, all verified** — the file that goes to Twist. (The library began at 37,083 and was
-culled to 35,962 on 2026-07-21 — see **Cull to 35,962** below.)
+C4/C5/C6 are fixed size and 8VDL is top-29 per run. Selection ran under the soft-gate scorer
+(`antibody_softgate`, epitope-PAE midpoint 2.5). The library was oligo-encoded and gated into
+`data/libraries/dp4_order_file.csv` — **36,000 oligos, all verified** — the file that goes to Twist, with
+`data/libraries/dp4_quote_file.csv` as the 2-column vendor-quote view of the same molecules. (The library
+was assembled at 37,083, culled to 35,962 on 2026-07-21, then topped up to 36,000 on 2026-07-23 — see
+**Cull to 35,962** and **Top-up to 36,000** below.)
 
-> **Two things to know reading the numbers.** (1) **14,203 vs 35,962:** the episcaf-scaffolded portion is
-> 14,203 — what the scoring and selection below concern; the encoding and the order file cover the whole
-> **35,962** (episcaf + minibinders encoded together into one PepSeq assay — the lab runs one pooled oligo
+> **Two things to know reading the numbers.** (1) **14,241 vs 36,000:** the episcaf-scaffolded portion is
+> 14,241 — what the scoring and selection below concern; the encoding and the order file cover the whole
+> **36,000** (episcaf + minibinders encoded together into one PepSeq assay — the lab runs one pooled oligo
 > library per assay, so two projects on the same antigen share one synthesis order).
 > (2) **Columns:** the library carries the **full 33-column** set (not the lean 5): 8 identity + 8 metrics
 > (RMSDs, the PAE decomposition epitope/scaffold/mean, ptm, both clash flavors) + 4 scoring (`composite`,
@@ -63,8 +65,54 @@ removes peptides and renumbers IDs, every surviving sequence was already encoded
 `stage07_order_file.py --by-sequence` matches each oligo to the renumbered library by translated sequence
 and drops the 1,121 no-longer-shipped encodings. Gate re-passed (349 nt, 20-mer adapters, round-trip).
 
-**Shipped composition (35,962):** C1 1,120 · C2 1,600 · C3 4,390 · C4 2,033 · C5 2,715 · C6 2,325 ·
-8VDL 20 · minibinder 21,759.
+**Composition after the cull (35,962):** C1 1,120 · C2 1,600 · C3 4,390 · C4 2,033 · C5 2,715 · C6 2,325 ·
+8VDL 20 · minibinder 21,759. (Superseded by the top-up below.)
+
+## Top-up to 36,000 (2026-07-23)
+
+The cull left the library 38 short of the 36,000 target, so those slots went to the 8VDL arm (John,
+2026-07-23: *"if you have a little leftover space, I'd suggest adding the next n best designs"*). Both
+8VDL runs went from **top-10 to top-29 per run** — **+19 `8VDL_epitope` and +19 `8VDL_hotspots`**, 20 → 58
+designs — landing the library exactly on **36,000**.
+
+**The depth 29 is arithmetic, not a threshold.** 36,000 − 35,962 = 38 spare slots; split evenly over the
+two 8VDL runs that is 19 each; 10 + 19 = 29. Nothing in the score distribution justifies a cut at 29 over
+28 or 30 — it is simply how far down the existing ranking the leftover space reached. This is worth being
+explicit about because 29 otherwise looks like a tuned parameter, and it is not one: the ranking, scorer,
+and every other component's depth are untouched.
+
+**No cluster job was needed to select them.** `07_consolidate.py --metrics-out` had already dumped every
+8VDL design's scored metrics (`results/dp4_8vdl_top10_allmetrics.csv`, all 1,280), and a deeper top-k is a
+deterministic re-slice of that dump: `rank_in_group <= topk` is exactly `nlargest(topk, composite)`. The
+new `--from-metrics` mode does that re-rank with no AF3 re-read, reproducing a fresh `--topk 29` run:
+
+```bash
+python dp4_8vdl/scripts/07_consolidate.py --runs epitope,hotspots --topk 29 \
+    --from-metrics results/dp4_8vdl_top10_allmetrics.csv --out results/dp4_8vdl_top29.csv
+python scripts/stage06_assemble.py --depth 20 --c3-depth 10      # --vdl defaults to the top-29 file
+python dp4_8vdl/scripts/08_add_minibinders.py --lx dp4_8vdl/data/LX_20260626.csv
+```
+
+Verified: top-29 is a strict superset of the shipped top-10 (nothing already ordered was displaced), no
+misfolds entered (the epitope arm's rank-36 design — epitope RMSD 0.76 Å but *overall* RMSD 19.3 Å — sits
+below the cut), and the assembled file has unique sequences and `design_ID`s with contiguous
+`library_member` 1..36,000. Quality of the additions: the epitope arm spans epitope RMSD 0.97–2.16 Å at
+clash 0–3; the hotspots arm has near-perfect epitope geometry (0.03–0.15 Å) but clashes 39–72, which is
+the known generation-limited behaviour of that arm, not a selection artifact.
+
+**Order file:** only the 38 new peptides needed encoding — `scripts/stage07_new_peptides.py` emits exactly
+those, they were encoded on the cluster, merged with the whole-library encodings, and
+`stage07_order_file.py --by-sequence` rebuilt the order file at **36,000** (37,121 encodings in, 1,121
+dropped as no-longer-in-library). Matching is by *sequence* because a top-up renumbers `library_member`
+for everything after the insertion point — adding 38 8VDL rows shifted all 21,759 minibinders.
+
+> **Encoder input must be LF, not CRLF.** The first attempt at these 38 failed silently: the encoder
+> rejected every line (`Processed 0 lines`) yet still printed `done` and wrote a 0-byte result, because the
+> input had `\r\n` endings (`csv.writer`'s default dialect). `stage07_new_peptides.py` now writes bare
+> `\n` and hard-fails on any CR. Always check step 1 reports `Processed <N> lines` before running step 2.
+
+**Shipped composition (36,000):** C1 1,120 · C2 1,600 · C3 4,390 · C4 2,033 · C5 2,715 · C6 2,325 ·
+8VDL 58 · minibinder 21,759.
 
 ## Paths used in this doc
 
@@ -89,17 +137,24 @@ Anything long-lived belongs under `$WS`. Never `rsync --delete` toward `/tgen_la
 The deliverable and the input to the next step:
 
 - **`data/libraries/dp4_library.csv`** — the library. All seven components (+ minibinders) merged into
-  one file, 35,962 rows, in the 8-column PepSeq annotated format **plus the full metric + scoring set and
+  one file, 36,000 rows, in the 8-column PepSeq annotated format **plus the full metric + scoring set and
   the `lx_` minibinder columns** — 33 columns, schema below. This is the
   file to hand off. `designedSequence` is the full 103-mer in EPITOPEscaffold casing (epitope uppercase /
   scaffold lowercase) for every row; `sequence` is the plain uppercase 103-mer that gets synthesized.
-- **`data/libraries/dp4_order_file.csv`** — the Twist synthesis order file. 35,962 oligos, two columns
+- **`data/libraries/dp4_order_file.csv`** — the Twist synthesis order file. 36,000 oligos, two columns
   (`Seq ID`, `nucleotide_encoding_with_twist_adapters`). Every row verified by
   `scripts/stage07_order_file.py`: 349 nt, the 20-mer adapters on both ends, and a core that translates
   back to exactly its own peptide. **This is what goes to Twist.**
+- **`data/libraries/dp4_quote_file.csv`** — the vendor **quote** view of that same order: 36,000 rows of
+  `name,sequence` with flat zero-padded names (`DP4_00001`…`DP4_36000`) and the identical 349-mers.
+  Vendors quote off a plain two-column list and the sequences need not be final, so this can go out while
+  checking continues. Emitted by `scripts/stage07_quote_file.py`, which re-shapes the order file and never
+  re-derives a sequence — quote and order are the same molecules by construction.
 - **`data/libraries/dp4_superset.csv.gz`** — the all-designs superset (committed gzipped, 357,789 rows
   across all arms; see below). Not a deliverable — it exists for looking at the distributions the library
   was drawn from, and it is a true superset (the shipped library is a strict subset of it).
+  **Stale as of the 2026-07-23 top-up:** its `selected` flag still marks 28,889 and needs a rebuild to
+  reach 28,927. The row set is unaffected — the 38 added designs were already candidate rows in it.
 - **`data/libraries/dp4_named_peptides.csv`** — the oligo-encoder input. A two-column `name,seq` slice of
   the library (no header), for the DNA encoding step. Not a separate result, just a reformat.
   **Regenerate after any library change** (`scripts/stage07_named_peptides.py`).
@@ -124,13 +179,20 @@ hold the full top-20 pools and are larger than the shipped counts):
 | C4 | linear 30-mer controls | bare tiled peptides, no scaffold | exhaustive tiling | 2,033 | `data/libraries/dp4_tiled30mers_fasta.csv` |
 | C5 | metric-space titration | designs spread across metrics | farthest-point sample | 2,715 § | `results/dp4_C5_titration.csv` |
 | C6 | scaffolded-epitope controls | island→Ala + scaffold disruption | C1 top-15 base × flavors | 2,325 ‡§ | `results/dp4_C6_controls.csv` |
-| 8VDL | PfEMP1 conserved epitope | two epitope definitions | ranked, top-10 each | 20 | `results/dp4_8vdl_top10.csv` |
-| | | | | **14,203 episcaf** | `data/libraries/dp4_library.csv` (episcaf portion) |
+| 8VDL | PfEMP1 conserved epitope | two epitope definitions | ranked, top-29 each ¶ | 58 | `results/dp4_8vdl_top29.csv` |
+| | | | | **14,241 episcaf** | `data/libraries/dp4_library.csv` (episcaf portion) |
 | LX | PfEMP1/EPCR minibinders | de-novo binders (not scaffolded) | LX-filter passers | 21,759 | `dp4_8vdl/scripts/08_add_minibinders.py` (source gitignored) |
-| | | | | **35,962 total** | `data/libraries/dp4_library.csv` (whole file) |
+| | | | | **36,000 total** | `data/libraries/dp4_library.csv` (whole file) |
 
-*(Shipped counts, after the 2026-07-21 cull. C2 is 1,600 not 1,660 — 60 no-accessibility 2-residue-island
-designs culled; C4 2,033 and C5 2,715 net the dedup; C6 2,325 is top-15. See **Cull to 35,962** above.)*
+*(Shipped counts, after the 2026-07-21 cull and the 2026-07-23 top-up. C2 is 1,600 not 1,660 — 60
+no-accessibility 2-residue-island designs culled; C4 2,033 and C5 2,715 net the dedup; C6 2,325 is
+top-15. See **Cull to 35,962** and **Top-up to 36,000** above.)*
+
+¶ **Why 29, specifically?** It is a budget number, not a quality threshold. The cull left the library at
+35,962, i.e. 38 slots under the 36,000 target, and those spare slots were given to the 8VDL arm; split
+evenly across its two runs that is +19 each, taking both from the original top-10 to **top-29**. Nothing
+about the ranking changes at 29 — read it as "top-10 plus however many the leftover space allowed,"
+which is why the depth is not a round number like the other components'.
 
 † C3 is shipped deep (top-10). Its windows are **12-mers stepping by 2 residues**, so neighbouring tiles
 are highly redundant (adjacent windows share 10 of 12 residues) — which argues for a shallow cut. We
@@ -231,9 +293,14 @@ the library's and the superset's columns** (36): the scoring internals (`selecte
 minibinder columns (`model`, `designedSequenceLength`, `design_ID`, the 13 `lx_*`). Episcaf/8VDL rows are
 blank in `lx_*`; minibinder rows blank in the episcaf metric/scoring columns (never scored on our axes).
 So a design that shipped and a design that lost sit in the same table, in the same shape. Of these,
-**28,889 shipped** (C1 1,120 + C2 1,600 + C3 4,390 + 8VDL 20 + LX 21,759) — the library's 35,962 minus
-the C4/C5/C6 controls, which aren't candidate-pool designs — and the four-filter passers are C1 727 +
-C2 407 (C3/minibinders have no antibody-based global pass defined).
+**28,927 ship** (C1 1,120 + C2 1,600 + C3 4,390 + 8VDL 58 + LX 21,759) — the library's 36,000 minus the
+C4/C5/C6 controls, which aren't candidate-pool designs — and the four-filter passers are C1 727 + C2 407
+(C3/minibinders have no antibody-based global pass defined).
+
+> **The committed `.gz` is one rebuild behind.** It still flags **28,889** selected, from before the
+> 2026-07-23 top-up. Only the flag is stale: all 357,789 rows are correct, and the 38 added 8VDL designs
+> were already candidate rows in it — the top-up promoted them, it did not introduce them. Rerun
+> `sbatch scripts/build_superset.sbatch` to refresh (analysis artifact, not on the deliverable path).
 
 It is ranked under the same preset that picked the library (`antibody_softgate` for C1/C2, `twelvemer`
 for C3), which makes the ranks reconcile rather than merely resemble: every selected design is exactly
@@ -333,7 +400,8 @@ CIDR domain uses to bind the host receptor EPCR are constrained, so a scaffold t
 conserved surface is a route to broadly reactive antibodies. The crystal contains the cognate C7
 antibody (chains H/L), so this is a known-antibody target and the real clash term applies, as for C1/C2.
 
-Two epitope definitions, top-10 each (20 total):
+Two epitope definitions, top-29 each (58 total; originally top-10/20 — the extra 19 each came from the
+2026-07-23 top-up that spent the leftover order slots, see **Top-up to 36,000**):
 - `epitope` — the contiguous contact window C652–C673 (22 residues, covering all 13 residues with a
   heavy atom within 4 Å of the Fab). This is the strong constraint, the analog of C1.
 - `hotspots` — only F655, F656, and E666, fixed at their native crystal coordinates, with the design
@@ -343,14 +411,17 @@ Scoring is by `07_consolidate.py`, which aligns each predicted epitope onto the 
 counts the real H/L clash there, and (2026-07-20) ranks under the **same `antibody_softgate` scorer as
 C1/C2** — real Fab clash, no cylinder surrogate. The two definitions separate cleanly, and the hotspot
 one fails informatively:
-- **epitope** (contiguous C652–673): top-10 epitope RMSD 0.97–1.36 Å, **1–2** clashing residues — the
-  soft-gate found accessible designs.
-- **hotspots** (F655/F656/E666): top-10 epitope RMSD 0.04–0.11 Å but **39–71** clashing residues. This
-  is **not** a selection artifact — across all **640** hotspot designs the clash floor is **14** and
-  none fall below 10, so an accessible minimal-hotspot graft was never generated (generation-limited,
-  the same phenomenon as C1). The three discontiguous residues appear to force the scaffold into the
-  Fab footprint. We ship the top-10 anyway as a **documented negative result** — a limitation of the
-  minimal-graft approach, not a scorer failure. (Per-design metrics: `results/dp4_8vdl_top10_allmetrics.csv`.)
+- **epitope** (contiguous C652–673): shipped top-29 spans epitope RMSD 0.97–2.16 Å at **0–3** clashing
+  residues (the top-10 was 0.97–1.36 Å at 1–2) — the soft-gate found accessible designs, and the extra
+  19 stay accessible, only loosening on epitope RMSD.
+- **hotspots** (F655/F656/E666): shipped top-29 spans epitope RMSD 0.03–0.15 Å but **39–72** clashing
+  residues (top-10 was 0.04–0.11 Å at 39–71). This is **not** a selection artifact — across all **640**
+  hotspot designs the clash floor is **14** and none fall below 10, so an accessible minimal-hotspot graft
+  was never generated (generation-limited, the same phenomenon as C1). The three discontiguous residues
+  appear to force the scaffold into the Fab footprint. We ship these anyway as a **documented negative
+  result** — a limitation of the minimal-graft approach, not a scorer failure. Going deeper to 29 does not
+  change that conclusion; it adds more of the same clashing designs.
+  (Per-design metrics for all 1,280: `results/dp4_8vdl_top10_allmetrics.csv`.)
 
 Pipeline: `dp4_8vdl/scripts/` (`01_generate_contigs` → `02_emit_rfd3_inputs` → `03_rfd3_array.sbatch` →
 `04_make_fixed_pdbs`, then the shared episcaf MPNN/AF3 via the `*_fixed_dldesign_*` naming contract, then
@@ -516,19 +587,25 @@ python episcaf_pipeline/scaffolded_epitope_controls/build_c6_mutants.py \
 python scripts/filter_c6_depth.py --in results/dp4_C6_controls.full.csv --depth 15 \
   --out results/dp4_C6_controls.csv                         # top-15 (2,325), encoded sequences preserved
 
-# 8VDL arm (Gemini: RFD3->MPNN->AF3; then consolidate top-10 per definition under antibody_softgate)
+# 8VDL arm (Gemini: RFD3->MPNN->AF3; then consolidate per definition under antibody_softgate). The
+# --metrics-out dump this writes is what makes later depth changes free -- see the re-rank below.
 python dp4_8vdl/scripts/07_consolidate.py --runs epitope,hotspots --topk 10 --out results/dp4_8vdl_top10.csv
 
-# Assemble the episcaf library (local) -> data/libraries/dp4_library.csv, 14,203 episcaf constructs (after cull)
-python scripts/stage06_assemble.py --depth 20   # C1/C2 top-20; C3 top-10 (--c3-depth default)
+# Shipped 8VDL depth is top-29/run (the 2026-07-23 top-up). This is a LOCAL deterministic re-slice of the
+# metrics dump above -- no AF3 re-read, no cluster job (rank_in_group <= topk == nlargest(topk, composite)).
+python dp4_8vdl/scripts/07_consolidate.py --runs epitope,hotspots --topk 29 \
+  --from-metrics results/dp4_8vdl_top10_allmetrics.csv --out results/dp4_8vdl_top29.csv
 
-# Fold in the passing LX minibinders -> 35,962 rows (needs the LX source; see the minibinder arm above)
+# Assemble the episcaf library (local) -> data/libraries/dp4_library.csv, 14,241 episcaf constructs
+python scripts/stage06_assemble.py --depth 20   # C1/C2 top-20; C3 top-10; --vdl defaults to the top-29 file
+
+# Fold in the passing LX minibinders -> 36,000 rows (needs the LX source; see the minibinder arm above)
 python dp4_8vdl/scripts/08_add_minibinders.py --lx dp4_8vdl/data/LX_20260626.csv
 
-# Export the oligo-encoder input (whole 35,962-row library) -> data/libraries/dp4_named_peptides.csv
+# Export the oligo-encoder input (whole 36,000-row library) -> data/libraries/dp4_named_peptides.csv
 python scripts/stage07_named_peptides.py \
   --library data/libraries/dp4_library.csv --out data/libraries/dp4_named_peptides.csv
-  # add `--exclude-category minibinder` to encode only the 14,203 episcaf portion instead
+  # add `--exclude-category minibinder` to encode only the 14,241 episcaf portion instead
 
 # Oligo-encode the library (Gemini). Run BOTH steps in the same working dir; step 1 is the long pole
 # (C++ sampler, hours). ADAPTER is pinned to the 20-mers inside encode_step2_select.sbatch -- do NOT
@@ -543,14 +620,36 @@ JID1=$(TOOL_DIR=$TOOL INPUT=dp4_named_peptides.csv sbatch --parsable --time=12:0
 TOOL_DIR=$TOOL sbatch --dependency=afterok:$JID1 \
   $REPO/episcaf_pipeline/oligo_encoding/encode_step2_select.sbatch
 
+# TOP-UP ENCODE (only when the library GREW). Encode just the new peptides, never all 36,000:
+python scripts/stage07_new_peptides.py \
+  --peptides data/libraries/dp4_named_peptides.csv \
+  --encoded  $WS/runs/dp4_encoding_full/DP4_best_encodings.wholelib_37083 \
+  --out      data/libraries/dp4_named_peptides.new38.csv        # -> only the peptides lacking an encoding
+# ...copy that file into a fresh rundir and run the same two steps. The input MUST be LF, never CRLF:
+# the encoder rejects every CRLF line, prints "Processed 0 lines", then still says "done" and writes a
+# 0-BYTE result. ALWAYS confirm step 1 before step 2:  grep Processed slurm-*.out  (want N, not 0).
+# Then merge the new encodings under the whole-library ones (same header, strip the duplicate):
+MERGED=$WS/DP4_best_encodings_36000
+head -1 $WS/runs/dp4_encoding_full/DP4_best_encodings.wholelib_37083  > $MERGED
+tail -n +2 $WS/runs/dp4_encoding_full/DP4_best_encodings.wholelib_37083 >> $MERGED
+tail -n +2 $WS/runs/dp4_encoding_new38/DP4_best_encodings               >> $MERGED
+
 # Emit + VERIFY the Twist order file (Gemini). Checks every row: 20-mer adapters, 349 nt, and that each
 # core translates back to its own peptide. Writes nothing if any row fails.
 python $REPO/scripts/stage07_order_file.py --by-sequence \
-  --best-encodings $REPO/runs/dp4_encoding_full/DP4_best_encodings \
+  --best-encodings $MERGED \
   --peptides       $REPO/data/libraries/dp4_named_peptides.csv \
-  --out            $REPO/data/libraries/dp4_order_file.csv     # -> 35,962 oligos, all verified
-  # --by-sequence: after the 2026-07-21 cull the library was renumbered; this matches oligos to the new
-  # names by translated sequence and drops the culled ones -- NO re-encode (every survivor was encoded).
+  --out            $REPO/data/libraries/dp4_order_file.csv     # -> 36,000 oligos, all verified
+  # --by-sequence: the cull and the top-up both renumber library_member (adding 38 8VDL rows shifted all
+  # 21,759 minibinders), so oligos are matched to the new names by TRANSLATED SEQUENCE, not by name.
+  # Encodings for peptides no longer in the library are simply dropped -- NO re-encode of survivors.
+  # NB: the whole-library encodings are `DP4_best_encodings.wholelib_37083`. The plain
+  # `DP4_best_encodings` in that same directory is the OLDER episcaf-only 15,324 file -- see below.
+
+# Emit the 2-column vendor QUOTE file (local) -- same molecules as the order file, flat DP4_00001 names.
+python scripts/stage07_quote_file.py \
+  --order-file data/libraries/dp4_order_file.csv \
+  --out        data/libraries/dp4_quote_file.csv               # -> 36,000 x 349mer, adapters verified
 
 # ALL-DESIGNS SUPERSET (John's ask -- every candidate design, not just the selected ones). ONE cluster
 # pass: build C1/C2/C3 -> extend with 8VDL + passing minibinders -> gzip. extend reads the minibinders
@@ -562,15 +661,44 @@ git add data/libraries/dp4_superset.csv.gz && git commit -m "superset: rebuild" 
 Scorer weights and transforms are config, not magic numbers (`episcaf_analysis/presets.py`). C5 and C6
 are deterministic (FPS is seed-free deterministic; C6 seeds its RNG).
 
+> ### Which `DP4_best_encodings`? (two files, same name — read this before using one)
+> There are **two different encodings files with the same name, in directories with the same name.**
+> Check size or line count, never the path alone:
+>
+> | file | size | what it is |
+> |---|---|---|
+> | `$WS/runs/dp4_encoding_full/DP4_best_encodings.wholelib_37083` | **31 MB** (37,084 lines) | **whole library, 37,083** — what every shipped oligo came from |
+> | `$WS/runs/dp4_encoding_full/DP4_best_encodings` | 12.9 MB (15,325 lines) | the earlier **episcaf-only 15,324** encode, superseded |
+> | `/scratch/.../runs/dp4_encoding_test/DP4_best_encodings` | 42 KB | 50-peptide smoke test, **wrong (19-mer) adapters** |
+>
+> Records are ~840 bytes, so **size alone identifies the file**: 15,324 → ~12.9 MB, 37,083 → ~31 MB.
+>
+> **How this happened (2026-07-23):** the whole-library encode ran on `/scratch` on 2026-07-20, *after*
+> the migration had already copied `dp4_encoding_full` to `$WS` on 07-16. The durable copy was therefore
+> the stale episcaf-only one while the real file sat on a filesystem that sweeps at ~30 days. Earlier
+> versions of this doc claimed the whole-library encode lived in `$WS/runs/dp4_encoding_full/` — it did
+> not. The file has since been rescued to `$WS` under the distinct `.wholelib_37083` name so the two can
+> no longer be confused. Lesson: a rundir name is not an identity; re-running a step into a same-named
+> directory can leave the durable copy pointing at the older artifact.
+>
+> **If encodings are ever lost:** `data/libraries/dp4_order_file.csv` is committed to git and holds every
+> finished adapter-flanked oligo, so a library can be rebuilt from the order file plus encodings for only
+> the *new* peptides. A full re-encode is never required.
+
 ## Budget and depth
 
-DP4 is a ~36k-row library (35,962 after the 2026-07-21 cull) that includes all minibinders, which leaves roughly 10–15k slots for Episcaf designs
-(`memory: dp4-budget`). Depth is set at top-20 for C1/C2 — the most the ranked files hold, and the depth
-C6 was built at, so no C6 rebuild is needed. **C3 is top-10** (2026-07-14): John flagged that the spare
-capacity (~2k slots to reach 36k) is best spent maximizing polyclonal hits, given C3's weak clash
-distribution. As built this was **15,324** episcaf; after the 2026-07-21 cull the shipped episcaf portion
-is **14,203** (C1 1,120, C2 1,600, C3 4,390, C4 2,033, C5 2,715, C6 2,325, 8VDL 20) + 21,759 minibinders
-= **35,962** total. See **Cull to 35,962**.
+DP4 targets a **36,000-row** library including all minibinders, which leaves roughly 10–15k slots for
+Episcaf designs (`memory: dp4-budget`). Depth is set at top-20 for C1/C2 — the most the ranked files hold,
+and the depth C6 was built at, so no C6 rebuild is needed. **C3 is top-10** (2026-07-14): John flagged that
+the spare capacity (~2k slots to reach 36k) is best spent maximizing polyclonal hits, given C3's weak clash
+distribution. As built this was **15,324** episcaf; the 2026-07-21 cull took it to 14,203 and the
+2026-07-23 top-up returned it to **14,241** (C1 1,120, C2 1,600, C3 4,390, C4 2,033, C5 2,715, C6 2,325,
+8VDL 58) + 21,759 minibinders = **36,000** total, exactly on target. See **Cull to 35,962** and
+**Top-up to 36,000**.
+
+The budget is now **fully spent** — the library sits exactly on 36,000, so any future addition has to
+displace something. The 8VDL depth (top-29) is the marginal dial: it absorbed the last 38 slots and is
+the natural place to give them back.
 
 C3 depth is the one elastic dial left: top-3 = 1,317, top-5 = 2,195, top-10 = 4,390 (shipped). Set it
 with `stage06_assemble.py --c3-depth <n>` if the final minibinder count moves the headroom.
@@ -578,7 +706,8 @@ with `stage06_assemble.py --c3-depth <n>` if the final minibinder count moves th
 ## Build log (all steps complete)
 
 *(This section is the completed build history, not open work — every item below is done. The whole
-library, 35,962 rows, is assembled, encoded, gated, and shipped as of 2026-07-21 (built at 37,083, culled to 35,962).)*
+library, **36,000 rows**, is assembled, encoded, gated, and shipped as of 2026-07-23: assembled at 37,083,
+culled to 35,962 on 07-21, topped up to 36,000 on 07-23.)*
 
 0. C1 redo at 103 — done 2026-07-11. RFD3→MPNN→AF3 on the 2,206-contig ledger, metrics (140,716 designs,
    all `status==ok`), C1 re-selected to top-20 (1,120), re-case-encoded (`case_encode_whole_epitope.py`),
@@ -613,3 +742,13 @@ library, 35,962 rows, is assembled, encoded, gated, and shipped as of 2026-07-21
    picked-twice, drop the 60 no-accessibility 2-residue-island C2 designs, and collapse the doubled
    `design_ID`. Order file regenerated at 35,962 by `stage07_order_file.py --by-sequence` from the
    existing encodings (no re-encode). Full detail in **Cull to 35,962** at the top of this doc.
+4. Top-up to 36,000 — **2026-07-23**. The cull left 38 slots under target; they went to the 8VDL arm,
+   top-10 → **top-29 per run** (+19 epitope, +19 hotspots; 20 → 58 designs). Selection was a local
+   deterministic re-slice of the existing metrics dump (`07_consolidate.py --from-metrics`) — no cluster
+   job. Only the 38 new peptides were encoded (`stage07_new_peptides.py` → a fresh rundir); merged with
+   the whole-library encodings and the order file rebuilt at **36,000**, gate re-passed (349 nt, 20-mer
+   adapters, every core round-trips). Added `data/libraries/dp4_quote_file.csv` for the vendor quote.
+   Two traps surfaced and are written up above: the **CRLF encoder input** (first attempt silently
+   encoded nothing) and the **two same-named `DP4_best_encodings` files** (the whole-library encode was
+   on `/scratch`, not `$WS`, and has now been rescued). Full detail in **Top-up to 36,000**.
+   *Outstanding:* the superset `.gz` still flags 28,889 selected and needs a rebuild to 28,927.

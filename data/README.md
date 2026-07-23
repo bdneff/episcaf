@@ -39,7 +39,7 @@ crystals lives on the cluster (see below).
   PAE, ptm, both clash flavors, `composite`, `rank_in_group`, `is_global_pass`, `island_index`; plus every
   native LatentX column as `lx_<name>` on the minibinder rows — **33 columns** total (episcaf rows blank in
   `lx_`, minibinders blank in the episcaf metric/scoring columns). The order file covers the **whole
-  35,962-row library** —
+  36,000-row library** —
   minibinders are oligo-encoded along with the episcaf designs (decided 2026-07-20; no oligos of their own).
   `dp4_named_peptides.csv` / `dp4_order_file.csv` — the oligo-encoder input / synthesis order file
   (`scripts/stage07_named_peptides.py`, `stage07_order_file.py`).
@@ -50,7 +50,7 @@ crystals lives on the cluster (see below).
   `is_global_pass`, `selected`, full PAE decomposition) + the library's synthesis/minibinder columns
   (`model`, `designedSequenceLength`, `design_ID`, and the 13 `lx_*`). Episcaf/8VDL rows are blank in
   `lx_*`; minibinder rows blank in the episcaf metric/scoring columns. `selected` sums to 28,889 (the
-  library's 35,962 minus the C4/C5/C6 controls, which aren't candidate-pool designs). Ranked under
+  library's 36,000 minus the C4/C5/C6 controls, which aren't candidate-pool designs). Ranked under
   `antibody_softgate` at the **current epitope_pae midpoint 2.5**, so ranks reconcile with what shipped.
   **One-pass cluster build** (rerun when the scorer or pool changes): `sbatch scripts/build_superset.sbatch`
   builds the C1/C2/C3 pool, folds in 8VDL + passing minibinders (`extend_superset.py`), and gzips it — so

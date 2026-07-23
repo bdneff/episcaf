@@ -17,7 +17,7 @@ C3 scaffolds, polyclonal tiling & top-\num{10}/window, no antibody & \num{4390} 
 C4 linear tiled-30mer controls & bare tiled peptides & \num{2033} & built \\
 C5 metric-space sampling & designs spread across metrics & \num{2715} & sampled \\
 C6 scaffolded-epitope controls & island$\to$Ala $+$ scaffold-disruption & \num{2325} & built \\
-8VDL PfEMP1 conserved epitope & two epitope definitions, top-\num{10} each & \num{20} & ranked \\
+8VDL PfEMP1 conserved epitope & two epitope definitions, top-\num{29} each & \num{58} & ranked \\
 \bottomrule
 \end{tabular}
 \caption{The DP4 components assembled here, at the shipped depth. C1 and C2 are the two halves of the
@@ -25,11 +25,12 @@ islands experiment (whole epitope vs.\ one island at a time); C6 tests the same 
 C1--C3 are selected (ranked on the composite, Section~\ref{sec:selection}); the shipped depth is
 top-\num{20} per group for C1/C2 and top-\num{10} per window for C3. C5 is sampled at \num{3000} and C4
 built at \num{2034} tiles (Section~\ref{sec:tiling}); the counts in the table are the shipped totals after
-the 2026-07-21 cull (Section~\ref{sec:assembly}). Together with the 8VDL arm this is \num{14203}
-shipped constructs. The delivered \texttt{dp4\_library.csv} additionally carries the \num{21759} filter-passing
-LX PfEMP1/EPCR minibinders --- a separate de-novo binder arm, not scaffolded or scored here --- for a
-single-file view of the whole library (\num{35962} rows); the \num{14203} above is the episcaf portion
-the scoring concerns, while the oligo encoding and order file cover the whole \num{35962}.}
+the 2026-07-21 cull and the 2026-07-23 top-up (Section~\ref{sec:assembly}). Together with the 8VDL arm
+this is \num{14241} shipped constructs. The delivered \texttt{dp4\_library.csv} additionally carries the
+\num{21759} filter-passing LX PfEMP1/EPCR minibinders --- a separate de-novo binder arm, not scaffolded or
+scored here --- for a single-file view of the whole library (\num{36000} rows); the \num{14241} above is
+the episcaf portion the scoring concerns, while the oligo encoding and order file cover the whole
+\num{36000}.}
 \label{tab:dp4components}
 \end{table}
 
@@ -209,7 +210,7 @@ chain~C window covering the antibody's contact surface, and those conserved hots
 crystal also contains the cognate C7 antibody (chains H/L), this is a known-antibody target and the real
 clash term applies, exactly as for C1/C2.
 
-We scaffold it two ways and keep the best \num{10} of each: \texttt{epitope} fixes the whole
+We scaffold it two ways and keep the best \num{29} of each: \texttt{epitope} fixes the whole
 contiguous contact window \texttt{C652--C673} (\num{22} residues, spanning all \num{13} residues with a
 heavy atom within \SI{4}{\angstrom} of the Fab --- the strongest constraint, the direct analog of C1),
 while \texttt{hotspots} fixes only the three functional residues \texttt{F655}/\texttt{F656}/\texttt{E666}
@@ -222,19 +223,21 @@ frame and scores the real H/L clash there, so accessibility is the true Fab clas
 surrogate). The fixed atoms carry the residues' native crystal coordinates, so the hotspot arm preserves
 their three-dimensional arrangement however the construct spaces them. The two arms give a clean,
 testable contrast --- and, as it turns out, one of them fails informatively. The whole-epitope designs
-are antibody-\emph{accessible}: their top \num{10} recover the epitope well (epitope RMSD
-\SIrange{0.97}{1.36}{\angstrom}) while leaving the Fab surface largely unobstructed (\numrange{1}{2}
+are antibody-\emph{accessible}: the shipped \num{29} recover the epitope well (epitope RMSD
+\SIrange{0.97}{2.16}{\angstrom}) while leaving the Fab surface largely unobstructed (\numrange{0}{3}
 clashing residues). The minimal hotspot grafts recover the three residues almost exactly (epitope RMSD
-\SIrange{0.04}{0.11}{\angstrom}) but bury them under scaffold that would block the antibody
-(\numrange{39}{71} clashing residues). Crucially this is \emph{not} a selection artifact: across all
+\SIrange{0.03}{0.15}{\angstrom}) but bury them under scaffold that would block the antibody
+(\numrange{39}{72} clashing residues). Crucially this is \emph{not} a selection artifact: across all
 \num{640} hotspot designs the clash floor is \num{14} and not one falls below \num{10}, so an accessible
 minimal-hotspot graft was never generated --- the scorer is choosing the best of a pool in which every
 member clashes. The three discontiguous residues appear to force the scaffold into the antibody's own
 footprint, whereas the contiguous epitope leaves room to build clear of it. So the hotspot arm stands as
 a demonstrated limitation of the minimal-graft idea: presenting isolated conserved residues in native
-geometry seems to demand occupying the surface the antibody needs. We ship its top \num{10} anyway, as
-that negative result. This arm is a self-contained component (\texttt{dp4\_8vdl/}); its \num{20} top
-designs are merged into the library alongside the others at assembly.
+geometry seems to demand occupying the surface the antibody needs. We ship its \num{29} anyway, as
+that negative result. This arm is a self-contained component (\texttt{dp4\_8vdl/}); its \num{58} top
+designs are merged into the library alongside the others at assembly. (Both arms were originally taken at
+a top-\num{10}; the depth rose to \num{29} in the top-up that brought the library onto its \num{36000}
+target, Section~\ref{sec:assembly}.)
 
 \subsection{Assembly into one synthesis file}\label{sec:assembly}
 All seven components (C1--C6 plus the 8VDL arm) share the constant 103-mer construct and the
@@ -242,7 +245,7 @@ eight-column annotated format (Section~\ref{sec:tiling}), so the final step conc
 single ordered library file with global \texttt{library\_member} numbering --- a named, documented
 pipeline stage (\texttt{06\_library}, \texttt{scripts/stage06\_assemble.py}) so the shipped file is
 regenerable from its components. This is done: at the shipped depth (top-\num{20} for C1/C2,
-top-\num{10} for C3) assembly emits \num{14203} episcaf constructs, each with a unique
+top-\num{10} for C3, top-\num{29} per run for 8VDL) assembly emits \num{14241} episcaf constructs, each with a unique
 \texttt{library\_member} and \texttt{design\_ID}, all \num{103} residues.
 
 \paragraph{The minibinder arm, and one assay for two projects.} Folded in at the same step are
@@ -254,9 +257,9 @@ their \num{13} native \texttt{lx\_*} metrics (per-residue and interface pLDDT, P
 target hotspots) on their own rows, preserved for later analysis. They are in the same file, and the same
 synthesis order, for a practical reason: PepSeq builds one pooled oligo library per assay, so combining
 two projects that target the same antigen into a single order shares the synthesis and the downstream
-readout rather than paying for two. The combined file is \num{35962} rows (\num{14203} episcaf
-$+$ \num{21759} minibinder); the \num{14203} is what the scoring and selection above concern, while the
-encoding and order file cover all \num{35962}.
+readout rather than paying for two. The combined file is \num{36000} rows (\num{14241} episcaf
+$+$ \num{21759} minibinder); the \num{14241} is what the scoring and selection above concern, while the
+encoding and order file cover all \num{36000}.
 
 \paragraph{The cull to \num{35962}.} The library was first assembled at \num{37083} and then, after
 review, cut to the shipped \num{35962} by four changes, none of which required re-encoding (every
@@ -271,8 +274,24 @@ top design also drawn by C5's metric-space sample of the same pool --- so each p
 two residues give too few epitope C$\alpha$ pairs to define the design-to-native fit, so their
 accessibility (both the real clash and the cylinder) is uncomputable, and they had shipped with no
 accessibility signal. (iv) A cosmetic naming artifact in \texttt{design\_ID} (a doubled RFdiffusion
-backbone name from the AlphaFold3 output-directory convention) was collapsed. The final composition is
-in Table~\ref{tab:dp4components}.
+backbone name from the AlphaFold3 output-directory convention) was collapsed.
+
+\paragraph{The top-up to \num{36000}.} The cull overshot slightly, leaving the library \num{38} peptides
+under the \num{36000} target the synthesis budget was set to. Those spare slots went to the 8VDL arm,
+whose two runs were deepened from a top-\num{10} to a top-\num{29} each: \num{19} more contiguous-epitope
+designs and \num{19} more hotspot designs, taking that arm from \num{20} to \num{58} and the library to
+exactly \num{36000}. The depth \num{29} is arithmetic rather than a threshold --- it is how far down the
+existing ranking \num{38} spare slots reach when split evenly --- and nothing else changed: the scorer,
+the ranking, and every other component's depth are untouched, and the deeper cut is a strict superset of
+what had already been selected, so no design that had been chosen was displaced. Going deeper costs
+little in quality on the contiguous-epitope arm, where the added designs still sit at zero to three
+clashing residues and epitope RMSD below \num{2.2}~\AA; on the hotspot arm it simply adds more of the
+same inaccessible designs, which is consistent with that arm's generation-limited behavior
+(Section~\ref{sec:dp4_8vdl}) rather than a new failure. Because a top-up renumbers the library members that
+follow the inserted block --- the \num{38} additions shift all \num{21759} minibinders --- the order file
+was rebuilt by matching each existing oligo to its peptide \emph{by sequence}, so only the \num{38} new
+peptides required encoding and every previously computed oligo was carried over unchanged. The final
+composition is in Table~\ref{tab:dp4components}.
 
 Two conventions hold across every row. First, \texttt{designedSequence} is always the full 103-mer in
 \emph{EPITOPEscaffold} casing --- epitope residues uppercase, scaffold lowercase --- including the
@@ -305,7 +324,7 @@ the mapping back out so it need not be rebuilt again.
 
 Everything up to this point is a library of \emph{peptides}. The assay does not receive peptides,
 though --- it receives DNA. PepSeq builds each displayed peptide by transcribing and translating a DNA
-oligo, so the final step converts all \num{35962} 103-mers of the combined library (the \num{14203}
+oligo, so the final step converts all \num{36000} 103-mers of the combined library (the \num{14241}
 episcaf constructs and the \num{21759} minibinders, encoded together into one assay) into the DNA that
 codes for them and writes
 the file a synthesis vendor (Twist) can manufacture. This subsection describes what that step does and
@@ -356,14 +375,14 @@ adapter-flanked DNA to synthesize, one row per library member. Because a synthes
 and irreversible, we emit it through a checker (\texttt{scripts/stage07\_order\_file.py}) that verifies
 every row before it goes out. The central check is a \emph{round-trip}: the encoder \emph{back-translates}
 each peptide to DNA (choosing codons), so we \emph{translate} that DNA back through the standard genetic
-code and require the result to equal the original peptide exactly, for all \num{35962} members. This
+code and require the result to equal the original peptide exactly, for all \num{36000} members. This
 catches any codon-table, framing, or bookkeeping error at the one place it would otherwise pass silently
 --- an encoding that is malformed but plausible-looking still fails the moment it does not read back to
 its own peptide. The checker also confirms the adapters and the expected oligo length on every row. The
 encoder itself is external tooling run on the cluster, so the computational pipeline ends at the
 annotated peptide file and this checked order file is the deliverable that hands off to synthesis.
 
-The full library has now been through it. All \num{35962} peptides encoded, every oligo \num{349}
+The full library has now been through it. All \num{36000} peptides encoded, every oligo \num{349}
 nucleotides with the \num{20}-mer adapters on both ends, every core translating back to exactly the
 peptide it claims to encode, one encoding per peptide and none missing
 (\texttt{data/libraries/dp4\_order\_file.csv}).
