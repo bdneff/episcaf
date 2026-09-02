@@ -22,19 +22,22 @@ equilibration and Parrinello-Rahman for production, 2 fs step with LINCS on h-bo
 **decision, logged in `docs/DECISIONS.md` (D3)**: it is bcell's protocol taken as a starting point,
 to revisit if the energetics call for it — not an unexamined default.
 
-## How to run it (on Gemini — Brandon submits; Claude does not drive SLURM)
-1. `git pull` on Gemini, `cd episcaf_v3/energetics/md/3hfm`.
-2. `sbatch equil.sbatch` → builds + equilibrates the solvated complex, writes `out/md.tpr` and
-   `out/EQUIL_OK`. (`module load Gromacs` = GROMACS 2023.2-dev; `gpu-v100`.)
+## How to run it (Brandon submits; Claude does not drive SLURM)
+**Run from a `/scratch` clone, not `/tgen_labs`.** The network FS gave cross-node "file not found"
+on freshly written inputs (`../configs/*.mdp` invisible to the compute node while `../structures/`
+was fine); `/scratch` is coherent. So: `git clone` the repo under `/scratch/$USER`, then:
+1. `cd episcaf_v3/energetics/md/3hfm`.
+2. `sbatch equil.sbatch` → copies the frozen inputs into `out/`, builds + equilibrates the solvated
+   complex, writes `out/md.tpr` and `out/EQUIL_OK`. (`module load Gromacs`; `gpu-v100`.)
 3. `sbatch --dependency=afterok:<equil_jobid> prod.sbatch` → 20 ns production, `out/md.xtc`.
-4. Move `out/` off `/scratch` promptly — scratch is purged.
+4. Copy the keepers (`out/md.xtc md.tpr md.log topol.top`) to `$WS` when done — `/scratch` is purged.
 
-## Known first hiccup to check
-The Fab has an **H–L interchain disulfide**. If `pdb2gmx` does not form disulfides across chains,
-add `-merge all` to the `pdb2gmx` call in `equil.sbatch` (merges chains into one moleculetype so
-inter-chain SS bonds form). Check `out/pdb2gmx.log` for the expected disulfides (lysozyme has 4;
-the Fab has intra- and inter-chain SS bonds). This is the one place the holo build departs from
-bcell's single-chain apo template, so it is the most likely thing to need a second pass.
+## Disulfides — verify (built in, but confirm)
+The Fab has an **H–L interchain disulfide** (L:CYS214 ↔ H:CYS215). `equil.sbatch` now passes
+`-merge all` to `pdb2gmx` so the chains are one moleculetype and that bond forms. Confirm in
+`out/pdb2gmx.log` that it links CYS-214 (L) to CYS-215 (H), on top of the intra-chain bonds
+(lysozyme's 4: 6–127, 30–115, 64–80, 76–94; two each in H and L). The first run *without* `-merge`
+formed every intra-chain bond but missed the interchain one — hence this fix.
 
 ## What comes next (not built yet)
 From the production trajectory: Decision D2 (how we compute a defensible per-residue energy, including
