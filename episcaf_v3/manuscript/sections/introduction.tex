@@ -24,8 +24,8 @@ residues typically carry most of the binding free energy, surrounded by a ring o
 contribute little directly but shape the pocket and exclude solvent. A geometric cutoff cannot see
 this: it labels every contacted residue an epitope residue, and the contig we hand RFdiffusion then
 fixes the identity and backbone of all of them equally. We are constraining residues we have no
-evidence are load-bearing, which costs the generator design freedom it may need to fold a good
-scaffold --- and we do not actually know which contacts are carrying the binding.
+evidence contribute to binding, which costs the generator design freedom it may need to fold a good
+scaffold --- and we do not know which contacts are carrying the binding.
 
 The second is visible in the hard cases. A contig enforces epitope residue identity and ordering,
 but it does not strongly constrain the distances and orientations \emph{between} spatially separated
@@ -49,7 +49,7 @@ constrain each according to what its job is:
   \item \textbf{Category 1 --- energetic (hot-spot) residues.} The residues that dominate the
   binding free energy. These retain both their \emph{exact identity and their shape}: the contig
   fixes their backbone and their sequence is locked to native. This is what we currently do to the
-  whole geometric epitope; here we do it only where it is load-bearing.
+  whole geometric epitope; here we do it only where a residue carries the binding.
   \item \textbf{Category 2 --- structural (occluding) residues.} The rest of the contact shell.
   These matter for how the site fits together --- they hold the shape and exclude solvent around the
   hot spots --- but their identity is not the point. So we fix their \emph{shape} (the contig holds
@@ -62,11 +62,10 @@ constrain each according to what its job is:
   position of the epitope within the construct are randomized.
 \end{itemize}
 
-The bet is simple: by fixing identity only where it carries the binding, and shape only where a
-residue's job is structural, we give the generator far more room to build a foldable scaffold
-without giving up the interaction that matters. The same energetic reading also sharpens the
-hard-case problem --- it tells us which inter-residue geometry is worth enforcing rather than
-enforcing all of it blindly.
+By fixing identity only where it carries the binding, and shape only where a residue's job is
+structural, we give the generator more room to build a foldable scaffold while still holding the
+residues that bind. The same energetic reading also sharpens the hard-case problem: it tells us
+which inter-residue geometry is worth enforcing, rather than enforcing all of it blindly.
 
 A second change makes the pipeline cheaper and is, in hindsight, overdue: we can filter RFdiffusion
 backbones \emph{before} ProteinMPNN and AlphaFold3. A backbone that already places the epitope in
@@ -77,14 +76,14 @@ the expensive sequence-design and folding steps on them. This is the same access
 check the shipped scorer applies at the end, moved to the front.
 
 \subsection{What this rests on}
-The whole approach stands or falls on getting the energetics right, and the hard part is solvent. A
+The approach depends on getting the energetics right, and the hard part is solvent. A
 naive pairwise antigen--antibody interaction energy will mislead: it ignores the desolvation a
 residue pays to make a contact, and it misses contributions mediated by ordered water --- a bridging
 hydrogen bond can be load-bearing yet invisible to a direct pairwise sum. Deciding how to compute a
 defensible per-residue energy, including solvent, is the first real decision of v3, and it is where
 the record begins.
 
-We will not trust the ranking on faith. The first step is to reproduce known numbers: take a
+We do not take the ranking on trust. The first step is to reproduce known numbers: take a
 complex with experimentally measured binding energetics and check that our per-residue energies
 recover its known hot spots before we let the definition drive any design. The DP4 binding data,
 when it returns, gives a second, independent test --- whether designs that better preserve the
@@ -99,7 +98,6 @@ whether v3 adopts that quantity or a fuller one is itself a decision to make and
 assume.
 
 \subsection{Status}
-This is the beginning. The method above is a plan, not a result: nothing here has been built or
-tested yet. What follows in this log will be the decisions, one at a time --- the energy method, the
+The method above is a plan, not a result: nothing here has been built or tested yet. What follows in this log will be the decisions, one at a time --- the energy method, the
 MD protocol, the classification thresholds, the contig strategy, the filters --- each with the
 options weighed, the choice made, and the check that backs it, mirrored in \texttt{docs/DECISIONS.md}.
