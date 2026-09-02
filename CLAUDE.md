@@ -47,7 +47,8 @@ native-aware cylinder surrogate stands in). PI: John Altin.
 - Small derived results that figures depend on: `results/` (tracked).
 - Living manuscript: `manuscript/` (LaTeX → `manuscript/main.pdf`).
 - Reference docs: `docs/PIPELINE.md` (the authoritative end-to-end run order), `docs/DP4_LIBRARY.md`
-  (the deliverable's full reference), `docs/WORKFLOW.md` (git/compute loop); `docs/REORG.md` and
+  (the deliverable's full reference), `docs/DP4_RESULTS_ANALYSIS.md` (staged plan for reading the
+  assay binding data when it returns), `docs/WORKFLOW.md` (git/compute loop); `docs/REORG.md` and
   `docs/MIGRATION.md` are dated historical records.
 
 ## Commands that verify

@@ -69,3 +69,12 @@ generation-limited rather than mis-scored (every scorer is stuck at high clash t
 Add `--c2 $WS/runs/dual_island_rfd3/05_analysis/metrics_dual_island.parquet` for the C2/single-island
 row — that pool is cluster-only, so the local run covers C1 + 8VDL and the full 5-row version is
 produced on Gemini.
+
+| `dp4_binding_scatter.png`, `dp4_metric_binding.png` (PENDING — produced when the assay data lands) | `scripts/analyze_dp4_binding.py` | `python scripts/analyze_dp4_binding.py`  (after `scripts/build_dp4_binding_join.py` has written `results/dp4_binding_metrics.csv`) |
+**DP4 binding readout (not yet generated).** Two figures for when the ~4-week assay data returns:
+`dp4_binding_scatter.png` = per-antibody `log10(1+NoAb)` vs `log10(1+Ab)` for the cognate designs
+(binders above the diagonal); `dp4_metric_binding.png` = within-antibody regression of enrichment on
+the design score/metric axes (does `composite`/cylinder predict binding?). The script reads the
+join's fixed-schema output, so it is assay-layout-independent; it was smoke-tested on a synthetic
+join output (2026-08-05) but the real figures do not exist until it runs on real data. Full plan:
+`docs/DP4_RESULTS_ANALYSIS.md`.

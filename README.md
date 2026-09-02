@@ -243,3 +243,8 @@ See `docs/MIGRATION.md` for exactly what moved where,
 `docs/README_v2_original.md` for the original experimental background and the
 4-filter definitions, and `docs/CYLINDER_PARAMS.md` for the cylinder geometry
 parameters (provenance + the ground-truth sweep that chooses them).
+
+The library is ordered; the assay binding data returns in ~4 weeks.
+`docs/DP4_RESULTS_ANALYSIS.md` is the staged plan for reading it — the turnkey join
+(`scripts/build_dp4_binding_join.py`, self-check passes today) and the per-arm questions the
+data answers. It mirrors the DP3 binding analysis (`scripts/build_dp3_binding_join.py`).
