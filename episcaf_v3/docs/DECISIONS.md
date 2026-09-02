@@ -1,6 +1,6 @@
 # episcaf_v3 decision log
 
-The reproducibility backbone of v3. Every methodological choice is an entry below: the options
+The record of every methodological choice in v3. Each is an entry below: the options
 considered, what we chose, why, and the check that backs it. Nothing is a "standard" in v3 until it
 appears here with a rationale and a check. This mirrors the lesson from v2 that a tuned constant
 needs recorded provenance and a reproducible test behind it, applied from day one.
@@ -22,20 +22,18 @@ Format for each decision:
 These are **open** until they have an entry. They are listed so the path is visible; listing is not
 deciding.
 
-- **D1 — Pilot complex + validation anchor.** Pick 1–2 antibody:antigen complexes with experimental
-  hot-spot / ΔΔG data (SKEMPI 2.0) so every later choice is testable against known numbers before it
-  drives any design. *Status: evidence gathered (see below), a pilot proposed, awaiting confirmation.*
-  *Proposed:* **3HFM** (HyHEL-10 / hen egg lysozyme) as the primary pilot, **1VFB** (D1.3 / lysozyme)
-  as a second lysozyme check — see the SKEMPI finding under Reference material.
+- **D1 — Pilot complex + validation anchor.** *Status: **DECIDED** 2026-09-02 (see Decisions below).*
+  **3HFM** (HyHEL-10 / hen egg lysozyme) is the pilot, **1VFB** (D1.3 / lysozyme) a second check. Its
+  holo MD is staged at `energetics/md/3hfm/`.
 - **D2 — What "energetic" means.** The per-residue quantity that ranks residues, and how solvent
   enters it (a direct interaction-energy decomposition à la `bcell_epitope`, vs. a fuller
   ΔΔG-of-binding that includes desolvation/entropy; implicit solvent vs. an explicit water-mediated
   channel). This is the definitional core of v3.
-- **D3 — MD protocol.** Force field, water model, box, ions, equilibration, sampling and run length.
-  *Reference (not adopted):* `bcell_epitope` runs AMBER99SB-ILDN + TIP3P, cubic box 1.2 nm clearance,
-  0.15 M NaCl, PME, V-rescale + Parrinello-Rahman, 2 fs / LINCS h-bonds, 20 ns holo production on
-  GROMACS (a100/v100), frozen mdp per run. We decide v3's protocol against this template, with
-  reasons for any deviation.
+- **D3 — MD protocol.** *Status: **DECIDED** 2026-09-02 (starting template; see Decisions below).*
+  Adopt `bcell_epitope`'s frozen GROMACS stack as the starting protocol (AMBER99SB-ILDN + TIP3P, cubic
+  box 1.2 nm, 0.15 M NaCl, PME, V-rescale + C-rescale(equil)/Parrinello-Rahman(prod), 2 fs / LINCS
+  h-bonds), 20 ns holo production, frozen per run under `energetics/md/<pdb>/`; revisit if the
+  energetics call for it. Staged for 3HFM.
 - **D4 — Classification rule.** The threshold(s) that split Cat 1 (energetic) / Cat 2 (structural) /
   Cat 3 (rest). *Reference (not adopted):* `bcell_epitope` calls a residue "enthalpic" when its
   antibody interaction energy is ≤ −3σ of the repulsive tail — one concrete rule to weigh.
@@ -45,7 +43,15 @@ deciding.
   we explicitly decide fresh for v3, not inherit.**
 - **D6 — RFdiffusion backbone pre-filter.** The epitope-RMSD-to-native cutoff and the antibody-clash
   test applied at the backbone stage, before ProteinMPNN. Candidate to reuse v2's cylinder/clash
-  geometry rather than define new.
+  geometry rather than define new. *Empirical backing (John, 2026-09; see Reference material):* the
+  clash count on the RFD3 backbone (which also comes with a draft sequence) is highly predictive of
+  final post-AlphaFold3 success, so filtering there skips AF3 — the dominant cost — on doomed backbones.
+- **D7 — Escalating-scale generation with a stopping criterion (John's second idea).** Run RFdiffusion
+  at escalating scales per target (e.g. 100 → 1,000 → 10,000) with a composite-score stopping rule, so
+  compute concentrates on the hard cases and stops early on the easy ones. Open.
+- **Cross-cutting — platform-agnostic pipeline.** The workflow should run on Gemini *or* Tamarind
+  (John is piloting on Tamarind, agnostic between them), and possibly directly on AWS, chosen by
+  throughput/economics. Keep the stages portable across schedulers, not wired to one. Open.
 
 ---
 
@@ -75,8 +81,39 @@ deciding.
   Reproduce: `curl -sSL -o skempi_v2.csv https://life.bsc.es/pid/skempi2/database/download/skempi_v2.csv`
   then `python energetics/skempi_overlap.py --skempi skempi_v2.csv`.
 
+- **John's throughput pilots (2026-09; PDF pending his GitHub access).** Relayed via Slack, summarized
+  from a PDF not yet in the repo. Two findings: (1) the RFD3 backbone clash count is highly predictive
+  of post-AlphaFold3 success, so a post-RFD3 / pre-MPNN clash filter avoids running AF3 (the dominant
+  cost) on doomed backbones; (2) escalating-scale RFD3 (100 / 1,000 / 10,000) with a composite-score
+  stopping rule concentrates compute on hard cases. Plus: stay platform-agnostic (Gemini / Tamarind /
+  AWS). Empirical basis for D6 and D7 — fold in the exact numbers/plots once the PDF is in the repo.
+
 ---
 
 ## Decisions (most recent first)
 
-*(none yet — D1 is proposed above and awaiting confirmation)*
+### D1 — Pilot complex + validation anchor (2026-09-02)
+- *Question:* which complex do we validate the per-residue energy method on before it drives design?
+- *Options:* one of our own 59 structures (none are in SKEMPI); a standard SKEMPI antibody:antigen
+  alanine-scan complex.
+- *Decision:* **3HFM** (HyHEL-10 / hen egg lysozyme) as the primary pilot; **1VFB** (D1.3 / lysozyme)
+  as a second check.
+- *Why:* 3HFM has 18 experimental alanine ΔΔG in SKEMPI (hot spots up to +6.5 kcal/mol), it is a
+  textbook hot-spot system, and lysozyme is already the system `bcell_epitope` runs MD on — so we
+  reuse validated machinery. None of our own structures overlap SKEMPI (2020s PDBs vs. a 2019 database).
+- *Check / provenance:* `energetics/skempi_overlap.py` reproduces the overlap and the candidate list.
+- *Status:* decided.
+
+### D3 — MD protocol (starting template) (2026-09-02)
+- *Question:* what GROMACS protocol produces the trajectory the energy decomposition runs on?
+- *Options:* reconstruct fresh; adopt `bcell_epitope`'s proven stack.
+- *Decision:* adopt bcell's frozen stack as the *starting* protocol — AMBER99SB-ILDN + TIP3P, cubic
+  box 1.2 nm, 0.15 M NaCl, PME, V-rescale + C-rescale (equil) / Parrinello-Rahman (prod), 2 fs / LINCS
+  h-bonds — with 20 ns holo production, frozen per run under `energetics/md/<pdb>/`.
+- *Why:* a validated, documented protocol from the same lab, on lysozyme systems; no reason to
+  reinvent it for the pilot. Marked a starting protocol, to revisit if the energetics require it
+  (e.g. longer runs for the interaction-energy averages to converge).
+- *Check / provenance:* `energetics/md/3hfm/` — `configs/*.mdp` copied verbatim from bcell
+  (`campaign1_apo_features/md/1AKI/apo/configs/`); the run README documents the one holo departure
+  (Fab H–L interchain disulfide / `pdb2gmx -merge`).
+- *Status:* decided (starting template); revisit-if convergence or the energetics require.

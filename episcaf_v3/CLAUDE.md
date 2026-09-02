@@ -61,8 +61,10 @@ against experimental ΔΔG before it drives any design. PI: John Altin.
 - **v2 campaign:** DP4 library ordered; waiting on the assay binding data. The plan for reading it
   is at the repo root: `docs/DP4_RESULTS_ANALYSIS.md` + `scripts/build_dp4_binding_join.py` +
   `scripts/analyze_dp4_binding.py` (turnkey, self-checked).
-- **v3 campaign:** at Decision 1. Proposed pilot = **3HFM** (HyHEL-10 / hen egg lysozyme), awaiting
-  confirmation; reuses `bcell_epitope`'s lysozyme MD machinery. The method is mostly still to build.
+- **v3 campaign:** D1 (pilot = **3HFM**) and D3 (MD protocol, from bcell) decided; the 3HFM holo MD
+  is staged at `energetics/md/3hfm/` for the user to run on Gemini. Next: D2 (the per-residue energy
+  quantity, once there's a trajectory). D6/D7 (the post-RFD3 filter + escalating-scale generation)
+  have empirical backing from John's throughput pilots — see `docs/DECISIONS.md`. Mostly still to build.
 
 ## Commands that verify
 - `cd manuscript && tectonic main.tex`                       # build the living record

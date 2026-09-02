@@ -68,6 +68,8 @@ tmp/
 !episcaf_v3/manuscript/figures/
 !episcaf_v3/manuscript/figures/*.png
 !episcaf_v3/manuscript/figures/*.pdf
+# episcaf_v3 input crystal structures (small; needed for self-contained MD runs on compute nodes)
+!episcaf_v3/energetics/md/**/structures/*.pdb
 # canonical inputs and shipped assay libraries (small; deliverables + provenance)
 # note: *.parquet stays ignored even under data/ (dp2.parquet is external, see data/README.md)
 !data/**/*.csv
