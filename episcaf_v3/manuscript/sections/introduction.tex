@@ -1,0 +1,105 @@
+\section{From geometric to energetic epitopes}\label{sec:intro}
+
+\subsection{What the previous method did}
+The shipped method (``v2''; it lives at the root of this repository, with \texttt{episcaf\_v3/} as
+one subdirectory beside it) scaffolds \emph{B-cell epitopes} --- the regions of an antigen an
+antibody recognizes --- so that a high-throughput serology assay (PepSeq) can test
+conformational, discontinuous epitopes that linear peptide tiling cannot represent. The epitope is
+taken from an antibody:antigen crystal structure as the set of antigen residues the antibody
+contacts, defined by a heavy-atom distance cutoff. Those residues are embedded into a \emph{de novo}
+protein with RFdiffusion, given a sequence by ProteinMPNN, and folded by AlphaFold3 to check whether
+the design actually holds the epitope in its native geometry. Designs are kept or rejected on four
+filters: the epitope and overall backbone RMSD to the intended geometry, the predicted alignment
+error, and whether scaffold mass clashes into the antibody's binding path. Where an antigen has no
+solved antibody, a native-aware cylinder surrogate stands in for that clash filter. A composite
+scorer then ranks the survivors and picks the best designs per epitope. This pipeline produced DP4,
+a \num{36000}-member PepSeq library now in synthesis.
+
+\subsection{Where the geometric definition runs out}
+The method works, but two problems trace to the same root: it treats the epitope as a flat set of
+geometric contacts, all equally important.
+
+The first is that binding energy is not uniform across an interface. A handful of ``hot-spot''
+residues typically carry most of the binding free energy, surrounded by a ring of residues that
+contribute little directly but shape the pocket and exclude solvent. A geometric cutoff cannot see
+this: it labels every contacted residue an epitope residue, and the contig we hand RFdiffusion then
+fixes the identity and backbone of all of them equally. We are constraining residues we have no
+evidence are load-bearing, which costs the generator design freedom it may need to fold a good
+scaffold --- and we do not actually know which contacts are carrying the binding.
+
+The second is visible in the hard cases. A contig enforces epitope residue identity and ordering,
+but it does not strongly constrain the distances and orientations \emph{between} spatially separated
+epitope islands. So the model can satisfy the contig and still lose the geometry an antibody needs.
+The clearest symptom is PDB \texttt{2XQB} patch \texttt{0P}, a 56-residue epitope split across two
+islands: across \num{2624} RFdiffusion trials, zero designs passed the filters. A $0\%$ rate over
+thousands of attempts is a real failure of what the contig constrains, not undersampling.
+
+Underneath both is a definitional gap. ``Epitope'' is loosely and inconsistently defined in the
+literature --- usually by a geometric contact convention chosen for convenience --- and that
+ambiguity propagates straight into the design constraints. If we cannot say which residues matter
+and why, we cannot say which ones a design is actually required to reproduce.
+
+\subsection{The new avenue: define the epitope by energy}
+v3 replaces the geometric definition with an energetic one. Instead of asking which residues
+\emph{touch} the antibody, we ask which residues \emph{carry the binding}, and we let the design
+constraints follow the energetics. Concretely, we sort the interface into three categories and
+constrain each according to what its job is:
+
+\begin{itemize}
+  \item \textbf{Category 1 --- energetic (hot-spot) residues.} The residues that dominate the
+  binding free energy. These retain both their \emph{exact identity and their shape}: the contig
+  fixes their backbone and their sequence is locked to native. This is what we currently do to the
+  whole geometric epitope; here we do it only where it is load-bearing.
+  \item \textbf{Category 2 --- structural (occluding) residues.} The rest of the contact shell.
+  These matter for how the site fits together --- they hold the shape and exclude solvent around the
+  hot spots --- but their identity is not the point. So we fix their \emph{shape} (the contig holds
+  the backbone) but let ProteinMPNN choose the sequence. Their correct orientation can be enforced
+  by superimposing them on the native antigen and filtering on a small RMSD.
+  \item \textbf{Category 3 --- the rest of the scaffold.} These residues exist to enforce the
+  geometry of Categories 1 and 2. They can be any identity and adopt any structure, subject to two
+  constraints: they must not introduce new steric clashes with the antibody, and they must not
+  compete with the binding site. Everything else about them is free --- scaffold length and the
+  position of the epitope within the construct are randomized.
+\end{itemize}
+
+The bet is simple: by fixing identity only where it carries the binding, and shape only where a
+residue's job is structural, we give the generator far more room to build a foldable scaffold
+without giving up the interaction that matters. The same energetic reading also sharpens the
+hard-case problem --- it tells us which inter-residue geometry is worth enforcing rather than
+enforcing all of it blindly.
+
+A second change makes the pipeline cheaper and is, in hindsight, overdue: we can filter RFdiffusion
+backbones \emph{before} ProteinMPNN and AlphaFold3. A backbone that already places the epitope in
+the wrong orientation, or drapes scaffold mass through the antibody's path, was never going to
+produce a passing design; superimposing the fixed epitope on the native antigen and checking a small
+RMSD plus an antibody-clash test at the backbone stage discards those doomed designs before we spend
+the expensive sequence-design and folding steps on them. This is the same accessibility-and-fidelity
+check the shipped scorer applies at the end, moved to the front.
+
+\subsection{What this rests on}
+The whole approach stands or falls on getting the energetics right, and the hard part is solvent. A
+naive pairwise antigen--antibody interaction energy will mislead: it ignores the desolvation a
+residue pays to make a contact, and it misses contributions mediated by ordered water --- a bridging
+hydrogen bond can be load-bearing yet invisible to a direct pairwise sum. Deciding how to compute a
+defensible per-residue energy, including solvent, is the first real decision of v3, and it is where
+the record begins.
+
+We will not trust the ranking on faith. The first step is to reproduce known numbers: take a
+complex with experimentally measured binding energetics and check that our per-residue energies
+recover its known hot spots before we let the definition drive any design. The DP4 binding data,
+when it returns, gives a second, independent test --- whether designs that better preserve the
+energetic residues bind better.
+
+We are not starting the energy machinery from scratch. The sibling \texttt{bcell\_epitope} project
+already computes a per-residue interface interaction-energy decomposition --- including a
+water-mediated bridge channel --- on a documented GROMACS stack, and it is the template we build the
+energy engine from. We treat it as a reference, not a protocol to inherit: its ``epitopeness'' is an
+interaction energy, deliberately not a binding free energy (it omits desolvation and entropy), so
+whether v3 adopts that quantity or a fuller one is itself a decision to make and record, not to
+assume.
+
+\subsection{Status}
+This is the beginning. The method above is a plan, not a result: nothing here has been built or
+tested yet. What follows in this log will be the decisions, one at a time --- the energy method, the
+MD protocol, the classification thresholds, the contig strategy, the filters --- each with the
+options weighed, the choice made, and the check that backs it, mirrored in \texttt{docs/DECISIONS.md}.

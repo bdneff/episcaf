@@ -63,6 +63,11 @@ tmp/
 !manuscript/figures/*.png
 !manuscript/figures/*.pdf
 !manuscript/main.pdf
+# episcaf_v3 living manuscript (its own tree): keep the built PDF + figures viewable on GitHub
+!episcaf_v3/manuscript/main.pdf
+!episcaf_v3/manuscript/figures/
+!episcaf_v3/manuscript/figures/*.png
+!episcaf_v3/manuscript/figures/*.pdf
 # canonical inputs and shipped assay libraries (small; deliverables + provenance)
 # note: *.parquet stays ignored even under data/ (dp2.parquet is external, see data/README.md)
 !data/**/*.csv

@@ -1,0 +1,45 @@
+% episcaf v3 project log
+% Build:  tectonic main.tex   (not latexmk in this env)
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{caption}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\graphicspath{{figures/}}
+
+% Show a labelled placeholder box if a figure has not been regenerated yet,
+% so the manuscript always compiles.
+\newcommand{\figorbox}[2]{%
+  \IfFileExists{figures/#1}{\includegraphics[width=#2\linewidth]{#1}}%
+  {\fbox{\parbox[c][3cm][c]{#2\linewidth}{\centering\ttfamily\detokenize{figures/#1}\par\normalfont\small (not yet regenerated; see figures/FIGURES.md)}}}}
+
+\title{Episcaf v3: designing from an energetic definition of the epitope}
+\author{Brandon Neff \and John Altin \\ \small TGen}
+\date{\today\\[2pt]\small Living record. Read top to bottom to get up to speed.
+Every methodological choice is a dated entry in \texttt{docs/DECISIONS.md}.}
+
+\begin{document}
+\maketitle
+
+\noindent
+This is the running record of a new design avenue for episcaf, kept as its own subproject
+(\texttt{episcaf\_v3/}) inside the episcaf repository. The shipped method at the repository root
+(``v2'') scaffolds antibody epitopes defined by 3D \emph{geometry}; this log asks
+whether defining the epitope by \emph{energy} --- which residues actually carry the binding --- and
+letting the design constraints follow the energetics produces better scaffolds. It is built one
+recorded decision at a time (\texttt{docs/DECISIONS.md}) and is meant to be read in order: each
+section is one iteration of what we tried, what we found, and what it changed for the next step. It
+is not a formal manuscript, and the method here is early --- most of it is still to build.
+
+\input{sections/introduction}
+
+\bibliographystyle{unsrt}
+\bibliography{refs}
+
+\end{document}
