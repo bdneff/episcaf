@@ -111,6 +111,17 @@ for everything after the insertion point — adding 38 8VDL rows shifted all 21,
 > input had `\r\n` endings (`csv.writer`'s default dialect). `stage07_new_peptides.py` now writes bare
 > `\n` and hard-fails on any CR. Always check step 1 reports `Processed <N> lines` before running step 2.
 
+> **Internal primer sites — a known low-impact issue; add a filter in future (John, 2026-08-05).**
+> The 5' first primer (`ACCTATACTTCCAAGGCGCA`) has its 3' tail recur *internally* in a few oligos,
+> which risks mispriming (a truncated product). Verified with `scripts/check_primer_internal_sites.py`
+> (reproduces John's counts): last-10bp internal in **52/36,000**, last-15bp in **29/36,000** — the
+> 29 higher-risk 15-bp hits are **all the tiled30mer (C4) arm**, because C4 encodes an internal TEV
+> site and the primer also encodes TEV, so a stochastic codon choice makes the two match. **Nothing
+> to fix on DP4** (ordered; John rates the impact low — 10 bp likely too short to prime). **Going
+> forward:** add a primer-similarity filter at the encoding step — the encoder already draws ~300
+> candidate encodings per peptide, so preferring one with no ≥~12–15 bp internal primer suffix is
+> nearly free. See memory `oligo-primer-internal-sites`.
+
 **Shipped composition (36,000):** C1 1,120 · C2 1,600 · C3 4,390 · C4 2,033 · C5 2,715 · C6 2,325 ·
 8VDL 58 · minibinder 21,759.
 
