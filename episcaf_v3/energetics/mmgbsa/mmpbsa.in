@@ -3,7 +3,7 @@ Per-residue MM-GBSA decomposition of the 3HFM interface (episcaf v3, D2) -- see 
 sys_name       = "3HFM",
 startframe     = 1,
 endframe       = 2000,
-interval       = 20,
+interval       = 100,
 temperature    = 300.0,
 /
 &gb

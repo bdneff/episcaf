@@ -3,28 +3,28 @@
 #SBATCH --partition=gpu-v100
 #SBATCH --gres=gpu:1
 #SBATCH --nodes=1
-#SBATCH --ntasks=8
-#SBATCH --cpus-per-task=1
-#SBATCH --mem=32G
-#SBATCH --time=3:00:00
-# Per-residue MM-GBSA on the 3HFM holo trajectory (Decision D2), MPI-parallel over frames (~8x).
-# CPU-only work; the GPU idles -- `--gres=gpu:1` just lets the job land on the gpu-v100 partition
-# (swap to a CPU partition if Gemini has one). Uses the conda gmx_MMPBSA env + its own gmx/sander.
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=16G
+#SBATCH --time=4:00:00
+# Per-residue MM-GBSA on the 3HFM holo trajectory (Decision D2), SERIAL.
+# We tried MPI (mpirun -np 8) and the ranks ran independently (mpi4py not sharing a communicator
+# under SLURM -> COM.prmtop race). Serial is proven to work; mmpbsa.in uses interval=100 (~20 frames)
+# for a fast first pass. For the final figure, sort out MPI or lower interval and give more walltime.
+# CPU-only; GPU idles (--gres just lands it on gpu-v100). Uses the conda gmx_MMPBSA env.
 #
-# Submit FROM the holo run dir (so $SLURM_SUBMIT_DIR is md/3hfm/out, which has md.tpr/md.xtc/
-# topol.top/gbsa_index.ndx):
-#     cd /scratch/bneff/episcaf_run/episcaf_v3/energetics/md/3hfm/out
-#     sbatch /scratch/bneff/episcaf_run/episcaf_v3/energetics/mmgbsa/run_mmgbsa.sbatch
+# Submit FROM the holo run dir:
+#   cd /scratch/bneff/episcaf_run/episcaf_v3/energetics/md/3hfm/out
+#   sbatch /scratch/bneff/episcaf_run/episcaf_v3/energetics/mmgbsa/run_mmgbsa.sbatch
 
-# activate the env (sets AMBERHOME etc. that sander needs) -- the likely first-run snag
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate gmxMMPBSA
 
 set -e
 cd "$SLURM_SUBMIT_DIR"
-rm -rf _GMXMMPBSA_*                 # clear any leftover temp from an interrupted run
-echo "=== 3HFM MM-GBSA start $(date) on $SLURM_NTASKS ranks ==="
-mpirun -np "$SLURM_NTASKS" gmx_MMPBSA -O \
+rm -rf _GMXMMPBSA_*                 # clear leftover temp from the interrupted/failed runs
+echo "=== 3HFM MM-GBSA (serial) start $(date) ==="
+gmx_MMPBSA -O \
     -i "$SLURM_SUBMIT_DIR/../../../mmgbsa/mmpbsa.in" \
     -cs md.tpr -ci gbsa_index.ndx -cg 17 18 \
     -ct md.xtc -cp topol.top \
