@@ -36,7 +36,7 @@ gmx make_ndx -f md.tpr -o gbsa_index.ndx
 ## 3. Run (CPU / MPI, ~hours; config is ../../mmgbsa/mmpbsa.in)
 ```bash
 mpirun -np 8 gmx_MMPBSA -O \
-    -i ../../mmgbsa/mmpbsa.in \
+    -i ../../../mmgbsa/mmpbsa.in \
     -cs md.tpr -ci gbsa_index.ndx -cg antibody antigen \
     -ct md.xtc -cp topol.top \
     -o FINAL_RESULTS_MMGBSA.dat  -eo FINAL_RESULTS_MMGBSA.csv \
