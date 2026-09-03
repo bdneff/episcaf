@@ -1,10 +1,8 @@
 \section{Validating an energetic epitope definition}\label{sec:energetic}
-\emph{(In progress. The simulation is done; the per-residue energies and the figure below are being
-computed.)}
 
 Before an energetic definition can drive design, its per-residue energies have to be trustworthy, so
 we test them where the answer is already known. The pilot is 3HFM, the HyHEL-10 Fab bound to hen egg
-lysozyme, for which SKEMPI records experimental alanine-scanning $\Delta\Delta G$ on sixteen antigen
+lysozyme, for which SKEMPI records experimental alanine-scanning $\Delta\Delta G$ on thirteen antigen
 residues. Three dominate --- Lys96 ($+6.5$ kcal/mol), Lys97 ($+5.6$), Tyr20 ($+4.3$) --- and the rest
 sit at or below about 1 kcal/mol. We chose 3HFM because it is a well-measured hot-spot system and
 because lysozyme is already a system with a validated molecular-dynamics setup to build on; none of
@@ -31,12 +29,87 @@ method generalizes to other antibody--antigen complexes. If direct interaction e
 made free of false positives, that is the evidence that desolvation or water-mediated contributions
 have to enter, and we move to a fuller treatment.
 
+\subsection{What the interaction energy alone recovers}
+The bare interaction energy recovers the strongest hot spots --- Lys97 and Lys96 are its top two
+antigen calls, and Tyr20 and Asp101 also come out favorable --- but it produces a clear false
+positive at Arg73, which ranks as the second-strongest interaction of all 129 residues yet has a
+measured $\Delta\Delta G$ of only $-0.33$ kcal/mol (Figure~\ref{fig:ie_vs_ddg}). This is the failure a
+bare interaction energy is expected to make: Coulomb credits a charged surface residue for its
+contact without charging it the cost of stripping away the water it was hydrogen-bonded to in
+solution. Removing the Coulomb term entirely and ranking on Lennard-Jones alone demotes Arg73 and
+lifts the rank correlation with $\Delta\Delta G$ from $0.46$ to $0.73$, but it then over-calls
+well-packed residues that are not hot spots (Leu75) and, at a fixed high-energy cut, multiplies the
+false-positive count rather than reducing it. Electrostatics over-calls charged residues and packing
+over-calls buried ones; both point at the same missing quantity, the net free-energy cost of
+desolvation.
+
+\subsection{Adding desolvation: per-residue MM-GBSA}
+MM-GBSA is the principled fix. It keeps the Coulomb and Lennard-Jones interaction but adds the
+generalized-Born polar-desolvation term, so a residue's raw contact is netted against the cost of
+shedding its solvent; run single-trajectory, it decomposes onto the same 20 ns trajectory with no new
+simulation. On the residue that motivated it, the mechanism works exactly as intended: Arg73's
+favorable Coulomb contribution ($-58.7$ kcal/mol) is almost entirely cancelled by the $+57.2$ it pays
+to desolvate, so its net per-residue contribution falls to $-3.6$ and it drops from the second-strongest
+raw call to the flag threshold (Figure~\ref{fig:ie_vs_ddg_mmgbsa}).
+
+The same trajectory sampled at twenty frames, however, is too sparse for the generalized-Born term to
+be quantitatively reliable. It over-cancels the largest hot spot: Lys96's Coulomb ($-34.0$) is
+overtaken by a $+38.9$ desolvation penalty, leaving it net \emph{unfavorable} ($+2.1$) --- a false
+negative on precisely the residue we most need to recover. The rank correlation collapses to $0.05$,
+and two residues (Arg73, Leu75) still sit marginally inside the false-positive zone. The desolvation
+term is doing the right physics --- it is the only one of the three methods that nets a charged
+residue's contact against its solvation --- but a single 20 ns replica sampled every nanosecond does
+not give a per-residue generalized-Born estimate stable enough to lock a design against.
+
+\subsection{Reading}
+No method cleanly passes the precision test on 3HFM yet, and the three fail differently
+(Table~\ref{tab:ie_methods}): the bare interaction energy over-calls charged residues, Lennard-Jones
+alone over-calls packed ones, and desolvation-aware MM-GBSA corrects the charged over-call in
+direction but, at this sampling, trades it for noise that sinks the strongest hot spot. The next lever
+is therefore sampling, not a new estimator: more frames, and likely independent replicas, before the
+per-residue energy is allowed to classify residues into the three categories. That is a
+``find-what-works-on-this-system'' step, deliberately ahead of the question of what is cheap enough to
+run at design scale.
+
+\begin{table}[h]
+\centering
+\caption{Per-residue methods on 3HFM against thirteen measured antigen $\Delta\Delta G$. Spearman
+$\rho$ is over the measured residues; false positives are measured residues above the $90^{\text{th}}$
+interaction-energy percentile with $\Delta\Delta G < 1$ kcal/mol. Reproduce with
+\texttt{energetics/plot\_ie\_vs\_ddg.py} at \texttt{-{}-channel} \texttt{ab\_total}, \texttt{ab\_lj},
+\texttt{mmgbsa\_dg}.}
+\label{tab:ie_methods}
+\begin{tabular}{lccl}
+\toprule
+Method & Spearman $\rho$ & False positives & Characteristic failure \\
+\midrule
+Interaction energy (Coulomb + LJ) & $+0.46$ & 4 & over-calls charged residues (Arg73) \\
+Lennard-Jones only                & $+0.73$ & 7 & over-calls packed residues (Leu75) \\
+MM-GBSA (20 frames)               & $+0.05$ & 2 & demotes Arg73; over-desolvates Lys96 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \begin{figure}[h]
 \centering
 \figorbox{ie_vs_ddg_3hfm.png}{0.9}
-\caption{Per-residue interaction energy against experimental $\Delta\Delta G$ for 3HFM (antigen
-residues). The lower-right region --- high interaction energy but low measured $\Delta\Delta G$ ---
-is the false-positive zone the method must keep empty. Generated by
-\texttt{energetics/plot\_ie\_vs\_ddg.py} from \texttt{holo\_ie.py} output.}
+\caption{Bare per-residue interaction energy (Coulomb + LJ) against experimental $\Delta\Delta G$ for
+3HFM. Lower panel: the false-positive test. The shaded lower-right region --- high interaction energy,
+low measured $\Delta\Delta G$ --- must be empty; Arg73 sits inside it, the charged over-call the
+desolvation step must fix. Generated by \texttt{energetics/plot\_ie\_vs\_ddg.py}
+(\texttt{-{}-channel ab\_total}) from \texttt{holo\_ie.py} output.}
 \label{fig:ie_vs_ddg}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\figorbox{ie_vs_ddg_3hfm_mmgbsa.png}{0.9}
+\caption{Desolvation-inclusive per-residue MM-GBSA ($\Delta G$) against experimental $\Delta\Delta G$
+for 3HFM, same trajectory, 20 frames. Arg73 is pulled back to the threshold (desolvation cancels its
+Coulomb), but Lys96 --- the largest measured hot spot --- is over-desolvated to a net-unfavorable
+$\Delta G$ and strands in the upper-left, and the rank correlation collapses ($\rho = 0.05$): the
+mechanism is right but 20-frame single-replica GB is too noisy. Generated by
+\texttt{energetics/plot\_ie\_vs\_ddg.py} (\texttt{-{}-channel mmgbsa\_dg}) from
+\texttt{mmgbsa\_decomp\_to\_csv.py} output.}
+\label{fig:ie_vs_ddg_mmgbsa}
 \end{figure}

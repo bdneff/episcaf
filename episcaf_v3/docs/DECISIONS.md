@@ -63,9 +63,13 @@ deciding.
   (Arg73, Leu75) still sit marginally inside the false-positive zone, so it is not a clean precision
   pass either. **Read:** desolvation is the right *direction* (it demotes the charged over-call the
   cheap methods make) but single-replica MM-GBSA at 20 frames is too noisy for a trustworthy
-  per-residue ranking; **LJ-only remains the best predictor so far.** Passing likely needs many more
-  frames (lower `interval`) and probably replica averaging — a "find what works on this one system"
-  follow-up, not yet a scalable choice. *Reproduce:* `energetics/mmgbsa/run_mmgbsa.sbatch` on the
+  per-residue ranking. **No method cleanly passes precision on 3HFM yet**, and the three fail
+  differently: bare IE over-calls charged residues (Arg73, 4 false positives at the 90th-pct cut),
+  LJ-only has the best rank correlation (ρ 0.73) but the most false positives (7 — it over-calls
+  packed residues), and MM-GBSA makes the fewest high calls (2 false positives) but wrecks the ranking
+  via the Lys96 over-desolvation. Passing likely needs many more frames (lower `interval`) and
+  probably replica averaging — a "find what works on this one system" follow-up, not yet a scalable
+  choice. *Reproduce:* `energetics/mmgbsa/run_mmgbsa.sbatch` on the
   3HFM trajectory (Gemini) → `grep '^TDC'` the complex/ligand mdouts →
   `energetics/mmgbsa_decomp_to_csv.py` → `plot_ie_vs_ddg.py --channel mmgbsa_dg`.
 - **D3 — MD protocol.** *Status: **DECIDED** 2026-09-02 (starting template; see Decisions below).*

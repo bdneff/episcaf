@@ -77,6 +77,8 @@ tmp/
 !episcaf_v3/energetics/md/**/mmgbsa_perres.csv
 !episcaf_v3/energetics/md/**/complex_tdc.txt
 !episcaf_v3/energetics/md/**/ligand_tdc.txt
+# episcaf_v3 per-residue interaction-energy means (small; the raw-IE / LJ-only figure inputs)
+!episcaf_v3/energetics/md/**/holo_ie_mean.csv
 # canonical inputs and shipped assay libraries (small; deliverables + provenance)
 # note: *.parquet stays ignored even under data/ (dp2.parquet is external, see data/README.md)
 !data/**/*.csv
