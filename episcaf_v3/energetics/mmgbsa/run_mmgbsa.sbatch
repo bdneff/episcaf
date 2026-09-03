@@ -7,11 +7,12 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=16G
 #SBATCH --time=4:00:00
-# Per-residue MM-GBSA on the 3HFM holo trajectory (Decision D2), SERIAL.
-# We tried MPI (mpirun -np 8) and the ranks ran independently (mpi4py not sharing a communicator
-# under SLURM -> COM.prmtop race). Serial is proven to work; mmpbsa.in uses interval=100 (~20 frames)
-# for a fast first pass. For the final figure, sort out MPI or lower interval and give more walltime.
-# CPU-only; GPU idles (--gres just lands it on gpu-v100). Uses the conda gmx_MMPBSA env.
+# Per-residue MM-GBSA on the 3HFM holo trajectory (Decision D2), SERIAL, 20 frames (interval=100).
+# Serial because MPI ranks ran independently under SLURM (mpi4py communicator issue).
+# PBC FIX: gmx_MMPBSA does NOT correct PBC; a frame with the complex split across the box makes
+# sander overflow (energy prints '****' -> parse crash). -merge all made the protein one molecule,
+# so `gmx trjconv -pbc whole` reassembles it; we feed that whole trajectory as -ct.
+# CPU-only; GPU idles. Uses the conda gmx_MMPBSA env.
 #
 # Submit FROM the holo run dir:
 #   cd /scratch/bneff/episcaf_run/episcaf_v3/energetics/md/3hfm/out
@@ -22,12 +23,19 @@ conda activate gmxMMPBSA
 
 set -e
 cd "$SLURM_SUBMIT_DIR"
-rm -rf _GMXMMPBSA_*                 # clear leftover temp from the interrupted/failed runs
-echo "=== 3HFM MM-GBSA (serial) start $(date) ==="
+# clear intermediates from any prior/failed run so this starts clean
+rm -rf _GMXMMPBSA_* COM_traj_*.xtc COM.prmtop REC.prmtop LIG.prmtop reference.frc
+
+# PBC-correct: make the (merged) protein whole in every frame
+if [ ! -f md_whole.xtc ]; then
+    printf '0\n' | gmx trjconv -s md.tpr -f md.xtc -o md_whole.xtc -pbc whole
+fi
+
+echo "=== 3HFM MM-GBSA (serial, PBC-whole) start $(date) ==="
 gmx_MMPBSA -O \
     -i "$SLURM_SUBMIT_DIR/../../../mmgbsa/mmpbsa.in" \
     -cs md.tpr -ci gbsa_index.ndx -cg 17 18 \
-    -ct md.xtc -cp topol.top \
+    -ct md_whole.xtc -cp topol.top \
     -o FINAL_RESULTS_MMGBSA.dat -eo FINAL_RESULTS_MMGBSA.csv \
     -do FINAL_DECOMP_MMGBSA.dat -deo FINAL_DECOMP_MMGBSA.csv -nogui
 echo "=== 3HFM MM-GBSA done $(date) ==="
