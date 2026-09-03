@@ -12,6 +12,6 @@ saltcon        = 0.150,
 /
 &decomp
 idecomp        = 1,
-dec_verbose    = 3,
+dec_verbose    = 0,
 print_res      = "within 5.0",
 /
