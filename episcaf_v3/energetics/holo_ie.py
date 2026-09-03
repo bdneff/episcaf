@@ -19,7 +19,7 @@ Run on Gemini in an env with OpenMM + MDAnalysis (bcell's `epitope-energy` conda
     conda activate epitope-energy
     python holo_ie.py --workdir /scratch/bneff/episcaf_run/episcaf_v3/energetics/md/3hfm/out \
                       --antigen last:129 \
-                      --includedir /usr/local/gromacs/avx2_256/share/gromacs/top \
+                      --includedir /home/bneff/.conda/envs/grinn/share/gromacs/top \
                       --out holo_ie_mean.csv
 """
 import argparse, os, warnings
@@ -43,8 +43,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--workdir", required=True, help="dir with md.tpr, md.xtc, topol.top, md.gro")
     ap.add_argument("--antigen", default="last:129", help="antigen residues: last:N | first:N | range:A-B")
-    ap.add_argument("--includedir", default="/usr/local/gromacs/avx2_256/share/gromacs/top",
-                    help="GROMACS top dir so OpenMM can resolve the force-field include")
+    ap.add_argument("--includedir", default="/home/bneff/.conda/envs/grinn/share/gromacs/top",
+                    help="HOST-accessible GROMACS top dir with amber99sb-ildn.ff, so OpenMM can resolve "
+                         "the force-field include. NOT the containerized module path "
+                         "(/usr/local/gromacs/...): GROMACS runs in a Singularity container on Gemini, "
+                         "so that path is invisible to the host conda env. Use a conda env's top dir "
+                         "(bcell uses the grinn env's); the force field is standard, params are identical.")
     ap.add_argument("--stride-ps", type=float, default=100.0, help="sample every ~this many ps")
     ap.add_argument("--out", default="holo_ie_mean.csv", help="per-residue mean output (in workdir)")
     ap.add_argument("--perframe", default="holo_ie_perframe.csv", help="per-frame output (in workdir)")
