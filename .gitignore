@@ -72,6 +72,11 @@ tmp/
 !episcaf_v3/energetics/md/**/structures/*.pdb
 # episcaf_v3 ground-truth ddG table (committed input; generated holo_ie_*.csv stay ignored)
 !episcaf_v3/energetics/skempi_3hfm_ddg.csv
+# episcaf_v3 MM-GBSA per-residue result + its cheap-to-keep energy extracts (the expensive input,
+# the MD trajectory, is ephemeral; these make the mmgbsa figure regenerable without re-running MD)
+!episcaf_v3/energetics/md/**/mmgbsa_perres.csv
+!episcaf_v3/energetics/md/**/complex_tdc.txt
+!episcaf_v3/energetics/md/**/ligand_tdc.txt
 # canonical inputs and shipped assay libraries (small; deliverables + provenance)
 # note: *.parquet stays ignored even under data/ (dp2.parquet is external, see data/README.md)
 !data/**/*.csv

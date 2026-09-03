@@ -52,6 +52,22 @@ deciding.
   (`energetics/mmgbsa/`: config + recipe) — single-trajectory per-residue decomposition on the
   existing 3HFM trajectory; the test is whether the GB desolvation term empties the false-positive
   zone (demote Arg73 + Leu75/Arg21, keep K96/K97/Y20/D101).
+  **MM-GBSA result (2026-09-03, 20 frames of the 20 ns trajectory, single replica, igb=5 / 0.15 M
+  salt, per-residue idecomp=1).** The mechanism is confirmed but the implementation is too noisy to
+  pass. *Mechanism confirmed:* Arg73's favorable Coulomb (eel −58.7) is netted by the GB desolvation
+  it pays (polar +57.2) → net dG ≈ −3.1 kcal/mol; it falls from the blatant #2 false positive under
+  raw IE to sitting right at the flag threshold — exactly the desolvation correction we predicted.
+  *But under-sampled GB scrambles the ranking:* **Lys96, the single biggest experimental hot spot
+  (ΔΔG +6.49), comes out unfavorable (dG +2.5)** — the GB polar term over-penalizes the buried
+  lysine. Spearman ρ against ΔΔG collapses to **+0.05** (raw IE 0.46, LJ-only 0.73). Two residues
+  (Arg73, Leu75) still sit marginally inside the false-positive zone, so it is not a clean precision
+  pass either. **Read:** desolvation is the right *direction* (it demotes the charged over-call the
+  cheap methods make) but single-replica MM-GBSA at 20 frames is too noisy for a trustworthy
+  per-residue ranking; **LJ-only remains the best predictor so far.** Passing likely needs many more
+  frames (lower `interval`) and probably replica averaging — a "find what works on this one system"
+  follow-up, not yet a scalable choice. *Reproduce:* `energetics/mmgbsa/run_mmgbsa.sbatch` on the
+  3HFM trajectory (Gemini) → `grep '^TDC'` the complex/ligand mdouts →
+  `energetics/mmgbsa_decomp_to_csv.py` → `plot_ie_vs_ddg.py --channel mmgbsa_dg`.
 - **D3 — MD protocol.** *Status: **DECIDED** 2026-09-02 (starting template; see Decisions below).*
   Adopt `bcell_epitope`'s frozen GROMACS stack as the starting protocol (AMBER99SB-ILDN + TIP3P, cubic
   box 1.2 nm, 0.15 M NaCl, PME, V-rescale + C-rescale(equil)/Parrinello-Rahman(prod), 2 fs / LINCS
