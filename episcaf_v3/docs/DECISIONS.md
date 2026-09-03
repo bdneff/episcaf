@@ -25,10 +25,21 @@ deciding.
 - **D1 — Pilot complex + validation anchor.** *Status: **DECIDED** 2026-09-02 (see Decisions below).*
   **3HFM** (HyHEL-10 / hen egg lysozyme) is the pilot, **1VFB** (D1.3 / lysozyme) a second check. Its
   holo MD is staged at `energetics/md/3hfm/`.
-- **D2 — What "energetic" means.** The per-residue quantity that ranks residues, and how solvent
-  enters it (a direct interaction-energy decomposition à la `bcell_epitope`, vs. a fuller
-  ΔΔG-of-binding that includes desolvation/entropy; implicit solvent vs. an explicit water-mediated
-  channel). This is the definitional core of v3.
+- **D2 — What "energetic" means.** *Status: **IN PROGRESS** — method being fit/validated on 3HFM.*
+  The per-residue quantity that ranks residues, and how solvent enters it. **Approach (empirical
+  fit):** rather than argue the method a priori, fit it to experimental ΔΔG. Start with the
+  cheap direct interaction-energy decomposition (`energetics/holo_ie.py`, adapted from
+  `bcell_epitope`: reaction-field Coulomb + Lorentz–Berthelot LJ, per antigen residue vs. antibody,
+  averaged over the trajectory), compare to SKEMPI's 3HFM alanine ΔΔG (`skempi_3hfm_ddg.csv`,
+  `plot_ie_vs_ddg.py`), then test generalization on a few more complexes.
+  **Success criterion (Jacob) — precision, not recall:** the method must have **no false positives**
+  — no residue it flags as high interaction energy may have a *low measured* ΔΔG (residues with no
+  measured value are exempt). **False negatives are acceptable**: a real hot spot the per-residue
+  energy misses is expected — it is likely critical for structure/orientation/entropy, i.e. a
+  **Category-2** residue, handled by shape-preservation, not identity-locking. So we tune the energy
+  method (cutoff, terms, whether the solvent channel enters) to empty the false-positive zone.
+  If direct interaction energy alone leaves false positives, that is the evidence we need the fuller
+  desolvation/water-mediated treatment (MM-GBSA / computational alanine scan).
 - **D3 — MD protocol.** *Status: **DECIDED** 2026-09-02 (starting template; see Decisions below).*
   Adopt `bcell_epitope`'s frozen GROMACS stack as the starting protocol (AMBER99SB-ILDN + TIP3P, cubic
   box 1.2 nm, 0.15 M NaCl, PME, V-rescale + C-rescale(equil)/Parrinello-Rahman(prod), 2 fs / LINCS
