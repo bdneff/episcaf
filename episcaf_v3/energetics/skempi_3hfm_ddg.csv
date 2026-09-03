@@ -1,0 +1,19 @@
+# 3HFM antigen (chain Y = hen egg lysozyme) single-alanine binding ddG, from SKEMPI 2.0.
+# ddG = RT ln(Kd_mut/Kd_wt); +ve = mutation weakens binding (hot spot). Duplicate measurements averaged.
+# Ground truth for the v3 Decision-D2 validation (does per-residue interaction energy recover these?).
+# Regenerate: python energetics/skempi_overlap.py --skempi skempi_v2.csv  (chain-Y alanine rows).
+# resid = lysozyme residue number = ag_res_idx in holo_ie_mean.csv (lysozyme is complete, 1..129).
+resid,resname,ddg_kcal_mol,n_meas
+15,HIS,-0.45,1
+20,TYR,4.27,1
+21,ARG,0.84,2
+63,TRP,0.32,1
+73,ARG,-0.33,1
+75,LEU,0.70,1
+89,THR,0.00,1
+93,ASN,0.21,1
+96,LYS,6.49,1
+97,LYS,5.56,1
+98,ILE,0.00,1
+100,SER,0.27,1
+101,ASP,1.23,3

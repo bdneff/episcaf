@@ -70,6 +70,8 @@ tmp/
 !episcaf_v3/manuscript/figures/*.pdf
 # episcaf_v3 input crystal structures (small; needed for self-contained MD runs on compute nodes)
 !episcaf_v3/energetics/md/**/structures/*.pdb
+# episcaf_v3 ground-truth ddG table (committed input; generated holo_ie_*.csv stay ignored)
+!episcaf_v3/energetics/skempi_3hfm_ddg.csv
 # canonical inputs and shipped assay libraries (small; deliverables + provenance)
 # note: *.parquet stays ignored even under data/ (dp2.parquet is external, see data/README.md)
 !data/**/*.csv
