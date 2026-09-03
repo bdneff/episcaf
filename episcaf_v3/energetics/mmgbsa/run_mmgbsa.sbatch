@@ -6,8 +6,11 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=16G
-#SBATCH --time=4:00:00
-# Per-residue MM-GBSA on the 3HFM holo trajectory (Decision D2), SERIAL, 20 frames (interval=100).
+#SBATCH --time=12:00:00
+# Per-residue MM-GBSA on the 3HFM holo trajectory (Decision D2), SERIAL, 100 frames (interval=20).
+# Denser resample of the SAME 20 ns trajectory (was 20 frames): tests whether Lys96 recovers and the
+# false-positive zone empties. ~5x the 20-frame cost -> 12 h walltime. If this times out, raise
+# interval back toward 100 (fewer frames) or, if the v100 partition allows, bump --time.
 # Serial because MPI ranks ran independently under SLURM (mpi4py communicator issue).
 # PBC FIX: gmx_MMPBSA does NOT correct PBC; a frame with the complex split across the box makes
 # sander overflow (energy prints '****' -> parse crash). -merge all made the protein one molecule,

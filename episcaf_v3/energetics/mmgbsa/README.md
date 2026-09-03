@@ -33,35 +33,49 @@ gmx make_ndx -f md.tpr -o gbsa_index.ndx
 #   q
 ```
 
-## 3. Run (CPU / MPI, ~hours; config is ../../mmgbsa/mmpbsa.in)
+## 3. Run — use the committed sbatch (the working recipe)
+Everything below (env activate, PBC-whole fix, groups, flags) is baked into
+`energetics/mmgbsa/run_mmgbsa.sbatch`. Submit it from the holo run dir on Gemini:
 ```bash
-mpirun -np 8 gmx_MMPBSA -O \
-    -i ../../../mmgbsa/mmpbsa.in \
-    -cs md.tpr -ci gbsa_index.ndx -cg antibody antigen \
-    -ct md.xtc -cp topol.top \
-    -o FINAL_RESULTS_MMGBSA.dat  -eo FINAL_RESULTS_MMGBSA.csv \
-    -do FINAL_DECOMP_MMGBSA.dat  -deo FINAL_DECOMP_MMGBSA.csv \
-    -nogui
+cd /scratch/bneff/episcaf_run/episcaf_v3/energetics/md/3hfm/out
+sbatch /scratch/bneff/episcaf_run/episcaf_v3/energetics/mmgbsa/run_mmgbsa.sbatch
 ```
-`-cg` takes the receptor and ligand group names (or numbers). `mmpbsa.in` sets igb=5, 0.15 M salt,
-per-residue decomposition (`idecomp=1`), 100 frames (`interval=20`).
+It runs **serial** (MPI ranks ran independently under SLURM here — mpi4py communicator issue), does a
+`gmx trjconv -pbc whole` first (gmx_MMPBSA does not correct PBC; a split complex overflows sander),
+and passes `-cs md.tpr -ci gbsa_index.ndx -cg 17 18 -ct md_whole.xtc -cp topol.top -cr complex.pdb`.
+`mmpbsa.in` sets igb=5, 0.15 M salt, per-residue decomposition (`idecomp=1`); `interval` is the
+sampling dial — currently `20` → **100 frames** over the 20 ns trajectory (the first pass used
+`interval=100` → 20 frames, which was too noisy; see `docs/DECISIONS.md` D2).
 
-## 4. Downstream — same false-positive test
-`FINAL_DECOMP_MMGBSA.csv` has per-residue TOTAL ΔG contributions. The antigen residues are numbered
-430–558; subtract 429 to get lysozyme numbering (= `ag_res_idx`). Reshape those into a small csv with
-columns `ag_res_idx,resname,mmgbsa_total` and feed it to the existing test:
+## 4. Downstream — extract the per-residue ΔG and run the same false-positive test
+gmx_MMPBSA's own decomp CSV writer **crashes** on our `-merge all` topology (H/L chains share residue
+numbers), so `FINAL_DECOMP_MMGBSA.csv` never gets written — but the per-residue energies it already
+computed sit in the sander `TDC` lines of the decomp mdouts it leaves behind (the crash happens at the
+*writing* stage, so the intermediates are not cleaned up). Grep those two files (the same step that
+made the committed `complex_tdc.txt` / `ligand_tdc.txt`), then run the parser and the plot:
 ```bash
-python ../plot_ie_vs_ddg.py --ie <that csv> --ddg ../skempi_3hfm_ddg.csv \
-    --channel mmgbsa_total --out ie_vs_ddg_mmgbsa.png
-```
-(Claude will write the small parser from the gmx_MMPBSA output once we see its exact format.) The
-test is the same: **does the desolvation-inclusive ΔG empty the false-positive zone** — demote Arg73
-and Leu75/Arg21 while keeping K96/K97/Y20/D101?
+# from the run dir, after the job -- confirm the mdout names first:  ls _GMXMMPBSA_*mdout
+grep '^TDC' _GMXMMPBSA_complex_gb.mdout > ../complex_tdc.txt      # complex decomp mdout
+grep '^TDC' _GMXMMPBSA_ligand_gb.mdout  > ../ligand_tdc.txt       # ligand  decomp mdout
 
-## First-run gotchas to watch
-- **Topology split.** `-merge all` gives one moleculetype; gmx_MMPBSA rebuilds sub-topologies from the
-  index groups, which is standard, but if it complains about the ligand not being a separate molecule,
-  that's the thing to sort (paste me the error).
-- **Frames.** `interval=20` → ~100 frames for a first pass; lower it for more sampling once it works.
-- **Runtime/mem.** Per-residue GB over ~100 frames on this size system is CPU-heavy — give it several
-  hours and enough MPI ranks.
+python ../../mmgbsa_decomp_to_csv.py \
+    --complex ../complex_tdc.txt --ligand ../ligand_tdc.txt \
+    --resnames ../holo_ie_mean.csv --out ../mmgbsa_perres.csv
+
+python ../../plot_ie_vs_ddg.py --ie ../mmgbsa_perres.csv --ddg ../../skempi_3hfm_ddg.csv \
+    --channel mmgbsa_dg --out ../../../manuscript/figures/ie_vs_ddg_3hfm_mmgbsa.png
+```
+The parser cross-checks that the antigen residues match between the two files, so a wrong mdout is
+caught. The test is the same: **does the desolvation-inclusive ΔG empty the false-positive zone** —
+demote Arg73 and Leu75/Arg21 while keeping K96/K97/Y20/D101 — and, at 100 frames, does Lys96 recover?
+
+## Gotchas (status)
+- **Topology split — resolved.** `-merge all` gives one moleculetype; the decomp writer chokes on the
+  duplicate H/L residue numbers, hence the direct `TDC` parse above rather than gmx_MMPBSA's CSV.
+- **PBC — resolved.** gmx_MMPBSA does not correct PBC; a split complex overflows sander (`****`). The
+  sbatch runs `gmx trjconv -pbc whole` first and feeds `md_whole.xtc`.
+- **Serial — required here.** MPI ranks ran independently under SLURM (mpi4py communicator issue), so
+  the sbatch is `ntasks=1`. Per-residue GB over 100 frames on this system is the reason for the 12 h
+  walltime; if it times out, raise `interval` (fewer frames) in `mmpbsa.in`.
+- **Frames.** `interval` is the sampling dial: `100`→20 frames (first pass, too noisy), `20`→100
+  frames (current), `10`→200 frames.
