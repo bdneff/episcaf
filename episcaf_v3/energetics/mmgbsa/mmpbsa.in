@@ -1,23 +1,17 @@
-Per-residue MM-GBSA decomposition of the 3HFM antibody-antigen interface (episcaf v3, Decision D2).
-Single-trajectory MM-GBSA from the existing 20 ns complex trajectory: Coulomb + LJ + GB polar
-desolvation + nonpolar. The point is the desolvation term -- it should demote the charged false
-positive (Arg73) that raw interaction energy over-called, while keeping the real hot spots
-(K96/K97/Y20/D101). Per-residue TOTAL contributions are then compared to SKEMPI alanine ddG with the
-same false-positive test (plot_ie_vs_ddg.py, --channel on the MM-GBSA column).
-
+Per-residue MM-GBSA decomposition of the 3HFM interface (episcaf v3, D2) -- see mmgbsa/README.md
 &general
 sys_name       = "3HFM",
 startframe     = 1,
 endframe       = 2000,
-interval       = 20,          ; 2000 frames (10 ps each) -> ~100 frames; lower for more sampling
+interval       = 20,
 temperature    = 300.0,
 /
 &gb
-igb            = 5,           ; OBC2 generalized Born (standard for MM-GBSA binding)
-saltcon        = 0.150,       ; matches the 0.15 M NaCl in the simulation
+igb            = 5,
+saltcon        = 0.150,
 /
 &decomp
-idecomp        = 1,           ; per-residue decomposition (TOTAL contribution per residue)
-dec_verbose    = 3,           ; print per-residue total (+ backbone/sidechain)
-print_res      = "within 5.0" ; decompose residues within 5 A of the partner (the interface)
+idecomp        = 1,
+dec_verbose    = 3,
+print_res      = "within 5.0",
 /
