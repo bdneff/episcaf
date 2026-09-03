@@ -71,19 +71,19 @@ def main():
     print(f"\nHIGH-IE measured residues: {n_high}  ->  true positives {len(tp)}, "
           f"FALSE POSITIVES {len(fp)}")
     if len(fp):
-        print("  !! FALSE POSITIVES (high IE, low ddG -- the thing to eliminate):")
+        print("  !! FALSE POSITIVES (high IE, low ΔΔG -- the thing to eliminate):")
         for _, x in fp.iterrows():
-            print(f"     {x.resname_x}{int(x.ag_res_idx)}  fav_ie={x.fav_ie:.1f}  ddG={x.ddg_kcal_mol:+.2f}")
+            print(f"     {x.resname_x}{int(x.ag_res_idx)}  fav_ie={x.fav_ie:.1f}  ΔΔG={x.ddg_kcal_mol:+.2f}")
     else:
         print("  OK -- no false positives at this cut (every high-IE measured residue is a hot spot).")
     print(f"  precision of high-IE calls = {len(tp)}/{n_high}" if n_high else "  (no high-IE residues)")
 
-    print("\ntop 10 antigen residues by favorable IE (ddG shown where measured):")
+    print("\ntop 10 antigen residues by favorable IE (ΔΔG shown where measured):")
     top = ie.sort_values("fav_ie", ascending=False).head(10).merge(ddg, left_on="ag_res_idx",
                                                                     right_on="resid", how="left")
     for _, x in top.iterrows():
         d = f"{x.ddg_kcal_mol:+.2f}" if pd.notna(x.get("ddg_kcal_mol")) else "  (no value)"
-        print(f"    {x.resname_x}{int(x.ag_res_idx):<4d} fav_ie={x.fav_ie:7.1f} kJ/mol   ddG={d}")
+        print(f"    {x.resname_x}{int(x.ag_res_idx):<4d} fav_ie={x.fav_ie:7.1f} kJ/mol   ΔΔG={d}")
 
     # ---- figure ----
     fig, (axA, axB) = plt.subplots(2, 1, figsize=(11, 9))
@@ -97,12 +97,12 @@ def main():
     axA.tick_params(axis="y", labelcolor=IE_BLUE)
     axA2 = axA.twinx()
     axA2.stem(m["ag_res_idx"], m["ddg_kcal_mol"], linefmt=DDG_RED, markerfmt="o", basefmt=" ")
-    axA2.set_ylabel("experimental ddG (kcal/mol)", color=DDG_RED)
+    axA2.set_ylabel("experimental $\\Delta\\Delta G$ (kcal/mol)", color=DDG_RED)
     axA2.tick_params(axis="y", labelcolor=DDG_RED)
     for _, x in m[m["ddg_kcal_mol"] > 1.5].iterrows():
         axA2.annotate(f"{x.resname_x}{int(x.ag_res_idx)}", (x.ag_res_idx, x.ddg_kcal_mol),
                       textcoords="offset points", xytext=(0, 4), ha="center", fontsize=9, color=DDG_RED)
-    axA.set_title("Per-residue: interaction energy vs experimental ddG")
+    axA.set_title("Per-residue: interaction energy vs experimental $\\Delta\\Delta G$")
 
     # Panel B: the false-positive test
     from matplotlib.patches import Rectangle
@@ -124,9 +124,9 @@ def main():
         axB.annotate(f"{x.resname_x}{int(x.ag_res_idx)}", (x.fav_ie, x.ddg_kcal_mol),
                      textcoords="offset points", xytext=(4, 3), fontsize=8)
     axB.set_xlabel(f"favorable interaction energy  ($-${args.channel}, kJ/mol)")
-    axB.set_ylabel("experimental ddG (kcal/mol)")
+    axB.set_ylabel("experimental $\\Delta\\Delta G$ (kcal/mol)")
     axB.set_title(f"False-positive test (shaded zone must be empty)   Spearman $\\rho$={rho:+.2f}")
-    axB.text(0.02, 0.95, "high IE + low ddG =\nwrongly locked in design", transform=axB.transAxes,
+    axB.text(0.02, 0.95, "high IE + low $\\Delta\\Delta G$ =\nwrongly locked in design", transform=axB.transAxes,
              fontsize=9, va="top", color=DDG_RED)
     if len(fp):
         axB.legend(loc="lower right")

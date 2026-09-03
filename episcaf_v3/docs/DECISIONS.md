@@ -45,8 +45,13 @@ deciding.
   positive), but produces a clear false positive at **ARG73 — fav_ie 186 kJ/mol (2nd-strongest of all
   129 residues) yet experimental ΔΔG −0.33** — plus weaker charged false positives (R21). This is the
   predicted failure: raw Coulomb over-calls charged residues because it ignores the desolvation they
-  pay. Spearman ρ=+0.46. Next: bring in desolvation (per-residue MM-GBSA, or an empirical correction
-  using the solvent channel `holo_ie.py` already computes) and re-test the false-positive zone.
+  pay. Spearman ρ=+0.46. **LJ-only probe:** dropping Coulomb (`--channel ab_lj`) demotes Arg73 and
+  lifts ρ to 0.73 (top-3 by LJ all real hot spots), but then over-calls well-packed non-critical
+  residues (Leu75) — which brackets the problem: electrostatics over-calls charged residues, packing
+  over-calls buried ones, so the desolvation-aware *net* ΔG is the fix. **MM-GBSA setup staged**
+  (`energetics/mmgbsa/`: config + recipe) — single-trajectory per-residue decomposition on the
+  existing 3HFM trajectory; the test is whether the GB desolvation term empties the false-positive
+  zone (demote Arg73 + Leu75/Arg21, keep K96/K97/Y20/D101).
 - **D3 — MD protocol.** *Status: **DECIDED** 2026-09-02 (starting template; see Decisions below).*
   Adopt `bcell_epitope`'s frozen GROMACS stack as the starting protocol (AMBER99SB-ILDN + TIP3P, cubic
   box 1.2 nm, 0.15 M NaCl, PME, V-rescale + C-rescale(equil)/Parrinello-Rahman(prod), 2 fs / LINCS
