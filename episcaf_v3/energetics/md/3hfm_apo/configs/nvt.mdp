@@ -1,0 +1,46 @@
+; nvt.mdp — 100 ps NVT equilibration, position-restrained (3HFM apo lysozyme, antigen only)
+define                  = -DPOSRES
+integrator              = md
+dt                      = 0.002
+nsteps                  = 50000        ; 100 ps
+continuation            = no           ; first equilibration step
+
+; Output
+nstxout-compressed      = 5000
+nstenergy               = 5000
+nstlog                  = 5000
+
+; Neighbour searching
+cutoff-scheme           = Verlet
+nstlist                 = 10
+pbc                     = xyz
+
+; Electrostatics / vdW
+coulombtype             = PME
+rcoulomb                = 1.0
+pme_order               = 4
+fourierspacing          = 0.16
+rvdw                    = 1.0
+vdw-modifier            = Potential-shift-Verlet
+DispCorr                = EnerPres
+
+; Temperature coupling
+tcoupl                  = V-rescale
+tc-grps                 = Protein  Non-Protein
+tau_t                   = 0.1      0.1
+ref_t                   = 300      300
+
+; No pressure coupling in NVT
+pcoupl                  = no
+
+; Constraints
+constraints             = h-bonds
+constraint_algorithm    = LINCS
+lincs_iter              = 1
+lincs_order             = 4
+
+; Velocity generation (random seed; bitwise repro not the goal — see docs/METHODS.md)
+gen_vel                 = yes
+gen_temp                = 300
+gen_seed                = -1
+ld_seed                 = -1

@@ -1,0 +1,49 @@
+; npt.mdp — 100 ps NPT equilibration, position-restrained (3HFM apo lysozyme, antigen only)
+; Barostat = C-rescale (modern equilibration choice; PR can ring far from equilibrium)
+define                  = -DPOSRES
+integrator              = md
+dt                      = 0.002
+nsteps                  = 50000        ; 100 ps
+continuation            = yes          ; continue from NVT
+
+; Output
+nstxout-compressed      = 5000
+nstenergy               = 5000
+nstlog                  = 5000
+
+; Neighbour searching
+cutoff-scheme           = Verlet
+nstlist                 = 10
+pbc                     = xyz
+
+; Electrostatics / vdW
+coulombtype             = PME
+rcoulomb                = 1.0
+pme_order               = 4
+fourierspacing          = 0.16
+rvdw                    = 1.0
+vdw-modifier            = Potential-shift-Verlet
+DispCorr                = EnerPres
+
+; Temperature coupling
+tcoupl                  = V-rescale
+tc-grps                 = Protein  Non-Protein
+tau_t                   = 0.1      0.1
+ref_t                   = 300      300
+
+; Pressure coupling (C-rescale for equilibration)
+pcoupl                  = C-rescale
+pcoupltype              = isotropic
+tau_p                   = 5.0
+ref_p                   = 1.0
+compressibility         = 4.5e-5
+refcoord_scaling        = com          ; required: position restraints + pressure coupling
+
+; Constraints
+constraints             = h-bonds
+constraint_algorithm    = LINCS
+lincs_iter              = 1
+lincs_order             = 4
+
+gen_vel                 = no
+ld_seed                 = -1

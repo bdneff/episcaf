@@ -1,0 +1,114 @@
+\section{Open questions: entropy and dynamics}\label{sec:entropy}
+\emph{(Open thread. No results yet --- this records the questions and the formalism to answer them,
+so the entropy avenue is set down rigorously before we spend the sampling on it.)}
+
+Our per-residue interaction energy, and the MM-GBSA that extends it, is an \emph{enthalpic} map of the
+epitope. The Category-2 residues --- those that matter for structure, orientation, or dynamics rather
+than direct contact energy --- are by construction invisible to it. The question is whether the
+fluctuations in an MD trajectory can supply a per-residue \emph{entropic} signal. This section sets
+down the relations that would let us, with their assumptions and their failure modes.
+
+\subsection{Energy fluctuations give heat capacity, not entropy}
+In the canonical ensemble ($\beta = 1/k_B T$, $Z=\sum_i e^{-\beta E_i}$), with $\langle E\rangle =
+-\partial\ln Z/\partial\beta$, the energy variance is
+\begin{equation}
+\langle \delta E^2\rangle = \langle E^2\rangle - \langle E\rangle^2
+   = \frac{\partial^2 \ln Z}{\partial\beta^2} = k_B T^2\, C_V .
+\end{equation}
+So a single trajectory at one temperature gives the heat capacity $C_V =
+\langle\delta E^2\rangle/(k_B T^2)$ exactly --- but the entropy needs a temperature integral,
+\begin{equation}
+S(T) = S(0) + \int_0^{T} \frac{C_V(T')}{T'}\,dT' .
+\end{equation}
+A single-temperature variance is one point on that curve, not $S$. Raw energy fluctuations therefore
+do not give entropy without a temperature series. This is the honest baseline against which the next
+two methods are the exceptions.
+
+\subsection{Interaction entropy: entropy from interaction-energy fluctuations}
+The single-trajectory exception is the interaction-entropy method. Writing the binding free energy
+from the protein--ligand interaction energy $E^{\mathrm{int}}$ and separating its mean (enthalpic)
+part from the entropic remainder gives
+\begin{equation}
+-T\Delta S = k_B T \,\ln\big\langle e^{\beta\,\delta E^{\mathrm{int}}}\big\rangle ,
+\qquad \delta E^{\mathrm{int}} = E^{\mathrm{int}} - \langle E^{\mathrm{int}}\rangle ,
+\end{equation}
+with the averages over the trajectory. The entropy is encoded in the width and shape of the
+interaction-energy distribution: a rigid interaction (a delta at $\langle E^{\mathrm{int}}\rangle$)
+gives $-T\Delta S = 0$; a broad distribution gives a large penalty. Two properties matter here: it is
+\emph{total} --- one number for the whole interface, not per-residue --- and the exponential average
+is dominated by the positive tail of $\delta E^{\mathrm{int}}$ (rare, high-energy configurations), so
+it converges slowly.
+
+\subsection{Configurational entropy: the per-residue route}
+A per-residue signal must come from \emph{positional} fluctuations. In the quasi-harmonic
+approximation, form the mass-weighted covariance matrix of the fluctuations, $q = M^{1/2}x$,
+\begin{equation}
+\sigma_{ij} = \big\langle (q_i - \langle q_i\rangle)(q_j - \langle q_j\rangle)\big\rangle ,
+\end{equation}
+and diagonalize it. Schlitter's upper bound on the configurational entropy is
+\begin{equation}
+S_{\mathrm{Schlitter}} = \tfrac{1}{2} k_B \,
+   \ln\det\!\Big[\, \mathbf{1} + \frac{k_B T\, e^2}{\hbar^2}\,\sigma \,\Big] ,
+\end{equation}
+($e$ Euler's number). The tighter quasi-harmonic form assigns each covariance eigenvalue $\lambda_k$
+an effective frequency $\omega_k = \sqrt{k_B T/\lambda_k}$ and sums harmonic-oscillator entropies,
+\begin{equation}
+S = k_B \sum_k \left[ \frac{\alpha_k}{e^{\alpha_k}-1} - \ln\!\big(1 - e^{-\alpha_k}\big)\right],
+\qquad \alpha_k = \frac{\hbar\omega_k}{k_B T} .
+\end{equation}
+A per-residue estimate restricts $\sigma$ to a residue's own atoms, which neglects cross-residue
+correlations and is therefore approximate and non-additive. The crude scalar proxy is the
+root-mean-square fluctuation, $\mathrm{RMSF}_i = \sqrt{\langle (x_i-\langle x_i\rangle)^2\rangle}$; in
+a harmonic well $S_i \sim k_B \ln \mathrm{RMSF}_i + \text{const}$, so RMSF tracks local entropy
+monotonically.
+
+\subsection{The binding-relevant quantity, and why its sign is ambiguous}
+What matters for binding is the \emph{change} on binding, which is why the apo simulation is required:
+\begin{equation}
+\Delta S_i = S_i^{\mathrm{bound}} - S_i^{\mathrm{apo}} .
+\end{equation}
+A residue that rigidifies on binding ($\mathrm{RMSF}_i^{\mathrm{bound}} <
+\mathrm{RMSF}_i^{\mathrm{apo}}$) loses conformational entropy, $-T\Delta S_i > 0$ (unfavorable). But
+its \emph{contribution to affinity} is not decided by $\Delta S_i$ alone:
+\begin{itemize}
+\item \textbf{Pre-organization:} a residue already ordered in the apo state pays little entropy on
+binding --- favorable, and the rigid-design intuition (less entropy is better) applies.
+\item \textbf{Functional dynamics / enthalpy--entropy compensation:} retained motion in the bound
+state can contribute favorable entropy, and rigidification is often repaid by enthalpy. Flexibility
+is then a feature, not a cost.
+\end{itemize}
+The rigorous statement is that the per-residue free energy $\Delta G_i = \Delta H_i - T\Delta S_i$
+ranks a residue, and neither term alone fixes the sign. RMSF gives the magnitude of motion, not the
+sign of its effect on binding.
+
+\subsection{Dynamic coupling}
+Single-residue entropy ignores correlated motion. The coupling between residues $i$ and $j$ can be
+quantified from the same trajectory by a generalized correlation from mutual information $I(i,j)$,
+\begin{equation}
+r_{\mathrm{MI}}(i,j) = \Big(1 - e^{-2 I(i,j)/d}\Big)^{1/2} ,
+\end{equation}
+($d$ the dimensionality), which captures nonlinear coupling the linear covariance misses. A
+dynamic-coupling network asks a different, partly sign-free question --- is this residue's motion
+coupled to the interface --- rather than whether its entropy is favorable.
+
+\subsection{Practical limits, and the design reframe}
+All of these need long sampling ($\sim\!10^2$ ns) and ideally replicates to converge, and per-residue
+entropy is non-additive because the motions are correlated. So this is a deliberate, single-system
+investigation, not yet a scalable per-design metric. For the \emph{design} decision it may not even be
+on the critical path: the Category-2 question --- must a residue's shape and orientation be preserved
+to present the epitope --- is closer to a geometric test, which the RFdiffusion backbone-RMSD filter
+probes directly, than to the full binding thermodynamics. We keep the entropy/dynamics work as
+mechanistic understanding, separate from the design gate, so the compute is a chosen investment rather
+than a dependency.
+
+\subsection{The concrete open questions}
+\begin{enumerate}
+\item Does per-residue $\Delta\mathrm{RMSF}$ (bound $-$ apo) flag the hot spots the energy map misses
+(the false negatives, e.g.\ Tyr20), and does it separate them from the energetic Category-1 residues?
+\item Does per-residue quasi-harmonic $-T\Delta S_i$ add anything beyond $\Delta\mathrm{RMSF}$, and is
+it converged at accessible trajectory lengths?
+\item Does the total interaction entropy $-T\Delta S$ improve the binding $\Delta G$ enough to matter,
+and does it converge on this system?
+\item Is there dynamic coupling ($r_{\mathrm{MI}}$) between epitope residues and the interface that a
+static picture misses --- the specific coupling the rigid paradigm would not predict?
+\end{enumerate}
