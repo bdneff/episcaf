@@ -35,7 +35,7 @@ echo "=== 3HFM MM-GBSA (serial, PBC-whole) start $(date) ==="
 gmx_MMPBSA -O \
     -i "$SLURM_SUBMIT_DIR/../../../mmgbsa/mmpbsa.in" \
     -cs md.tpr -ci gbsa_index.ndx -cg 17 18 \
-    -ct md_whole.xtc -cp topol.top \
+    -ct md_whole.xtc -cp topol.top -cr complex.pdb \
     -o FINAL_RESULTS_MMGBSA.dat -eo FINAL_RESULTS_MMGBSA.csv \
     -do FINAL_DECOMP_MMGBSA.dat -deo FINAL_DECOMP_MMGBSA.csv -nogui
 echo "=== 3HFM MM-GBSA done $(date) ==="
