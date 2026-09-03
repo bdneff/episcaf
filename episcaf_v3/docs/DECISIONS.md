@@ -40,6 +40,13 @@ deciding.
   method (cutoff, terms, whether the solvent channel enters) to empty the false-positive zone.
   If direct interaction energy alone leaves false positives, that is the evidence we need the fuller
   desolvation/water-mediated treatment (MM-GBSA / computational alanine scan).
+  **First result (2026-09-03, 20 ns single replica):** raw interaction energy (`ab_total`) FAILS the
+  precision criterion. It recovers the top hot spots (K97 fav_ie 467, K96 126, both real; Y20, D101
+  positive), but produces a clear false positive at **ARG73 — fav_ie 186 kJ/mol (2nd-strongest of all
+  129 residues) yet experimental ΔΔG −0.33** — plus weaker charged false positives (R21). This is the
+  predicted failure: raw Coulomb over-calls charged residues because it ignores the desolvation they
+  pay. Spearman ρ=+0.46. Next: bring in desolvation (per-residue MM-GBSA, or an empirical correction
+  using the solvent channel `holo_ie.py` already computes) and re-test the false-positive zone.
 - **D3 — MD protocol.** *Status: **DECIDED** 2026-09-02 (starting template; see Decisions below).*
   Adopt `bcell_epitope`'s frozen GROMACS stack as the starting protocol (AMBER99SB-ILDN + TIP3P, cubic
   box 1.2 nm, 0.15 M NaCl, PME, V-rescale + C-rescale(equil)/Parrinello-Rahman(prod), 2 fs / LINCS
