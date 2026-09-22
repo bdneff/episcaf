@@ -49,3 +49,14 @@ correlations are in 3hfm_pilot/plot_points.csv and plot_statistics.json. ML n=2;
 n=13. No classification threshold or two-point ML correlation is computed.
 Remote preparation/validation/submission and retrieval are recorded in
 `episcaf_v3/energetics/tamarind/README.md`; rerunning local analysis does not submit jobs.
+
+
+Full 13-mutation update (same figure filenames; pilot raw results retained):
+
+```bash
+python3 episcaf_v3/energetics/tamarind/report_pilot.py --run-dir episcaf_v3/energetics/tamarind/3hfm_all13 --table-name tamarind_all13_table.tex
+MPLCONFIGDIR=/tmp/episcaf-mpl /usr/bin/python3 episcaf_v3/energetics/tamarind/plot_comparison.py --run-dir episcaf_v3/energetics/tamarind/3hfm_all13
+```
+
+Reads the separate all13 frozen run and writes its comparison/summary/plot data into
+`3hfm_all13/`. Do not pool duplicate predictions from the initial pilot.
