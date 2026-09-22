@@ -56,6 +56,10 @@ tmp/
 !results/cylinder_fp/
 !results/cylinder_fp/**/*.pdb
 !results/cylinder_fp/**/*.txt
+# DP4 IM0276 ML findings report: its snapshot figures + built PDF (source scripts in scripts/)
+!results/dp4_ml/
+!results/dp4_ml/figs/*.png
+!results/dp4_ml/*.pdf
 # the living manuscript: its figures and the built PDF
 !manuscript/figures/
 !manuscript/figures/.gitkeep
