@@ -1,0 +1,22 @@
+{
+  "pdb": "6A77",
+  "pdb_sha256": "4081b536e95e585bd7498d80513818707773bdcdf15c40852c3f5a7aa385a855",
+  "experimental_source": "https://doi.org/10.3389/fimmu.2023.1190416",
+  "supplement_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC10235760/supplementaryFiles",
+  "table_member": "Table_1.xlsx",
+  "table_sha256": "b16f9be0e900da2a8a387c77b322c40514b23ea6d966feb06c57ba1d4e3ceb73",
+  "audit": {
+    "skempi_v2.csv": {
+      "pdb_hits": 0,
+      "sha256": "76f8e60d09eaa4f05fb265063886859a86895c0b2fb225e31fe82928a883972d"
+    },
+    "stabddg_filtered_skempi.csv": {
+      "pdb_hits": 0,
+      "sha256": "30fd5dc2896ec144b3f243221532e885d59dcd32466b355c1d443c0b197c1348"
+    }
+  },
+  "scope": "Exact PDB absent from published SKEMPI tables. Homolog-level and hosted checkpoint provenance unresolved.",
+  "selection": "All eight 6A77 entries, before predictions; other literature systems require additional mapping/background checks.",
+  "mutated_partner": "antibody",
+  "no_threshold_fit": true
+}

@@ -1,0 +1,8 @@
+{
+  "job_name": "episcaf-v3-3hfm-stabddg-all13-20260908",
+  "execution_seconds": 44.0,
+  "queue_seconds": 156.0,
+  "weighted_hours": 0.01,
+  "results_sha256": "bea48de09e4ca15447cb4d68ee9368d0bcccb74cf37a56e21a0e96dce20bc648",
+  "processed_antigen_atom_residues": 129
+}

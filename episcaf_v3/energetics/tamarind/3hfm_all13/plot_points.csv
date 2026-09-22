@@ -1,0 +1,53 @@
+method,resid,experimental_ddg_kcal_mol,plotted_signal,axis
+predicted_kcal_mol,15,-0.45,-0.035427857,Predicted binding ΔΔG (kcal/mol)
+predicted_kcal_mol,20,4.27,1.7128372,Predicted binding ΔΔG (kcal/mol)
+predicted_kcal_mol,21,0.84,1.4135239,Predicted binding ΔΔG (kcal/mol)
+predicted_kcal_mol,63,0.32,-0.017976379,Predicted binding ΔΔG (kcal/mol)
+predicted_kcal_mol,73,-0.33,0.48058015,Predicted binding ΔΔG (kcal/mol)
+predicted_kcal_mol,75,0.7,0.7294998,Predicted binding ΔΔG (kcal/mol)
+predicted_kcal_mol,89,0.0,0.2608841,Predicted binding ΔΔG (kcal/mol)
+predicted_kcal_mol,93,0.21,0.3211136,Predicted binding ΔΔG (kcal/mol)
+predicted_kcal_mol,96,6.49,1.7630295,Predicted binding ΔΔG (kcal/mol)
+predicted_kcal_mol,97,5.56,1.7676529,Predicted binding ΔΔG (kcal/mol)
+predicted_kcal_mol,98,0.0,-0.2680542,Predicted binding ΔΔG (kcal/mol)
+predicted_kcal_mol,100,0.27,-0.3184433,Predicted binding ΔΔG (kcal/mol)
+predicted_kcal_mol,101,1.23,0.43754426,Predicted binding ΔΔG (kcal/mol)
+ab_total,15,-0.45,9.3056,"Favorable interaction energy, −E (kJ/mol)"
+ab_total,20,4.27,38.0381,"Favorable interaction energy, −E (kJ/mol)"
+ab_total,21,0.84,59.0754,"Favorable interaction energy, −E (kJ/mol)"
+ab_total,63,0.32,11.4893,"Favorable interaction energy, −E (kJ/mol)"
+ab_total,73,-0.33,185.5734,"Favorable interaction energy, −E (kJ/mol)"
+ab_total,75,0.7,-9.1309,"Favorable interaction energy, −E (kJ/mol)"
+ab_total,89,0.0,4.3195,"Favorable interaction energy, −E (kJ/mol)"
+ab_total,93,0.21,9.1068,"Favorable interaction energy, −E (kJ/mol)"
+ab_total,96,6.49,126.3918,"Favorable interaction energy, −E (kJ/mol)"
+ab_total,97,5.56,466.7951,"Favorable interaction energy, −E (kJ/mol)"
+ab_total,98,0.0,7.848,"Favorable interaction energy, −E (kJ/mol)"
+ab_total,100,0.27,38.4391,"Favorable interaction energy, −E (kJ/mol)"
+ab_total,101,1.23,52.335,"Favorable interaction energy, −E (kJ/mol)"
+ab_lj,15,-0.45,16.9775,"Favorable LJ energy, −E (kJ/mol)"
+ab_lj,20,4.27,26.6309,"Favorable LJ energy, −E (kJ/mol)"
+ab_lj,21,0.84,20.3403,"Favorable LJ energy, −E (kJ/mol)"
+ab_lj,63,0.32,10.5906,"Favorable LJ energy, −E (kJ/mol)"
+ab_lj,73,-0.33,12.0634,"Favorable LJ energy, −E (kJ/mol)"
+ab_lj,75,0.7,24.3954,"Favorable LJ energy, −E (kJ/mol)"
+ab_lj,89,0.0,5.2623,"Favorable LJ energy, −E (kJ/mol)"
+ab_lj,93,0.21,20.1406,"Favorable LJ energy, −E (kJ/mol)"
+ab_lj,96,6.49,18.3104,"Favorable LJ energy, −E (kJ/mol)"
+ab_lj,97,5.56,27.7758,"Favorable LJ energy, −E (kJ/mol)"
+ab_lj,98,0.0,4.7996,"Favorable LJ energy, −E (kJ/mol)"
+ab_lj,100,0.27,18.1996,"Favorable LJ energy, −E (kJ/mol)"
+ab_lj,101,1.23,25.8167,"Favorable LJ energy, −E (kJ/mol)"
+mmgbsa_dg,15,-0.45,1.424,"Favorable decomposition, −ΔG (kcal/mol)"
+mmgbsa_dg,20,4.27,2.562,"Favorable decomposition, −ΔG (kcal/mol)"
+mmgbsa_dg,21,0.84,-0.228,"Favorable decomposition, −ΔG (kcal/mol)"
+mmgbsa_dg,63,0.32,0.908,"Favorable decomposition, −ΔG (kcal/mol)"
+mmgbsa_dg,73,-0.33,3.648,"Favorable decomposition, −ΔG (kcal/mol)"
+mmgbsa_dg,75,0.7,2.982,"Favorable decomposition, −ΔG (kcal/mol)"
+mmgbsa_dg,89,0.0,0.262,"Favorable decomposition, −ΔG (kcal/mol)"
+mmgbsa_dg,93,0.21,0.678,"Favorable decomposition, −ΔG (kcal/mol)"
+mmgbsa_dg,96,6.49,-2.13,"Favorable decomposition, −ΔG (kcal/mol)"
+mmgbsa_dg,97,5.56,11.436,"Favorable decomposition, −ΔG (kcal/mol)"
+mmgbsa_dg,98,0.0,0.544,"Favorable decomposition, −ΔG (kcal/mol)"
+mmgbsa_dg,100,0.27,2.025,"Favorable decomposition, −ΔG (kcal/mol)"
+mmgbsa_dg,101,1.23,2.299,"Favorable decomposition, −ΔG (kcal/mol)"

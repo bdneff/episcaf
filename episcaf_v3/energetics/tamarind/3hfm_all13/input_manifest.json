@@ -1,0 +1,20 @@
+{
+  "source": "md/3hfm/structures/3hfm.pdb",
+  "sha256": "92a6153cd4970117914d0767ee52838c860b1c9e6a05833b3f390bf502a2b3e1",
+  "mutations": [
+    "HY15A",
+    "YY20A",
+    "RY21A",
+    "WY63A",
+    "RY73A",
+    "LY75A",
+    "TY89A",
+    "NY93A",
+    "KY96A",
+    "KY97A",
+    "IY98A",
+    "SY100A",
+    "DY101A"
+  ],
+  "separate_single_mutants": true
+}

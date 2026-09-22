@@ -69,3 +69,37 @@ python3 episcaf_v3/energetics/tamarind/pilot.py status --run-dir /tmp/3hfm-repea
 
 Hosted model/software changes can alter predictions even with the same seed. The saved
 schema/request/outputs document this run; they do not freeze Tamarind's execution image.
+
+
+## Full measured antigen scan (2026-09-08)
+
+After the two-point API check, the user requested all measured antigen mutations.
+One new job contains all 13 as separate single mutants, using the same PDB, chain
+partners, mcSamples=20 and seed=42. Native identities were checked for every mutation.
+The initial pilot is preserved. Commands from repository root:
+
+```bash
+python3 episcaf_v3/energetics/tamarind/pilot.py prepare --all-measured --run-dir episcaf_v3/energetics/tamarind/3hfm_all13 --job-name episcaf-v3-3hfm-stabddg-all13-20260908
+python3 episcaf_v3/energetics/tamarind/pilot.py validate --run-dir episcaf_v3/energetics/tamarind/3hfm_all13
+python3 episcaf_v3/energetics/tamarind/pilot.py submit --run-dir episcaf_v3/energetics/tamarind/3hfm_all13
+python3 episcaf_v3/energetics/tamarind/pilot.py status --run-dir episcaf_v3/energetics/tamarind/3hfm_all13
+```
+
+Retrieval and local analysis:
+
+```bash
+python3 episcaf_v3/energetics/tamarind/pilot.py download --run-dir episcaf_v3/energetics/tamarind/3hfm_all13
+python3 episcaf_v3/energetics/tamarind/report_pilot.py --run-dir episcaf_v3/energetics/tamarind/3hfm_all13 --table-name tamarind_all13_table.tex
+MPLCONFIGDIR=/tmp/episcaf-mpl /usr/bin/python3 episcaf_v3/energetics/tamarind/plot_comparison.py --run-dir episcaf_v3/energetics/tamarind/3hfm_all13
+```
+
+The last command updates the comparison PNG/PDF with all 13 ML predictions. The pilot
+comparison.csv and result archive remain unchanged. Repeated mutations may change across
+batch compositions even with the same seed; do not silently combine the two runs.
+
+
+Full-run outcome: Complete (created 20:16:21, started 20:18:57, completed 20:19:41,
+2026-09-08 API timestamps). Execution 44 s; queue 156 s; 0.01 weighted hours.
+StaB-ddG Spearman 0.74553, Pearson 0.84542, MAE 1.17412, RMSE 1.87421 kcal/mol.
+See comparison.csv for unrounded predictions and plot_statistics.json for metrics.
+These are same-system descriptive results; SKEMPI training overlap is unresolved.

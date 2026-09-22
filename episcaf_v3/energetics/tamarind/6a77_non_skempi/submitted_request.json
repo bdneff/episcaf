@@ -1,0 +1,26 @@
+{
+  "jobName": "episcaf-v3-stabddg-6a77-nonskempi-20260908",
+  "type": "stabddg",
+  "settings": {
+    "pdbFile": "bneff@tgen.org/episcaf-v3-stabddg-6a77-nonskempi-20260908-pdbFile.pdb",
+    "binder1Chains": [
+      "H",
+      "L"
+    ],
+    "binder2Chains": [
+      "A"
+    ],
+    "mutations": [
+      "EH97A",
+      "LL92A",
+      "PH102A",
+      "PH103A",
+      "SH55A",
+      "YH104A",
+      "YH57A",
+      "YL30A"
+    ],
+    "mcSamples": 20,
+    "seed": 42
+  }
+}

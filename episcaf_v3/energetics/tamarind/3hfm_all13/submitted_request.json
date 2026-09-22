@@ -1,0 +1,31 @@
+{
+  "jobName": "episcaf-v3-3hfm-stabddg-all13-20260908",
+  "type": "stabddg",
+  "settings": {
+    "pdbFile": "bneff@tgen.org/episcaf-v3-3hfm-stabddg-all13-20260908-pdbFile.pdb",
+    "binder1Chains": [
+      "H",
+      "L"
+    ],
+    "binder2Chains": [
+      "Y"
+    ],
+    "mutations": [
+      "HY15A",
+      "YY20A",
+      "RY21A",
+      "WY63A",
+      "RY73A",
+      "LY75A",
+      "TY89A",
+      "NY93A",
+      "KY96A",
+      "KY97A",
+      "IY98A",
+      "SY100A",
+      "DY101A"
+    ],
+    "mcSamples": 20,
+    "seed": 42
+  }
+}

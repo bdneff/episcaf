@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "stabddg settings",
+  "type": "object",
+  "properties": {
+    "pdbFile": {
+      "type": "string",
+      "x-tamarind-type": "pdb",
+      "title": "PDB File",
+      "description": "Wild-type complex PDB file Accepts a file with extension: pdb.",
+      "examples": [
+        "1AO7.pdb"
+      ],
+      "minLength": 1
+    },
+    "binder1Chains": {
+      "title": "Binder 1 Chains",
+      "description": "Chain IDs making up the first binder of the interface",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "x-tamarind-type": "chains",
+        "examples": [
+          [
+            "A",
+            "B",
+            "C"
+          ]
+        ]
+      }
+    },
+    "binder2Chains": {
+      "title": "Binder 2 Chains",
+      "description": "Chain IDs making up the second binder of the interface",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "x-tamarind-type": "chains",
+        "examples": [
+          [
+            "D",
+            "E"
+          ]
+        ]
+      }
+    },
+    "mutations": {
+      "title": "Mutations",
+      "description": "Mutations to evaluate, in the format wildtype+chain+position+mutant (e.g., EA63Q = E to Q at position 63 of chain A). Use the residue numbering from your submitted PDB - StaB-ddG requires each chain to start at residue 1, so the PDB and mutation positions are automatically renumbered before inference (the renumbered mutation string is reported alongside the result). One entry per line; for multi-point mutants on a single entry, separate individual mutations with commas (e.g., \"EA63Q,QD30V,KA66A\").",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "x-tamarind-type": "string",
+        "examples": [
+          [
+            "EA63Q,QD30V,KA66A"
+          ]
+        ]
+      }
+    },
+    "mcSamples": {
+      "type": [
+        "number",
+        "string"
+      ],
+      "title": "MC Samples",
+      "description": "Number of Monte Carlo samples to average over for variance reduction (default 20).",
+      "default": 20,
+      "pattern": "^\\s*[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?\\s*$"
+    },
+    "seed": {
+      "type": [
+        "number",
+        "string"
+      ],
+      "title": "Random Seed",
+      "description": "Seed for reproducibility. Leave blank to use a random seed.",
+      "pattern": "^\\s*[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?\\s*$"
+    }
+  },
+  "additionalProperties": true,
+  "required": [
+    "binder1Chains",
+    "binder2Chains",
+    "mutations",
+    "pdbFile"
+  ],
+  "pipeline": {
+    "wireable": true,
+    "toolUri": "stabddg",
+    "taskType": "score",
+    "ports": {
+      "pdbFile": {
+        "flow": "molecule",
+        "label": "PDB File",
+        "rep": "pdb",
+        "accepts": [
+          "pdb"
+        ],
+        "required": true
+      }
+    },
+    "outputColumns": {
+      "Name": "string",
+      "Prediction": "number",
+      "Mutation": "string",
+      "RenumberedMutation": "string"
+    }
+  }
+}

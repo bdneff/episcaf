@@ -136,6 +136,26 @@ deciding.
 ## Decisions (most recent first)
 
 
+### D2 — Full measured 3HFM antigen scan on StaB-ddG (2026-09-08)
+- *Decision:* after the two-point API check, evaluate all 13 stored antigen alanine
+  mutants in one job, as requested. Preserve the same input PDB, H/L versus Y partners,
+  20 MC samples, and seed 42. Do not pool repeated predictions from the pilot.
+- *Why:* the inexpensive pilot established input mapping and retrieval; all measured
+  residues are needed for comparison with the simulation signals.
+- *Check:* `pilot.py prepare --all-measured` checked all 13 identities against the PDB;
+  validation returned valid=true and submission was acknowledged. Exact commands and
+  artifacts are in `energetics/tamarind/README.md` and `3hfm_all13/`.
+- *Result:* completed in 44 s execution after 156 s queue wait; 0.01 weighted hours.
+  StaB-ddG rho=0.74553, Pearson r=0.84542, MAE=1.17412 and RMSE=1.87421 kcal/mol.
+  Strong experimental hotspots are underestimated. All methods use the same 13 residues
+  in the updated comparison (LJ rho=0.73453, raw IE=0.45942, MMGBSA=0.04677).
+  Reproduce with `report_pilot.py` and `plot_comparison.py --run-dir` for this run,
+  using the exact commands in the Tamarind README and figure ledger.
+- *Status:* descriptive comparison complete. No estimator or thresholds adopted.
+  Training-overlap audit remains required; the small correlation difference from LJ
+  is not evidence of established superiority.
+
+
 ### D2 — Tamarind StaB-ddG two-mutation pilot (2026-09-08)
 - *Decision:* run one exploratory StaB-ddG job on the existing crystallographic 3HFM
   complex, antibody chains H/L versus antigen Y, with separate KY96A and RY73A entries.

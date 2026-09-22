@@ -42,6 +42,7 @@ def main():
     parser.add_argument('action', choices=['prepare', 'verify', 'validate', 'submit', 'status', 'download'])
     parser.add_argument('--run-dir', type=Path, default=RUN)
     parser.add_argument('--job-name', default='episcaf-v3-3hfm-stabddg-K96A-R73A-20260908')
+    parser.add_argument('--all-measured', action='store_true', help='Prepare all stored antigen alanine mutants.')
     args = parser.parse_args()
     RUN = args.run_dir.resolve()
     RUN.mkdir(exist_ok=True, parents=True)
@@ -54,16 +55,29 @@ def main():
         assert {k[0] for k in residues} == {'H', 'L', 'Y'}
         assert residues['Y', 96, ' '] == 'LYS'
         assert residues['Y', 73, ' '] == 'ARG'
+        mutations = ['KY96A', 'RY73A']
+        if args.all_measured:
+            codes = dict(zip(['ALA','ARG','ASN','ASP','CYS','GLN','GLU','GLY','HIS','ILE',
+                              'LEU','LYS','MET','PHE','PRO','SER','THR','TRP','TYR','VAL'],
+                             'ARNDCQEGHILKMFPSTWYV'))
+            with (HERE.parent / 'skempi_3hfm_ddg.csv').open() as f:
+                measured = list(csv.DictReader(line for line in f if not line.startswith('#')))
+            mutations = []
+            for row in measured:
+                position = int(row['resid'])
+                assert residues['Y', position, ' '] == row['resname']
+                mutations.append(f"{codes[row['resname']]}Y{position}A")
+            assert len(set(mutations)) == len(measured) == 13
         save('request.json', {
             'jobName': args.job_name,
             'type': 'stabddg',
             'settings': {'pdbFile': pdb, 'binder1Chains': ['H', 'L'],
-                         'binder2Chains': ['Y'], 'mutations': ['KY96A', 'RY73A'],
+                         'binder2Chains': ['Y'], 'mutations': mutations,
                          'mcSamples': 20, 'seed': 42}})
         save('input_manifest.json', {'source': str(PDB.relative_to(HERE.parent)),
              'sha256': hashlib.sha256(PDB.read_bytes()).hexdigest(),
-             'mutations': ['KY96A', 'RY73A'], 'separate_single_mutants': True})
-        print('Prepared two verified single mutations; seed 42, MC samples 20.')
+             'mutations': mutations, 'separate_single_mutants': True})
+        print(f'Prepared {len(mutations)} verified single mutations; seed 42, MC samples 20.')
         return
     request = json.loads((RUN / 'request.json').read_text())
     if args.action == 'verify':
@@ -75,7 +89,8 @@ def main():
             rows = {int(row['resid']): row for row in csv.DictReader(
                 line for line in handle if not line.startswith('#'))}
         print('Frozen inline PDB and source SHA256 match:', manifest['sha256'])
-        for resid in (96, 73):
+        for mutation in manifest['mutations']:
+            resid = int(mutation[2:-1])
             row = rows[resid]
             print(f"Y:{row['resname']}{resid}A experimental ddG = {row['ddg_kcal_mol']} kcal/mol; n={row['n_meas']}")
         print('Settings:', {k: v for k, v in request['settings'].items() if k != 'pdbFile'})

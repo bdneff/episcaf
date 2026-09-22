@@ -1,5 +1,6 @@
 """Rebuild the pilot comparison and LaTeX table from saved Tamarind results."""
 import csv
+import argparse
 from datetime import datetime
 import hashlib
 import io
@@ -12,6 +13,12 @@ RUN = HERE / '3hfm_pilot'
 
 
 def main():
+    global RUN
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--run-dir', type=Path, default=RUN)
+    parser.add_argument('--table-name', default='tamarind_pilot_table.tex')
+    args = parser.parse_args()
+    RUN = args.run_dir.resolve()
     request = json.loads((RUN / 'request.json').read_text())
     status = json.loads((RUN / 'status.json').read_text())
     manifest = json.loads((RUN / 'input_manifest.json').read_text())
@@ -68,7 +75,7 @@ def main():
         table.append(f"{label} & {row['experimental_kcal_mol']:+.2f} & "
                      f"{row['predicted_kcal_mol']:+.2f} & {row['signed_error_kcal_mol']:+.2f} " + r'\\')
     table += [r'\bottomrule', r'\end{tabular}']
-    target = HERE.parent.parent / 'manuscript/figures/tamarind_pilot_table.tex'
+    target = HERE.parent.parent / 'manuscript/figures' / args.table_name
     target.write_text('\n'.join(table) + '\n')
     print(json.dumps({'comparison': comparison, 'run': summary}, indent=2))
 

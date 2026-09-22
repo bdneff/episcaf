@@ -1,0 +1,17 @@
+{
+  "skempi_v2.csv": {
+    "url": "https://life.bsc.es/pid/skempi2/database/download/skempi_v2.csv",
+    "sha256": "76f8e60d09eaa4f05fb265063886859a86895c0b2fb225e31fe82928a883972d",
+    "retrieved": "2026-09-08"
+  },
+  "stabddg_filtered_skempi.csv": {
+    "url": "https://raw.githubusercontent.com/LDeng0205/StaB-ddG/main/data/SKEMPI/filtered_skempi.csv",
+    "sha256": "30fd5dc2896ec144b3f243221532e885d59dcd32466b355c1d443c0b197c1348",
+    "retrieved": "2026-09-08"
+  },
+  "6a77.pdb": {
+    "url": "https://files.rcsb.org/download/6A77.pdb",
+    "sha256": "4081b536e95e585bd7498d80513818707773bdcdf15c40852c3f5a7aa385a855",
+    "retrieved": "2026-09-08"
+  }
+}

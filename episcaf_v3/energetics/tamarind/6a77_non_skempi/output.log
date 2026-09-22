@@ -1,0 +1,81 @@
+Running job episcaf-v3-stabddg-6a77-nonskempi-20260908
+
+[stabddg] === StaB-ddG run start ===
+
+[stabddg] mcSamples=20  seed=42
+
+[stabddg] Cleaning working dirs (out/, pdbs/)
+
+[stabddg] Copying original input.pdb to out/ for viewing
+
+[stabddg] Activating conda env: stabddg
+
+[stabddg] Renumbering PDB to 1-indexed per chain + remapping mutation positions
+[stabddg_renumber] input_pdb=/home/ubuntu/input.pdb
+[stabddg_renumber] output_pdb=/home/ubuntu/pdbs/input.pdb
+[stabddg_renumber] mutations_csv=/home/ubuntu/mutations.csv
+[stabddg_renumber] chain A: 112 icode-free residues (first 5 map: [('7', 1), ('8', 2), ('9', 3), ('10', 4), ('11', 5)])
+[stabddg_renumber] chain L: 288 icode-free residues (first 5 map: [('1', 1), ('2', 2), ('3', 3), ('4', 4), ('5', 5)])
+[stabddg_renumber] chain H: 278 icode-free residues (first 5 map: [('-1', 1), ('0', 2), ('1', 3), ('2', 4), ('3', 5)])
+[stabddg_renumber] wrote renumbered pdb -> /home/ubuntu/pdbs/input.pdb
+[stabddg_renumber] rewrote mutations csv -> /home/ubuntu/mutations.csv
+
+[stabddg] Renumbered PDB:
+total 372
+-rw-r--r--. 1 root root 379890 Sep  8 20:38 input.pdb
+
+[stabddg] Remapped mutations CSV:
+#Pdb,mutation
+input_HL_A,EH99A
+input_HL_A,LL92A
+input_HL_A,PH104A
+input_HL_A,PH105A
+input_HL_A,SH57A
+input_HL_A,YH106A
+input_HL_A,YH59A
+input_HL_A,YL30A
+
+[stabddg] Running run_stabddg.py (mc_samples=20, seed=42)
+Did not find a cached structure dictionary, processing structures now.
+
+Reading in PDBs:   0%|          | 0/3 [00:00<?, ?it/s]
+Reading in PDBs:  33%|███▎      | 1/3 [00:00<00:01,  1.24it/s]
+Reading in PDBs:  67%|██████▋   | 2/3 [00:01<00:00,  1.46it/s]
+Reading in PDBs: 100%|██████████| 3/3 [00:01<00:00,  2.31it/s]
+Reading in PDBs: 100%|██████████| 3/3 [00:01<00:00,  1.95it/s]
+Finished loading dataset with 1 complexes and 8 mutants.
+Successfully loaded model at model_ckpts/stabddg.pt
+
+  0%|          | 0/1 [00:00<?, ?it/s]
+
+  0%|          | 0/1 [00:00<?, ?it/s][A
+100%|██████████| 1/1 [00:12<00:00, 12.67s/it][A100%|██████████| 1/1 [00:12<00:00, 12.67s/it]
+100%|██████████| 1/1 [00:12<00:00, 12.67s/it]100%|██████████| 1/1 [00:12<00:00, 12.67s/it]
+Saved predictions to /home/ubuntu/out/output.csv
+
+[stabddg] === StaB-ddG run done ===
+
+[stabddg] Final out/ contents:
+/home/ubuntu/out/:
+total 380
+-rw-r--r--. 1 root root    224 Sep  8 20:38 input.csv
+-rw-r--r--. 1 root root 379890 Sep  8 20:37 input.pdb
+-rw-r--r--. 1 root root    293 Sep  8 20:38 output.csv
+drwxr-xr-x. 2 root root     62 Sep  8 20:38 pdbs
+
+/home/ubuntu/out/pdbs:
+total 704
+-rw-r--r--. 1 root root 379890 Sep  8 20:38 input.pdb
+-rw-r--r--. 1 root root  57356 Sep  8 20:38 input_A.pdb
+-rw-r--r--. 1 root root 275328 Sep  8 20:38 input_HL.pdb
+
+[stabddg] Preview of output.csv:
+,Name,Mutation,pred_1
+0,input_HL_A,['EH99A'],0.84014666
+1,input_HL_A,['LL92A'],2.765538
+2,input_HL_A,['PH104A'],1.0907692
+3,input_HL_A,['PH105A'],0.5514618
+4,input_HL_A,['SH57A'],-0.10007553
+5,input_HL_A,['YH106A'],-0.53271943
+6,input_HL_A,['YH59A'],1.4329201
+7,input_HL_A,['YL30A'],1.5895599

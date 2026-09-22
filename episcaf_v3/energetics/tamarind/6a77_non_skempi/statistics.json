@@ -1,0 +1,9 @@
+{
+  "n": 8,
+  "spearman": -0.3333333333333334,
+  "pearson": -0.37782673915156206,
+  "mae_kcal_mol": 1.7753988275,
+  "rmse_kcal_mol": 2.0308595550085857,
+  "results_sha256": "3c87a3593cae28fc7b16e88f4e5cfc3760504e69b47d818400f74c4aa4e8cb50",
+  "mapping_verified": true
+}

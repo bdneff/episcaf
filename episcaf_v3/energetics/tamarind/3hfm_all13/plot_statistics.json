@@ -1,0 +1,25 @@
+[
+  {
+    "method": "predicted_kcal_mol",
+    "n": 13,
+    "spearman": 0.7455302788783884,
+    "pearson": 0.8454203096062456,
+    "mae_kcal_mol": 1.174121824,
+    "rmse_kcal_mol": 1.8742111738349383
+  },
+  {
+    "method": "ab_total",
+    "n": 13,
+    "spearman": 0.45942271798040907
+  },
+  {
+    "method": "ab_lj",
+    "n": 13,
+    "spearman": 0.7345261419207739
+  },
+  {
+    "method": "mmgbsa_dg",
+    "n": 13,
+    "spearman": 0.046767582069862
+  }
+]
