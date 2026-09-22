@@ -96,3 +96,10 @@ results/dp4_*_ranked.csv
 # dp4_superset.csv.gz (~34MB) IS committed under data/libraries/ as the versioned raw-data artifact
 # (John: the main raw piece of data). (dp4_superset_metrics.csv = its superseded metrics-only ancestor.)
 dp4_superset*.csv
+
+# Small frozen Tamarind pilot results required for the manuscript
+!episcaf_v3/energetics/tamarind/3hfm_pilot/*.csv
+!episcaf_v3/energetics/tamarind/3hfm_all13/*.csv
+
+# DP4 IM0276 assay data + John's analysis (large; assay data stays out of git)
+data/dp4_binding/

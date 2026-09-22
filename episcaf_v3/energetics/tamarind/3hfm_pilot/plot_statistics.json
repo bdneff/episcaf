@@ -1,0 +1,22 @@
+[
+  {
+    "method": "predicted_kcal_mol",
+    "n": 2,
+    "spearman": null
+  },
+  {
+    "method": "ab_total",
+    "n": 13,
+    "spearman": 0.45942271798040907
+  },
+  {
+    "method": "ab_lj",
+    "n": 13,
+    "spearman": 0.7345261419207739
+  },
+  {
+    "method": "mmgbsa_dg",
+    "n": 13,
+    "spearman": 0.046767582069862
+  }
+]

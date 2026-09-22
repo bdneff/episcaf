@@ -2,6 +2,22 @@
 \emph{(Open thread. No results yet --- this records the questions and the formalism to answer them,
 so the entropy avenue is set down rigorously before we spend the sampling on it.)}
 
+\paragraph{Starting approximation (2026-09-08).}
+For the first three-category design test we assume a static, rigid local geometry: energetic
+residues retain their identity and intended placement, while surrounding residues may be replaced
+to support that geometry. This deliberately postpones the question of how substitutions change
+the conformational ensemble. Even within this approximation, replacement side chains must fit
+the intended local environment; preserving a backbone alone does not establish that the relevant
+surface has been preserved. The approximation is a starting hypothesis, with dynamics and entropy
+retained as later extensions rather than prerequisites for the first design test.
+The residue-importance estimator also remains open: accessible MM/PBSA or MM/GBSA approaches will
+be compared with fast learned binding-$\Delta\Delta G$ predictors available through Tamarind.
+Per-residue energy decomposition and mutation-induced $\Delta\Delta G$ are different quantities,
+so that comparison must specify what each method predicts and assess it against the same
+experimental mutations. The frozen two-mutation StaB-ddG pilot, its experimental rationale, exact settings, and
+reproduction record are described in Section~\ref{sec:tamarind_pilot}. The first two predictions are reported there;
+no new category thresholds have been adopted (\texttt{docs/DECISIONS.md}, 2026-09-08).
+
 Our per-residue interaction energy, and the MM-GBSA that extends it, is an \emph{enthalpic} map of the
 epitope. The Category-2 residues --- those that matter for structure, orientation, or dynamics rather
 than direct contact energy --- are by construction invisible to it. The question is whether the

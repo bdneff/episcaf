@@ -64,6 +64,11 @@ current v3 work (D2).
     `energetics/mmgbsa_decomp_to_csv.py` → `energetics/plot_ie_vs_ddg.py --channel mmgbsa_dg`
     → update the manuscript table/figure and `DECISIONS.md` D2 → commit. The exact recipe is in
     `episcaf_v3/energetics/mmgbsa/README.md` §4 and `manuscript/figures/FIGURES.md`.
+- **v3 / Tamarind pilot (2026-09-08):** completed StaB-ddG on separate K96A and R73A
+  mutations: +1.763 and +0.481 kcal/mol versus experimental +6.49 and -0.33. Frozen
+  requests/results and reproducible comparison are in `episcaf_v3/energetics/tamarind/`.
+  See its README and manuscript learned-ddG subsection. Two-point diagnostic only;
+  checkpoint hash and training overlap unresolved. No estimator or threshold adopted.
 - **v3 still to build:** D4 (Cat 1/2/3 classification thresholds), D5 (the three-tier contig
   strategy — decided fresh for v3, *not* inherited), D6/D7 (RFD3 backbone pre-filter +
   escalating-scale generation; have empirical backing from John's throughput pilots). See the
@@ -79,6 +84,17 @@ current v3 work (D2).
 - **Do not drive the cluster.** Brandon runs all GROMACS / RFdiffusion / AlphaFold3 / MM-GBSA
   jobs on Gemini. You **stage** inputs + frozen configs, commit, push, and hand off the exact
   commands; you never ssh in or submit SLURM yourself.
+
+## Collaborating with Brandon (clarified 2026-09-08)
+
+Brandon Neff has a PhD in chemistry specializing in molecular dynamics; immunology is the newer
+domain for him. Treat MD, statistical mechanics, sampling, and energetics as his technical
+foundation, and explain immunology-specific assumptions and assay interpretation explicitly.
+He sees energetic approaches as a contribution he brings to the TGen project. Relevant work:
+[Fast Sampling of Protein Conformational Dynamics](https://arxiv.org/abs/2411.08154) and
+[Protein-Water Energy Transfer via Anharmonic Low-Frequency Vibrations](https://arxiv.org/abs/2601.02699).
+The v3 static/rigid starting approximation is deliberate scope control, not an assumption that
+proteins actually lack dynamics. See the 2026-09-08 entry in `episcaf_v3/docs/DECISIONS.md`.
 
 ## The git/compute loop (see docs/WORKFLOW.md)
 Local (here): edit, stage configs/scripts, commit, `git push`. Cluster (Gemini, Brandon runs):

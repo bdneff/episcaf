@@ -28,3 +28,24 @@ Inputs (all tracked): `md/3hfm/holo_ie_mean.csv` (per-residue interaction-energy
 The upstream `mmgbsa_perres.csv` is itself regenerable — see `energetics/mmgbsa/README.md` and
 `docs/DECISIONS.md` (D2): run `mmgbsa/run_mmgbsa.sbatch` on the 3HFM trajectory, `grep '^TDC'` the
 complex/ligand sander mdouts into `md/3hfm/{complex,ligand}_tdc.txt`, then `mmgbsa_decomp_to_csv.py`.
+
+
+## Tamarind pilot and comparison (2026-09-08)
+
+Run from repository root:
+
+```bash
+python3 episcaf_v3/energetics/tamarind/pilot.py verify
+python3 episcaf_v3/energetics/tamarind/report_pilot.py
+MPLCONFIGDIR=/tmp/episcaf-mpl /usr/bin/python3 episcaf_v3/energetics/tamarind/plot_comparison.py
+```
+
+`report_pilot.py` reads `energetics/tamarind/3hfm_pilot/results.zip`, frozen request,
+manifest and completed status, plus `energetics/skempi_3hfm_ddg.csv`. It generates
+`tamarind_pilot_table.tex`, comparison.csv and summary.json. `plot_comparison.py` reads
+that comparison and the existing holo_ie_mean.csv/mmgbsa_perres.csv plus the experimental
+CSV to generate `tamarind_vs_simulation_3hfm.png` and `.pdf`. Exact plotted values and
+correlations are in 3hfm_pilot/plot_points.csv and plot_statistics.json. ML n=2; simulations
+n=13. No classification threshold or two-point ML correlation is computed.
+Remote preparation/validation/submission and retrieval are recorded in
+`episcaf_v3/energetics/tamarind/README.md`; rerunning local analysis does not submit jobs.

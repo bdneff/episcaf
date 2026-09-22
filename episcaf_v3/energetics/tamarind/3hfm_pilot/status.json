@@ -1,0 +1,18 @@
+{
+  "JobName": "episcaf-v3-3hfm-stabddg-K96A-R73A-20260908",
+  "JobStatus": "Complete",
+  "Created": "2026-09-08 20:03:26",
+  "Type": "stabddg",
+  "Settings": "{\"pdbFile\":\"bneff@tgen.org/episcaf-v3-3hfm-stabddg-K96A-R73A-20260908-pdbFile.pdb\",\"binder1Chains\":[\"H\",\"L\"],\"binder2Chains\":[\"Y\"],\"mutations\":[\"KY96A\",\"RY73A\"],\"mcSamples\":20,\"seed\":42}",
+  "Score": "{\"Prediction\": 1.7630341, \"Mutation\": \"KY96A\", \"RenumberedMutation\": \"KY96A\"}",
+  "Started": "2026-09-08 20:06:29",
+  "Completed": "2026-09-08 20:06:59",
+  "TamarindSchemaVersion": "1.0",
+  "WeightedHours": 0.01,
+  "statuses": {
+    "Complete": 1,
+    "In Queue": 0,
+    "Running": 0,
+    "Stopped": 0
+  }
+}

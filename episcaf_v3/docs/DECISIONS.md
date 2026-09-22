@@ -135,6 +135,51 @@ deciding.
 
 ## Decisions (most recent first)
 
+
+### D2 — Tamarind StaB-ddG two-mutation pilot (2026-09-08)
+- *Decision:* run one exploratory StaB-ddG job on the existing crystallographic 3HFM
+  complex, antibody chains H/L versus antigen Y, with separate KY96A and RY73A entries.
+  These probe the experimental hotspot missed by MM-GBSA and the raw-IE false positive.
+  Use the service default 20 MC samples and explicit seed 42. No estimator adopted.
+- *Check:* `python3 episcaf_v3/energetics/tamarind/pilot.py prepare` verified native
+  residue identities and froze the PDB content/checksum. `pilot.py validate` returned
+  valid=true; `pilot.py submit` confirmed submission. Full commands and frozen API
+  schema/requests are in `energetics/tamarind/README.md` and `3hfm_pilot/`.
+- *Result:* completed job `episcaf-v3-3hfm-stabddg-K96A-R73A-20260908` returned
+  K96A +1.7630341 and R73A +0.48058623 kcal/mol (experiment +6.49 and -0.33).
+  Execution 30 s, queue 183 s, reported usage 0.01 weighted hours. Reproduce using
+  `python3 episcaf_v3/energetics/tamarind/report_pilot.py`; plot using
+  `episcaf_v3/energetics/tamarind/plot_comparison.py` (ledger records exact command).
+  Input checksum, returned settings and mutation mappings verified against the archive.
+- *Status:* two-point diagnostic complete, estimator choice still open. Pair ordering is
+  correct but K96A is underestimated and R73A has the wrong sign. The log identifies
+  model_ckpts/stabddg.pt; checkpoint hash and training overlap remain unverified.
+  Two selected mutations cannot validate generalization. No threshold adopted.
+
+### D2/D4/D5 — Fixed-geometry starting approximation and estimator comparison (2026-09-08)
+- *Question:* must the first three-category design test solve conformational dynamics, and must
+  its residue-importance estimator be simulation-based?
+- *Options:* require a dynamics/entropy-aware design model first; start with fixed local geometry.
+  Compare simulation-based energy methods with learned mutation-effect predictors.
+- *Decision:* start with the static, rigid-geometry approximation: preserve the identity and
+  intended placement of energetic residues, and redesign surrounding residues to support that
+  local geometry. Treat preservation of the relevant geometry after substitution as a working
+  assumption to test, not an established property. Dynamics and entropy remain an open extension.
+  Benchmark accessible MM/PBSA or MM/GBSA approaches against a fast learned binding-ΔΔG predictor;
+  there is no commitment to a simulation-based estimator if a cheaper method works better.
+- *Why:* this isolates the simplest design hypothesis before adding ensemble effects. The useful
+  estimator is the one that supports reliable design decisions against experimental evidence.
+- *Check / provenance:* scope agreed with Brandon on 2026-09-08; no new experimental result.
+  Existing pilot checks remain `energetics/plot_ie_vs_ddg.py` against
+  `energetics/skempi_3hfm_ddg.csv` (exact commands in `manuscript/figures/FIGURES.md`).
+  Tamarind access is available through the lab license/API key. Its public catalog lists
+  [Binding ddG/RDE](https://www.tamarind.bio/tools/binding-ddg) and
+  [StaB-ddG](https://www.tamarind.bio/tools/stab-ddg), inspected 2026-09-08; no API jobs were run.
+  The benchmark implementation, deployed model/training provenance, cost, and treatment of
+  per-residue energy contributions versus mutational ΔΔG remain to be specified and verified.
+- *Status:* starting approximation decided; estimator choice, category thresholds, substitution
+  rules, and benchmark protocol remain open. No new classification or contig standard adopted.
+
 ### D1 — Pilot complex + validation anchor (2026-09-02)
 - *Question:* which complex do we validate the per-residue energy method on before it drives design?
 - *Options:* one of our own 59 structures (none are in SKEMPI); a standard SKEMPI antibody:antigen
