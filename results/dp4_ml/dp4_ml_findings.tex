@@ -32,16 +32,24 @@ once the antibody is removed, it raises an apo-versus-holo question the static s
 
 \section{The data and what we predict}
 
-The assay is a PepSeq enrichment readout (antibody IM0276 against the DP4 library). We joined it to
-the design library on the row-id (\texttt{DP4\_$\langle n\rangle$\_$\langle m\rangle$} $\to$
-\texttt{DP4\_$\langle n\rangle$}, 100\% merge). A design counts as a \emph{binder} if it appears in
-the assay hit list for its epitope's antibody.
+The assay is a PepSeq enrichment readout of the DP4 library. We joined it to the design library on the
+row-id (\texttt{DP4\_$\langle n\rangle$\_$\langle m\rangle$} $\to$ \texttt{DP4\_$\langle n\rangle$},
+100\% merge). A design is a \emph{binder} if its \texttt{library\_member} appears in that epitope's hit
+list (the \texttt{hitIDs} column of the per-epitope summary); this is the assay's own hit call, not a
+threshold we set. There are 475 such hits in total across the arms.
 
-Across the scaffolded arms, 2{,}720 designs carry both a full set of design metrics and an assay call.
-Of those, 217 bind, a base rate of 8.0\%. They come from 56 epitopes, each with its own antibody.
-That epitope structure matters for how we score every model: we always split by epitope in
-cross-validation, so a model is tested on antibodies it never trained on. Scoring within a single
-epitope would leak, because the antibody identity, not the design, carries most of the enrichment.
+The model can only score a design that has both design metrics (a composite score) and native-context
+structural features read from the epitope's antibody:antigen complex, which restricts the analysis to
+the C1/C2 antibody arms: 2{,}720 designs across 56 epitopes, each with its own antibody. Of the 475 hits,
+217 fall in this universe (C1 171, C2 46), a base rate of 8.0\%. The remaining 258 hits are in the
+metric-space titration (C5, 169) and epitope-control (C6, 89) arms, whose composite is left blank in the
+library file (their metrics are in the superset), so the model does not rank them here. C5 is the honest
+unselected baseline: it spans the metric space on purpose and binds at 6.2\% (169/2{,}715), against 15.3\%
+for the top-ranked C1 whole-epitope designs, so selection over an unselected background raises the hit
+rate about 2.5-fold before any learning. Epitope structure matters for how we score every model: we always
+split by epitope in cross-validation, so a model is tested on antibodies it never trained on. Scoring
+within a single epitope would leak, because the antibody identity, not the design, carries most of the
+enrichment.
 
 \section{The composite was already a logistic model}
 
