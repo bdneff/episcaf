@@ -20,7 +20,10 @@ RUN = DATA["antibody_runs"] / "whole_epitope_rfd3"          # the C1 run tree (o
 epi = (sys.argv[1] if len(sys.argv) > 1 else "8pww").lower()
 OUT = ROOT / "data/dp4_binding/designs"; OUT.mkdir(parents=True, exist_ok=True)
 
-s = pd.read_csv(ROOT / "data/libraries/dp4_superset.csv", low_memory=False)
+sup = ROOT / "data/libraries/dp4_superset.csv"
+if not sup.exists():
+    sup = ROOT / "data/libraries/dp4_superset.csv.gz"   # the committed artifact on the cluster
+s = pd.read_csv(sup, low_memory=False)
 s = s[s.component == "C1"].copy()
 s["r"] = pd.to_numeric(s.epitope_rmsd, errors="coerce")
 s["epi"] = s.target.astype(str).str.split("_").str[0].str.lower()
