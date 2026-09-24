@@ -107,3 +107,9 @@ dp4_superset*.csv
 
 # DP4 IM0276 assay data + John's analysis (large; assay data stays out of git)
 data/dp4_binding/
+
+# slide decks (Brandon's + John's episcaf slides, and decks we build); large binaries, stay out of git
+slides/
+
+# generated figure build dir (SVG sources + intermediates, regenerable from scripts/app_figs.py)
+build/
