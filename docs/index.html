@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Epitope Scaffolder</title>
+<style>
+:root{color-scheme:light}
+html,body{margin:0}
+body{background:#ffffff;color:#1a1a1a;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5}
+.page{max-width:730px;margin:0 auto;padding:18px 16px 40px}
+.banner{background:linear-gradient(100deg,#21568f 0%,#296DC0 46%,#3b7fd1 100%);color:#ffffff;border-bottom:3px solid #1b4a86}
+.banner-inner{max-width:730px;margin:0 auto;padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.brand{display:flex;align-items:center;gap:13px;min-width:0}
+.blogo{width:44px;height:44px;flex:none}
+.wm .name{font-size:27px;font-weight:bold;letter-spacing:.02em;line-height:1}
+.wm .tag{font-size:12.5px;color:#dce8f7;margin-top:3px;letter-spacing:.02em}
+.motif{height:44px;width:auto;flex:none;opacity:.95}
+@media(max-width:540px){.motif{display:none}.wm .name{font-size:23px}}
+h1{font-size:21px;margin:0 0 3px;font-weight:bold}
+h2{font-size:15px;margin:24px 0 9px;font-weight:bold;border-bottom:1px solid #cccccc;padding-bottom:3px}
+p{margin:9px 0}
+a{color:#0033cc}
+hr{border:0;border-top:1px solid #cccccc;margin:16px 0}
+.lede{color:#333333;margin:0 0 10px}
+.note{font-size:12.5px;color:#555555;background:#f6f6f6;border:1px solid #dddddd;padding:8px 11px}
+.note b{color:#1a1a1a}
+label{font-weight:bold}
+label.radio{font-weight:normal;display:inline-block;margin:1px 0}
+.radios label.radio{display:block}
+select,input[type=number]{font:inherit;font-size:13px;padding:3px 5px;border:1px solid #999999;background:#ffffff;color:#1a1a1a}
+input[type=number]{width:66px}
+select:disabled,input:disabled{color:#999999;background:#f0f0f0}
+.help{font-weight:normal;color:#777777;font-size:12px}
+.field{margin:11px 0}
+.field > label{display:inline-block;margin-bottom:3px}
+button{font:inherit;font-size:13px;padding:4px 11px;border:1px solid #888888;background:#eeeeee;color:#1a1a1a;cursor:pointer}
+button:hover{background:#e2e2e2}
+button:disabled{color:#999999;cursor:default}
+#runbtn{font-weight:bold;padding:6px 16px;margin-top:4px}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #0033cc;outline-offset:1px}
+pre{background:#f6f6f6;border:1px solid #cccccc;padding:9px 11px;font-family:"Courier New",Courier,monospace;font-size:12.5px;line-height:1.55;overflow-x:auto}
+#log{white-space:pre-wrap;min-height:1.5em}
+#cmd{white-space:pre}
+.cmt{color:#777777}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;font-size:13px;margin-top:2px}
+th,td{border:1px solid #cccccc;padding:4px 10px;text-align:left;white-space:nowrap}
+th{background:#eeeeee;font-size:11.5px;font-weight:bold}
+td{font-variant-numeric:tabular-nums}
+tr.real td{background:#eef4fd}
+.tag{font-size:10px;color:#0033cc;border:1px solid #9bb6e6;padding:0 4px;margin-left:6px}
+.pass{color:#0a7a2f} .fail{color:#a00000}
+.cimg{width:100%;max-width:560px;border:1px solid #cccccc;background:#ffffff;display:block;margin-top:2px}
+.sw{display:inline-block;width:12px;height:9px;vertical-align:middle;border:1px solid #999}
+.foot{font-size:12px;color:#666666;line-height:1.6}
+.foot b{color:#444444}
+code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0f0;padding:0 3px}
+</style>
+</head>
+<body>
+<div class="banner"><div class="banner-inner">
+  <div class="brand">
+    <svg class="blogo" viewBox="0 0 44 44" fill="none" aria-hidden="true">
+      <path d="M5 31 C 13 13, 21 13, 25 24 C 28 32, 33 33, 39 15" stroke="#dce8f7" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+      <circle cx="25" cy="20" r="4.4" fill="#e5543f"/>
+    </svg>
+    <div class="wm"><div class="name">episcaf</div><div class="tag">Epitope Scaffolder</div></div>
+  </div>
+  <svg class="motif" viewBox="0 0 170 46" fill="none" aria-hidden="true">
+    <path d="M6 23 C 20 9, 28 9, 36 23 C 44 37, 52 37, 60 23 C 68 9, 76 9, 84 23 C 92 37, 100 37, 108 23 C 116 9, 124 9, 132 23 C 140 37, 148 37, 156 23" stroke="#bcd6f2" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+    <circle cx="84" cy="16" r="5" fill="#e5543f"/>
+    <circle cx="60" cy="23" r="3" fill="#ffffff" opacity=".85"/>
+    <circle cx="108" cy="23" r="3" fill="#ffffff" opacity=".85"/>
+  </svg>
+</div></div>
+<div class="page">
+  <p class="lede">Given an antibody&ndash;antigen complex, design protein scaffolds that present the epitope in its native, antibody-binding conformation. Pipeline: RFdiffusion &rarr; backbone pre-filter &rarr; ProteinMPNN &rarr; AlphaFold3 &rarr; scoring.</p>
+  <p class="note"><b>Prototype.</b> Runs are simulated using the project's real DP4 enrichment rates; the selected complex is a real VMD render of the actual PDB (antigen grey, antibody blue, epitope red). The page does not compute &mdash; it prints the Gemini job it would submit. Live routing needs the backend service (see bottom). Per-row design metrics except #1 are illustrative.</p>
+
+  <hr>
+
+  <form id="form" autocomplete="off">
+    <h2>Job</h2>
+
+    <div class="field">
+      <label for="target">Target complex:</label><br>
+      <select id="target">
+        <option value="8PWW" data-struct="1">8PWW &mdash; PfRH5 / scFv MAD8-151</option>
+        <option value="7OX3">7OX3 &mdash; antibody / antigen</option>
+        <option value="5FHX">5FHX &mdash; antibody / antigen</option>
+        <option value="8VDL">8VDL &mdash; PfEMP1 / EPCR epitope</option>
+        <option value="upload" disabled>upload a PDB... (coming soon)</option>
+      </select>
+      <span class="help" id="targethint"></span>
+    </div>
+
+    <div class="field">
+      <label>Epitope source:</label>
+      <div class="radios">
+        <label class="radio"><input type="radio" name="epi" value="antibody" checked> known antibody &mdash; use the complex's contact epitope</label>
+        <label class="radio"><input type="radio" name="epi" value="predict"> predict from the antigen (no antibody)
+          <span id="predwrap" hidden>&nbsp; method:
+            <select id="predictor">
+              <option value="discotope3">DiscoTope-3.0 (structure-based)</option>
+              <option value="bepipred3">BepiPred-3.0 (sequence-based)</option>
+              <option value="episcaf" disabled>Episcaf predictor (coming soon)</option>
+            </select>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="ndes">Number of designs wanted:</label>
+      <input type="number" id="ndes" value="20" min="1" max="500">
+      &nbsp;&nbsp;&nbsp;
+      <label for="runtime">Max run time (min):</label>
+      <input type="number" id="runtime" value="60" min="1" max="1440">
+    </div>
+
+    <div class="field">
+      <label for="strategy">Scoring strategy:</label>
+      <select id="strategy">
+        <option value="logistic">logistic regression (AUC 0.82)</option>
+        <option value="gbt">gradient-boosted tree (AUC 0.82)</option>
+        <option value="composite">composite, hand-set (AUC 0.73)</option>
+        <option value="dl">overtrained DL net (overfits, AUC ~0.61)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Selection:</label>
+      <div class="radios">
+        <label class="radio"><input type="radio" name="mode" value="threshold" checked> designs that pass the four-filter threshold</label>
+        <label class="radio"><input type="radio" name="mode" value="topn"> top-N by score within the time budget</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <button type="submit" id="runbtn">Run scaffolding</button>
+      <span class="help" id="runnote"></span>
+    </div>
+  </form>
+
+  <hr>
+
+  <h2>Run log</h2>
+  <pre id="log"></pre>
+  <p id="summary"></p>
+
+  <h2>Scaffolded epitope designs</h2>
+  <div class="tablewrap">
+    <table id="results">
+      <thead><tr><th>#</th><th>design</th><th>epitope RMSD (&Aring;)</th><th>Ab clash</th><th>score</th><th>status</th></tr></thead>
+      <tbody id="rbody"></tbody>
+    </table>
+  </div>
+  <p class="help" id="tablecap"></p>
+  <p><button id="csvbtn" type="button">Copy table as CSV</button></p>
+
+  <h2>Selected complex</h2>
+  <img id="cimg" class="cimg" alt="rendered antibody-antigen complex">
+  <p class="help"><span class="sw" style="background:#9aa3ad"></span> antigen &nbsp; <span class="sw" style="background:#2b47d6"></span> antibody &nbsp; <span class="sw" style="background:#c0392b"></span> epitope &nbsp;&middot;&nbsp; <span id="vnote"></span></p>
+
+  <h2>Gemini job</h2>
+  <pre id="cmd"></pre>
+  <p><button id="cmdbtn" type="button">Copy command</button></p>
+  <p class="help">The job this run maps to. The page cannot submit it; run it on Gemini, or have a backend service post this spec to the cluster.</p>
+
+  <hr>
+  <p class="foot"><b>How this becomes a real server.</b> This page is a static frontend &mdash; it runs the same whether served from GitHub Pages or opened locally. To route a job to Gemini it would call a small backend API (FastAPI/Flask) on a cluster-access host, which submits RFdiffusion &rarr; backbone pre-filter &rarr; ProteinMPNN &rarr; AlphaFold3 and reports back. <code>runJob()</code> in this page can swap its simulated result for a <code>fetch()</code> to that API.<br>
+  <b>Numbers (DP4 IM0276, grouped-CV by epitope):</b> base binding rate 8% &middot; four-filter passers 24% &middot; model-ranked top ~34% &middot; raw four-filter design pass rate 0.45%.</p>
+</div>
+
+<script>
+"use strict";
+
+/* model constants (documented in footer) */
+const FF_PASS=0.0045, PREFILTER_KEEP=0.12, GEN_PER_MIN=100;
+const STRAT={
+  logistic:{bind:0.34,label:"logistic regression"},
+  gbt:{bind:0.34,label:"gradient-boosted tree"},
+  composite:{bind:0.26,label:"composite"},
+  dl:{bind:0.16,label:"overtrained DL net"}
+};
+const reduced=matchMedia("(prefers-reduced-motion:reduce)").matches;
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const fmt=n=>n.toLocaleString("en-US");
+function hash(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function rng(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
+
+const state={target:"8PWW",epi:"antibody",predictor:"discotope3",n:20,runtime:60,strategy:"logistic",mode:"threshold"};
+
+/* the job model — one place; swap for a fetch() to go live */
+function computeJob(s){
+  const st=STRAT[s.strategy], cap=s.runtime*GEN_PER_MIN;
+  let generated, elapsed, reached;
+  if(s.mode==="threshold"){
+    const need=Math.ceil(s.n/FF_PASS);
+    generated=Math.min(need,cap); elapsed=generated/GEN_PER_MIN; reached=generated>=need;
+  }else{ generated=cap; elapsed=s.runtime; reached=Math.floor(generated*FF_PASS)>=s.n; }
+  const kept=Math.round(generated*PREFILTER_KEEP);
+  const passers=Math.floor(generated*FF_PASS);
+  const returned=s.mode==="threshold"?Math.min(passers,s.n):s.n;
+  return {generated,kept,folded:kept,passers,returned,elapsed,reached,avoided:generated-kept,
+    bind:st.bind,strat:st,rows:buildRows(s,returned,passers)};
+}
+function buildRows(s,returned,passers){
+  const rnd=rng(hash(s.target+s.strategy+s.mode+s.n+s.runtime+s.epi)); const real=s.target==="8PWW"; const rows=[];
+  for(let i=0;i<returned;i++){
+    let epi,clash,score,ok;
+    if(i===0&&real){epi=0.22;clash=0;score=0.98;ok=true;}
+    else if(i<passers){epi=+(0.30+rnd()*0.95).toFixed(2);clash=0;score=+(Math.max(0.60,0.92-i*0.9/Math.max(returned,1))-rnd()*0.05).toFixed(2);ok=true;}
+    else{epi=+(1.5+rnd()*2.2).toFixed(2);clash=Math.floor(1+rnd()*9);score=+(0.55-rnd()*0.3).toFixed(2);ok=false;}
+    rows.push({i:i+1,id:`${s.target.toLowerCase()}_d${String(1+Math.floor(rnd()*9000)).padStart(4,"0")}`,
+      epi,clash,score:Math.max(score,0.05),ok,real:(i===0&&real)});
+  }
+  return rows;
+}
+function jobSpec(s){return{target:s.target,epitope_source:s.epi==="antibody"?"known_antibody":("predict:"+s.predictor),
+  n_designs:s.n,max_runtime_min:s.runtime,scoring:s.strategy,selection:s.mode,pipeline:"rfd3 -> prefilter(D6) -> mpnn -> af3 -> score"};}
+
+function geminiCmd(s){
+  const spec=jobSpec(s);
+  const pred = s.epi==="antibody"
+    ? "# epitope = antibody contact residues from the complex"
+    : "# epitope predicted ("+s.predictor+"); antibody ignored\npython episcaf_v3/predict/run_predictor.py --target "+s.target+" --method "+s.predictor;
+  return [
+    "# Gemini (login node), repo root",
+    "conda activate ~/rfd3/env/rfd3_py312",
+    "export RUN_DIR=$WS/runs/"+s.target.toLowerCase()+"_scaffold",
+    "",
+    "# job spec",
+    JSON.stringify(spec),
+    "",
+    pred,
+    "# 1. stage + generate RFD3 backbones (prints sbatch; does not submit)",
+    "bash scripts/run_whole_epitope_rfd3.sh "+s.target,
+    "",
+    "# 2. backbone pre-filter (D6): drop clashing / bad-epitope folds before AF3",
+    "python episcaf_v3/filters/run_filter.py --run $RUN_DIR",
+    "",
+    "# 3. survivors -> ProteinMPNN -> AlphaFold3",
+    "python scripts/stage03_mpnn_submit.py --fixed_pdb_dir $RUN_DIR/03_mpnn/fixed_pdbs.pass",
+    "python scripts/stage04_af3_emit_jsons.py --run $RUN_DIR",
+    "sbatch scripts/stage04_af3_array.sbatch $RUN_DIR",
+    "",
+    "# 4. score + select ("+(s.mode==="threshold"?("until "+s.n+" pass"):("top "+s.n))+", <= "+s.runtime+" min)",
+    "python -m episcaf_analysis.score --preset antibody_softgate \\",
+    "  --strategy "+s.strategy+" --select "+s.mode+" --n "+s.n+" --metrics-csv $RUN_DIR/05_analysis/metrics.csv"
+  ].join("\n");
+}
+function cmdHTML(txt){return txt.split("\n").map(l=>l.trimStart().startsWith("#")?'<span class="cmt">'+esc(l)+'</span>':esc(l)).join("\n");}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+/* render */
+let logToken=0;
+function logLines(job){
+  const pf=`${fmt(job.kept)} kept  (skipped AF3 on ${fmt(job.avoided)})`;
+  return [
+    `> generating backbones ......... ${fmt(job.generated)}`,
+    `> backbone pre-filter (D6) ..... ${pf}`,
+    `> AlphaFold3 fold .............. ${fmt(job.folded)}`,
+    `> score + four-filter ......... ${fmt(job.passers)} pass`,
+    `> select (${job.strat.label}, ${state.mode}): ${fmt(job.returned)} designs`,
+    (state.mode==="threshold"
+      ? (job.reached?`done. target met in ${job.elapsed.toFixed(0)} min.`:`stopped at the ${state.runtime}-min limit with ${job.returned} of ${state.n}.`)
+      : `done. best ${job.returned} returned after ${job.elapsed.toFixed(0)} min.`)
+  ];
+}
+function writeLog(job,animate){
+  const lines=logLines(job), el=$("#log"), token=++logToken;
+  if(!animate||reduced){el.textContent=lines.join("\n");return;}
+  el.textContent="";
+  let i=0; const step=()=>{ if(token!==logToken)return; el.textContent+=(i?"\n":"")+lines[i]; i++;
+    if(i<lines.length) setTimeout(step,230); };
+  step();
+}
+function paint(job,animate){
+  writeLog(job,animate);
+  const expB=Math.round(job.returned*job.bind), bind=Math.round(job.bind*100);
+  $("#summary").innerHTML=`Returned <b>${fmt(job.returned)}</b> design${job.returned===1?"":"s"} in ${job.elapsed.toFixed(0)} min. `+
+    `Expected binders about <b>${fmt(expB)}</b> (${bind}% at ${job.strat.label}). `+
+    `The backbone pre-filter folded ${fmt(job.kept)} of ${fmt(job.generated)} backbones, avoiding AlphaFold3 on ${fmt(job.avoided)} (${Math.round(100*job.avoided/job.generated)}%).`;
+  $("#rbody").innerHTML=job.rows.map(r=>`<tr class="${r.real?"real":""}">
+    <td>${r.i}</td><td>${r.id}${r.real?'<span class="tag">real AF3</span>':''}</td>
+    <td>${r.epi.toFixed(2)}</td><td>${r.clash}</td><td>${r.score.toFixed(2)}</td>
+    <td class="${r.ok?"pass":"fail"}">${r.ok?"pass":"below"}</td></tr>`).join("");
+  $("#tablecap").textContent = state.target==="8PWW"
+    ? "Row 1 is a real design result; remaining rows are illustrative at the real pass and clash statistics."
+    : "Illustrative designs at the real DP4 statistics.";
+  $("#cmd").innerHTML=cmdHTML(geminiCmd(state));
+}
+
+/* wiring */
+const DESCS={"8PWW":"PfRH5 + scFv MAD8-151","7OX3":"hIL-9 + Fab 6D3","5FHX":"IL-4 + CODV Fab","8VDL":"PfEMP1 + Fab (EPCR epitope)"};
+function setComplexImg(){var im=document.getElementById("cimg");im.src="img/"+state.target+".png";im.alt=(DESCS[state.target]||state.target)+" complex";
+  document.getElementById("vnote").textContent=(DESCS[state.target]||state.target)+" — epitope (red) is what gets scaffolded";}
+function syncHints(){
+  $("#targethint").textContent = state.target==="8PWW"
+    ? "AbDb-cleaned complex. Chain A antigen, B/C antibody. Structure preview for 8PWW."
+    : "AbDb-cleaned complex. Simulated at DP4 statistics; structure preview for 8PWW.";
+  $("#predwrap").hidden = state.epi!=="predict";
+  $("#runnote").textContent = state.mode==="threshold"
+    ? `will stop early if ${state.n} pass before ${state.runtime} min`
+    : `will return the best ${state.n} after up to ${state.runtime} min`;
+}
+$$('input[name=epi]').forEach(r=>r.addEventListener("change",()=>{state.epi=document.querySelector('input[name=epi]:checked').value;syncHints();}));
+$$('input[name=mode]').forEach(r=>r.addEventListener("change",()=>{state.mode=document.querySelector('input[name=mode]:checked').value;syncHints();}));
+$("#target").addEventListener("change",e=>{state.target=e.target.value;syncHints();setComplexImg();});
+$("#predictor").addEventListener("change",e=>state.predictor=e.target.value);
+$("#strategy").addEventListener("change",e=>state.strategy=e.target.value);
+$("#ndes").addEventListener("input",e=>{state.n=Math.max(1,Math.min(500,+e.target.value||1));syncHints();});
+$("#runtime").addEventListener("input",e=>{state.runtime=Math.max(1,Math.min(1440,+e.target.value||1));syncHints();});
+
+$("#form").addEventListener("submit",e=>{
+  e.preventDefault(); const b=$("#runbtn"); b.disabled=true;
+  paint(computeJob(state),true);
+  setTimeout(()=>b.disabled=false, reduced?0:1500);
+});
+
+function copyText(txt,btn){const done=()=>{const o=btn.textContent;btn.textContent="copied";setTimeout(()=>btn.textContent=o,1200);};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done).catch(()=>fb(txt,done));else fb(txt,done);}
+function fb(txt,done){const ta=document.createElement("textarea");ta.value=txt;ta.style.position="fixed";ta.style.opacity="0";
+  document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){}document.body.removeChild(ta);}
+$("#cmdbtn").addEventListener("click",()=>copyText($("#cmd").textContent,$("#cmdbtn")));
+$("#csvbtn").addEventListener("click",()=>{const rows=[["rank","design","epitope_rmsd_A","ab_clash","score","status"]];
+  $$("#rbody tr").forEach(tr=>rows.push([...tr.children].map(td=>td.textContent.replace(/\s+/g," ").trim())));
+  copyText(rows.map(r=>r.join(",")).join("\n"),$("#csvbtn"));});
+
+/* boot: show a completed example at rest */
+syncHints();
+paint(computeJob(state),false);
+setComplexImg();
+</script>
+</body>
+</html>

@@ -113,3 +113,6 @@ slides/
 
 # generated figure build dir (SVG sources + intermediates, regenerable from scripts/app_figs.py)
 build/
+
+# Epitope Scaffolder web tool (GitHub Pages site under docs/) — keep its rendered complex images
+!docs/img/*.png
