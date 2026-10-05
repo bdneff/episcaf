@@ -65,6 +65,14 @@ tr.real td{background:#eef4fd}
 .cpreview .cimg{width:100%;max-width:100%;margin-top:0}
 .cpreview .cap{font-size:11px;color:#777777;margin-top:6px;line-height:1.5}
 @media(max-width:560px){.cpreview{width:100%}.cviewer{height:280px}}
+.tcard-top{padding:9px 12px;border-bottom:1px solid #e2e8f1;background:#ffffff;font-size:12.5px}
+.tcard-top .tlab{font-weight:bold;margin-right:8px}
+.tcard-top label.radio{display:inline-block;margin:2px 14px 2px 0}
+#predwrap{color:#555555}
+.stratbox{background:#f6f6f6;border:1px solid #dddddd;padding:8px 11px;margin-top:7px;max-width:480px}
+.stratbox .eq{font-family:"Courier New",Courier,monospace;font-size:12.5px;color:#1a1a1a;margin-bottom:5px;overflow-x:auto}
+.stratbox .eq sub,.stratbox .eq sup{font-size:85%}
+.stratbox .d{font-size:12px;color:#555555;line-height:1.5}
 .sw{display:inline-block;width:12px;height:9px;vertical-align:middle;border:1px solid #999}
 .foot{font-size:12px;color:#666666;line-height:1.6}
 .foot b{color:#444444}
@@ -89,15 +97,27 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 </div></div>
 <div class="page">
   <p class="lede">Given an antibody&ndash;antigen complex, design protein scaffolds that present the epitope in its native, antibody-binding conformation. Pipeline: RFdiffusion &rarr; backbone pre-filter &rarr; ProteinMPNN &rarr; AlphaFold3 &rarr; scoring.</p>
-  <p class="note"><b>Prototype.</b> Runs are simulated using the project's real DP4 enrichment rates; the selected complex is a real VMD render of the actual PDB (antigen grey, antibody blue, epitope red). The page does not compute &mdash; it prints the Gemini job it would submit. Live routing needs the backend service (see bottom). Per-row design metrics except #1 are illustrative.</p>
+  <p class="note"><b>Prototype.</b> Runs are simulated using the project's real DP4 enrichment rates; the selected structure is shown in an interactive 3D view of the real PDB (drag to rotate). The page does not compute &mdash; it prints the Gemini job it would submit. Live routing needs the backend service (see bottom). Per-row design metrics except #1 are illustrative.</p>
 
   <hr>
 
   <section class="tcard">
     <div class="tcard-h">Target complex</div>
+    <div class="tcard-top">
+      <span class="tlab">Epitope source:</span>
+      <label class="radio"><input type="radio" name="epi" value="antibody" checked> known antibody (use the complex's contact epitope)</label>
+      <label class="radio"><input type="radio" name="epi" value="predict"> predict from the antigen (no antibody)</label>
+      <span id="predwrap" hidden>method:
+        <select id="predictor">
+          <option value="discotope3">DiscoTope-3.0 (structure-based)</option>
+          <option value="bepipred3">BepiPred-3.0 (sequence-based)</option>
+          <option value="episcaf" disabled>Episcaf predictor (coming soon)</option>
+        </select>
+      </span>
+    </div>
     <div class="tcard-b">
       <div class="tcol">
-        <select id="target" aria-label="Target complex">
+        <select id="target" aria-label="Target structure">
           <option value="8PWW">8PWW &mdash; PfRH5 / scFv MAD8-151</option>
           <option value="7OX3">7OX3 &mdash; hIL-9 / Fab 6D3</option>
           <option value="5FHX">5FHX &mdash; IL-4 / CODV Fab</option>
@@ -111,7 +131,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <div id="cviewer" class="cviewer"></div>
         <img id="cimg" class="cimg" alt="rendered complex" hidden>
         <div class="cap">drag to rotate &middot; scroll to zoom<br>
-          <span class="sw" style="background:#9aa3ad"></span> antigen &nbsp;<span class="sw" style="background:#2b47d6"></span> antibody &nbsp;<span class="sw" style="background:#c0392b"></span> epitope<br>
+          <span id="clegend"></span><br>
           <span id="vnote"></span></div>
       </div>
     </div>
@@ -119,22 +139,6 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 
   <form id="form" autocomplete="off">
     <h2>Job</h2>
-
-    <div class="field">
-      <label>Epitope source:</label>
-      <div class="radios">
-        <label class="radio"><input type="radio" name="epi" value="antibody" checked> known antibody &mdash; use the complex's contact epitope</label>
-        <label class="radio"><input type="radio" name="epi" value="predict"> predict from the antigen (no antibody)
-          <span id="predwrap" hidden>&nbsp; method:
-            <select id="predictor">
-              <option value="discotope3">DiscoTope-3.0 (structure-based)</option>
-              <option value="bepipred3">BepiPred-3.0 (sequence-based)</option>
-              <option value="episcaf" disabled>Episcaf predictor (coming soon)</option>
-            </select>
-          </span>
-        </label>
-      </div>
-    </div>
 
     <div class="field">
       <label for="ndes">Number of designs wanted:</label>
@@ -152,6 +156,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <option value="composite">composite, hand-set (AUC 0.73)</option>
         <option value="dl">overtrained DL net (overfits, AUC ~0.61)</option>
       </select>
+      <div class="stratbox" id="stratbox"></div>
     </div>
 
     <div class="field">
@@ -325,21 +330,55 @@ const CFG={
 };
 const GREY="#9aa3ad", BLUE="#2b47d6", RED="#c0392b";
 let cviewer=null;
-function vnoteSet(){document.getElementById("vnote").textContent=(DESCS[state.target]||state.target)+" — epitope (red) is what gets scaffolded";}
+function sw(c){return '<span class="sw" style="background:'+c+'"></span>';}
+function updateCaption(){
+  const leg=document.getElementById("clegend"), vn=document.getElementById("vnote");
+  const name=(DESCS[state.target]||state.target);
+  if(state.epi==="antibody"){
+    leg.innerHTML=sw(GREY)+" antigen &nbsp;"+sw(BLUE)+" antibody &nbsp;"+sw(RED)+" epitope";
+    vn.textContent=name+" — epitope (red) is what gets scaffolded";
+  }else{
+    leg.innerHTML=sw(GREY)+' antigen &nbsp;<span style="color:#999999">no antibody</span>';
+    const m=state.predictor==="bepipred3"?"BepiPred-3.0":"DiscoTope-3.0";
+    vn.textContent=name.split(" + ")[0]+" (antigen only) — epitope predicted by "+m+" at run time";
+  }
+}
 function useImgFallback(){var v=document.getElementById("cviewer");if(v)v.hidden=true;var im=document.getElementById("cimg");
-  im.hidden=false;im.src="img/"+state.target+".png";im.alt=(DESCS[state.target]||state.target)+" complex";vnoteSet();}
-/* VMD-like cartoon: chunky matte ribbons, helices/strands with arrows, grey/blue/red */
-function styleComplex(){const c=CFG[state.target];if(!c||!cviewer)return;
-  cviewer.setStyle({},{cartoon:{color:GREY,thickness:0.75,arrows:true}});
-  cviewer.setStyle({chain:c.ab},{cartoon:{color:BLUE,thickness:0.75,arrows:true}});
-  cviewer.setStyle({chain:c.ag,resi:c.epi},{cartoon:{color:RED,thickness:0.95,arrows:true}});
-  cviewer.zoomTo();cviewer.render();}
+  im.hidden=false;im.src="img/"+state.target+".png";im.alt=(DESCS[state.target]||state.target)+" complex";updateCaption();}
+/* VMD-like cartoon. Predict mode loads ONLY the antigen chain (no binding partner yet). */
+function renderPDB(txt){const c=CFG[state.target];cviewer.clear();
+  if(state.epi==="predict"){
+    const lines=txt.split("\n").filter(l=>!/^(ATOM|HETATM|TER)/.test(l)||l.charAt(21)===c.ag);
+    cviewer.addModel(lines.join("\n"),"pdb");
+    cviewer.setStyle({},{cartoon:{color:GREY,thickness:0.75,arrows:true}});
+  }else{
+    cviewer.addModel(txt,"pdb");
+    cviewer.setStyle({},{cartoon:{color:GREY,thickness:0.75,arrows:true}});
+    cviewer.setStyle({chain:c.ab},{cartoon:{color:BLUE,thickness:0.75,arrows:true}});
+    cviewer.setStyle({chain:c.ag,resi:c.epi},{cartoon:{color:RED,thickness:0.95,arrows:true}});
+  }
+  cviewer.zoomTo();cviewer.render();updateCaption();}
+let _pdbCache={};
 function loadComplex(){
   if(!cviewer){useImgFallback();return;}
-  fetch("pdb/"+state.target+".pdb").then(r=>{if(!r.ok)throw 0;return r.text();}).then(txt=>{
-    cviewer.clear();cviewer.addModel(txt,"pdb");styleComplex();vnoteSet();
+  const id=state.target;
+  if(_pdbCache[id]){renderPDB(_pdbCache[id]);return;}
+  fetch("pdb/"+id+".pdb").then(r=>{if(!r.ok)throw 0;return r.text();}).then(txt=>{
+    _pdbCache[id]=txt;renderPDB(txt);
   }).catch(()=>useImgFallback());
 }
+/* scoring-method card (equation + one-line description), from the DP4 findings */
+const STRAT_INFO={
+  logistic:{eq:'p(bind) = &sigma;( w&middot;x + b ),&nbsp;&nbsp; &sigma;(z) = 1 / (1 + e<sup>&minus;z</sup>)',
+    desc:'Weighted sum of epitope + design features through a sigmoid. Additive and interpretable; the native secondary-structure features carry most of the signal. Held-out AUC 0.82.'},
+  gbt:{eq:'F(x) = &Sigma;<sub>m</sub> &gamma;<sub>m</sub> h<sub>m</sub>(x)&nbsp;&nbsp; (h<sub>m</sub> = depth-1 stumps)',
+    desc:'Sum of shallow trees. On this data the best trees are depth-1 stumps, i.e. an additive model, so it ties logistic regression (AUC 0.82); no useful feature interactions.'},
+  composite:{eq:'S = &Sigma;<sub>i</sub> w<sub>i</sub> &middot; &sigma;( (x<sub>i</sub> &minus; m<sub>i</sub>) / s<sub>i</sub> ) + pass_bonus',
+    desc:'Hand-set weighted sum of sigmoid-transformed metrics (epitope RMSD, PAE, clash, cylinder) plus a four-filter pass bonus. Gates binding (AUC 0.73) but does not rank affinity.'},
+  dl:{eq:'f(x) = W<sub>2</sub> &middot; relu( W<sub>1</sub>x + b<sub>1</sub> ) + b<sub>2</sub>',
+    desc:'A multilayer perceptron with far more parameters than the data support. It memorizes training epitopes and generalizes worst across held-out epitopes (AUC ~0.61), below the hand-set score.'}
+};
+function setStratBox(){const i=STRAT_INFO[state.strategy];$("#stratbox").innerHTML='<div class="eq">'+i.eq+'</div><div class="d">'+i.desc+'</div>';}
 function initCViewer(){
   if(typeof $3Dmol==="undefined"){useImgFallback();return;}
   try{cviewer=$3Dmol.createViewer("cviewer",{backgroundColor:"white"});
@@ -348,17 +387,19 @@ function initCViewer(){
   catch(e){useImgFallback();}
 }
 function syncHints(){
-  $("#targethint").textContent = "antibody-antigen complex; viewer shows antigen (grey), antibody (blue), contact epitope (red).";
+  $("#targethint").textContent = state.epi==="antibody"
+    ? "antibody-antigen complex; the viewer shows antigen (grey), antibody (blue), contact epitope (red)."
+    : "antigen only (no binding partner); the epitope is predicted at run time.";
   $("#predwrap").hidden = state.epi!=="predict";
   $("#runnote").textContent = state.mode==="threshold"
     ? `will stop early if ${state.n} pass before ${state.runtime} min`
     : `will return the best ${state.n} after up to ${state.runtime} min`;
 }
-$$('input[name=epi]').forEach(r=>r.addEventListener("change",()=>{state.epi=document.querySelector('input[name=epi]:checked').value;syncHints();}));
+$$('input[name=epi]').forEach(r=>r.addEventListener("change",()=>{state.epi=document.querySelector('input[name=epi]:checked').value;syncHints();if(cviewer)loadComplex();else updateCaption();}));
 $$('input[name=mode]').forEach(r=>r.addEventListener("change",()=>{state.mode=document.querySelector('input[name=mode]:checked').value;syncHints();}));
 $("#target").addEventListener("change",e=>{state.target=e.target.value;syncHints();loadComplex();});
-$("#predictor").addEventListener("change",e=>state.predictor=e.target.value);
-$("#strategy").addEventListener("change",e=>state.strategy=e.target.value);
+$("#predictor").addEventListener("change",e=>{state.predictor=e.target.value;updateCaption();});
+$("#strategy").addEventListener("change",e=>{state.strategy=e.target.value;setStratBox();});
 $("#ndes").addEventListener("input",e=>{state.n=Math.max(1,Math.min(500,+e.target.value||1));syncHints();});
 $("#runtime").addEventListener("input",e=>{state.runtime=Math.max(1,Math.min(1440,+e.target.value||1));syncHints();});
 
@@ -379,6 +420,8 @@ $("#csvbtn").addEventListener("click",()=>{const rows=[["rank","design","epitope
 
 /* boot: show a completed example at rest */
 syncHints();
+setStratBox();
+updateCaption();
 paint(computeJob(state),false);
 if(document.readyState==="complete") initCViewer(); else window.addEventListener("load",initCViewer);
 </script>
