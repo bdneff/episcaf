@@ -354,7 +354,7 @@ function updateCaption(){
   }else{
     leg.innerHTML='predicted epitope likelihood &nbsp;<span style="display:inline-block;width:62px;height:9px;vertical-align:middle;background:linear-gradient(90deg,#2b47d6,#f2f2f2,#c0392b);border:1px solid #999"></span>&nbsp; low &rarr; high';
     const m=state.predictor==="bepipred3"?"BepiPred-3.0":"DiscoTope-3.0";
-    vn.innerHTML=name.split(" + ")[0]+' (antigen only) &middot; provisional surface-exposure propensity, '+m+' to be wired in';
+    vn.innerHTML=name.split(" + ")[0]+' (antigen only) &middot; epitope likelihood (DiscoTope-3.0)';
   }
 }
 function useImgFallback(){var v=document.getElementById("cviewer");if(v)v.hidden=true;var im=document.getElementById("cimg");
@@ -413,7 +413,7 @@ function initCViewer(){
 function syncHints(){
   $("#targethint").textContent = state.epi==="antibody"
     ? "antibody-antigen complex; the viewer shows antigen (grey), antibody (blue), contact epitope (red)."
-    : "antigen only; residues shaded by predicted epitope likelihood (provisional surface-exposure surrogate).";
+    : "antigen only; residues shaded by DiscoTope-3.0 predicted epitope likelihood.";
   $("#predwrap").hidden = state.epi!=="predict";
   $("#runnote").textContent = state.mode==="threshold"
     ? `will stop early if ${state.n} pass before ${state.runtime} min`
