@@ -76,6 +76,14 @@ tr.real td{background:#eef4fd}
 .stratbox .arch{font-size:12px;color:#333333;margin-bottom:5px}
 .stratbox .arch b{color:#1a1a1a}
 .stratbox .d{font-size:12px;color:#555555;line-height:1.5}
+.stratbox details{margin-top:8px;border-top:1px solid #e4e4e4;padding-top:6px}
+.stratbox summary{cursor:pointer;color:#0033cc;font-size:11.5px;font-weight:600;list-style:none;user-select:none}
+.stratbox summary::-webkit-details-marker{display:none}
+.stratbox summary::before{content:"\25B8  "}
+.stratbox details[open] summary::before{content:"\25BE  "}
+.stratbox .morec{font-size:11.5px;color:#444444;line-height:1.6;margin-top:7px}
+.stratbox .morec u{text-decoration:none;color:#296DC0;font-weight:600}
+.stratbox .morec b{color:#1a1a1a}
 .sw{display:inline-block;width:12px;height:9px;vertical-align:middle;border:1px solid #999}
 .foot{font-size:12px;color:#666666;line-height:1.6}
 .foot b{color:#444444}
@@ -371,24 +379,30 @@ function loadComplex(){
   }).catch(()=>useImgFallback());
 }
 /* scoring-method card (equation + one-line description), from the DP4 findings */
+const FEAT15='<u>Design metrics (9):</u> cylinder clashes, epitope RMSD, overall RMSD, epitope PAE, scaffold PAE, mean PAE, pTM, AF3 clashes, island index<br><u>Secondary structure (3):</u> helix fraction, strand fraction, n-islands<br><u>Dynamics (3):</u> epitope B-factor z, GNM &Delta;flexibility, &Delta;SASA';
 const STRAT_INFO={
   logistic:{tex:'p(\\text{bind})=\\sigma(\\mathbf{w}\\cdot\\mathbf{x}+b),\\quad \\sigma(z)=\\dfrac{1}{1+e^{-z}}',
     arch:'Linear model &middot; 15 features &rarr; 1 output &middot; <b>16 weights</b>',
-    desc:'One weighted sum through a sigmoid. Additive and interpretable; the native secondary-structure features carry most of the signal. Held-out AUC 0.82.'},
+    desc:'One weighted sum through a sigmoid. Additive and interpretable; the native secondary-structure features carry most of the signal. Held-out AUC 0.82.',
+    more:'<b>Features (15):</b><br>'+FEAT15+'<br><b>Fit:</b> L2 logistic regression, standardized inputs, balanced classes; grouped 5-fold CV by epitope (the 16th weight is the bias). Learned coefficients vary by fold, so we report block importance rather than a single frozen weight vector.<br><b>Where the signal sits</b> (block-Shapley AUC gain): secondary structure +0.128 &gt; design +0.109 &gt; dynamics +0.059.'},
   gbt:{tex:'F(\\mathbf{x})=\\sum_{m=1}^{M}\\gamma_m\\,h_m(\\mathbf{x})',
     arch:'Histogram gradient boosting &middot; ~100 trees, depth &le; 3 &middot; <b>best at depth-1 stumps</b> (additive)',
-    desc:'Sum of shallow trees. The best trees here are depth-1 stumps, so it reduces to an additive model and ties logistic regression (AUC 0.82); no useful feature interactions.'},
+    desc:'Sum of shallow trees. The best trees here are depth-1 stumps, so it reduces to an additive model and ties logistic regression (AUC 0.82); no useful feature interactions.',
+    more:'<b>Features (15):</b><br>'+FEAT15+'<br><b>Model:</b> HistGradientBoosting, ~100 boosting rounds, max depth &le; 3. A depth sweep found <b>depth-1 stumps</b> best &mdash; one feature per split &mdash; so the ensemble is effectively additive. Interaction-constrained and EBM variants agree: additive &ge; interactions here.'},
   composite:{tex:'S=\\sum_i w_i\\,\\sigma\\!\\left(\\dfrac{x_i-m_i}{s_i}\\right)+\\text{pass bonus}',
     arch:'Hand-set single-layer perceptron &middot; ~6 metric weights, <b>fixed (not learned)</b>',
-    desc:'Weighted sum of sigmoid-transformed metrics (epitope RMSD, PAE, clash, cylinder) plus a four-filter pass bonus. Gates binding (AUC 0.73) but does not rank affinity.'},
+    desc:'Weighted sum of sigmoid-transformed metrics (epitope RMSD, PAE, clash, cylinder) plus a four-filter pass bonus. Gates binding (AUC 0.73) but does not rank affinity.',
+    more:'<b>Hand-set weights</b> (presets.py &middot; ANTIBODY_SOFTGATE), on sigmoid-transformed metrics:<br><u>cylinder accessibility 0.35</u> &middot; <u>epitope RMSD 0.35</u> &middot; mean PAE 0.15 &middot; overall RMSD 0.15<br>plus a four-filter <b>pass bonus</b> (gain 2 for designs with epitope RMSD &le; 1 &Aring;, overall &le; 2 &Aring;, mean PAE &lt; 5, 0 clashes). Each metric is first squashed through its own sigmoid (midpoint = the DP3 threshold).<br>Not learned from data &mdash; the transparent baseline the models are measured against.'},
   dl:{tex:'\\mathbf{x}_{15}\\;\\rightarrow\\;512\\rightarrow512\\rightarrow512\\rightarrow512\\;\\rightarrow\\;\\hat{y}',
     arch:'MLP &middot; 4 hidden layers &times; 512 &middot; <b>~796,000 weights</b> on ~2,700 designs (56 epitopes)',
-    desc:'Far more parameters than the data support, so it memorizes training epitopes and generalizes worst across held-out epitopes (AUC ~0.61), below the hand-set score.'}
+    desc:'Far more parameters than the data support, so it memorizes training epitopes and generalizes worst across held-out epitopes (AUC ~0.61), below the hand-set score.',
+    more:'<b>Architecture:</b> 15 &rarr; 512 &rarr; 512 &rarr; 512 &rarr; 512 &rarr; 1, ReLU.<br>Weights: 15&times;512 + 3&times;(512&times;512) + 512 + biases = <b>~796,000</b>. L2 &alpha; = 1e&minus;6 (almost none), trained to convergence.<br>~290&times; more parameters than training designs &rarr; it memorizes epitopes; held-out AUC ~0.61, below the hand-set composite. This is the overfitting lesson, shown on purpose.'}
 };
 function setStratBox(){const i=STRAT_INFO[state.strategy];let eq="";
   try{if(window.katex)eq=katex.renderToString(i.tex,{displayMode:true,throwOnError:false});}catch(e){}
   if(!eq)eq='<span style="font-family:monospace;font-size:13px">'+i.tex+'</span>';
-  $("#stratbox").innerHTML='<div class="eq">'+eq+'</div><div class="arch">'+i.arch+'</div><div class="d">'+i.desc+'</div>';}
+  $("#stratbox").innerHTML='<div class="eq">'+eq+'</div><div class="arch">'+i.arch+'</div><div class="d">'+i.desc+'</div>'+
+    '<details><summary>read more</summary><div class="morec">'+i.more+'</div></details>';}
 function initCViewer(){
   if(typeof $3Dmol==="undefined"){useImgFallback();return;}
   try{cviewer=$3Dmol.createViewer("cviewer",{backgroundColor:"white",ambientOcclusion:{strength:0.9}});
