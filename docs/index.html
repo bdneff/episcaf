@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Epitope Scaffolder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
 <style>
 :root{color-scheme:light}
 html,body{margin:0}
@@ -52,6 +53,18 @@ tr.real td{background:#eef4fd}
 .tag{font-size:10px;color:#0033cc;border:1px solid #9bb6e6;padding:0 4px;margin-left:6px}
 .pass{color:#0a7a2f} .fail{color:#a00000}
 .cimg{width:100%;max-width:560px;border:1px solid #cccccc;background:#ffffff;display:block;margin-top:2px}
+.tcard{border:1px solid #bcc6d2;background:#fbfcfe;margin:14px 0}
+.tcard-h{font-size:12px;font-weight:bold;letter-spacing:.03em;text-transform:uppercase;color:#296DC0;background:#eef3f9;border-bottom:1px solid #d5deea;padding:7px 12px}
+.tcard-b{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;padding:13px 12px}
+.tcard-b .tcol{flex:1;min-width:210px}
+.tcard-b .tcol select{width:100%;max-width:330px}
+.tsoon{color:#aab3bf;margin-top:7px}
+.cpreview{flex:none;width:300px}
+.cviewer{width:100%;height:252px;border:1px solid #cccccc;background:#ffffff;position:relative}
+.cviewer canvas{display:block}
+.cpreview .cimg{width:100%;max-width:100%;margin-top:0}
+.cpreview .cap{font-size:11px;color:#777777;margin-top:6px;line-height:1.5}
+@media(max-width:560px){.cpreview{width:100%}.cviewer{height:280px}}
 .sw{display:inline-block;width:12px;height:9px;vertical-align:middle;border:1px solid #999}
 .foot{font-size:12px;color:#666666;line-height:1.6}
 .foot b{color:#444444}
@@ -80,20 +93,32 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 
   <hr>
 
+  <section class="tcard">
+    <div class="tcard-h">Target complex</div>
+    <div class="tcard-b">
+      <div class="tcol">
+        <select id="target" aria-label="Target complex">
+          <option value="8PWW">8PWW &mdash; PfRH5 / scFv MAD8-151</option>
+          <option value="7OX3">7OX3 &mdash; hIL-9 / Fab 6D3</option>
+          <option value="5FHX">5FHX &mdash; IL-4 / CODV Fab</option>
+          <option value="8VDL">8VDL &mdash; PfEMP1 / Fab (EPCR epitope)</option>
+          <option value="upload" disabled>upload a PDB... (coming soon)</option>
+        </select>
+        <div class="help" id="targethint"></div>
+        <div class="help tsoon">or type a PDB ID / drag in a structure &mdash; coming soon</div>
+      </div>
+      <div class="cpreview">
+        <div id="cviewer" class="cviewer"></div>
+        <img id="cimg" class="cimg" alt="rendered complex" hidden>
+        <div class="cap">drag to rotate &middot; scroll to zoom<br>
+          <span class="sw" style="background:#9aa3ad"></span> antigen &nbsp;<span class="sw" style="background:#2b47d6"></span> antibody &nbsp;<span class="sw" style="background:#c0392b"></span> epitope<br>
+          <span id="vnote"></span></div>
+      </div>
+    </div>
+  </section>
+
   <form id="form" autocomplete="off">
     <h2>Job</h2>
-
-    <div class="field">
-      <label for="target">Target complex:</label><br>
-      <select id="target">
-        <option value="8PWW" data-struct="1">8PWW &mdash; PfRH5 / scFv MAD8-151</option>
-        <option value="7OX3">7OX3 &mdash; antibody / antigen</option>
-        <option value="5FHX">5FHX &mdash; antibody / antigen</option>
-        <option value="8VDL">8VDL &mdash; PfEMP1 / EPCR epitope</option>
-        <option value="upload" disabled>upload a PDB... (coming soon)</option>
-      </select>
-      <span class="help" id="targethint"></span>
-    </div>
 
     <div class="field">
       <label>Epitope source:</label>
@@ -158,10 +183,6 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   </div>
   <p class="help" id="tablecap"></p>
   <p><button id="csvbtn" type="button">Copy table as CSV</button></p>
-
-  <h2>Selected complex</h2>
-  <img id="cimg" class="cimg" alt="rendered antibody-antigen complex">
-  <p class="help"><span class="sw" style="background:#9aa3ad"></span> antigen &nbsp; <span class="sw" style="background:#2b47d6"></span> antibody &nbsp; <span class="sw" style="background:#c0392b"></span> epitope &nbsp;&middot;&nbsp; <span id="vnote"></span></p>
 
   <h2>Gemini job</h2>
   <pre id="cmd"></pre>
@@ -295,12 +316,39 @@ function paint(job,animate){
 
 /* wiring */
 const DESCS={"8PWW":"PfRH5 + scFv MAD8-151","7OX3":"hIL-9 + Fab 6D3","5FHX":"IL-4 + CODV Fab","8VDL":"PfEMP1 + Fab (EPCR epitope)"};
-function setComplexImg(){var im=document.getElementById("cimg");im.src="img/"+state.target+".png";im.alt=(DESCS[state.target]||state.target)+" complex";
-  document.getElementById("vnote").textContent=(DESCS[state.target]||state.target)+" — epitope (red) is what gets scaffolded";}
+/* antigen chain / antibody chains / contact-epitope resids per complex (from scripts/webtool_prep.py) */
+const CFG={
+  "8PWW":{ag:"A",ab:["B"],epi:[205,209,212,213,216,278,279,281,282,284,285,286,288,289,292]},
+  "7OX3":{ag:"C",ab:["A","B"],epi:[25,28,29,32,82,83,84,85,86,87,88,90,91,94]},
+  "5FHX":{ag:"A",ab:["H","L"],epi:[19,20,69,70,71,73,74,75,77,78,81]},
+  "8VDL":{ag:"C",ab:["H","L"],epi:[652,653,655,656,657,659,660,661,666,667,669,670,673]}
+};
+const GREY="#9aa3ad", BLUE="#2b47d6", RED="#c0392b";
+let cviewer=null;
+function vnoteSet(){document.getElementById("vnote").textContent=(DESCS[state.target]||state.target)+" — epitope (red) is what gets scaffolded";}
+function useImgFallback(){var v=document.getElementById("cviewer");if(v)v.hidden=true;var im=document.getElementById("cimg");
+  im.hidden=false;im.src="img/"+state.target+".png";im.alt=(DESCS[state.target]||state.target)+" complex";vnoteSet();}
+/* VMD-like cartoon: chunky matte ribbons, helices/strands with arrows, grey/blue/red */
+function styleComplex(){const c=CFG[state.target];if(!c||!cviewer)return;
+  cviewer.setStyle({},{cartoon:{color:GREY,thickness:0.75,arrows:true}});
+  cviewer.setStyle({chain:c.ab},{cartoon:{color:BLUE,thickness:0.75,arrows:true}});
+  cviewer.setStyle({chain:c.ag,resi:c.epi},{cartoon:{color:RED,thickness:0.95,arrows:true}});
+  cviewer.zoomTo();cviewer.render();}
+function loadComplex(){
+  if(!cviewer){useImgFallback();return;}
+  fetch("pdb/"+state.target+".pdb").then(r=>{if(!r.ok)throw 0;return r.text();}).then(txt=>{
+    cviewer.clear();cviewer.addModel(txt,"pdb");styleComplex();vnoteSet();
+  }).catch(()=>useImgFallback());
+}
+function initCViewer(){
+  if(typeof $3Dmol==="undefined"){useImgFallback();return;}
+  try{cviewer=$3Dmol.createViewer("cviewer",{backgroundColor:"white"});
+    try{cviewer.setViewStyle({style:"outline",width:0.05,color:"#303030"});}catch(e){}
+    loadComplex();}
+  catch(e){useImgFallback();}
+}
 function syncHints(){
-  $("#targethint").textContent = state.target==="8PWW"
-    ? "AbDb-cleaned complex. Chain A antigen, B/C antibody. Structure preview for 8PWW."
-    : "AbDb-cleaned complex. Simulated at DP4 statistics; structure preview for 8PWW.";
+  $("#targethint").textContent = "antibody-antigen complex; viewer shows antigen (grey), antibody (blue), contact epitope (red).";
   $("#predwrap").hidden = state.epi!=="predict";
   $("#runnote").textContent = state.mode==="threshold"
     ? `will stop early if ${state.n} pass before ${state.runtime} min`
@@ -308,7 +356,7 @@ function syncHints(){
 }
 $$('input[name=epi]').forEach(r=>r.addEventListener("change",()=>{state.epi=document.querySelector('input[name=epi]:checked').value;syncHints();}));
 $$('input[name=mode]').forEach(r=>r.addEventListener("change",()=>{state.mode=document.querySelector('input[name=mode]:checked').value;syncHints();}));
-$("#target").addEventListener("change",e=>{state.target=e.target.value;syncHints();setComplexImg();});
+$("#target").addEventListener("change",e=>{state.target=e.target.value;syncHints();loadComplex();});
 $("#predictor").addEventListener("change",e=>state.predictor=e.target.value);
 $("#strategy").addEventListener("change",e=>state.strategy=e.target.value);
 $("#ndes").addEventListener("input",e=>{state.n=Math.max(1,Math.min(500,+e.target.value||1));syncHints();});
@@ -332,7 +380,7 @@ $("#csvbtn").addEventListener("click",()=>{const rows=[["rank","design","epitope
 /* boot: show a completed example at rest */
 syncHints();
 paint(computeJob(state),false);
-setComplexImg();
+if(document.readyState==="complete") initCViewer(); else window.addEventListener("load",initCViewer);
 </script>
 </body>
 </html>

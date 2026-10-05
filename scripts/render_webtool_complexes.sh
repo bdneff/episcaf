@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export VMDDIR=/Applications/VMD.app/Contents/vmd2/lib
 VMD=$VMDDIR/vmd_MACOSXARM64; TACHYON=$VMDDIR/tachyon_MACOSXARM64
-W=/tmp/webtool; mkdir -p "$W" docs/img
+W=/tmp/webtool; mkdir -p "$W" docs/img docs/pdb
 
 # ID  input  antigen_chain  antibody_chains(csv)  rotx roty rotz
 targets=(
@@ -16,11 +16,11 @@ targets=(
 )
 for t in "${targets[@]}"; do
   set -- $t; id=$1; inp=$2; ag=$3; ab=$4; rx=$5; ry=$6; rz=$7
-  epi=$(/usr/bin/python3 scripts/webtool_prep.py "$inp" "$ag" "$ab" "$W/$id.pdb")
+  epi=$(/usr/bin/python3 scripts/webtool_prep.py "$inp" "$ag" "$ab" "docs/pdb/$id.pdb")
   {
-    echo "$W/$id.pdb|6|AOChalky|0.30|protein and chain $ag"
-    echo "$W/$id.pdb|0|AOChalky|0.30|protein and chain ${ab//,/ }"
-    [ -n "$epi" ] && echo "$W/$id.pdb|1|AOChalky|0.50|protein and chain $ag and resid $epi"
+    echo "docs/pdb/$id.pdb|6|AOChalky|0.30|protein and chain $ag"
+    echo "docs/pdb/$id.pdb|0|AOChalky|0.30|protein and chain ${ab//,/ }"
+    [ -n "$epi" ] && echo "docs/pdb/$id.pdb|1|AOChalky|0.50|protein and chain $ag and resid $epi"
   } > "$W/$id.spec"
   "$VMD" -dispdev text -e scripts/render_concept.tcl -args "$W/$id.spec" "$W/$id.dat" "$rx" "$ry" "$rz" >/dev/null 2>&1
   "$TACHYON" "$W/$id.dat" -res 1120 920 -aasamples 12 -format TARGA -o "$W/$id.tga" >/dev/null 2>&1
