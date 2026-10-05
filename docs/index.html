@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Epitope Scaffolder</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <style>
 :root{color-scheme:light}
 html,body{margin:0}
@@ -69,9 +71,10 @@ tr.real td{background:#eef4fd}
 .tcard-top .tlab{font-weight:bold;margin-right:8px}
 .tcard-top label.radio{display:inline-block;margin:2px 14px 2px 0}
 #predwrap{color:#555555}
-.stratbox{background:#f6f6f6;border:1px solid #dddddd;padding:8px 11px;margin-top:7px;max-width:480px}
-.stratbox .eq{font-family:"Courier New",Courier,monospace;font-size:12.5px;color:#1a1a1a;margin-bottom:5px;overflow-x:auto}
-.stratbox .eq sub,.stratbox .eq sup{font-size:85%}
+.stratbox{background:#f6f6f6;border:1px solid #dddddd;padding:10px 12px;margin-top:7px;max-width:510px}
+.stratbox .eq{font-size:1.15em;color:#1a1a1a;margin:3px 0 9px;overflow-x:auto;overflow-y:hidden}
+.stratbox .arch{font-size:12px;color:#333333;margin-bottom:5px}
+.stratbox .arch b{color:#1a1a1a}
 .stratbox .d{font-size:12px;color:#555555;line-height:1.5}
 .sw{display:inline-block;width:12px;height:9px;vertical-align:middle;border:1px solid #999}
 .foot{font-size:12px;color:#666666;line-height:1.6}
@@ -357,7 +360,7 @@ function renderPDB(txt){const c=CFG[state.target];cviewer.clear();
     cviewer.setStyle({chain:c.ab},{cartoon:{color:BLUE,thickness:0.75,arrows:true}});
     cviewer.setStyle({chain:c.ag,resi:c.epi},{cartoon:{color:RED,thickness:0.95,arrows:true}});
   }
-  cviewer.zoomTo();cviewer.render();updateCaption();}
+  cviewer.zoomTo();cviewer.zoom(1.25);cviewer.render();updateCaption();}
 let _pdbCache={};
 function loadComplex(){
   if(!cviewer){useImgFallback();return;}
@@ -369,20 +372,26 @@ function loadComplex(){
 }
 /* scoring-method card (equation + one-line description), from the DP4 findings */
 const STRAT_INFO={
-  logistic:{eq:'p(bind) = &sigma;( w&middot;x + b ),&nbsp;&nbsp; &sigma;(z) = 1 / (1 + e<sup>&minus;z</sup>)',
-    desc:'Weighted sum of epitope + design features through a sigmoid. Additive and interpretable; the native secondary-structure features carry most of the signal. Held-out AUC 0.82.'},
-  gbt:{eq:'F(x) = &Sigma;<sub>m</sub> &gamma;<sub>m</sub> h<sub>m</sub>(x)&nbsp;&nbsp; (h<sub>m</sub> = depth-1 stumps)',
-    desc:'Sum of shallow trees. On this data the best trees are depth-1 stumps, i.e. an additive model, so it ties logistic regression (AUC 0.82); no useful feature interactions.'},
-  composite:{eq:'S = &Sigma;<sub>i</sub> w<sub>i</sub> &middot; &sigma;( (x<sub>i</sub> &minus; m<sub>i</sub>) / s<sub>i</sub> ) + pass_bonus',
-    desc:'Hand-set weighted sum of sigmoid-transformed metrics (epitope RMSD, PAE, clash, cylinder) plus a four-filter pass bonus. Gates binding (AUC 0.73) but does not rank affinity.'},
-  dl:{eq:'f(x) = W<sub>2</sub> &middot; relu( W<sub>1</sub>x + b<sub>1</sub> ) + b<sub>2</sub>',
-    desc:'A multilayer perceptron with far more parameters than the data support. It memorizes training epitopes and generalizes worst across held-out epitopes (AUC ~0.61), below the hand-set score.'}
+  logistic:{tex:'p(\\text{bind})=\\sigma(\\mathbf{w}\\cdot\\mathbf{x}+b),\\quad \\sigma(z)=\\dfrac{1}{1+e^{-z}}',
+    arch:'Linear model &middot; 15 features &rarr; 1 output &middot; <b>16 weights</b>',
+    desc:'One weighted sum through a sigmoid. Additive and interpretable; the native secondary-structure features carry most of the signal. Held-out AUC 0.82.'},
+  gbt:{tex:'F(\\mathbf{x})=\\sum_{m=1}^{M}\\gamma_m\\,h_m(\\mathbf{x})',
+    arch:'Histogram gradient boosting &middot; ~100 trees, depth &le; 3 &middot; <b>best at depth-1 stumps</b> (additive)',
+    desc:'Sum of shallow trees. The best trees here are depth-1 stumps, so it reduces to an additive model and ties logistic regression (AUC 0.82); no useful feature interactions.'},
+  composite:{tex:'S=\\sum_i w_i\\,\\sigma\\!\\left(\\dfrac{x_i-m_i}{s_i}\\right)+\\text{pass bonus}',
+    arch:'Hand-set single-layer perceptron &middot; ~6 metric weights, <b>fixed (not learned)</b>',
+    desc:'Weighted sum of sigmoid-transformed metrics (epitope RMSD, PAE, clash, cylinder) plus a four-filter pass bonus. Gates binding (AUC 0.73) but does not rank affinity.'},
+  dl:{tex:'\\mathbf{x}_{15}\\;\\rightarrow\\;512\\rightarrow512\\rightarrow512\\rightarrow512\\;\\rightarrow\\;\\hat{y}',
+    arch:'MLP &middot; 4 hidden layers &times; 512 &middot; <b>~796,000 weights</b> on ~2,700 designs (56 epitopes)',
+    desc:'Far more parameters than the data support, so it memorizes training epitopes and generalizes worst across held-out epitopes (AUC ~0.61), below the hand-set score.'}
 };
-function setStratBox(){const i=STRAT_INFO[state.strategy];$("#stratbox").innerHTML='<div class="eq">'+i.eq+'</div><div class="d">'+i.desc+'</div>';}
+function setStratBox(){const i=STRAT_INFO[state.strategy];let eq="";
+  try{if(window.katex)eq=katex.renderToString(i.tex,{displayMode:true,throwOnError:false});}catch(e){}
+  if(!eq)eq='<span style="font-family:monospace;font-size:13px">'+i.tex+'</span>';
+  $("#stratbox").innerHTML='<div class="eq">'+eq+'</div><div class="arch">'+i.arch+'</div><div class="d">'+i.desc+'</div>';}
 function initCViewer(){
   if(typeof $3Dmol==="undefined"){useImgFallback();return;}
-  try{cviewer=$3Dmol.createViewer("cviewer",{backgroundColor:"white"});
-    try{cviewer.setViewStyle({style:"outline",width:0.05,color:"#303030"});}catch(e){}
+  try{cviewer=$3Dmol.createViewer("cviewer",{backgroundColor:"white",ambientOcclusion:{strength:0.9}});
     loadComplex();}
   catch(e){useImgFallback();}
 }
