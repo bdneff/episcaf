@@ -162,7 +162,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     <div class="field">
       <label for="strategy">Scoring strategy:</label>
       <select id="strategy">
-        <option value="logistic">logistic regression (AUC 0.82)</option>
+        <option value="logistic">logistic regression &mdash; recommended (AUC 0.82)</option>
         <option value="gbt">gradient-boosted tree (AUC 0.82)</option>
         <option value="composite">composite, hand-set (AUC 0.73)</option>
         <option value="dl">overtrained DL net (overfits, AUC ~0.61)</option>
@@ -383,19 +383,19 @@ const FEAT15='<u>Design metrics (9):</u> cylinder clashes, epitope RMSD, overall
 const STRAT_INFO={
   logistic:{tex:'p(\\text{bind})=\\sigma(\\mathbf{w}\\cdot\\mathbf{x}+b),\\quad \\sigma(z)=\\dfrac{1}{1+e^{-z}}',
     arch:'Linear model &middot; 15 features &rarr; 1 output &middot; <b>16 weights</b>',
-    desc:'One weighted sum through a sigmoid. Additive and interpretable; the native secondary-structure features carry most of the signal. Held-out AUC 0.82.',
+    desc:'Start here. It learned from the DP4 assay which designs actually bound, then ranks new designs the same way. In testing about 34% of its top picks bound, against roughly 8% picking blind. It is simple enough that you can see which measurements drove each score.',
     more:'<b>Features (15):</b><br>'+FEAT15+'<br><b>Fit:</b> L2 logistic regression, standardized inputs, balanced classes; grouped 5-fold CV by epitope (the 16th weight is the bias). Learned coefficients vary by fold, so we report block importance rather than a single frozen weight vector.<br><b>Where the signal sits</b> (block-Shapley AUC gain): secondary structure +0.128 &gt; design +0.109 &gt; dynamics +0.059.'},
   gbt:{tex:'F(\\mathbf{x})=\\sum_{m=1}^{M}\\gamma_m\\,h_m(\\mathbf{x})',
     arch:'Histogram gradient boosting &middot; ~100 trees, depth &le; 3 &middot; <b>best at depth-1 stumps</b> (additive)',
-    desc:'Sum of shallow trees. The best trees here are depth-1 stumps, so it reduces to an additive model and ties logistic regression (AUC 0.82); no useful feature interactions.',
+    desc:'The same 15 inputs as logistic, run through a more flexible model. On this data it reaches the same answers, because the binding signal is simple, so treat it as a cross-check. Expect nearly identical picks and no real gain over logistic.',
     more:'<b>Features (15):</b><br>'+FEAT15+'<br><b>Model:</b> HistGradientBoosting, ~100 boosting rounds, max depth &le; 3. A depth sweep found <b>depth-1 stumps</b> best &mdash; one feature per split &mdash; so the ensemble is effectively additive. Interaction-constrained and EBM variants agree: additive &ge; interactions here.'},
   composite:{tex:'S=\\sum_i w_i\\,\\sigma\\!\\left(\\dfrac{x_i-m_i}{s_i}\\right)+\\text{pass bonus}',
     arch:'Hand-set single-layer perceptron &middot; ~6 metric weights, <b>fixed (not learned)</b>',
-    desc:'Weighted sum of sigmoid-transformed metrics (epitope RMSD, PAE, clash, cylinder) plus a four-filter pass bonus. Gates binding (AUC 0.73) but does not rank affinity.',
+    desc:'The original hand-tuned score, fixed before any binding data existed. It reliably clears the in-silico filters, but it ranks by how right a design looks to AlphaFold rather than by measured binding, so fewer of its picks bind (about 24%). A sensible baseline, and the only option when you have no assay data to train on.',
     more:'<b>Hand-set weights</b> (presets.py &middot; ANTIBODY_SOFTGATE), on sigmoid-transformed metrics:<br><u>cylinder accessibility 0.35</u> &middot; <u>epitope RMSD 0.35</u> &middot; mean PAE 0.15 &middot; overall RMSD 0.15<br>plus a four-filter <b>pass bonus</b> (gain 2 for designs with epitope RMSD &le; 1 &Aring;, overall &le; 2 &Aring;, mean PAE &lt; 5, 0 clashes). Each metric is first squashed through its own sigmoid (midpoint = the DP3 threshold).<br>Not learned from data &mdash; the transparent baseline the models are measured against.'},
   dl:{tex:'\\mathbf{x}_{15}\\;\\rightarrow\\;512\\rightarrow512\\rightarrow512\\rightarrow512\\;\\rightarrow\\;\\hat{y}',
     arch:'MLP &middot; 4 hidden layers &times; 512 &middot; <b>~796,000 weights</b> on ~2,700 designs (56 epitopes)',
-    desc:'Far more parameters than the data support, so it memorizes training epitopes and generalizes worst across held-out epitopes (AUC ~0.61), below the hand-set score.',
+    desc:'A deep network far too large for this dataset. It memorized the training epitopes and does worse on new ones, below even the hand-tuned score. It is here to show the overfitting trap, not to pick designs; leave it unless you are making that point.',
     more:'<b>Architecture:</b> 15 &rarr; 512 &rarr; 512 &rarr; 512 &rarr; 512 &rarr; 1, ReLU.<br>Weights: 15&times;512 + 3&times;(512&times;512) + 512 + biases = <b>~796,000</b>. L2 &alpha; = 1e&minus;6 (almost none), trained to convergence.<br>~290&times; more parameters than training designs &rarr; it memorizes epitopes; held-out AUC ~0.61, below the hand-set composite. This is the overfitting lesson, shown on purpose.'}
 };
 function setStratBox(){const i=STRAT_INFO[state.strategy];let eq="";
