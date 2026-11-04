@@ -89,6 +89,11 @@ tr.real td{background:#eef4fd}
 .foot{font-size:12px;color:#666666;line-height:1.6}
 .foot b{color:#444444}
 code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0f0;padding:0 3px}
+.nav{background:#eef3f9;border-bottom:1px solid #d5deea}
+.nav-inner{max-width:730px;margin:0 auto;padding:0 16px;display:flex;gap:2px}
+.nav a{display:inline-block;padding:9px 16px;font-size:13px;font-weight:bold;color:#3b6ea5;text-decoration:none;border:1px solid transparent;border-bottom:none}
+.nav a:hover{color:#21568f}
+.nav a.on{background:#ffffff;color:#1b4a86;border-color:#d5deea;border-radius:4px 4px 0 0;position:relative;top:1px}
 </style>
 </head>
 <body>
@@ -106,6 +111,10 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     <circle cx="60" cy="23" r="3" fill="#ffffff" opacity=".85"/>
     <circle cx="108" cy="23" r="3" fill="#ffffff" opacity=".85"/>
   </svg>
+</div></div>
+<div class="nav"><div class="nav-inner">
+  <a href="pipeline.html">Pipeline</a>
+  <a href="index.html" class="on">GUI tool</a>
 </div></div>
 <div class="page">
   <p class="lede">Given an antibody&ndash;antigen complex, design protein scaffolds that present the epitope in its native, antibody-binding conformation. Pipeline: RFdiffusion &rarr; backbone pre-filter &rarr; ProteinMPNN &rarr; AlphaFold3 &rarr; scoring.</p>

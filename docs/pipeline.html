@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>episcaf — Pipeline blueprint</title>
+<style>
+:root{
+  color-scheme:light;
+  --ink:#1a1a1a; --mut:#4e5a67; --faint:#808b97;
+  --blue:#296DC0; --blued:#1b4a86; --line:#d3dce6;
+  --done:#2e9e57; --prog:#d8a93a; --plan:#9aa7b4;
+  --ng-bg:#fffaf0; --ng-line:#ead9a8; --ng-ink:#8a6413;
+}
+html,body{margin:0}
+body{background:#ffffff;color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55}
+.page{max-width:720px;margin:0 auto;padding:18px 16px 52px}
+.banner{background:linear-gradient(100deg,#21568f 0%,#296DC0 46%,#3b7fd1 100%);color:#fff;border-bottom:3px solid #1b4a86}
+.banner-inner{max-width:720px;margin:0 auto;padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.brand{display:flex;align-items:center;gap:13px;min-width:0}
+.blogo{width:44px;height:44px;flex:none}
+.wm .name{font-size:27px;font-weight:bold;letter-spacing:.02em;line-height:1}
+.wm .tag{font-size:12.5px;color:#dce8f7;margin-top:3px;letter-spacing:.02em}
+.motif{height:44px;width:auto;flex:none;opacity:.95}
+@media(max-width:540px){.motif{display:none}.wm .name{font-size:23px}}
+.nav{background:#eef3f9;border-bottom:1px solid #d5deea}
+.nav-inner{max-width:720px;margin:0 auto;padding:0 16px;display:flex;gap:2px}
+.nav a{display:inline-block;padding:9px 16px;font-size:13px;font-weight:bold;color:#3b6ea5;text-decoration:none;border:1px solid transparent;border-bottom:none}
+.nav a:hover{color:#21568f}
+.nav a.on{background:#fff;color:#1b4a86;border-color:#d5deea;border-radius:4px 4px 0 0;position:relative;top:1px}
+h1{font-size:22px;margin:18px 0 4px;font-weight:bold}
+h2{font-size:16px;margin:34px 0 4px;font-weight:bold}
+p{margin:9px 0}
+a{color:#0033cc}
+.updated{font-size:12px;color:var(--faint);margin:0 0 4px;letter-spacing:.02em}
+.lede{color:var(--mut);margin:0 0 14px;max-width:60ch}
+.sub{color:var(--mut);margin:4px 0 14px;max-width:62ch;font-size:13px}
+
+/* ---- status chips + legend ---- */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:bold;letter-spacing:.03em;text-transform:uppercase;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.chip::before{content:"";width:7px;height:7px;border-radius:50%}
+.chip.done{color:#1d6e3c;background:#e8f5ec}.chip.done::before{background:var(--done)}
+.chip.prog{color:#8a6413;background:#fcf2db}.chip.prog::before{background:var(--prog)}
+.chip.plan{color:#4f5b68;background:#eef1f5}.chip.plan::before{background:var(--plan)}
+.legend{display:flex;flex-wrap:wrap;gap:9px 18px;align-items:center;font-size:12px;color:var(--mut);background:#f7f9fc;border:1px solid var(--line);border-radius:8px;padding:11px 14px;margin:2px 0 6px}
+.legend .ng-tag{font-size:9.5px}
+
+.ng-tag{display:inline-block;font-size:9.5px;font-weight:bold;letter-spacing:.06em;color:var(--ng-ink);background:#fcf2db;border:1px solid var(--ng-line);border-radius:3px;padding:1px 5px;vertical-align:1px}
+
+/* ---- flow ---- */
+.flow{margin:10px 0 0}
+.phase{background:#f7f9fc;border:1px solid var(--line);border-radius:12px;padding:8px 16px 16px;margin:0}
+.phase-h{display:flex;align-items:center;gap:11px;padding:7px 0 10px}
+.phase-n{flex:none;width:27px;height:27px;border-radius:50%;background:var(--blue);color:#fff;font-size:14px;font-weight:bold;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(27,74,134,.3)}
+.phase-t{font-size:15px;font-weight:bold;color:var(--blued)}
+.phase-t small{display:block;font-size:11.5px;font-weight:normal;color:var(--mut);letter-spacing:.01em;margin-top:1px}
+
+.stage{background:#fff;border:1px solid var(--line);border-left:5px solid var(--plan);border-radius:7px;padding:11px 14px;box-shadow:0 1px 1px rgba(30,50,80,.04)}
+.stage.s-done{border-left-color:var(--done)}
+.stage.s-prog{border-left-color:var(--prog)}
+.stage.s-plan{border-left-color:var(--plan)}
+.stage.ng{background:var(--ng-bg)}
+.stage .st-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.stage .st-name{font-weight:bold;font-size:14px}
+.stage .st-desc{font-size:12.5px;color:var(--mut);margin:5px 0 0}
+.stage .st-tool{font-family:"Courier New",Courier,monospace;font-size:11px;color:#6b7684;margin-top:6px;display:block;word-break:break-word}
+
+/* down-arrow connector */
+.arr{position:relative;width:2px;height:22px;background:var(--line);margin:6px auto}
+.arr::after{content:"";position:absolute;left:50%;bottom:-1px;width:8px;height:8px;border-right:2px solid var(--line);border-bottom:2px solid var(--line);transform:translate(-50%,0) rotate(45deg)}
+.arr.big{height:30px}
+
+/* two-mode input branch */
+.branch{display:flex;gap:12px;align-items:stretch;position:relative}
+.branch .stage{flex:1;min-width:0}
+.orbubble{flex:none;align-self:center;font-size:10.5px;font-weight:bold;color:var(--faint);background:#fff;border:1px solid var(--line);border-radius:20px;padding:3px 9px;letter-spacing:.05em}
+@media(max-width:540px){.branch{flex-direction:column;gap:9px}.orbubble{align-self:flex-start}}
+
+/* loop-back */
+.loop{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ng-ink);background:var(--ng-bg);border:1px solid var(--ng-line);border-radius:7px;padding:9px 13px;margin:10px 0 0}
+.loop .ic{flex:none;font-size:18px;line-height:1;color:var(--prog)}
+.loop b{color:#6f5410}
+
+/* ---- method cards ---- */
+.mcard{border:1px solid var(--line);border-radius:9px;margin:13px 0;overflow:hidden;background:#fff}
+.mcard-h{display:flex;align-items:center;gap:11px;background:#f0f5fb;border-bottom:1px solid #dde7f2;padding:10px 15px}
+.mcard-h .mt{font-weight:bold;font-size:15px;color:var(--blued)}
+.mcard-h .ms{font-size:12px;color:var(--mut)}
+.mcard-h .sp{flex:1}
+.mcard-b{padding:12px 15px 14px}
+.mcard-b .what{font-size:12.5px;color:var(--mut);margin:0 0 11px}
+.steps{list-style:none;margin:0;padding:0;font-size:12.5px}
+.steps li{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-top:1px solid #eef1f5}
+.steps li:first-child{border-top:none}
+.steps .mk{flex:none;width:17px;height:17px;border-radius:50%;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;color:#fff}
+.steps .mk.d{background:var(--done)}
+.steps .mk.p{background:var(--prog)}
+.steps .mk.o{background:#fff;border:1.5px solid #c4cdd7;color:#c4cdd7}
+.steps .tx{color:#3a3a3a}
+.steps .tx b{color:var(--ink)}
+code{font-family:"Courier New",Courier,monospace;font-size:11.5px;background:#eef1f5;padding:0 4px;border-radius:3px}
+
+.focus{display:flex;gap:11px;background:#fef8ec;border:1px solid var(--ng-line);border-left:5px solid var(--prog);border-radius:8px;padding:12px 15px;margin:16px 0 0}
+.focus .ic{flex:none;font-size:17px;line-height:1.3}
+.focus b{color:#6f5410}
+.foot{font-size:12px;color:#5c6672;line-height:1.75;margin-top:30px;border-top:1px solid var(--line);padding-top:13px}
+</style>
+</head>
+<body>
+<div class="banner"><div class="banner-inner">
+  <div class="brand">
+    <svg class="blogo" viewBox="0 0 44 44" fill="none" aria-hidden="true">
+      <path d="M5 31 C 13 13, 21 13, 25 24 C 28 32, 33 33, 39 15" stroke="#dce8f7" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+      <circle cx="25" cy="20" r="4.4" fill="#e5543f"/>
+    </svg>
+    <div class="wm"><div class="name">episcaf</div><div class="tag">Epitope Scaffolder</div></div>
+  </div>
+  <svg class="motif" viewBox="0 0 170 46" fill="none" aria-hidden="true">
+    <path d="M6 23 C 20 9, 28 9, 36 23 C 44 37, 52 37, 60 23 C 68 9, 76 9, 84 23 C 92 37, 100 37, 108 23 C 116 9, 124 9, 132 23 C 140 37, 148 37, 156 23" stroke="#bcd6f2" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+    <circle cx="84" cy="16" r="5" fill="#e5543f"/>
+    <circle cx="60" cy="23" r="3" fill="#ffffff" opacity=".85"/>
+    <circle cx="108" cy="23" r="3" fill="#ffffff" opacity=".85"/>
+  </svg>
+</div></div>
+<div class="nav"><div class="nav-inner">
+  <a href="pipeline.html" class="on">Pipeline</a>
+  <a href="index.html">GUI tool</a>
+</div></div>
+
+<div class="page">
+  <p class="updated">BLUEPRINT · UPDATED 2026-11-04</p>
+  <h1>Pipeline blueprint</h1>
+  <p class="lede">The route from an antigen to a synthesizable, epitope-presenting scaffold &mdash; and
+  what is built versus still to come. The shipped DP4 backbone runs top to bottom; the shaded
+  <span class="ng-tag">NEXT-GEN</span> stages are the new methods being folded in.</p>
+
+  <div class="legend">
+    <span class="chip done">shipped</span>
+    <span class="chip prog">in&nbsp;progress</span>
+    <span class="chip plan">planned</span>
+    <span><span class="ng-tag">NEXT-GEN</span> &nbsp;John&rsquo;s new method</span>
+  </div>
+
+  <!-- ===================== FLOW ===================== -->
+  <div class="flow">
+
+    <div class="phase">
+      <div class="phase-h">
+        <div class="phase-n">1</div>
+        <div class="phase-t">Input<small>Choose the epitope &mdash; one of two modes</small></div>
+      </div>
+      <div class="branch">
+        <div class="stage s-done">
+          <div class="st-top"><span class="st-name">Known antibody</span><span class="chip done">shipped</span></div>
+          <p class="st-desc">Take the contact epitope straight from the antibody&ndash;antigen complex.</p>
+          <code class="st-tool">stage01_compile_contigs · stage02_emit_rfd3_inputs</code>
+        </div>
+        <div class="orbubble">OR</div>
+        <div class="stage ng s-plan">
+          <div class="st-top"><span class="st-name">No antibody <span class="ng-tag">NEXT-GEN</span></span><span class="chip plan">planned</span></div>
+          <p class="st-desc"><b>growPatch</b> enumerates footprint-sized surface patches, then a learned (DiscoTope-style) score ranks them.</p>
+          <code class="st-tool">→ episcaf_analysis/growpatch/</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="arr big"></div>
+
+    <div class="phase">
+      <div class="phase-h">
+        <div class="phase-n">2</div>
+        <div class="phase-t">Generation<small>The IPD loop &mdash; build backbones, sequences, structures</small></div>
+      </div>
+      <div class="stage s-done">
+        <div class="st-top"><span class="st-name">RFdiffusion3 backbones</span><span class="chip done">shipped</span></div>
+        <p class="st-desc">8 backbones per contig, epitope held in native geometry.</p>
+        <code class="st-tool">hpc/sbatch/rfd3_array.sbatch</code>
+      </div>
+      <div class="arr"></div>
+      <div class="stage ng s-plan">
+        <div class="st-top"><span class="st-name">Backbone clash pre-filter <span class="ng-tag">NEXT-GEN</span></span><span class="chip plan">planned</span></div>
+        <p class="st-desc">Drop backbones the antibody could never reach &mdash; before spending MPNN + AF3 on them. Same learned metric as scoring, applied early.</p>
+        <code class="st-tool">episcaf_analysis/aomclash/score_design()</code>
+      </div>
+      <div class="arr"></div>
+      <div class="stage s-done">
+        <div class="st-top"><span class="st-name">ProteinMPNN</span><span class="chip done">shipped</span></div>
+        <p class="st-desc">Sequence design with the epitope fixed, 8 sequences per backbone.</p>
+        <code class="st-tool">stage03_mpnn_fixed_pdbs · stage03_mpnn_submit</code>
+      </div>
+      <div class="arr"></div>
+      <div class="stage s-done">
+        <div class="st-top"><span class="st-name">AlphaFold3</span><span class="chip done">shipped</span></div>
+        <p class="st-desc">Single-sequence prediction, seed 1, no data pipeline.</p>
+        <code class="st-tool">stage04_af3_emit_jsons · af3_array.sbatch</code>
+      </div>
+      <div class="loop">
+        <span class="ic">&#x21bb;</span>
+        <span><b>Loop back:</b> promising designs re-seed the next round &mdash; partial-diffusion children
+        (re-noise a good backbone, denoise with the epitope fixed) and randomized island order, under an
+        escalating-scale stopping rule. <span class="chip plan" style="vertical-align:1px">planned</span></span>
+      </div>
+    </div>
+
+    <div class="arr big"></div>
+
+    <div class="phase">
+      <div class="phase-h">
+        <div class="phase-n">3</div>
+        <div class="phase-t">Scoring<small>Rank on epitope fidelity &amp; antibody accessibility</small></div>
+      </div>
+      <div class="stage s-done">
+        <div class="st-top"><span class="st-name">Metrics</span><span class="chip done">shipped</span></div>
+        <p class="st-desc">Epitope &amp; overall RMSD, epitope PAE, AF3 clash, native-aware cylinder.</p>
+        <code class="st-tool">stage05_extract_metrics</code>
+      </div>
+      <div class="arr"></div>
+      <div class="stage ng s-prog">
+        <div class="st-top"><span class="st-name">AOMclash predicted clash <span class="ng-tag">NEXT-GEN</span></span><span class="chip prog">in&nbsp;progress</span></div>
+        <p class="st-desc">A learned antibody-occupancy model replaces the geometric cylinder as the no-antibody accessibility surrogate. Real AF3 clash is kept wherever a true antibody exists.</p>
+        <code class="st-tool">episcaf_analysis/aomclash/ → aomclash_pred</code>
+      </div>
+      <div class="arr"></div>
+      <div class="stage s-done">
+        <div class="st-top"><span class="st-name">Composite score + select</span><span class="chip done">shipped</span></div>
+        <p class="st-desc">Weighted, column-driven composite; rank (no hard gate); per-group top-k.</p>
+        <code class="st-tool">stage06_select · presets.py (antibody_softgate · twelvemer)</code>
+      </div>
+    </div>
+
+    <div class="arr big"></div>
+
+    <div class="phase">
+      <div class="phase-h">
+        <div class="phase-n">4</div>
+        <div class="phase-t">Output<small>Library on the bench</small></div>
+      </div>
+      <div class="stage s-done">
+        <div class="st-top"><span class="st-name">Assemble → encode → order</span><span class="chip done">shipped</span></div>
+        <p class="st-desc">Concatenate components, case-encode, peptide&rarr;DNA (LadnerLab + DP3 codon weights), Twist-ready order file. DP4 shipped at 36,000 constructs.</p>
+        <code class="st-tool">stage06_assemble · oligo_encoding · stage07_order_file</code>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== NEXT-GEN DETAIL ===================== -->
+  <h2>Next-generation methods</h2>
+  <p class="sub">Three methods from John Altin&rsquo;s 2026-11-03 reports, each backed by a reference
+  implementation (R + Python on Tamarind / AF2), being ported into episcaf_v2 (Python / Gemini / AF3).</p>
+
+  <div class="mcard">
+    <div class="mcard-h"><span class="mt">AOMclash</span><span class="ms">learned clash predictor</span><span class="sp"></span><span class="chip prog">in&nbsp;progress</span></div>
+    <div class="mcard-b">
+      <p class="what">Replaces the geometric native-aware cylinder with a gradient-boosted regressor that
+      reads an <b>antibody occupancy map</b> (built from 1,029 SAbDab complexes) at each scaffold atom.
+      Antibody-geometry only, so the map is AlphaFold-version agnostic; we retrain the regressor on our
+      AF3 clash labels.</p>
+      <ul class="steps">
+        <li><span class="mk d">&#10003;</span><span class="tx"><b>1a · Get the code.</b> Fetched <code>upstream/feat/aomclash</code>; read the map builder + feature extractor.</span></li>
+        <li><span class="mk d">&#10003;</span><span class="tx"><b>1b · Reproduce the occupancy map.</b> Rebuilt from 944 local SAbDab complexes; matches John&rsquo;s Fig&nbsp;4 (peak 0.956 vs 0.94; radial bands exact).</span></li>
+        <li><span class="mk p">&#9679;</span><span class="tx"><b>1c · Port feature extraction.</b> Geometry core (<code>frame_from</code>, <code>cylinder_counts</code>) written and gated against our <code>native_cylinder_core</code> + a recorded value. The ~109 <code>design_feats</code> are next.</span></li>
+        <li><span class="mk o">&nbsp;</span><span class="tx"><b>1d · Retrain on AF3 labels.</b> HistGBR (John&rsquo;s hyperparameters) on <code>af3_n_clash_res</code>, leave-one-antigen-out. Cluster-staged.</span></li>
+        <li><span class="mk o">&nbsp;</span><span class="tx"><b>1e · Ship the scorer.</b> Pickle the model, wire <code>aomclash_pred</code> into stage05/06, swap it into the <code>twelvemer</code> preset.</span></li>
+        <li><span class="mk o">&nbsp;</span><span class="tx"><b>1f · Docs + manuscript.</b> Cylinder &rarr; learned-model section, figures, FIGURES.md.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mcard">
+    <div class="mcard-h"><span class="mt">growPatch</span><span class="ms">no-antibody epitope enumeration</span><span class="sp"></span><span class="chip plan">planned</span></div>
+    <div class="mcard-b">
+      <p class="what">The second input mode: grow footprint-sized surface patches (relSASA seed &rarr; greedy
+      grow to ~16 residues &rarr; gap-fill &rarr; &le;3 islands &rarr; Jaccard NMS) so every possible epitope is
+      represented, then <b>rank the ~54 patches/antigen by a learned likelihood</b> instead of geometry alone.
+      Replaces the old tiled-12mer no-antibody approach.</p>
+      <ul class="steps">
+        <li><span class="mk o">&nbsp;</span><span class="tx">Port <code>segmentation/growPatch.py</code> as a Python module.</span></li>
+        <li><span class="mk o">&nbsp;</span><span class="tx">Learned ranking tweak (DiscoTope-3.0 is already baked into the GUI&rsquo;s predict mode).</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mcard">
+    <div class="mcard-h"><span class="mt">IPD loop</span><span class="ms">iterative generation</span><span class="sp"></span><span class="chip plan">planned</span></div>
+    <div class="mcard-b">
+      <p class="what">The generation loop that wraps the whole middle of the pipeline: an RFD3 backbone
+      pre-filter (using AOMclash), escalating de-novo &rarr; seeded rounds, <b>partial-diffusion children</b>,
+      randomized island order, and a composite stopping rule.</p>
+      <ul class="steps">
+        <li><span class="mk o">&nbsp;</span><span class="tx"><b>Open question first:</b> the partial-diffusion intuition &mdash; exploration vs exploitation, and whether it finds genuinely better designs or just best-of-N in a good neighborhood (John&rsquo;s own false-discovery caveat). This sets the children-vs-de-novo budget.</span></li>
+        <li><span class="mk o">&nbsp;</span><span class="tx">Port <code>efficientScaffolding/tamarind.R</code> into the Python/Gemini/AF3 pipeline.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="focus">
+    <span class="ic">&#9733;</span>
+    <span><b>Current focus:</b> AOMclash step 1c &mdash; porting the ~109 <code>design_feats</code> onto the
+    validated geometry core, with a durable synthetic unit test, before staging the AF3 retrain (1d) on the cluster.</span>
+  </div>
+
+  <div class="foot">
+    <b>Sources.</b> Authoritative run order: <code>docs/PIPELINE.md</code> · DP4 deliverable reference:
+    <code>docs/DP4_LIBRARY.md</code> · scorer dials: <code>episcaf_analysis/presets.py</code>.
+    Reference implementations: <code>AltinLab/epitope-universe</code>.
+    This page is the project&rsquo;s living pipeline view; the <a href="index.html">GUI tool</a> tab is the
+    interactive prototype for running a scaffold job.
+  </div>
+</div>
+</body>
+</html>
