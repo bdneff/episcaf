@@ -128,7 +128,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:11.5px;background:#ee
 </div></div>
 
 <div class="page">
-  <p class="updated">BLUEPRINT · UPDATED 2026-11-04</p>
+  <p class="updated">BLUEPRINT · UPDATED 2026-11-09</p>
   <h1>Pipeline blueprint</h1>
   <p class="lede">The route from an antigen to a synthesizable, epitope-presenting scaffold &mdash; and
   what is built versus still to come. The shipped DP4 backbone runs top to bottom; the shaded
@@ -246,22 +246,23 @@ code{font-family:"Courier New",Courier,monospace;font-size:11.5px;background:#ee
 
   <!-- ===================== NEXT-GEN DETAIL ===================== -->
   <h2>Next-generation methods</h2>
-  <p class="sub">Three methods from John Altin&rsquo;s 2026-11-03 reports, each backed by a reference
-  implementation (R + Python on Tamarind / AF2), being ported into episcaf_v2 (Python / Gemini / AF3).</p>
+  <p class="sub">Three methods from John Altin&rsquo;s 2026-11-03 reports (AOMclash revised 8-Nov, with a 4-Nov
+  island-order bug fix), each backed by a reference implementation (R + Python on Tamarind / AF2),
+  being ported into episcaf_v2 (Python / Gemini / AF3).</p>
 
   <div class="mcard">
     <div class="mcard-h"><span class="mt">AOMclash</span><span class="ms">learned clash predictor</span><span class="sp"></span><span class="chip prog">in&nbsp;progress</span></div>
     <div class="mcard-b">
       <p class="what">Replaces the geometric native-aware cylinder with a gradient-boosted regressor that
-      reads an <b>antibody occupancy map</b> (built from 1,029 SAbDab complexes) at each scaffold atom.
+      reads an <b>antibody occupancy map</b> (built from 1,036 SAbDab complexes) at each scaffold atom.
       Antibody-geometry only, so the map is AlphaFold-version agnostic; we retrain the regressor on our
       AF3 clash labels.</p>
       <ul class="steps">
         <li><span class="mk d">&#10003;</span><span class="tx"><b>1a · Get the code.</b> Fetched <code>upstream/feat/aomclash</code>; read the map builder + feature extractor.</span></li>
         <li><span class="mk d">&#10003;</span><span class="tx"><b>1b · Reproduce the occupancy map.</b> Rebuilt from 944 local SAbDab complexes; matches John&rsquo;s Fig&nbsp;4 (peak 0.956 vs 0.94; radial bands exact).</span></li>
-        <li><span class="mk p">&#9679;</span><span class="tx"><b>1c · Port feature extraction.</b> Geometry core (<code>frame_from</code>, <code>cylinder_counts</code>) written and gated against our <code>native_cylinder_core</code> + a recorded value. The ~109 <code>design_feats</code> are next.</span></li>
-        <li><span class="mk o">&nbsp;</span><span class="tx"><b>1d · Retrain on AF3 labels.</b> HistGBR (John&rsquo;s hyperparameters) on <code>af3_n_clash_res</code>, leave-one-antigen-out. Cluster-staged.</span></li>
-        <li><span class="mk o">&nbsp;</span><span class="tx"><b>1e · Ship the scorer.</b> Pickle the model, wire <code>aomclash_pred</code> into stage05/06, swap it into the <code>twelvemer</code> preset.</span></li>
+        <li><span class="mk d">&#10003;</span><span class="tx"><b>1c · Port feature extraction.</b> All 111 model inputs ported (105 <code>design_feats</code> + 6 <code>target_features</code>, cylinder counts now among them) &mdash; byte-for-byte identical to John&rsquo;s <code>design_feats</code> on a synthetic design, with a durable test suite tying the cylinder back to <code>native_cylinder_core</code>. Already order-safe, so John&rsquo;s 4-Nov island-order fix lands in the loader, not the feature math.</span></li>
+        <li><span class="mk p">&#9679;</span><span class="tx"><b>1d · Retrain on AF3 labels.</b> Next: a cluster loader builds features from our AF3 structures (threading each design&rsquo;s own island order), then HistGBR on <code>af3_n_clash_res</code> with <b>leave-one-epitope-out</b> folds, matching John&rsquo;s revised 8-Nov report.</span></li>
+        <li><span class="mk o">&nbsp;</span><span class="tx"><b>1e · Ship the scorer.</b> John now ships <code>aom_score.py</code> + a trained (AF2) model upstream; we port that harness, wire <code>aomclash_pred</code> into stage05/06, and swap it into the <code>twelvemer</code> preset.</span></li>
         <li><span class="mk o">&nbsp;</span><span class="tx"><b>1f · Docs + manuscript.</b> Cylinder &rarr; learned-model section, figures, FIGURES.md.</span></li>
       </ul>
     </div>
@@ -296,8 +297,10 @@ code{font-family:"Courier New",Courier,monospace;font-size:11.5px;background:#ee
 
   <div class="focus">
     <span class="ic">&#9733;</span>
-    <span><b>Current focus:</b> AOMclash step 1c &mdash; porting the ~109 <code>design_feats</code> onto the
-    validated geometry core, with a durable synthetic unit test, before staging the AF3 retrain (1d) on the cluster.</span>
+    <span><b>Current focus:</b> AOMclash &mdash; reconciled our port with John&rsquo;s 8-Nov report and 4-Nov bug
+    fix (the feature extractor already matches his 111 inputs and is island-order safe). Next is step 1d:
+    the cluster-side loader to build features from our AF3 structures, then retraining the regressor on
+    AF3 clash labels with leave-one-epitope-out folds.</span>
   </div>
 
   <div class="foot">
