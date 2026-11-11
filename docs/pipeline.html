@@ -14,6 +14,7 @@
 }
 html,body{margin:0}
 body{background:#ffffff;color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55}
+body.locked{overflow:hidden}
 .page{max-width:720px;margin:0 auto;padding:18px 16px 52px}
 .banner{background:linear-gradient(100deg,#21568f 0%,#296DC0 46%,#3b7fd1 100%);color:#fff;border-bottom:3px solid #1b4a86}
 .banner-inner{max-width:720px;margin:0 auto;padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
@@ -33,7 +34,7 @@ h2{font-size:16px;margin:34px 0 4px;font-weight:bold}
 p{margin:9px 0}
 a{color:#0033cc}
 .updated{font-size:12px;color:var(--faint);margin:0 0 4px;letter-spacing:.02em}
-.lede{color:var(--mut);margin:0 0 14px;max-width:60ch}
+.lede{color:var(--mut);margin:0 0 14px;max-width:62ch}
 .sub{color:var(--mut);margin:4px 0 14px;max-width:62ch;font-size:13px}
 
 /* ---- status chips + legend ---- */
@@ -44,6 +45,8 @@ a{color:#0033cc}
 .chip.plan{color:#4f5b68;background:#eef1f5}.chip.plan::before{background:var(--plan)}
 .legend{display:flex;flex-wrap:wrap;gap:9px 18px;align-items:center;font-size:12px;color:var(--mut);background:#f7f9fc;border:1px solid var(--line);border-radius:8px;padding:11px 14px;margin:2px 0 6px}
 .legend .ng-tag{font-size:9.5px}
+.hint{font-size:12px;color:var(--faint);margin:10px 0 0;display:flex;align-items:center;gap:7px}
+.hint .cur{font-size:14px}
 
 .ng-tag{display:inline-block;font-size:9.5px;font-weight:bold;letter-spacing:.06em;color:var(--ng-ink);background:#fcf2db;border:1px solid var(--ng-line);border-radius:3px;padding:1px 5px;vertical-align:1px}
 
@@ -55,7 +58,10 @@ a{color:#0033cc}
 .phase-t{font-size:15px;font-weight:bold;color:var(--blued)}
 .phase-t small{display:block;font-size:11.5px;font-weight:normal;color:var(--mut);letter-spacing:.01em;margin-top:1px}
 
-.stage{background:#fff;border:1px solid var(--line);border-left:5px solid var(--plan);border-radius:7px;padding:11px 14px;box-shadow:0 1px 1px rgba(30,50,80,.04)}
+/* a clickable component */
+.stage{background:#fff;border:1px solid var(--line);border-left:5px solid var(--plan);border-radius:7px;padding:11px 14px;box-shadow:0 1px 1px rgba(30,50,80,.04);cursor:pointer;transition:box-shadow .12s,transform .12s,border-color .12s;position:relative}
+.stage:hover{box-shadow:0 3px 10px rgba(30,50,80,.12);transform:translateY(-1px)}
+.stage:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .stage.s-done{border-left-color:var(--done)}
 .stage.s-prog{border-left-color:var(--prog)}
 .stage.s-plan{border-left-color:var(--plan)}
@@ -64,6 +70,8 @@ a{color:#0033cc}
 .stage .st-name{font-weight:bold;font-size:14px}
 .stage .st-desc{font-size:12.5px;color:var(--mut);margin:5px 0 0}
 .stage .st-tool{font-family:"Courier New",Courier,monospace;font-size:11px;color:#6b7684;margin-top:6px;display:block;word-break:break-word}
+.stage .more{font-size:11px;font-weight:bold;color:var(--blue);margin-top:8px;display:inline-flex;align-items:center;gap:4px;letter-spacing:.02em}
+.stage:hover .more{text-decoration:underline}
 
 /* down-arrow connector */
 .arr{position:relative;width:2px;height:22px;background:var(--line);margin:6px auto}
@@ -76,21 +84,37 @@ a{color:#0033cc}
 .orbubble{flex:none;align-self:center;font-size:10.5px;font-weight:bold;color:var(--faint);background:#fff;border:1px solid var(--line);border-radius:20px;padding:3px 9px;letter-spacing:.05em}
 @media(max-width:540px){.branch{flex-direction:column;gap:9px}.orbubble{align-self:flex-start}}
 
-/* loop-back */
-.loop{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ng-ink);background:var(--ng-bg);border:1px solid var(--ng-line);border-radius:7px;padding:9px 13px;margin:10px 0 0}
+/* loop-back (also clickable) */
+.loop{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ng-ink);background:var(--ng-bg);border:1px solid var(--ng-line);border-radius:7px;padding:9px 13px;margin:10px 0 0;cursor:pointer;transition:box-shadow .12s}
+.loop:hover{box-shadow:0 2px 8px rgba(138,100,19,.14)}
+.loop:focus-visible{outline:2px solid var(--prog);outline-offset:2px}
 .loop .ic{flex:none;font-size:18px;line-height:1;color:var(--prog)}
 .loop b{color:#6f5410}
 
-/* ---- method cards ---- */
-.mcard{border:1px solid var(--line);border-radius:9px;margin:13px 0;overflow:hidden;background:#fff}
-.mcard-h{display:flex;align-items:center;gap:11px;background:#f0f5fb;border-bottom:1px solid #dde7f2;padding:10px 15px}
-.mcard-h .mt{font-weight:bold;font-size:15px;color:var(--blued)}
-.mcard-h .ms{font-size:12px;color:var(--mut)}
-.mcard-h .sp{flex:1}
-.mcard-b{padding:12px 15px 14px}
-.mcard-b .what{font-size:12.5px;color:var(--mut);margin:0 0 11px}
-.steps{list-style:none;margin:0;padding:0;font-size:12.5px}
-.steps li{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-top:1px solid #eef1f5}
+.focus{display:flex;gap:11px;background:#fef8ec;border:1px solid var(--ng-line);border-left:5px solid var(--prog);border-radius:8px;padding:12px 15px;margin:22px 0 0}
+.focus .ic{flex:none;font-size:17px;line-height:1.3}
+.focus b{color:#6f5410}
+.foot{font-size:12px;color:#5c6672;line-height:1.75;margin-top:30px;border-top:1px solid var(--line);padding-top:13px}
+
+/* ---- modal ---- */
+.modal[hidden]{display:none}
+.modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:560px){.modal{align-items:center}}
+.modal-back{position:absolute;inset:0;background:rgba(18,32,52,.5)}
+.modal-card{position:relative;background:#fff;width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:14px 14px 0 0;box-shadow:0 12px 40px rgba(16,30,55,.35);-webkit-overflow-scrolling:touch}
+@media(min-width:560px){.modal-card{border-radius:14px}}
+.modal-head{position:sticky;top:0;background:#f0f5fb;border-bottom:1px solid #dde7f2;padding:15px 48px 14px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.modal-t{font-weight:bold;font-size:17px;color:var(--blued)}
+.modal-x{position:absolute;top:10px;right:12px;width:30px;height:30px;border:none;background:#fff;border:1px solid var(--line);border-radius:50%;font-size:19px;line-height:1;color:var(--mut);cursor:pointer}
+.modal-x:hover{color:var(--ink);background:#eef1f5}
+.modal-body{padding:16px 18px 22px}
+.modal-body p{margin:0 0 11px;font-size:13px;color:#33404d}
+.modal-body p.how{color:var(--mut);font-size:12.5px}
+.modal-body h4{margin:16px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}
+.modal-body code{font-family:"Courier New",Courier,monospace;font-size:11.5px;background:#eef1f5;padding:0 4px;border-radius:3px;word-break:break-word}
+.modal-body .tool{display:block;font-family:"Courier New",Courier,monospace;font-size:11.5px;color:#4e5a67;background:#f4f7fb;border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin:4px 0 0;word-break:break-word}
+.steps{list-style:none;margin:8px 0 0;padding:0;font-size:12.5px}
+.steps li{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-top:1px solid #eef1f5}
 .steps li:first-child{border-top:none}
 .steps .mk{flex:none;width:17px;height:17px;border-radius:50%;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;color:#fff}
 .steps .mk.d{background:var(--done)}
@@ -98,12 +122,8 @@ a{color:#0033cc}
 .steps .mk.o{background:#fff;border:1.5px solid #c4cdd7;color:#c4cdd7}
 .steps .tx{color:#3a3a3a}
 .steps .tx b{color:var(--ink)}
-code{font-family:"Courier New",Courier,monospace;font-size:11.5px;background:#eef1f5;padding:0 4px;border-radius:3px}
-
-.focus{display:flex;gap:11px;background:#fef8ec;border:1px solid var(--ng-line);border-left:5px solid var(--prog);border-radius:8px;padding:12px 15px;margin:16px 0 0}
-.focus .ic{flex:none;font-size:17px;line-height:1.3}
-.focus b{color:#6f5410}
-.foot{font-size:12px;color:#5c6672;line-height:1.75;margin-top:30px;border-top:1px solid var(--line);padding-top:13px}
+.note{background:var(--ng-bg);border:1px solid var(--ng-line);border-radius:7px;padding:9px 12px;font-size:12px;color:#6f5410;margin:12px 0 0}
+.note b{color:#5c450d}
 </style>
 </head>
 <body>
@@ -128,7 +148,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:11.5px;background:#ee
 </div></div>
 
 <div class="page">
-  <p class="updated">BLUEPRINT · UPDATED 2026-11-09</p>
+  <p class="updated">BLUEPRINT · UPDATED 2026-11-11</p>
   <h1>Pipeline blueprint</h1>
   <p class="lede">The route from an antigen to a synthesizable, epitope-presenting scaffold &mdash; and
   what is built versus still to come. The shipped DP4 backbone runs top to bottom; the shaded
@@ -140,6 +160,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:11.5px;background:#ee
     <span class="chip plan">planned</span>
     <span><span class="ng-tag">NEXT-GEN</span> &nbsp;John&rsquo;s new method</span>
   </div>
+  <p class="hint"><span class="cur">&#128073;</span> Click any component for how it works, its status, and where it lives in the code.</p>
 
   <!-- ===================== FLOW ===================== -->
   <div class="flow">
@@ -150,16 +171,16 @@ code{font-family:"Courier New",Courier,monospace;font-size:11.5px;background:#ee
         <div class="phase-t">Input<small>Choose the epitope &mdash; one of two modes</small></div>
       </div>
       <div class="branch">
-        <div class="stage s-done">
+        <div class="stage s-done" data-detail="known-ab" tabindex="0" role="button" aria-label="Known antibody — details">
           <div class="st-top"><span class="st-name">Known antibody</span><span class="chip done">shipped</span></div>
           <p class="st-desc">Take the contact epitope straight from the antibody&ndash;antigen complex.</p>
-          <code class="st-tool">stage01_compile_contigs · stage02_emit_rfd3_inputs</code>
+          <span class="more">How it works &rarr;</span>
         </div>
         <div class="orbubble">OR</div>
-        <div class="stage ng s-plan">
+        <div class="stage ng s-plan" data-detail="growpatch" tabindex="0" role="button" aria-label="growPatch — details">
           <div class="st-top"><span class="st-name">No antibody <span class="ng-tag">NEXT-GEN</span></span><span class="chip plan">planned</span></div>
-          <p class="st-desc"><b>growPatch</b> enumerates footprint-sized surface patches, then a learned (DiscoTope-style) score ranks them.</p>
-          <code class="st-tool">→ episcaf_analysis/growpatch/</code>
+          <p class="st-desc"><b>growPatch</b> enumerates footprint-sized surface patches, then a learned score ranks them.</p>
+          <span class="more">How it works &rarr;</span>
         </div>
       </div>
     </div>
@@ -171,34 +192,34 @@ code{font-family:"Courier New",Courier,monospace;font-size:11.5px;background:#ee
         <div class="phase-n">2</div>
         <div class="phase-t">Generation<small>The IPD loop &mdash; build backbones, sequences, structures</small></div>
       </div>
-      <div class="stage s-done">
+      <div class="stage s-done" data-detail="rfd3" tabindex="0" role="button" aria-label="RFdiffusion3 — details">
         <div class="st-top"><span class="st-name">RFdiffusion3 backbones</span><span class="chip done">shipped</span></div>
         <p class="st-desc">8 backbones per contig, epitope held in native geometry.</p>
-        <code class="st-tool">hpc/sbatch/rfd3_array.sbatch</code>
+        <span class="more">How it works &rarr;</span>
       </div>
       <div class="arr"></div>
-      <div class="stage ng s-plan">
+      <div class="stage ng s-plan" data-detail="prefilter" tabindex="0" role="button" aria-label="Backbone clash pre-filter — details">
         <div class="st-top"><span class="st-name">Backbone clash pre-filter <span class="ng-tag">NEXT-GEN</span></span><span class="chip plan">planned</span></div>
-        <p class="st-desc">Drop backbones the antibody could never reach &mdash; before spending MPNN + AF3 on them. Same learned metric as scoring, applied early.</p>
-        <code class="st-tool">episcaf_analysis/aomclash/score_design()</code>
+        <p class="st-desc">Drop unreachable backbones before spending MPNN + AF3 on them.</p>
+        <span class="more">How it works &rarr;</span>
       </div>
       <div class="arr"></div>
-      <div class="stage s-done">
+      <div class="stage s-done" data-detail="mpnn" tabindex="0" role="button" aria-label="ProteinMPNN — details">
         <div class="st-top"><span class="st-name">ProteinMPNN</span><span class="chip done">shipped</span></div>
         <p class="st-desc">Sequence design with the epitope fixed, 8 sequences per backbone.</p>
-        <code class="st-tool">stage03_mpnn_fixed_pdbs · stage03_mpnn_submit</code>
+        <span class="more">How it works &rarr;</span>
       </div>
       <div class="arr"></div>
-      <div class="stage s-done">
+      <div class="stage s-done" data-detail="af3" tabindex="0" role="button" aria-label="AlphaFold3 — details">
         <div class="st-top"><span class="st-name">AlphaFold3</span><span class="chip done">shipped</span></div>
         <p class="st-desc">Single-sequence prediction, seed 1, no data pipeline.</p>
-        <code class="st-tool">stage04_af3_emit_jsons · af3_array.sbatch</code>
+        <span class="more">How it works &rarr;</span>
       </div>
-      <div class="loop">
+      <div class="loop" data-detail="loop" tabindex="0" role="button" aria-label="Loop-back / partial diffusion — details">
         <span class="ic">&#x21bb;</span>
-        <span><b>Loop back:</b> promising designs re-seed the next round &mdash; partial-diffusion children
-        (re-noise a good backbone, denoise with the epitope fixed) and randomized island order, under an
-        escalating-scale stopping rule. <span class="chip plan" style="vertical-align:1px">planned</span></span>
+        <span><b>Loop back:</b> promising designs re-seed the next round &mdash; partial-diffusion children and
+        randomized island order, under an escalating-scale stopping rule.
+        <span class="chip plan" style="vertical-align:1px">planned</span> &nbsp;<b style="color:var(--blue)">How it works &rarr;</b></span>
       </div>
     </div>
 
@@ -209,22 +230,22 @@ code{font-family:"Courier New",Courier,monospace;font-size:11.5px;background:#ee
         <div class="phase-n">3</div>
         <div class="phase-t">Scoring<small>Rank on epitope fidelity &amp; antibody accessibility</small></div>
       </div>
-      <div class="stage s-done">
+      <div class="stage s-done" data-detail="metrics" tabindex="0" role="button" aria-label="Metrics — details">
         <div class="st-top"><span class="st-name">Metrics</span><span class="chip done">shipped</span></div>
         <p class="st-desc">Epitope &amp; overall RMSD, epitope PAE, AF3 clash, native-aware cylinder.</p>
-        <code class="st-tool">stage05_extract_metrics</code>
+        <span class="more">How it works &rarr;</span>
       </div>
       <div class="arr"></div>
-      <div class="stage ng s-prog">
+      <div class="stage ng s-prog" data-detail="aomclash" tabindex="0" role="button" aria-label="AOMclash — details">
         <div class="st-top"><span class="st-name">AOMclash predicted clash <span class="ng-tag">NEXT-GEN</span></span><span class="chip prog">in&nbsp;progress</span></div>
-        <p class="st-desc">A learned antibody-occupancy model replaces the geometric cylinder as the no-antibody accessibility surrogate. Real AF3 clash is kept wherever a true antibody exists.</p>
-        <code class="st-tool">episcaf_analysis/aomclash/ → aomclash_pred</code>
+        <p class="st-desc">A learned antibody-occupancy model replaces the geometric cylinder on the no-antibody arm.</p>
+        <span class="more">How it works &rarr;</span>
       </div>
       <div class="arr"></div>
-      <div class="stage s-done">
+      <div class="stage s-done" data-detail="composite" tabindex="0" role="button" aria-label="Composite score and select — details">
         <div class="st-top"><span class="st-name">Composite score + select</span><span class="chip done">shipped</span></div>
         <p class="st-desc">Weighted, column-driven composite; rank (no hard gate); per-group top-k.</p>
-        <code class="st-tool">stage06_select · presets.py (antibody_softgate · twelvemer)</code>
+        <span class="more">How it works &rarr;</span>
       </div>
     </div>
 
@@ -235,81 +256,230 @@ code{font-family:"Courier New",Courier,monospace;font-size:11.5px;background:#ee
         <div class="phase-n">4</div>
         <div class="phase-t">Output<small>Library on the bench</small></div>
       </div>
-      <div class="stage s-done">
-        <div class="st-top"><span class="st-name">Assemble → encode → order</span><span class="chip done">shipped</span></div>
-        <p class="st-desc">Concatenate components, case-encode, peptide&rarr;DNA (LadnerLab + DP3 codon weights), Twist-ready order file. DP4 shipped at 36,000 constructs.</p>
-        <code class="st-tool">stage06_assemble · oligo_encoding · stage07_order_file</code>
+      <div class="stage s-done" data-detail="output" tabindex="0" role="button" aria-label="Assemble, encode, order — details">
+        <div class="st-top"><span class="st-name">Assemble &rarr; encode &rarr; order</span><span class="chip done">shipped</span></div>
+        <p class="st-desc">Concatenate, case-encode, peptide&rarr;DNA, Twist-ready order file. DP4 shipped at 36,000 constructs.</p>
+        <span class="more">How it works &rarr;</span>
       </div>
     </div>
 
   </div>
 
-  <!-- ===================== NEXT-GEN DETAIL ===================== -->
-  <h2>Next-generation methods</h2>
-  <p class="sub">Three methods from John Altin&rsquo;s 2026-11-03 reports (AOMclash revised 8-Nov, with a 4-Nov
-  island-order bug fix), each backed by a reference implementation (R + Python on Tamarind / AF2),
-  being ported into episcaf_v2 (Python / Gemini / AF3).</p>
-
-  <div class="mcard">
-    <div class="mcard-h"><span class="mt">AOMclash</span><span class="ms">learned clash predictor</span><span class="sp"></span><span class="chip prog">in&nbsp;progress</span></div>
-    <div class="mcard-b">
-      <p class="what">Replaces the geometric native-aware cylinder with a gradient-boosted regressor that
-      reads an <b>antibody occupancy map</b> (built from 1,036 SAbDab complexes) at each scaffold atom.
-      Antibody-geometry only, so the map is AlphaFold-version agnostic; we retrain the regressor on our
-      AF3 clash labels.</p>
-      <ul class="steps">
-        <li><span class="mk d">&#10003;</span><span class="tx"><b>1a · Get the code.</b> Fetched <code>upstream/feat/aomclash</code>; read the map builder + feature extractor.</span></li>
-        <li><span class="mk d">&#10003;</span><span class="tx"><b>1b · Reproduce the occupancy map.</b> Rebuilt from 944 local SAbDab complexes; matches John&rsquo;s Fig&nbsp;4 (peak 0.956 vs 0.94; radial bands exact).</span></li>
-        <li><span class="mk d">&#10003;</span><span class="tx"><b>1c · Port feature extraction.</b> All 111 model inputs ported (105 <code>design_feats</code> + 6 <code>target_features</code>, cylinder counts now among them) &mdash; byte-for-byte identical to John&rsquo;s <code>design_feats</code> on a synthetic design, with a durable test suite tying the cylinder back to <code>native_cylinder_core</code>. Already order-safe, so John&rsquo;s 4-Nov island-order fix lands in the loader, not the feature math.</span></li>
-        <li><span class="mk p">&#9679;</span><span class="tx"><b>1d · Retrain on AF3 labels.</b> Next: a cluster loader builds features from our AF3 structures (threading each design&rsquo;s own island order), then HistGBR on <code>af3_n_clash_res</code> with <b>leave-one-epitope-out</b> folds, matching John&rsquo;s revised 8-Nov report.</span></li>
-        <li><span class="mk o">&nbsp;</span><span class="tx"><b>1e · Ship the scorer.</b> John now ships <code>aom_score.py</code> + a trained (AF2) model upstream; we port that harness, wire <code>aomclash_pred</code> into stage05/06, and swap it into the <code>twelvemer</code> preset.</span></li>
-        <li><span class="mk o">&nbsp;</span><span class="tx"><b>1f · Docs + manuscript.</b> Cylinder &rarr; learned-model section, figures, FIGURES.md.</span></li>
-      </ul>
-    </div>
-  </div>
-
-  <div class="mcard">
-    <div class="mcard-h"><span class="mt">growPatch</span><span class="ms">no-antibody epitope enumeration</span><span class="sp"></span><span class="chip plan">planned</span></div>
-    <div class="mcard-b">
-      <p class="what">The second input mode: grow footprint-sized surface patches (relSASA seed &rarr; greedy
-      grow to ~16 residues &rarr; gap-fill &rarr; &le;3 islands &rarr; Jaccard NMS) so every possible epitope is
-      represented, then <b>rank the ~54 patches/antigen by a learned likelihood</b> instead of geometry alone.
-      Replaces the old tiled-12mer no-antibody approach.</p>
-      <ul class="steps">
-        <li><span class="mk o">&nbsp;</span><span class="tx">Port <code>segmentation/growPatch.py</code> as a Python module.</span></li>
-        <li><span class="mk o">&nbsp;</span><span class="tx">Learned ranking tweak (DiscoTope-3.0 is already baked into the GUI&rsquo;s predict mode).</span></li>
-      </ul>
-    </div>
-  </div>
-
-  <div class="mcard">
-    <div class="mcard-h"><span class="mt">IPD loop</span><span class="ms">iterative generation</span><span class="sp"></span><span class="chip plan">planned</span></div>
-    <div class="mcard-b">
-      <p class="what">The generation loop that wraps the whole middle of the pipeline: an RFD3 backbone
-      pre-filter (using AOMclash), escalating de-novo &rarr; seeded rounds, <b>partial-diffusion children</b>,
-      randomized island order, and a composite stopping rule.</p>
-      <ul class="steps">
-        <li><span class="mk o">&nbsp;</span><span class="tx"><b>Open question first:</b> the partial-diffusion intuition &mdash; exploration vs exploitation, and whether it finds genuinely better designs or just best-of-N in a good neighborhood (John&rsquo;s own false-discovery caveat). This sets the children-vs-de-novo budget.</span></li>
-        <li><span class="mk o">&nbsp;</span><span class="tx">Port <code>efficientScaffolding/tamarind.R</code> into the Python/Gemini/AF3 pipeline.</span></li>
-      </ul>
-    </div>
-  </div>
-
   <div class="focus">
     <span class="ic">&#9733;</span>
-    <span><b>Current focus:</b> AOMclash &mdash; reconciled our port with John&rsquo;s 8-Nov report and 4-Nov bug
-    fix (the feature extractor already matches his 111 inputs and is island-order safe). Next is step 1d:
-    the cluster-side loader to build features from our AF3 structures, then retraining the regressor on
-    AF3 clash labels with leave-one-epitope-out folds.</span>
+    <span><b>Current focus:</b> AOMclash. The 39-feature regressor and the epitope-frame extractor are
+    ported, tested, and committed; the explainer is written up. Next is the cluster-side loader that
+    builds the feature matrix from our AF3 structures, then training the regressor on
+    <code>af3_n_clash_res</code> with leave-one-epitope-out folds and validating it against the cylinder
+    on identical folds.</span>
   </div>
 
   <div class="foot">
     <b>Sources.</b> Authoritative run order: <code>docs/PIPELINE.md</code> · DP4 deliverable reference:
-    <code>docs/DP4_LIBRARY.md</code> · scorer dials: <code>episcaf_analysis/presets.py</code>.
+    <code>docs/DP4_LIBRARY.md</code> · scorer dials: <code>episcaf_analysis/presets.py</code> ·
+    AOMclash feature reference: <code>episcaf_analysis/aomclash/FEATURES.md</code>.
     Reference implementations: <code>AltinLab/epitope-universe</code>.
     This page is the project&rsquo;s living pipeline view; the <a href="index.html">GUI tool</a> tab is the
     interactive prototype for running a scaffold job.
   </div>
 </div>
+
+<!-- ===================== MODAL ===================== -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-back" data-close></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-head"><span class="modal-t" id="modal-title"></span><span id="modal-chip"></span></div>
+    <button class="modal-x" data-close aria-label="Close">&times;</button>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ===================== DETAIL CONTENT (hidden; cloned into the modal) ===================== -->
+<div hidden id="details">
+
+  <div data-id="known-ab" data-title="Known antibody input" data-chip="done">
+    <p class="how">When the antigen has a solved antibody&ndash;antigen complex, the epitope is already
+    known: it is the set of antigen residues the antibody contacts (4&nbsp;&Aring; cutoff). No prediction
+    needed &mdash; this is the ground-truth setting where we know exactly where &ldquo;good&rdquo; is.</p>
+    <p>Those contact residues are compiled into RFdiffusion <b>contigs</b>, which fix the epitope
+    residues&rsquo; identity and sequence order. One complex can yield more than one <b>patch</b>
+    (<code>0P</code>, <code>1P</code>, &hellip;); each patch is a separate target. A patch is in turn one
+    or more <b>islands</b> &mdash; spatially contiguous runs &mdash; and the contig constrains residues
+    within an island far more tightly than the geometry <i>between</i> islands, which is the known
+    multi-island failure mode.</p>
+    <h4>In the code</h4>
+    <span class="tool">stage01_compile_contigs · stage02_emit_rfd3_inputs</span>
+  </div>
+
+  <div data-id="growpatch" data-title="growPatch — no-antibody enumeration" data-chip="plan">
+    <p class="how">With no antibody, there is no known epitope &mdash; so instead of predicting one, enumerate
+    every candidate. growPatch grows footprint-sized surface patches so that whatever the real epitopes
+    turn out to be, one of the candidates covers them. It replaces the old tiled 12-mer approach.</p>
+    <ul class="steps">
+      <li><span class="mk o">1</span><span class="tx"><b>Surface.</b> Relative SASA per residue (chain folded in isolation); residues above a cutoff are &ldquo;surface.&rdquo;</span></li>
+      <li><span class="mk o">2</span><span class="tx"><b>Seed &amp; grow.</b> From every surface residue, accrete the nearest connected surface residue until the patch reaches footprint size (~16 residues).</span></li>
+      <li><span class="mk o">3</span><span class="tx"><b>Clean up.</b> Gap-fill, keep patches that are large enough (&ge;12 residues) and not too fragmented (&le;3 islands).</span></li>
+      <li><span class="mk o">4</span><span class="tx"><b>Dedupe.</b> Jaccard non-max suppression drops near-duplicate patches, leaving ~50 distinct candidates per antigen.</span></li>
+      <li><span class="mk o">5</span><span class="tx"><b>Our tweak:</b> rank the candidates by a learned DiscoTope-style epitope likelihood (already baked into the GUI&rsquo;s predict mode) instead of geometry alone.</span></li>
+    </ul>
+    <p style="margin-top:12px">Each surviving patch becomes a candidate epitope handed to the same contig
+    machinery as the known-antibody arm.</p>
+    <div class="note"><b>Status.</b> The method is conceptualized and written up; the port is not started.
+    One open parameter: the report fits the surface cutoff at <code>SASA_CUT=0.2</code>, while the
+    committed reference code defaults to <code>0.10</code> &mdash; the branch behind the report&rsquo;s
+    number is not yet fetched, so the exact dial is confirmed when we port it.</div>
+    <h4>In the code</h4>
+    <span class="tool">&rarr; episcaf_analysis/growpatch/ (planned) · ref: segmentation/growPatch.py</span>
+  </div>
+
+  <div data-id="rfd3" data-title="RFdiffusion3 backbones" data-chip="done">
+    <p class="how">Generate <i>de novo</i> protein backbones that hold the epitope in its native geometry,
+    8 per contig. This is the first point where a real 3-D scaffold exists.</p>
+    <p>The contig fixes the epitope residues and their order but leaves the rest of the fold free, so each
+    backbone is a different way of presenting the same epitope. Runs as a SLURM array on the cluster.</p>
+    <h4>In the code</h4>
+    <span class="tool">hpc/sbatch/rfd3_array.sbatch</span>
+  </div>
+
+  <div data-id="prefilter" data-title="Backbone clash pre-filter" data-chip="plan">
+    <p class="how">A cheap gate right after backbone generation: score each backbone with AOMclash and drop
+    the ones whose scaffold mass sits where the antibody has to bind &mdash; before spending MPNN and AF3
+    on a design that can never pass accessibility.</p>
+    <p>It is the <i>same</i> learned metric used in scoring, applied early. It depends on the shipped
+    AOMclash scorer, so it follows AOMclash step&nbsp;1e.</p>
+    <h4>In the code</h4>
+    <span class="tool">episcaf_analysis/aomclash/ &rarr; score_design() (planned)</span>
+  </div>
+
+  <div data-id="mpnn" data-title="ProteinMPNN" data-chip="done">
+    <p class="how">Assign an amino-acid sequence to each backbone with the epitope positions held fixed,
+    8 sequences per backbone, so the epitope keeps its native identity while the scaffold is free to be
+    whatever folds.</p>
+    <p>The <code>*_fixed.pdb</code> naming contract carries the epitope-fix information to the next stage.</p>
+    <h4>In the code</h4>
+    <span class="tool">stage03_mpnn_fixed_pdbs · stage03_mpnn_submit</span>
+  </div>
+
+  <div data-id="af3" data-title="AlphaFold3" data-chip="done">
+    <p class="how">Fold each designed sequence to check whether it actually adopts the intended structure
+    with the epitope in native geometry. Single-sequence prediction, seed 1, no MSA / data pipeline.</p>
+    <p>AF3 produces the structures everything downstream scores &mdash; the first honest test of whether a
+    design holds together.</p>
+    <h4>In the code</h4>
+    <span class="tool">stage04_af3_emit_jsons · af3_array.sbatch</span>
+  </div>
+
+  <div data-id="loop" data-title="Loop-back / partial diffusion" data-chip="plan">
+    <p class="how">Rather than one pass, the best designs of a round seed the next. Two moves: re-noise a
+    good backbone a little and denoise it with the epitope fixed (a <b>partial-diffusion child</b>, a
+    neighbor of something that worked), and randomize island order so the model does not lock onto one
+    arrangement. An escalating-scale stopping rule decides when to quit.</p>
+    <div class="note"><b>Open question first.</b> Is partial diffusion finding genuinely better designs, or
+    just best-of-N in a neighborhood that was already good (John&rsquo;s own false-discovery caveat)? That
+    answer sets the children-vs-<i>de-novo</i> budget, so it is worked out before the port.</div>
+    <h4>In the code</h4>
+    <span class="tool">port of efficientScaffolding/tamarind.R (planned)</span>
+  </div>
+
+  <div data-id="metrics" data-title="Metrics" data-chip="done">
+    <p class="how">From each AF3 structure, aligned to the native complex by an epitope Kabsch fit, extract
+    the numbers a design is judged on.</p>
+    <p>Epitope RMSD and overall RMSD (did the fold hold the epitope / hold together), epitope PAE
+    (confidence at the epitope), AF3 clashing-residue count (real accessibility where an antibody exists),
+    and the native-aware cylinder (the current geometric accessibility surrogate on the no-antibody arm,
+    which AOMclash is set to replace).</p>
+    <h4>In the code</h4>
+    <span class="tool">stage05_extract_metrics</span>
+  </div>
+
+  <div data-id="aomclash" data-title="AOMclash — learned clash predictor" data-chip="prog">
+    <p class="how">Replaces the geometric native-aware cylinder with a gradient-boosted regressor that
+    reads an <b>antibody occupancy map</b> at each scaffold atom and predicts the clashing-residue count.
+    The map is built from ~1,036 SAbDab complexes using antibody geometry only, so it is
+    AlphaFold-version agnostic; we retrain only the regressor on our AF3 clash labels.</p>
+    <p>It is trained where a real antibody gives the true clash label and <b>deployed as the surrogate on
+    the no-antibody arm</b> (the growPatch / tiled patches), exactly the cylinder&rsquo;s
+    train-here / apply-there role. We ship the <b>39-feature</b> subset &mdash; the point where John&rsquo;s
+    own ablation plateaus &mdash; rather than his full 111-column bank.</p>
+    <ul class="steps">
+      <li><span class="mk d">&#10003;</span><span class="tx"><b>1a Get the code.</b> Read John&rsquo;s map builder and feature extractor.</span></li>
+      <li><span class="mk d">&#10003;</span><span class="tx"><b>1b Reproduce the map.</b> Rebuilt from local SAbDab complexes; matches John&rsquo;s published map.</span></li>
+      <li><span class="mk d">&#10003;</span><span class="tx"><b>1c Port features.</b> Epitope-frame extractor ported and verified byte-for-byte against his <code>design_feats</code>; cylinder cross-checked to <code>native_cylinder_core</code>.</span></li>
+      <li><span class="mk p">&#9679;</span><span class="tx"><b>1d Model + retrain.</b> The 39-feature regressor (John&rsquo;s exact hyperparameters, leave-one-epitope-out CV) is written and tested. Remaining: a cluster-side loader builds the feature matrix from our AF3 structures, then train on <code>af3_n_clash_res</code> and validate against the cylinder on identical folds.</span></li>
+      <li><span class="mk o">&nbsp;</span><span class="tx"><b>1e Ship + wire in.</b> Pickle the map + regressor, emit an <code>aomclash_pred</code> column in stage05/06, swap it into the <code>twelvemer</code> preset.</span></li>
+      <li><span class="mk o">&nbsp;</span><span class="tx"><b>1f Docs + manuscript.</b> Cylinder &rarr; learned-model section, figures.</span></li>
+    </ul>
+    <div class="note"><b>Report ahead of code.</b> John&rsquo;s report uses leave-one-epitope-out folds and
+    the 39-feature framing; every committed branch of his repo still does leave-one-antigen-out and keeps
+    the full bank. We follow the report, with the divergence flagged in the code &mdash; switching folds or
+    restoring the full bank is a one-argument change.</div>
+    <h4>In the code</h4>
+    <span class="tool">episcaf_analysis/aomclash/ &rarr; aomclash_pred · feature reference: FEATURES.md</span>
+  </div>
+
+  <div data-id="composite" data-title="Composite score + select" data-chip="done">
+    <p class="how">Combine the metrics into one score and pick the designs to ship. The composite is
+    column-driven: it renormalizes its weights over whichever metric columns are present, so swapping the
+    cylinder for <code>aomclash_pred</code> on the no-antibody arm is a one-key change, no engine edit.</p>
+    <p>It ranks designs rather than applying a hard gate, then takes the per-epitope top-k. The weights and
+    transforms are dials in <code>presets.py</code>, with a preset per regime
+    (<code>antibody_softgate</code> keeps the real AF3 clash; <code>twelvemer</code> is the no-antibody
+    arm).</p>
+    <h4>In the code</h4>
+    <span class="tool">stage06_select · presets.py (antibody_softgate · twelvemer)</span>
+  </div>
+
+  <div data-id="output" data-title="Assemble → encode → order" data-chip="done">
+    <p class="how">Turn the selected designs into an orderable DNA library.</p>
+    <p>Concatenate the design components, case-encode them, translate peptide&rarr;DNA with the LadnerLab
+    oligo encoder and the DP3 codon weights, and emit a Twist-ready order file. DP4 shipped at 36,000
+    constructs.</p>
+    <h4>In the code</h4>
+    <span class="tool">stage06_assemble · oligo_encoding · stage07_order_file</span>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var modal = document.getElementById('modal');
+  var titleEl = document.getElementById('modal-title');
+  var chipEl = document.getElementById('modal-chip');
+  var bodyEl = document.getElementById('modal-body');
+  var CHIP = {done:'shipped', prog:'in progress', plan:'planned'};
+  var details = {};
+  var nodes = document.querySelectorAll('#details > [data-id]');
+  for (var i=0;i<nodes.length;i++){ details[nodes[i].getAttribute('data-id')] = nodes[i]; }
+  var lastFocus = null;
+
+  function open(id){
+    var d = details[id];
+    if(!d) return;
+    titleEl.textContent = d.getAttribute('data-title');
+    var ch = d.getAttribute('data-chip');
+    chipEl.className = 'chip ' + ch;
+    chipEl.textContent = CHIP[ch] || ch;
+    bodyEl.innerHTML = d.innerHTML;
+    modal.hidden = false;
+    document.body.classList.add('locked');
+    lastFocus = document.activeElement;
+    modal.querySelector('.modal-x').focus();
+  }
+  function close(){
+    modal.hidden = true;
+    document.body.classList.remove('locked');
+    if(lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  document.querySelectorAll('[data-detail]').forEach(function(el){
+    el.addEventListener('click', function(){ open(el.getAttribute('data-detail')); });
+    el.addEventListener('keydown', function(e){
+      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); open(el.getAttribute('data-detail')); }
+    });
+  });
+  modal.querySelectorAll('[data-close]').forEach(function(el){ el.addEventListener('click', close); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape' && !modal.hidden) close(); });
+})();
+</script>
 </body>
 </html>
