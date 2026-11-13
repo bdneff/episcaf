@@ -311,25 +311,29 @@ a{color:#0033cc}
     <span class="tool">stage01_compile_contigs · stage02_emit_rfd3_inputs</span>
   </div>
 
-  <div data-id="growpatch" data-title="growPatch — no-antibody enumeration" data-chip="plan">
-    <p class="how">With no antibody, there is no known epitope &mdash; so instead of predicting one, enumerate
-    every candidate. growPatch grows footprint-sized surface patches so that whatever the real epitopes
-    turn out to be, one of the candidates covers them. It replaces the old tiled 12-mer approach.</p>
+  <div data-id="growpatch" data-title="growPatch — exhaustive no-antibody enumeration" data-chip="done">
+    <p class="how">With no antibody there is no known epitope. growPatch does <b>not</b> predict the most
+    likely one &mdash; that is what DiscoTope and BepiPred do, optimizing precision and often wrong.
+    It does the opposite: enumerate <b>every</b> surface region that could plausibly be an antibody
+    footprint, an exhaustive list optimized for coverage and recall, so we can scaffold them all and
+    let the experiment decide. It replaces the old tiled 12-mer approach, which (being sequence-linear)
+    could never propose a conformational epitope.</p>
     <ul class="steps">
-      <li><span class="mk o">1</span><span class="tx"><b>Surface.</b> Relative SASA per residue (chain folded in isolation); residues above a cutoff are &ldquo;surface.&rdquo;</span></li>
-      <li><span class="mk o">2</span><span class="tx"><b>Seed &amp; grow.</b> From every surface residue, accrete the nearest connected surface residue until the patch reaches footprint size (~16 residues).</span></li>
-      <li><span class="mk o">3</span><span class="tx"><b>Clean up.</b> Gap-fill, keep patches that are large enough (&ge;12 residues) and not too fragmented (&le;3 islands).</span></li>
-      <li><span class="mk o">4</span><span class="tx"><b>Dedupe.</b> Jaccard non-max suppression drops near-duplicate patches, leaving ~50 distinct candidates per antigen.</span></li>
-      <li><span class="mk o">5</span><span class="tx"><b>Our tweak:</b> rank the candidates by a learned DiscoTope-style epitope likelihood (already baked into the GUI&rsquo;s predict mode) instead of geometry alone.</span></li>
+      <li><span class="mk o">1</span><span class="tx"><b>Surface.</b> Relative SASA per residue (freesasa, Tien-2013 normalization); residues with relSASA &ge; 0.2 are &ldquo;surface.&rdquo;</span></li>
+      <li><span class="mk o">2</span><span class="tx"><b>Enumerate, two complementary ways.</b> <i>Seed &amp; grow</i> &mdash; from every surface residue, accrete the nearest connected surface residue to footprint size (~16). <i>Antibody&rsquo;s-eye-view</i> &mdash; sample approach directions and take the surface cap an antibody from each direction would contact. Both produce conformational (sequence-discontinuous) patches.</span></li>
+      <li><span class="mk o">3</span><span class="tx"><b>Clean up.</b> Gap-fill, keep patches large enough (&ge;12 residues) and not too fragmented (&le;3 islands).</span></li>
+      <li><span class="mk o">4</span><span class="tx"><b>Union &amp; dedupe.</b> Merge both strategies and Jaccard non-max suppress; patches both methods found are tagged as co-found. Exhaustiveness is a dial (dedup threshold + optional cap).</span></li>
+      <li><span class="mk o">5</span><span class="tx"><b>Optional ranking layer.</b> A learned DiscoTope-style score can <i>prioritize</i> the list when compute is limited &mdash; but it sits on top; the enumeration underneath stays complete.</span></li>
     </ul>
-    <p style="margin-top:12px">Each surviving patch becomes a candidate epitope handed to the same contig
-    machinery as the known-antibody arm.</p>
-    <div class="note"><b>Status.</b> The method is conceptualized and written up; the port is not started.
-    One open parameter: the report fits the surface cutoff at <code>SASA_CUT=0.2</code>, while the
-    committed reference code defaults to <code>0.10</code> &mdash; the branch behind the report&rsquo;s
-    number is not yet fetched, so the exact dial is confirmed when we port it.</div>
+    <p style="margin-top:12px">Each surviving patch becomes a candidate epitope (an EpiScaf contig string)
+    handed to the same contig machinery as the known-antibody arm.</p>
+    <div class="note"><b>Status.</b> Ported and verified &mdash; reproduces John&rsquo;s reference enumeration
+    byte-for-byte on 8pww chain A. Benchmarked on 117 conformational SAbDab epitopes: seed-and-grow and
+    antibody&rsquo;s-eye-view tie head-to-head but are complementary, so the shipped default unions them
+    &mdash; recall@0.8 = 0.92 vs ~0.80 either alone. The surface cutoff is settled at
+    <code>SASA_CUT=0.2</code>. Next: the interactive patch viewer.</div>
     <h4>In the code</h4>
-    <span class="tool">&rarr; episcaf_analysis/growpatch/ (planned) · ref: segmentation/growPatch.py</span>
+    <span class="tool">episcaf_analysis/growpatch/{core,read,eyeview}.py · results/growpatch/ENUMERATOR_DECISION.md · ref: segmentation/growPatch.py</span>
   </div>
 
   <div data-id="rfd3" data-title="RFdiffusion3 backbones" data-chip="done">
