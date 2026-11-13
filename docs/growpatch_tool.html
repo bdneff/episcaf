@@ -142,7 +142,14 @@ a{color:#0033cc}
         <div class="fld"><label>budget</label>
           <span class="seg" id="budgetseg"><button data-b="n_designs" class="on">N designs/epitope</button><button data-b="time">time (h)</button></span></div>
         <div class="fld"><label>value</label><input type="number" id="budgetval" value="200" min="1"></div>
+        <div class="fld" title="Bias RFd3 toward helical scaffolds (0 = neutral). Fed to the RFd3 stage via the run spec.">
+          <label>helicity bias <span id="helixval" style="color:var(--blue);font-variant-numeric:tabular-nums">0.00</span></label>
+          <input type="range" id="helix" min="0" max="1" step="0.05" value="0" style="width:120px"></div>
         <div class="fld"><label>&nbsp;</label><button id="stage">Stage run</button></div>
+      </div>
+      <div style="font-size:11.5px;color:#8a6d1f;background:#fdf7e3;border:1px solid #efe3b8;border-radius:4px;padding:5px 9px;margin-top:8px">
+        Helicity bias is exploratory: helical designs may bind better &mdash; or may just be <b>better behaved in cryo-EM</b>,
+        so the correlation can be a reporting artifact rather than a true binding effect. Prefer neutral (0) unless testing this.
       </div>
       <div style="font-size:12px;color:#555;margin-top:8px" id="stagesel"></div>
       <div id="stagemsg"></div>
@@ -329,6 +336,7 @@ document.querySelectorAll("#budgetseg button").forEach(b=>b.onclick=()=>{
   state.budgetMode=b.dataset.b;
   document.querySelectorAll("#budgetseg button").forEach(x=>x.classList.toggle("on",x===b));
 });
+$("helix").oninput=()=>{$("helixval").textContent=parseFloat($("helix").value).toFixed(2);};
 function smsg(t,cls){const m=$("stagemsg");m.className=t?("msg "+(cls||"")):"";m.innerHTML=t||"";}
 function dl(name,text,type){const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click();}
@@ -338,7 +346,7 @@ $("stage").onclick=async()=>{
   const qs=new URLSearchParams({chain:$("chain").value, name:$("runname").value||"antigen",
     variants:$("variants").value, rfd3:$("rfd3").value, mpnn:$("mpnn").value,
     budget_mode:state.budgetMode, budget_value:$("budgetval").value, mode:state.mode, fmt:fileFmt(),
-    epitopes:chosen.map(p=>p.epitope).join("|")});
+    helix_bias:$("helix").value, epitopes:chosen.map(p=>p.epitope).join("|")});
   $("stage").disabled=true; smsg("Building contigs…","busy");
   try{
     const res=await fetch("/stage?"+qs.toString(),{method:"POST",body:state.pdbText});

@@ -101,7 +101,8 @@ def stage_run(cif_path, chain, epitopes, cfg):
         "antigen": cfg["name"], "chain": chain, "mode": cfg.get("mode", "growpatch"),
         "n_epitopes": n_epi, "epitopes": epitopes,
         "generation": {"flank_variants": cfg["variants"], "total_len": cfg["total_len"],
-                       "rfd3_designs_per_contig": cfg["rfd3"], "mpnn_seqs_per_backbone": cfg["mpnn"]},
+                       "rfd3_designs_per_contig": cfg["rfd3"], "mpnn_seqs_per_backbone": cfg["mpnn"],
+                       "helix_bias": cfg.get("helix_bias", 0.0)},   # RFd3 secondary-structure bias (0 = neutral)
         "budget": cfg["budget"],
         "n_contigs": len(rows),
         "designs_at_full_fanout": len(rows) * cfg["rfd3"] * cfg["mpnn"],
@@ -158,6 +159,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                total_len=int(q.get("total_len", ["103"])[0]),
                                rfd3=int(q.get("rfd3", ["8"])[0]), mpnn=int(q.get("mpnn", ["8"])[0]),
                                seed=int(q.get("seed", ["0"])[0]), mode=q.get("mode", ["growpatch"])[0],
+                               helix_bias=float(q.get("helix_bias", ["0"])[0]),
                                budget={"mode": q.get("budget_mode", ["n_designs"])[0],
                                        "value": float(q.get("budget_value", ["200"])[0])})
                 except ValueError as e:
