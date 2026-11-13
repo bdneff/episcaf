@@ -30,16 +30,19 @@ regression of the transformed features against the DP3 `is_pass` label
 # on the composite, keep the top-k per group.
 #
 # The accessibility term depends on what we know: with a known antibody (ANTIBODY) we use the
-# REAL clash af3_n_clash_res directly; with no antibody (TWELVEMER) we use the cylinder surrogate
-# the clash is approximated by (the cylinder exists precisely to stand in where there is no
-# antibody). Same accessibility weight either way.
-TWELVEMER = dict(   # no-antibody set — accessibility via the native-aware cylinder surrogate
+# REAL clash af3_n_clash_res directly; with no antibody (TWELVEMER + growPatch) we use AOMclash
+# (aomclash_pred) -- the learned occupancy-map clash predictor that REPLACES the native-aware
+# cylinder surrogate everywhere (a finer-grained, continuous successor; see
+# results/aomclash/feature_set_decision.md). Same accessibility weight either way. The old cylinder
+# columns are kept in the data for before/after but are no longer scored; if aomclash_pred is absent
+# the engine renormalizes over the remaining metrics.
+TWELVEMER = dict(   # no-antibody set (12-mer + growPatch) — accessibility via AOMclash
     gate=None,
     scope="per_antigen",                 # rank within each antigen, not pooled across all
     antigen_col="antigen",
     select=dict(group="id", topk=5),     # top-5 per epitope  (verify `id` is the epitope key)
     metrics={
-        "cylinder_native_aware":  dict(weight=0.35, better="low", transform="percentile"),
+        "aomclash_pred":          dict(weight=0.35, better="low", transform="percentile"),
         "epitope_chunk_rmsd":     dict(weight=0.35, better="low", transform="percentile"),
         "overall_rmsd":           dict(weight=0.15, better="low", transform="percentile"),
         "epitope_pae":            dict(weight=0.15, better="low", transform="percentile"),
