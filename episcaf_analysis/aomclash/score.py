@@ -64,6 +64,33 @@ def native_epi_pos(epitope):
     return [s for _, a, b in isl for s in range(a, b + 1)]
 
 
+def design_epi_positions(contig_string, resid_offset=1):
+    """epi_pos for a scaffolded design, from its contig (chain-general; the design side of stage05's
+    epi_positions_from_contig). A free span `n-n` advances the output position by n; a motif segment
+    `<chain><a>-<b>` occupies the next (b-a+1) output positions -- where the fixed epitope lands in the
+    scaffold. Returns output residue ids (chain A, 1-based by default), in the contig's island order,
+    the same order `build_target` builds `ref`. Used for RFd3 backbones and AF3 designs alike.
+    """
+    pos, out = 0, []
+    for tok in str(contig_string).split("/"):
+        tok = tok.strip()
+        if not tok:
+            continue
+        if re.match(r"^\d+-\d+$", tok):                                   # free span "n-n"
+            pos += int(tok.split("-")[0])
+        else:                                                             # motif "<chain><a>-<b>" / "<chain><a>"
+            m = re.match(r"^[A-Za-z][A-Za-z0-9]*?(-?\d+)-(-?\d+)$", tok) or \
+                re.match(r"^[A-Za-z][A-Za-z0-9]*?(-?\d+)$", tok)
+            if not m:
+                raise ValueError(f"unparseable contig token {tok!r} in {contig_string!r}")
+            a = int(m.group(1))
+            b = int(m.group(2)) if m.lastindex == 2 else a
+            span = b - a + 1
+            out.extend(range(pos + resid_offset, pos + resid_offset + span))
+            pos += span
+    return out
+
+
 @dataclass
 class Target:
     """Everything about one (antigen, epitope) that a design is scored against."""
@@ -86,7 +113,7 @@ def build_target(antigen, epitope, map_path=DEFAULT_MAP, exclude_key=None, exclu
     string or [(chain, a, b)]. Antibody chains in the antigen file are ignored (only epitope chains are
     used for the frame and the clash KD-tree). Returns a Target, or None if the epitope cannot be framed.
     """
-    atoms = F.read_pdb_atoms(antigen) if isinstance(antigen, str) else list(antigen)
+    atoms = F.read_atoms(antigen) if isinstance(antigen, str) else list(antigen)
     isl = parse_epitope(epitope) if isinstance(epitope, str) else list(epitope)
     ep_chains = {c for c, _, _ in isl}
 
@@ -123,7 +150,7 @@ def score_design(target, design, epi_pos, segs=()):
     (native-epitope order). Returns the feature dict, or None if the design lacks the epitope backbone
     or any scaffold atoms. `s_p1_free` is the shipped clash score.
     """
-    atoms = F.read_pdb_atoms(design) if isinstance(design, str) else list(design)
+    atoms = F.read_atoms(design) if isinstance(design, str) else list(design)
     segs = list(segs) or [1]      # segs drive only the seg_* shape features; s_p1_free is independent,
                                   # so a placeholder is fine when the caller only wants the clash score
     feat = F.design_feats(atoms, list(epi_pos), segs, target.ref, target.o, target.Rf,

@@ -35,38 +35,11 @@ import warnings
 warnings.simplefilter("ignore")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from episcaf_analysis.aomclash import score as S   # noqa: E402
+from episcaf_analysis.aomclash.score import design_epi_positions   # noqa: E402,F401 (shared helper)
 
 DEFAULT_MAP = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                            "episcaf_analysis", "aomclash", "aom_map.pkl")
 _DESIGN_ID = re.compile(r"^(?P<id>.+?)__contig(?P<cid>\d+)__seed(?P<seed>\d+)__rep(?P<rep>\d+)")
-
-
-def design_epi_positions(contig_string, resid_offset=1):
-    """Residue ids of the epitope in an RFd3 output backbone, from the contig (chain-general).
-
-    Walks the slash-delimited contig: a free span `n-n` advances the output position by n; a motif
-    segment `<chain><a>-<b>` occupies the next (b-a+1) output positions (that is where the fixed
-    epitope lands in the scaffold). Returns the output residue ids (chain A, 1-based by default), in
-    the island order the contig lists them -- the same order `score.build_target` builds `ref` in.
-    """
-    pos, out = 0, []
-    for tok in str(contig_string).split("/"):
-        tok = tok.strip()
-        if not tok:
-            continue
-        if re.match(r"^\d+-\d+$", tok):                      # free span "n-n"
-            pos += int(tok.split("-")[0])
-        else:                                                # motif "<chain><a>-<b>" (or "<chain><a>")
-            m = re.match(r"^[A-Za-z][A-Za-z0-9]*?(-?\d+)-(-?\d+)$", tok) or \
-                re.match(r"^[A-Za-z][A-Za-z0-9]*?(-?\d+)$", tok)
-            if not m:
-                raise ValueError(f"unparseable contig token {tok!r} in {contig_string!r}")
-            a = int(m.group(1))
-            b = int(m.group(2)) if m.lastindex == 2 else a
-            span = b - a + 1
-            out.extend(range(pos + resid_offset, pos + resid_offset + span))
-            pos += span
-    return out
 
 
 def keep_mask(scored, group_col, keep_frac, cutoff):

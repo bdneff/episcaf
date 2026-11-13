@@ -17,6 +17,8 @@ This file is built bottom-up and each piece is validated before the next is adde
 
 Cylinder settings are Brandon's, from episcaf_analysis/native_cylinder_core.py + docs/CYLINDER_PARAMS.md.
 """
+import os
+
 import numpy as np
 from scipy.ndimage import map_coordinates
 from scipy.spatial import cKDTree
@@ -117,6 +119,36 @@ def read_pdb_atoms(path):
                 continue
             out.append((name, l[21], int(l[22:26]), float(l[30:38]), float(l[38:46]), float(l[46:54])))
     return out
+
+
+def read_cif_atoms(path):
+    """Heavy atoms of an mmCIF (AF3 output) as (name, chain, resid, x, y, z), via Bio.PDB.
+
+    Standard residues only (ATOM, not HETATM/water), hydrogens dropped, first model. AF3 predictions
+    are single-conformer so there are no altlocs to resolve; this yields the same tuple shape as
+    read_pdb_atoms so design_feats sees an identical atom set whether the design is PDB or CIF.
+    """
+    from Bio.PDB import MMCIFParser
+    model = next(iter(MMCIFParser(QUIET=True).get_structure("x", path)))
+    out = []
+    for ch in model:
+        for r in ch:
+            if r.id[0] != " ":                         # skip hetero / water (match read_pdb_atoms ATOM-only)
+                continue
+            for a in r:
+                el, name = a.element, a.get_name()
+                if (el == "H") if el else name.startswith("H"):
+                    continue
+                x, y, z = (float(v) for v in a.coord)
+                out.append((name, ch.id, r.id[1], x, y, z))
+    return out
+
+
+def read_atoms(path):
+    """Heavy-atom tuples from a design structure, dispatching by extension: .cif/.mmcif -> Bio.PDB,
+    else the fast PDB reader. One entry point so the scorer handles RFd3/MPNN PDBs and AF3 CIFs alike."""
+    ext = os.path.splitext(path)[1].lower()
+    return read_cif_atoms(path) if ext in (".cif", ".mmcif") else read_pdb_atoms(path)
 
 
 def target_features(epi_ca, ag_ca, ag_atoms, n_isl):
