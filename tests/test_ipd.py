@@ -40,32 +40,46 @@ def test_allocate_splits_budget():
 
 def test_plan_round_success_stops():
     cfg = ipd.IPDConfig()
-    rs = rows(("d1", "e", 0.8, "true"))
-    plan = ipd.plan_round(rs, prev_best={}, round_idx=0, cfg=cfg)
+    plan, _ = ipd.plan_round(rows(("d1", "e", 0.8, "true")), {}, 0, cfg)
     assert plan["e"]["status"] == "stop" and plan["e"]["reason"] == "success"
 
 
-def test_plan_round_continue_makes_children_and_denovo():
-    cfg = ipd.IPDConfig(topn_winners=2, budget_per_epitope=64, children_fraction=0.5,
-                        noise_levels=(5, 10))
+def test_plan_round_fixed_mode_children_and_denovo():
+    cfg = ipd.IPDConfig(mode="fixed", topn_winners=2, budget_per_epitope=64,
+                        children_fraction=0.5, noise_levels=(5, 10))
     rs = rows(("d1", "e", 0.80, ""), ("d2", "e", 0.70, ""))
-    plan = ipd.plan_round(rs, prev_best={"e": 0.5}, round_idx=0, cfg=cfg)   # 0.80 > 0.50 -> improved
+    plan, state = ipd.plan_round(rs, {"e": {"best": 0.5, "streak": 0}}, 0, cfg)   # 0.80 > 0.50
     p = plan["e"]
-    assert p["status"] == "continue"
-    assert p["n_denovo"] == 32
-    # 2 winners x 2 noise levels = 4 child specs, 8 each
-    assert len(p["children"]) == 4 and all(c["count"] == 8 for c in p["children"])
+    assert p["status"] == "continue" and p["n_denovo"] == 32
+    assert len(p["children"]) == 4 and all(c["count"] == 8 for c in p["children"])  # 2 winners x 2 noise
     assert {c["noise"] for c in p["children"]} == {5, 10}
     assert {c["parent"] for c in p["children"]} == {"d1", "d2"}
+    assert state["e"]["best"] == 0.80 and state["e"]["streak"] == 1
+
+
+def test_adaptive_children_budget_ramps_with_improvement_streak():
+    cfg = ipd.IPDConfig(mode="adaptive", topn_winners=2, budget_per_epitope=100,
+                        children_step=0.25, children_cap=0.6, noise_levels=(5, 10))
+    rs = rows(("d1", "e", 0.80, ""), ("d2", "e", 0.70, ""))
+    # round 0: no prior -> streak 0 -> de-novo only (children earn their budget later)
+    p0, s0 = ipd.plan_round(rs, {}, 0, cfg)
+    assert p0["e"]["children_fraction"] == 0.0 and p0["e"]["children"] == [] and p0["e"]["n_denovo"] == 100
+    assert s0["e"]["streak"] == 0
+    # round 1: improved over round 0 -> streak 1 -> cf 0.25
+    p1, s1 = ipd.plan_round(rows(("d3", "e", 0.90, "")), s0, 1, cfg)
+    assert p1["e"]["children_fraction"] == 0.25 and s1["e"]["streak"] == 1 and p1["e"]["children"]
+    # round 2: still improving -> streak 2 -> cf 0.50
+    p2, s2 = ipd.plan_round(rows(("d4", "e", 0.95, "")), s1, 2, cfg)
+    assert p2["e"]["children_fraction"] == 0.50 and s2["e"]["streak"] == 2
+    # streak keeps climbing but the cap holds
+    assert ipd.adaptive_fraction(5, cfg) == 0.6
 
 
 def test_plan_round_plateau_and_maxrounds_stop():
     cfg = ipd.IPDConfig(stop_eps=0.01, max_rounds=4)
     rs = rows(("d1", "e", 0.80, ""))
-    # no improvement over prev best -> plateau stop
-    assert ipd.plan_round(rs, {"e": 0.80}, 1, cfg)["e"]["reason"] == "plateau"
-    # improving but final round -> max_rounds stop
-    assert ipd.plan_round(rs, {"e": 0.5}, 3, cfg)["e"]["reason"] == "max_rounds"
+    assert ipd.plan_round(rs, {"e": {"best": 0.80}}, 1, cfg)[0]["e"]["reason"] == "plateau"
+    assert ipd.plan_round(rs, {"e": {"best": 0.5}}, 3, cfg)[0]["e"]["reason"] == "max_rounds"
 
 
 if __name__ == "__main__":

@@ -11,9 +11,13 @@ Each round's budget per epitope is split between:
   * children -- PARTIAL-DIFFUSION neighbours of the round's winners: re-noise a good backbone part way
                 and denoise with the epitope fixed, exploring the neighbourhood of something that
                 worked (exploitation).
-`children_fraction` is that exploration/exploitation dial and is left to the caller -- it is the open
-question from John's reports (are partial-diffusion children finding genuinely better designs, or just
-best-of-N in a lucky basin? his own false-discovery caveat), so the controller does not hard-code it.
+How much budget goes to children is the exploration/exploitation dial -- John's open false-discovery
+question (are partial-diffusion children genuinely better, or just best-of-N in a lucky basin?). The
+default is **adaptive**: start de-novo-only and let each epitope EARN its children budget by a streak
+of round-over-round improvement (children_fraction = children_step x streak, capped). So an epitope
+whose winners' neighbourhood keeps paying off gets exploited harder, one that stops improving stays
+exploratory -- the data decides per epitope instead of us guessing. `mode="fixed"` uses a flat
+`children_fraction` instead.
 
 Stopping: an epitope stops when it has a design meeting `success` (e.g. a four-filter pass), or its
 best score has not improved by more than `stop_eps` over the last round (a plateau), or `max_rounds`
@@ -32,10 +36,18 @@ class IPDConfig:
     pass_key: str = "is_pass"            # truthy column marking a success (optional; "" to ignore)
     topn_winners: int = 3                # winners carried forward per epitope
     budget_per_epitope: int = 64         # designs to spawn next round per still-open epitope
-    children_fraction: float = 0.5       # share of that budget spent on partial-diffusion children
+    mode: str = "adaptive"               # 'adaptive' (children earn budget via improvement) or 'fixed'
+    children_fraction: float = 0.5       # fixed mode: flat share spent on partial-diffusion children
+    children_step: float = 0.25          # adaptive: children_fraction = step x improvement streak ...
+    children_cap: float = 0.6            # ... capped here
     noise_levels: tuple = (5, 10)        # partial-diffusion re-noise steps per winner (RFd3 partial_T)
     stop_eps: float = 0.0                # min score improvement to count as progress
     max_rounds: int = 4
+
+
+def adaptive_fraction(streak, cfg):
+    """Children budget earned by a streak of round-over-round improvement (0 at streak 0 -> de-novo)."""
+    return min(cfg.children_cap, cfg.children_step * max(0, streak))
 
 
 def _num(v):
@@ -100,36 +112,42 @@ def allocate(budget, children_fraction, n_winners, noise_levels):
     return budget - n_child, per_child
 
 
-def plan_round(cur_rows, prev_best, round_idx, cfg):
+def plan_round(cur_rows, prev_state, round_idx, cfg):
     """Decide the next round per epitope from this round's scored designs.
 
-    `prev_best` is {group: best score} from the PREVIOUS round (or {} on round 0). Returns
-    {group: {status, reason, winners, n_denovo, children}} where children is a list of
-    {parent, noise, count} partial-diffusion specs. A stopped epitope gets status='stop'.
+    `prev_state` is {group: {"best": score, "streak": int}} from the PREVIOUS round (or {} on round 0).
+    Returns (plan, next_state). plan is {group: {status, reason, winners, children_fraction, n_denovo,
+    children}} with children a list of {parent, noise, count} partial-diffusion specs; a stopped
+    epitope gets status='stop'. next_state carries each group's updated best + improvement streak, to
+    pass back in next round (this is what makes the adaptive children budget work).
     """
+    prev_state = prev_state or {}
     cur_best = best_in_group(cur_rows, cfg)
     succ = has_success(cur_rows, cfg)
     winners = select_winners(cur_rows, cfg)
-    plan = {}
+    plan, next_state = {}, {}
     for g, cb in cur_best.items():
+        ps = prev_state.get(g, {})
+        pb = ps.get("best")
+        improved_over_pb = pb is not None and (cb > pb + cfg.stop_eps if cfg.better == "high"
+                                               else cb < pb - cfg.stop_eps)
+        streak = (ps.get("streak", 0) + 1) if improved_over_pb else 0   # 0 on round 0 (no prior)
+        next_state[g] = {"best": cb, "streak": streak}
+
+        def stop(reason):
+            plan[g] = dict(status="stop", reason=reason, winners=winners[g],
+                           children_fraction=0.0, n_denovo=0, children=[])
         if succ.get(g):
-            plan[g] = dict(status="stop", reason="success", winners=winners[g],
-                           n_denovo=0, children=[])
-            continue
-        pb = prev_best.get(g)
-        improved = pb is None or (cb > pb + cfg.stop_eps if cfg.better == "high"
-                                  else cb < pb - cfg.stop_eps)
+            stop("success"); continue
         if round_idx + 1 >= cfg.max_rounds:
-            plan[g] = dict(status="stop", reason="max_rounds", winners=winners[g],
-                           n_denovo=0, children=[])
-        elif not improved:
-            plan[g] = dict(status="stop", reason="plateau", winners=winners[g],
-                           n_denovo=0, children=[])
-        else:
-            n_denovo, per_child = allocate(cfg.budget_per_epitope, cfg.children_fraction,
-                                           len(winners[g]), cfg.noise_levels)
-            children = ([dict(parent=w.get("design_id", w.get(cfg.group_key)), noise=nz, count=per_child)
-                         for w in winners[g] for nz in cfg.noise_levels] if per_child else [])
-            plan[g] = dict(status="continue", reason="improving", winners=winners[g],
-                           n_denovo=n_denovo, children=children)
-    return plan
+            stop("max_rounds"); continue
+        if pb is not None and not improved_over_pb:          # a real plateau (needs a prior round)
+            stop("plateau"); continue
+
+        cf = cfg.children_fraction if cfg.mode == "fixed" else adaptive_fraction(streak, cfg)
+        n_denovo, per_child = allocate(cfg.budget_per_epitope, cf, len(winners[g]), cfg.noise_levels)
+        children = ([dict(parent=w.get("design_id", w.get(cfg.group_key)), noise=nz, count=per_child)
+                     for w in winners[g] for nz in cfg.noise_levels] if per_child else [])
+        plan[g] = dict(status="continue", reason="improving", winners=winners[g],
+                       children_fraction=round(cf, 3), n_denovo=n_denovo, children=children)
+    return plan, next_state
