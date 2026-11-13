@@ -1,5 +1,13 @@
 # Cylinder surrogate — geometry parameters (provenance and sweep)
 
+> **SUPERSEDED (2026-11-13).** The native-aware cylinder has been replaced as the no-antibody
+> accessibility metric by **AOMclash** (`aomclash_pred`), a learned occupancy-map clash predictor —
+> a finer-grained, continuous successor to this geometric head-count. The no-antibody scorer preset
+> (`presets.TWELVEMER`) now uses `aomclash_pred`; the cylinder columns are retained in the data for
+> before/after comparison but are no longer scored. See `episcaf_analysis/aomclash/` and
+> `results/aomclash/feature_set_decision.md`. This file remains the provenance record of the
+> cylinder geometry for that comparison.
+
 The native-aware cylinder (the no-antibody accessibility surrogate, manuscript §`sec:noab`) has
 four geometry dials. This file is the single record of what they are, where they came from, and
 how they are chosen. It exists because they were previously set as bare constants with **no
