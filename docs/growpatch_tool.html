@@ -131,6 +131,22 @@ a{color:#0033cc}
         <div id="flatwrap"><svg id="flat" viewBox="0 0 720 360" preserveAspectRatio="xMidYMid meet"></svg></div>
       </div>
     </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="lbl" style="margin-bottom:8px">Stage a run &mdash; take to the cluster</div>
+      <div class="row">
+        <div class="fld"><label>name</label><input id="runname" value="antigen" style="width:100px"></div>
+        <div class="fld"><label>flank variants</label><input type="number" id="variants" value="4" min="1" max="30"></div>
+        <div class="fld"><label>RFd3 / contig</label><input type="number" id="rfd3" value="8" min="1"></div>
+        <div class="fld"><label>MPNN / backbone</label><input type="number" id="mpnn" value="8" min="1"></div>
+        <div class="fld"><label>budget</label>
+          <span class="seg" id="budgetseg"><button data-b="n_designs" class="on">N designs/epitope</button><button data-b="time">time (h)</button></span></div>
+        <div class="fld"><label>value</label><input type="number" id="budgetval" value="200" min="1"></div>
+        <div class="fld"><label>&nbsp;</label><button id="stage">Stage run</button></div>
+      </div>
+      <div style="font-size:12px;color:#555;margin-top:8px" id="stagesel"></div>
+      <div id="stagemsg"></div>
+    </div>
   </div>
 
   <div class="note"><b>Notes.</b> The flat-surface map is an equirectangular projection around the
@@ -145,7 +161,8 @@ a{color:#0033cc}
 <script>
 "use strict";
 const BLUE="#296DC0", RED="#c0392b", GREY="#c4c4c4";
-let state={method:"growpatch,eyeview", mode:"growpatch", view:"3d", sel:null, D:null, pdbText:null};
+let state={method:"growpatch,eyeview", mode:"growpatch", view:"3d", sel:null, D:null, pdbText:null,
+           picked:new Set(), budgetMode:"n_designs"};
 let viewer=null, FLAT=null;
 
 const $=id=>document.getElementById(id);
@@ -202,7 +219,7 @@ $("run").onclick=async()=>{
     const res=await fetch("/enumerate?"+qs.toString(),{method:"POST",body:state.pdbText});
     const data=await res.json();
     if(!res.ok||data.error) throw new Error(data.error||("HTTP "+res.status));
-    state.D=data; state.sel=null; FLAT=null;
+    state.D=data; state.sel=null; FLAT=null; state.picked=new Set();
     $("results").style.display="block"; msg("");
     buildStats(); buildList(); loadStructure(); setView(state.view);
     if(state.mode==="antibody" && data.patches.length) select(data.patches[0].i);   // show the epitope
@@ -233,11 +250,21 @@ function buildList(){
   for(const p of state.D.patches){
     const row=document.createElement("div");
     row.className="prow"+(state.sel===p.i?" on":""); row.tabIndex=0; row.dataset.i=p.i;
-    row.innerHTML=`<span class="ep">${p.epitope}</span><span class="meta">${p.n_res}r&middot;${p.n_isl}i</span>${mtag(p.methods)}`;
+    row.innerHTML=`<input type="checkbox" class="pick" ${state.picked.has(p.i)?"checked":""} title="include in run">`+
+      `<span class="ep">${p.epitope}</span><span class="meta">${p.n_res}r&middot;${p.n_isl}i</span>${mtag(p.methods)}`;
+    row.querySelector(".pick").onclick=e=>{e.stopPropagation();
+      if(e.target.checked) state.picked.add(p.i); else state.picked.delete(p.i); updateStageSel();};
     row.onclick=()=>select(p.i);
     row.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(p.i);}};
     el.appendChild(row);
   }
+  updateStageSel();
+}
+function updateStageSel(){
+  const el=$("stagesel"); if(!el) return;
+  const n=state.picked.size, tot=state.D?state.D.patches.length:0;
+  el.innerHTML = n ? `staging <b>${n}</b> selected epitope(s)` :
+    `staging <b>all ${tot}</b> shown epitope(s) &mdash; tick rows to choose a subset`;
 }
 const patchById=i=>state.D.patches.find(p=>p.i===i);
 function select(i){
@@ -296,6 +323,32 @@ function setView(v){
   if(v==="3d") paint3d(); else paintFlat();
 }
 document.querySelectorAll("#viewseg button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
+
+// --- stage a run ---
+document.querySelectorAll("#budgetseg button").forEach(b=>b.onclick=()=>{
+  state.budgetMode=b.dataset.b;
+  document.querySelectorAll("#budgetseg button").forEach(x=>x.classList.toggle("on",x===b));
+});
+function smsg(t,cls){const m=$("stagemsg");m.className=t?("msg "+(cls||"")):"";m.innerHTML=t||"";}
+function dl(name,text,type){const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click();}
+$("stage").onclick=async()=>{
+  if(!state.D||!state.D.patches.length){smsg("Run first.","err");return;}
+  const chosen=state.picked.size?state.D.patches.filter(p=>state.picked.has(p.i)):state.D.patches;
+  const qs=new URLSearchParams({chain:$("chain").value, name:$("runname").value||"antigen",
+    variants:$("variants").value, rfd3:$("rfd3").value, mpnn:$("mpnn").value,
+    budget_mode:state.budgetMode, budget_value:$("budgetval").value, mode:state.mode, fmt:fileFmt(),
+    epitopes:chosen.map(p=>p.epitope).join("|")});
+  $("stage").disabled=true; smsg("Building contigs…","busy");
+  try{
+    const res=await fetch("/stage?"+qs.toString(),{method:"POST",body:state.pdbText});
+    const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
+    dl(d.run_spec.antigen+"_contigs.csv", d.contigs_csv, "text/csv");
+    dl(d.run_spec.antigen+"_run_spec.json", JSON.stringify(d.run_spec,null,2), "application/json");
+    smsg(`Staged <b>${d.n_contigs}</b> contigs for ${chosen.length} epitope(s) &mdash; ~${d.run_spec.designs_at_full_fanout.toLocaleString()} designs at full fanout. Downloaded <code>contigs.csv</code> + <code>run_spec.json</code>. Run RFd3&rarr;MPNN&rarr;AF3 on the cluster, then load the metrics CSV in the Results tab.`,"busy");
+  }catch(e){ smsg("Staging failed: "+e.message+"  (is the server running?)","err"); }
+  finally{ $("stage").disabled=false; }
+};
 </script>
 </body>
 </html>

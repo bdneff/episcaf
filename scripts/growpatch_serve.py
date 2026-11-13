@@ -27,6 +27,7 @@ import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from episcaf_analysis.growpatch import read as R   # noqa: E402
+from episcaf_pipeline import build_growpatch_designs as BGD   # noqa: E402
 
 DOCS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs")
 
@@ -74,6 +75,42 @@ def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k, mod
                 residues=residues, patches=patches, **extra)
 
 
+def stage_run(cif_path, chain, epitopes, cfg):
+    """Build the RFd3 contigs for the chosen epitopes + a run spec the cluster consumes.
+
+    Returns (run_spec dict, contigs_csv str, n_contigs, skipped). The heavy run (RFd3->MPNN->AF3) is
+    cluster/GPU work; this stages the job, it does not run it.
+    """
+    import csv as _csv
+    import datetime
+    import io
+    chains = R.parse_chains(chain)
+    cands = [dict(patch=i, epitope=e, n_islands=len([t for t in e.split(";") if t]),
+                  n_res=0, methods=[]) for i, e in enumerate(epitopes)]
+    rows, skipped = BGD.build_rows(cfg["name"], chains, cands, cfg["total_len"],
+                                   cfg["variants"], cfg["seed"])
+    cols = ["id", "contig_id", "contig_string", "contig_length", "epitope_chunks", "source",
+            "pdb_id", "chains", "growpatch_epitope", "growpatch_methods", "growpatch_n_res", "variant"]
+    buf = io.StringIO()
+    w = _csv.DictWriter(buf, fieldnames=cols)
+    w.writeheader()
+    w.writerows({k: r.get(k) for k in cols} for r in rows)
+    n_epi = len(epitopes)
+    run_spec = {
+        "created": datetime.datetime.now().isoformat(timespec="seconds"),
+        "antigen": cfg["name"], "chain": chain, "mode": cfg.get("mode", "growpatch"),
+        "n_epitopes": n_epi, "epitopes": epitopes,
+        "generation": {"flank_variants": cfg["variants"], "total_len": cfg["total_len"],
+                       "rfd3_designs_per_contig": cfg["rfd3"], "mpnn_seqs_per_backbone": cfg["mpnn"]},
+        "budget": cfg["budget"],
+        "n_contigs": len(rows),
+        "designs_at_full_fanout": len(rows) * cfg["rfd3"] * cfg["mpnn"],
+        "note": "Stage only. Run RFd3->MPNN->AF3 on the cluster; score + view the metrics CSV in "
+                "the Results tab. accessibility metric = AOMclash (aomclash_pred).",
+    }
+    return run_spec, buf.getvalue(), len(rows), skipped
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def _send(self, code, body, ctype="application/json"):
         data = body if isinstance(body, bytes) else body.encode()
@@ -95,7 +132,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
-        if parsed.path not in ("/enumerate", "/inspect"):
+        if parsed.path not in ("/enumerate", "/inspect", "/stage"):
             self._send(404, json.dumps({"error": "unknown endpoint"}))
             return
         q = urllib.parse.parse_qs(parsed.query)
@@ -109,6 +146,26 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             tmp.close()
             if parsed.path == "/inspect":
                 self._send(200, json.dumps(R.detect_complex(tmp.name, chain)))
+                return
+            if parsed.path == "/stage":
+                epitopes = [e for e in q.get("epitopes", [""])[0].split("|") if e]
+                if not epitopes:
+                    self._send(400, json.dumps({"error": "no epitopes selected"}))
+                    return
+                try:
+                    cfg = dict(name=(q.get("name", ["antigen"])[0] or "antigen"),
+                               variants=int(q.get("variants", ["4"])[0]),
+                               total_len=int(q.get("total_len", ["103"])[0]),
+                               rfd3=int(q.get("rfd3", ["8"])[0]), mpnn=int(q.get("mpnn", ["8"])[0]),
+                               seed=int(q.get("seed", ["0"])[0]), mode=q.get("mode", ["growpatch"])[0],
+                               budget={"mode": q.get("budget_mode", ["n_designs"])[0],
+                                       "value": float(q.get("budget_value", ["200"])[0])})
+                except ValueError as e:
+                    self._send(400, json.dumps({"error": f"bad parameter: {e}"}))
+                    return
+                spec, csv_text, n, skipped = stage_run(tmp.name, chain or "A", epitopes, cfg)
+                self._send(200, json.dumps(dict(run_spec=spec, contigs_csv=csv_text,
+                                                n_contigs=n, skipped=len(skipped))))
                 return
             try:
                 sasa_cut = float(q.get("sasa_cut", ["0.2"])[0])
