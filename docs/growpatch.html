@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>growPatch viewer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
+<script src="data/growpatch_8pww.js"></script>
+<style>
+:root{color-scheme:light;--blue:#296DC0;--ink:#1a1a1a;--red:#c0392b;--purple:#7a4fb0;--green:#0a7a2f}
+html,body{margin:0}
+body{background:#fff;color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5}
+.page{max-width:900px;margin:0 auto;padding:18px 16px 40px}
+.banner{background:linear-gradient(100deg,#21568f 0%,#296DC0 46%,#3b7fd1 100%);color:#fff;border-bottom:3px solid #1b4a86}
+.banner-inner{max-width:900px;margin:0 auto;padding:15px 16px;display:flex;align-items:center;gap:13px}
+.blogo{width:40px;height:40px;flex:none}
+.wm .name{font-size:25px;font-weight:bold;letter-spacing:.02em;line-height:1}
+.wm .tag{font-size:12px;color:#dce8f7;margin-top:3px}
+.nav{background:#eef3f9;border-bottom:1px solid #d5deea}
+.nav-inner{max-width:900px;margin:0 auto;padding:0 16px;display:flex;gap:2px}
+.nav a{display:inline-block;padding:9px 16px;font-size:13px;font-weight:bold;color:#3b6ea5;text-decoration:none}
+.nav a:hover{color:#21568f}
+.nav a.on{background:#fff;color:#1b4a86;border:1px solid #d5deea;border-bottom:none;border-radius:4px 4px 0 0;position:relative;top:1px}
+h1{font-size:21px;margin:0 0 3px}
+.lede{color:#333;margin:0 0 12px}
+.lede b{color:var(--ink)}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+.stat{background:#f6f8fb;border:1px solid #d9e2ee;border-radius:5px;padding:6px 11px;font-size:12.5px}
+.stat b{font-size:16px;color:var(--blue);display:block;font-variant-numeric:tabular-nums}
+.bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:6px 0 12px}
+.seg{display:inline-flex;border:1px solid #bcc6d2;border-radius:5px;overflow:hidden}
+.seg button{font:inherit;font-size:12.5px;padding:5px 12px;border:0;border-right:1px solid #d5deea;background:#fff;color:#3b6ea5;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--blue);color:#fff;font-weight:bold}
+.lbl{font-size:12px;color:#777;font-weight:bold;text-transform:uppercase;letter-spacing:.03em}
+.main{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.listwrap{flex:1;min-width:240px;max-width:340px}
+.plist{border:1px solid #ccc;max-height:460px;overflow-y:auto}
+.prow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #eee;cursor:pointer;font-size:12.5px}
+.prow:hover{background:#f2f6fc}
+.prow.on{background:#eef4fd;box-shadow:inset 3px 0 0 var(--blue)}
+.prow .ep{flex:1;min-width:0;font-variant-numeric:tabular-nums}
+.prow .meta{color:#888;font-size:11px}
+.mtag{font-size:9.5px;font-weight:bold;padding:1px 5px;border-radius:3px;color:#fff;letter-spacing:.02em}
+.m-growpatch{background:var(--blue)} .m-eyeview{background:var(--purple)} .m-both{background:var(--green)}
+.viewwrap{flex:2;min-width:300px}
+#viewer{width:100%;height:470px;border:1px solid #ccc;background:#fff;position:relative}
+#viewer canvas{display:block}
+#flatwrap{display:none;border:1px solid #ccc;background:#fcfdff}
+#flat{display:block;width:100%;height:auto}
+.sel{font-size:12.5px;color:#444;margin:8px 0;min-height:1.4em}
+.sel b{color:var(--ink)}
+.note{font-size:12px;color:#555;background:#f6f6f6;border:1px solid #ddd;padding:8px 11px;margin-top:14px}
+.note b{color:var(--ink)}
+a{color:#0033cc}
+button:focus-visible,.prow:focus-visible{outline:2px solid #0033cc;outline-offset:1px}
+@media(max-width:620px){.listwrap{max-width:none}#viewer{height:360px}}
+</style>
+</head>
+<body>
+<div class="banner"><div class="banner-inner">
+  <svg class="blogo" viewBox="0 0 44 44" fill="none" aria-hidden="true"><circle cx="22" cy="22" r="20" stroke="#fff" stroke-width="2.5" opacity=".9"/><circle cx="22" cy="22" r="7" fill="#fff"/></svg>
+  <div class="wm"><div class="name">episcaf</div><div class="tag">Epitope Scaffolder</div></div>
+</div></div>
+<div class="nav"><div class="nav-inner">
+  <a href="pipeline.html">Pipeline</a>
+  <a href="index.html">GUI tool</a>
+  <a href="growpatch.html" class="on">growPatch</a>
+</div></div>
+
+<div class="page">
+  <h1>growPatch &mdash; candidate epitope viewer</h1>
+  <p class="lede">With no antibody, there is no known epitope. growPatch does not <i>predict</i> one
+  (that is DiscoTope / BepiPred); it <b>enumerates every surface region that could plausibly be an
+  antibody footprint</b>, so you can scaffold them all and let the experiment decide. Two
+  complementary strategies &mdash; <b>seed-and-grow</b> and the <b>antibody&rsquo;s-eye-view</b>
+  direction caps &mdash; are unioned. Below is the real output on <b>8PWW chain A</b>; click a
+  candidate to highlight it, drag to rotate, or switch to the flat-surface map.</p>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="bar">
+    <span class="lbl">show</span>
+    <span class="seg" id="methodseg">
+      <button data-m="all" class="on">both methods</button>
+      <button data-m="growpatch">seed-and-grow</button>
+      <button data-m="eyeview">eye-view</button>
+    </span>
+    <span class="lbl">view</span>
+    <span class="seg" id="viewseg">
+      <button data-v="3d" class="on">3D structure</button>
+      <button data-v="flat">flat surface</button>
+    </span>
+  </div>
+
+  <div class="sel" id="sel">No patch selected &mdash; click one in the list.</div>
+
+  <div class="main">
+    <div class="listwrap">
+      <span class="lbl">candidates (<span id="nshown">0</span>)</span>
+      <div class="plist" id="plist" role="listbox" aria-label="candidate epitopes"></div>
+    </div>
+    <div class="viewwrap">
+      <div id="viewer"></div>
+      <div id="flatwrap"><svg id="flat" viewBox="0 0 720 360" preserveAspectRatio="xMidYMid meet"></svg></div>
+    </div>
+  </div>
+
+  <div class="note"><b>How to read this.</b> Grey is the antigen; a selected candidate's residues are
+  red. The flat-surface map is an equirectangular projection of the chain around its centroid (each
+  dot a residue, shaded by relative SASA, light = buried &rarr; blue = exposed) &mdash; a lossy
+  overview for seeing where a patch sits on the whole surface, not a faithful metric space. Patches
+  tagged <span class="mtag m-both">both</span> were found by both strategies (higher confidence);
+  <span class="mtag m-growpatch">grow</span> and <span class="mtag m-eyeview">eye</span> are
+  method-exclusive. Data regenerated by <code>scripts/growpatch_viz_data.py</code>.</div>
+</div>
+
+<script>
+"use strict";
+const D = window.GROWPATCH_DATA || {residues:[],patches:[]};
+const BLUE="#296DC0", RED="#c0392b", GREY="#c4c4c4";
+let state = {method:"all", view:"3d", sel:null};
+let viewer=null, loaded=false;
+
+// ---- stats ----
+(function(){
+  const s=document.getElementById("stats");
+  const items=[["patches",D.n_patches],["found by both",D.n_both],
+    ["seed-and-grow",D.n_growpatch],["eye-view",D.n_eyeview],
+    ["surface residues",D.n_surface+" / "+D.n_residues]];
+  s.innerHTML=items.map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
+})();
+
+function mtag(methods){
+  if(methods.length===2) return '<span class="mtag m-both">both</span>';
+  return methods[0]==="growpatch" ? '<span class="mtag m-growpatch">grow</span>'
+                                  : '<span class="mtag m-eyeview">eye</span>';
+}
+function shown(){
+  return D.patches.filter(p=> state.method==="all" ? true : p.methods.includes(state.method));
+}
+
+// ---- patch list ----
+function buildList(){
+  const list=shown();
+  document.getElementById("nshown").textContent=list.length;
+  const el=document.getElementById("plist");
+  el.innerHTML="";
+  for(const p of list){
+    const row=document.createElement("div");
+    row.className="prow"+(state.sel===p.i?" on":"");
+    row.setAttribute("role","option"); row.tabIndex=0;
+    row.dataset.i=p.i;
+    row.innerHTML=`<span class="ep">${p.epitope}</span>`+
+      `<span class="meta">${p.n_res}r&middot;${p.n_isl}i</span>${mtag(p.methods)}`;
+    row.onclick=()=>select(p.i);
+    row.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(p.i);}};
+    el.appendChild(row);
+  }
+}
+
+function patchById(i){return D.patches.find(p=>p.i===i);}
+
+function select(i){
+  state.sel=i;
+  const p=patchById(i);
+  document.getElementById("sel").innerHTML = p ?
+    `<b>${p.epitope}</b> &mdash; ${p.n_res} residues, ${p.n_isl} island(s), found by ${p.methods.join(" + ")}` :
+    "No patch selected.";
+  document.querySelectorAll(".prow").forEach(r=>r.classList.toggle("on",+r.dataset.i===i));
+  if(state.view==="3d") paint3d(); else paintFlat();
+}
+
+// ---- 3D viewer ----
+function paint3d(){
+  if(!viewer||!loaded) return;
+  viewer.setStyle({},{});
+  viewer.setStyle({chain:D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
+  const p=state.sel!=null?patchById(state.sel):null;
+  if(p){
+    const sel={chain:D.chain,resi:p.resis};
+    viewer.setStyle(sel,{cartoon:{color:RED,thickness:1.0,arrows:true}});
+    viewer.setStyle(Object.assign({},sel,{not:{atom:["N","C","O"]}}),
+                    {cartoon:{color:RED,thickness:1.0,arrows:true},stick:{color:RED,radius:0.18}});
+  }
+  viewer.render();
+}
+function initViewer(){
+  if(typeof $3Dmol==="undefined"){
+    document.getElementById("viewer").innerHTML=
+      '<p style="padding:14px;color:#a00">3Dmol.js did not load (offline?). The flat-surface view still works.</p>';
+    return;
+  }
+  viewer=$3Dmol.createViewer("viewer",{backgroundColor:"white"});
+  fetch("pdb/"+D.pdb.toUpperCase()+".pdb").then(r=>r.ok?r.text():Promise.reject(r.status))
+    .then(txt=>{
+      viewer.addModel(txt,"pdb");
+      viewer.setStyle({},{});
+      viewer.setStyle({chain:D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
+      viewer.zoomTo({chain:D.chain}); viewer.render(); loaded=true;
+      if(state.sel!=null) paint3d();
+    })
+    .catch(e=>{document.getElementById("viewer").innerHTML=
+      '<p style="padding:14px;color:#a00">Could not load pdb/'+D.pdb.toUpperCase()+'.pdb ('+e+').</p>';});
+}
+
+// ---- flat surface projection (equirectangular around the chain centroid) ----
+let FLAT=null;
+function flatGeom(){
+  if(FLAT) return FLAT;
+  const R=D.residues, n=R.length;
+  const c=[0,0,0];
+  for(const r of R){c[0]+=r.p[0];c[1]+=r.p[1];c[2]+=r.p[2];}
+  c[0]/=n;c[1]/=n;c[2]/=n;
+  const W=720,H=360,pad=16;
+  const pts={};
+  for(const r of R){
+    const x=r.p[0]-c[0], y=r.p[1]-c[1], z=r.p[2]-c[2];
+    const rad=Math.hypot(x,y,z)||1;
+    const lon=Math.atan2(y,x);                 // -pi..pi
+    const lat=Math.asin(Math.max(-1,Math.min(1,z/rad)));  // -pi/2..pi/2
+    const px=pad+(lon+Math.PI)/(2*Math.PI)*(W-2*pad);
+    const py=pad+(Math.PI/2-lat)/Math.PI*(H-2*pad);
+    pts[r.resi]={px,py,rel:r.rel,surf:r.surf,resn:r.resn};
+  }
+  FLAT={pts,W,H};
+  return FLAT;
+}
+function relColor(rel){
+  // light grey (buried) -> blue (exposed)
+  const t=Math.max(0,Math.min(1,rel/0.8));
+  const a=[214,214,214], b=[41,109,192];
+  const m=a.map((v,i)=>Math.round(v+(b[i]-v)*t));
+  return `rgb(${m[0]},${m[1]},${m[2]})`;
+}
+function paintFlat(){
+  const g=flatGeom(), svg=document.getElementById("flat");
+  const p=state.sel!=null?patchById(state.sel):null;
+  const inPatch=new Set(p?p.resis:[]);
+  let s="";
+  // base residues
+  for(const resi in g.pts){
+    const q=g.pts[resi];
+    if(inPatch.has(+resi)) continue;
+    s+=`<circle cx="${q.px.toFixed(1)}" cy="${q.py.toFixed(1)}" r="${q.surf?3.2:2}" `+
+       `fill="${relColor(q.rel)}" opacity="${q.surf?0.95:0.5}"/>`;
+  }
+  // selected patch on top
+  for(const resi of inPatch){
+    const q=g.pts[resi]; if(!q) continue;
+    s+=`<circle cx="${q.px.toFixed(1)}" cy="${q.py.toFixed(1)}" r="4.6" fill="${RED}" `+
+       `stroke="#fff" stroke-width="1"><title>${q.resn} ${resi} (relSASA ${q.rel})</title></circle>`;
+  }
+  svg.innerHTML=s;
+}
+
+// ---- view + method toggles ----
+function setView(v){
+  state.view=v;
+  document.getElementById("viewer").style.display = v==="3d"?"block":"none";
+  document.getElementById("flatwrap").style.display = v==="flat"?"block":"none";
+  document.querySelectorAll("#viewseg button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  if(v==="3d") paint3d(); else paintFlat();
+}
+document.querySelectorAll("#methodseg button").forEach(b=>b.onclick=()=>{
+  state.method=b.dataset.m;
+  document.querySelectorAll("#methodseg button").forEach(x=>x.classList.toggle("on",x===b));
+  // if the selected patch is filtered out, drop the selection
+  if(state.sel!=null && !shown().some(p=>p.i===state.sel)){state.sel=null;
+    document.getElementById("sel").textContent="No patch selected — click one in the list.";
+    if(state.view==="3d")paint3d();else paintFlat();}
+  buildList();
+});
+document.querySelectorAll("#viewseg button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
+
+// ---- go ----
+buildList();
+initViewer();
+</script>
+</body>
+</html>
