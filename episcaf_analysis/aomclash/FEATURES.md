@@ -1,11 +1,17 @@
 # AOMclash features
 
-The reference for **what each input the model sees actually is** — so the feature set can be
-changed (add, drop, re-group) without re-reading the math in `features.py`.
+**The shipped scorer is one feature: `s_p1_free`** — the antibody-occupancy map read at every
+scaffold atom, summed over the atoms outside native-antigen space (`free`). It is isotonic-calibrated
+onto the AF3 clash count (`model.py:fit_prior` / `score_prior`); for ranking designs within a target
+the calibration is cosmetic, so the raw sum ranks identically. See its row under **Occupancy** below.
 
-- The extractor (`features.py:design_feats` + `target_features`) computes **111 columns**.
-- The shipping model (`model.py:FEATURES_39`) trains on **39** of them. The other 72 (70 histogram
-  bins + 2 cylinder counts) are computed but not fed to the regressor — see **Dropped** below.
+This file is the reference for **what every computed feature is** — the extractor emits 111 columns,
+and we document all of them so the set can still be changed deliberately without re-reading the math
+in `features.py`. The richer **39-feature gradient-boosted model** (`model.py:FEATURES_39`) was tested
+and **rejected** — it beats the single feature by only ~0.02 at real overfitting risk — and is kept
+only as a head-to-head baseline. What we tried and the numbers live in
+`results/aomclash/explorations/` (not front and center); this page just defines the inputs.
+
 - Changing the model's inputs is editing the group lists in `model.py` (`OCCUPANCY`,
   `OUTWARD_COUNTS`, …). Adding a *new* kind of feature is editing `design_feats`/`target_features`
   here, then adding its name to a group in `model.py`. Nothing else keys off the list.
@@ -123,6 +129,8 @@ within-campaign ρ (0.919 → 0.912); the 2 cylinder counts add ~0.003. A platea
 
 ## Changing the set — the honest caveats
 
+- **The shipped model is the single `s_p1_free` feature.** The notes below apply to the rejected
+  39-feature alternative, kept only as a head-to-head baseline (`results/aomclash/explorations/`).
 - **Features are highly correlated** (the 70 histograms ≈ the occupancy sum; the `n_p*` ladders are
   near-monotone in `s_p1`). Prune by **group**, judged under the grouped CV in `model.py`, never by
   per-feature importance — a per-feature plot is misleading here.

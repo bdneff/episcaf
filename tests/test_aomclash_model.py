@@ -93,6 +93,25 @@ def test_fit_final_and_predict():
     assert len(p) == len(df) and np.isfinite(p).all()
 
 
+def test_fit_prior_is_the_shipped_scorer():
+    """The shipped scorer: isotonic calibration of the single carved-occupancy feature."""
+    df = _synthetic_frame(5)
+    assert M.SHIPPED_FEATURE == "s_p1_free"
+    iso = M.fit_prior(df)
+    pred = M.score_prior(iso, df["s_p1_free"].to_numpy())
+    assert len(pred) == len(df) and np.isfinite(pred).all()
+    assert (pred >= 0).all()                                  # clash counts are non-negative
+    # isotonic is monotone non-decreasing: sorting by the raw feature never inverts the score
+    # (so ranking designs by the calibrated score == ranking by the raw sum; ties only flatten)
+    raw = df["s_p1_free"].to_numpy()
+    order = np.argsort(raw, kind="stable")
+    sorted_pred = pred[order]
+    assert np.all(np.diff(sorted_pred) >= -1e-9)
+    # and it tracks the (monotone-in-s_p1_free) synthetic label
+    from scipy.stats import spearmanr
+    assert spearmanr(pred, df["af3_n_clash_res"].to_numpy()).statistic > 0.5
+
+
 def test_epitope_groups_from_target():
     df = _synthetic_frame(4)
     g = M.epitope_groups(df)

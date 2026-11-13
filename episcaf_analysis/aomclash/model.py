@@ -1,23 +1,30 @@
-"""AOMclash regressor: train and score the clash-count predictor on a prepared feature frame.
+"""AOMclash scorer: score antibody-clash propensity from a prepared feature frame.
 
-Port of John Altin's `aomclash/aom_model.py` (AltinLab/epitope-universe), restricted to the
-**39-feature subset** we decided to ship (see `results/aomclash/feature_set_decision.md`). The map,
-the epitope frame and the per-design feature extraction live in `features.py`; this module is only
-the regressor: it takes a DataFrame of features + an AF3 clash label + a grouping column, trains a
-gradient-boosted regressor on `log1p(clash residues)`, and scores it leave-one-group-out.
+Port of John Altin's `aomclash/aom_model.py` (AltinLab/epitope-universe). The map, the epitope frame
+and the per-design feature extraction live in `features.py`; this module is only the scorer. It never
+reads structures and never trains a map, so it runs anywhere the feature matrix exists. Building that
+matrix needs the AF3 design structures, which are cluster-only ($WS); this module is staged to run
+there, not here.
 
-It never reads structures and never trains a map, so it runs anywhere the feature matrix exists.
-Building that matrix needs the AF3 design structures, which are cluster-only ($WS); this module is
-staged to run there, not here.
+The shipped scorer: one feature
+-------------------------------
+We ship a SINGLE interpretable metric: `s_p1_free` -- the antibody-occupancy map read at every
+scaffold atom, summed over only the atoms NOT inside native-antigen space (`free`, dag > 4 A). That
+is "how much of the design sticks into antibody territory, beyond what mimicking the native antigen
+already explains." `fit_prior` / `score_prior` below are the shipped path: an isotonic calibration of
+`s_p1_free` onto the AF3 clash count. Because it is one monotone feature, the calibration only sets a
+clash-count SCALE -- for ranking designs within a target (the deployment use) the raw sum ranks
+identically. There is no learned multi-feature regressor to overfit, and the whole scorer reproduces
+from (occupancy map + native antigen) alone.
 
-The 39-feature subset
----------------------
-John's extractor computes 111 columns. His own ablation (`aom_ablation.py`, `results/ablation.csv`)
-shows the score plateaus far earlier: dropping the 70 position-histogram bins costs ~0.007 post-AF
-within-campaign rho (0.919 -> 0.912) and the 2 cylinder counts add ~0.003. So we train on the 39 that
-carry the signal: occupancy (15) + outward-side counts (4) + antigen contact (4) + scaffold shape (10)
-+ epitope descriptors (6). This is a safe plateau, not the minimum -- a forward-selection pass for the
-smallest set that still holds 0.9 is left as a later trim and needs the feature matrix.
+Why not the 111 (or 39) features? John's ablation (`aom_ablation.py`, `results/ablation.csv`) and the
+8-Nov report put the single carved-occupancy feature at ~0.87-0.89 and the full model only ~0.02
+higher. Adding ~38 highly-correlated features for +0.02, on a set this size, buys overfitting risk,
+not signal. So the 39-feature gradient-boosted regressor below (`FEATURES_39`, `gbm`, `fit_final`,
+`leave_one_group_out`'s `aomclash` head) is KEPT as the tested, rejected alternative and the
+head-to-head baseline -- not the shipped path. [Margins are from John's AF2 campaign; confirm the
+single-feature result holds on our AF3 (DP3/DP4) labels when the matrix exists, but shipping does not
+gate on the 39-feature model.] See `results/aomclash/feature_set_decision.md`.
 
 Fold definition  [DECISION / partly UNVERIFIED against John's latest code]
 --------------------------------------------------------------------------
@@ -71,6 +78,9 @@ GBM_KW = dict(max_iter=300, learning_rate=0.05, max_leaf_nodes=15,
 # candidate AF3 clash-label column names, most-specific first
 LABEL_CANDIDATES = ("af3_n_clash_res", "af3_clashes")
 
+# the single feature we ship as the scorer: the carved-occupancy sum (occupancy over free atoms)
+SHIPPED_FEATURE = "s_p1_free"
+
 
 def gbm():
     """A fresh regressor with John's hyperparameters."""
@@ -111,8 +121,36 @@ def _weights(df, stage_col):
     return stage_weights(df[stage_col].to_numpy())
 
 
+# ------------------------------------------------------------------ the shipped scorer (one feature)
+
+def fit_prior(df, label=None, prior_feature=SHIPPED_FEATURE, stage_col="stage"):
+    """Fit the SHIPPED scorer: isotonic calibration of the carved-occupancy sum onto AF3 clash count.
+
+    Returns a fitted sklearn `IsotonicRegression` mapping `prior_feature` -> expected clashing-residue
+    count. This *is* the whole shipped model -- one monotone feature, no multi-feature regressor;
+    pickle it as the artifact. For ranking designs within a target the calibration is cosmetic (it is
+    monotone), so the raw `prior_feature` ranks identically; the fit only puts the score on a
+    clash-count scale comparable to `af3_n_clash_res` on the antibody arm.
+    """
+    from sklearn.isotonic import IsotonicRegression
+    label = resolve_label(df, label)
+    if prior_feature not in df.columns:
+        raise KeyError(f"{prior_feature!r} not in frame")
+    x = df[prior_feature].to_numpy(dtype=float)
+    y = df[label].to_numpy(dtype=float)
+    w = _weights(df, stage_col)
+    return IsotonicRegression(out_of_bounds="clip").fit(x, y, sample_weight=w)
+
+
+def score_prior(iso, values):
+    """Predicted clashing-residue count for each design's carved-occupancy sum (the shipped scorer)."""
+    return iso.predict(np.asarray(values, dtype=float))
+
+
+# ------------------------------------------------------------------ the rejected 39-feature baseline
+
 def leave_one_group_out(df, groups, feats=FEATURES_39, label=None, stage_col="stage",
-                        prior_feature="s_p1_free"):
+                        prior_feature=SHIPPED_FEATURE):
     """Leave-one-group-out predictions (port of aom_model.leave_one_antigen_out, group-agnostic).
 
     Every row is predicted by a model that never trained on its group. `groups` is one value per row
