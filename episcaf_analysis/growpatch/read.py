@@ -25,6 +25,7 @@ byte-identical, so the surface set at a fixed cut could shift and would need re-
 """
 from __future__ import annotations
 
+import os
 import re
 import string
 from dataclasses import dataclass, field
@@ -47,6 +48,14 @@ BACKBONE = {"N", "CA", "C", "O"}
 
 _RANGE_RE = re.compile(r"^(-?\d+[A-Za-z]*)(?:-(-?\d+[A-Za-z]*))?$")
 _RES_RE = re.compile(r"^(-?\d+)([A-Za-z]*)$")
+
+
+def _parse_structure(path):
+    """Bio.PDB structure from a .cif/.mmcif (MMCIFParser) or .pdb/.ent (PDBParser), by extension."""
+    from Bio.PDB import MMCIFParser, PDBParser
+    ext = os.path.splitext(path)[1].lower()
+    parser = PDBParser(QUIET=True) if ext in (".pdb", ".ent") else MMCIFParser(QUIET=True)
+    return parser.get_structure("x", path)
 
 
 # ------------------------------------------------------------------ slot <-> label bookkeeping
@@ -232,12 +241,12 @@ def _relsasa_group(cif_path, group):
     import os
     import tempfile
     import freesasa
-    from Bio.PDB import MMCIFParser, PDBIO, Select
+    from Bio.PDB import PDBIO, Select
     from Bio.PDB.Chain import Chain
     from Bio.PDB.Model import Model
     from Bio.PDB.Structure import Structure
 
-    model = next(iter(MMCIFParser(QUIET=True).get_structure("x", cif_path)))
+    model = next(iter(_parse_structure(cif_path)))
 
     # the temp file is PDB (one-character chain ids): write the group under single-char names and
     # read back under the real names, so a chain called 'BBB' does not break.
@@ -305,10 +314,8 @@ def read_antigen(cif_path, chains, sasa_scope="antigen", context=(), relsasa=Tru
     `chains` is a chain id, a list, or a spec string ('A,B'). Raises if a chain has no standard,
     complete-backbone residue. The returned object is everything the enumerator needs.
     """
-    from Bio.PDB import MMCIFParser
-
     chains = parse_chains(chains) if isinstance(chains, str) else list(chains)
-    model = next(iter(MMCIFParser(QUIET=True).get_structure("x", cif_path)))
+    model = next(iter(_parse_structure(cif_path)))
 
     residues, labels, slots_m, ins_m = [], {}, {}, {}
     for c in chains:
