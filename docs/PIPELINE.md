@@ -38,7 +38,12 @@ AF3-direct variant). This table is the source of truth; the prefixes are just fi
 - **C1 (whole epitope)** rebuilt natively at 103: `scripts/build_whole_epitope_designs.py` →
   `run_whole_epitope_rfd3.sh` → `run_whole_epitope_mpnn_af3.sh` (steps 1–5 in one wrapper each).
 - **C2 (single island)**: the per-island run; metrics `metrics_dual_island.parquet` (cluster).
-- **C3 (polyclonal 12-mer)**: no-antibody arm; accessibility via the cylinder surrogate (step 6/7).
+- **C3 (polyclonal 12-mer)**: the *old* no-antibody arm; accessibility via the cylinder surrogate (step 6/7).
+- **growPatch (no-antibody enumeration)**: the next-gen no-antibody arm that replaces tiled 12-mers.
+  `episcaf_analysis/growpatch` enumerates candidate conformational epitopes (seed-and-grow + eye-view,
+  unioned); `python -m episcaf_pipeline.build_growpatch_designs --cif <antigen> --chain A` turns each
+  candidate into a whole-epitope contig and emits the designs parquet that stage 1 consumes. Accessibility
+  downstream is AOMclash (not the cylinder). Benchmark + decision: `results/growpatch/ENUMERATOR_DECISION.md`.
 - **C4 (linear 30-mer controls)**: no design — `episcaf_pipeline/build_dp4_tiled30mers_fasta.py` only.
 - **C5 (titration)** / **C6 (mutant controls)**: derived from the C1 pool (steps 7/8), not fresh runs.
 - **8VDL (PfEMP1 arm)**: self-contained under `dp4_8vdl/` (`01_contigs` → … → `07_consolidate.py`),
