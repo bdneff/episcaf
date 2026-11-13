@@ -36,27 +36,42 @@ def _resi(label):
     return int(m.group()) if m else None
 
 
-def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k):
-    """Run the enumerator and shape its output like docs/data/growpatch_*.js (residues + patches)."""
+def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k, mode="growpatch"):
+    """Residues + candidate patches for the viewer (like docs/data/growpatch_*.js).
+
+    mode 'growpatch' -> enumerate candidate epitopes (lone antigen).
+    mode 'antibody'  -> the epitope is already defined by the bound partner; return it as one patch,
+                        no enumeration (growPatch unnecessary).
+    """
     ag = R.read_antigen(cif_path, chain, relsasa=True)
-    cands, _ = R.enumerate_candidates(cif_path, chain, antigen=ag, methods=methods,
-                                      sasa_cut=sasa_cut, footprint_radius=footprint_radius,
-                                      top_k=(top_k or None))
     residues = [dict(resi=_resi(ag.label(c, s)), resn=r["resname"],
                      rel=round(float(ag.rs(r["key"])), 3),
                      surf=bool(ag.rs(r["key"]) >= sasa_cut),
                      p=[round(float(x), 2) for x in r["rep"]])
                 for r in ag.residues for (c, s) in [r["key"]]]
-    patches = [dict(i=p["patch"], methods=p["methods"], epitope=p["epitope"],
-                    n_res=p["n_res"], n_isl=p["n_islands"],
-                    resis=sorted({_resi(ag.label(c, s)) for (c, s) in p["keys"]}))
-               for p in cands]
+    extra = {}
+    if mode == "antibody":
+        det = R.detect_complex(cif_path, chain)
+        epi = det["epitope"]
+        resis = sorted({_resi(ag.label(c, s)) for (c, s) in ag.parse_epitope(epi)}) if epi else []
+        patches = ([dict(i=0, methods=["antibody-contact"], epitope=epi, n_res=len(resis),
+                         n_isl=len([t for t in epi.split(";") if t]), resis=resis)] if resis else [])
+        extra = dict(mode="antibody", partner_chains=det["partner_chains"])
+    else:
+        cands, _ = R.enumerate_candidates(cif_path, chain, antigen=ag, methods=methods,
+                                          sasa_cut=sasa_cut, footprint_radius=footprint_radius,
+                                          top_k=(top_k or None))
+        patches = [dict(i=p["patch"], methods=p["methods"], epitope=p["epitope"],
+                        n_res=p["n_res"], n_isl=p["n_islands"],
+                        resis=sorted({_resi(ag.label(c, s)) for (c, s) in p["keys"]}))
+                   for p in cands]
+        extra = dict(mode="growpatch")
     return dict(chain=chain, sasa_cut=sasa_cut, n_residues=len(residues),
                 n_surface=sum(r["surf"] for r in residues), n_patches=len(patches),
                 n_growpatch=sum("growpatch" in p["methods"] for p in patches),
                 n_eyeview=sum("eyeview" in p["methods"] for p in patches),
                 n_both=sum(len(p["methods"]) == 2 for p in patches),
-                residues=residues, patches=patches)
+                residues=residues, patches=patches, **extra)
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -80,27 +95,31 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
-        if parsed.path != "/enumerate":
+        if parsed.path not in ("/enumerate", "/inspect"):
             self._send(404, json.dumps({"error": "unknown endpoint"}))
             return
         q = urllib.parse.parse_qs(parsed.query)
         body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
-        chain = q.get("chain", ["A"])[0]
         fmt = q.get("fmt", ["pdb"])[0]
-        try:
-            sasa_cut = float(q.get("sasa_cut", ["0.2"])[0])
-            footprint = float(q.get("footprint_radius", ["14"])[0])
-            top_k = int(q.get("top_k", ["0"])[0])
-            methods = tuple(m for m in q.get("methods", ["growpatch,eyeview"])[0].split(",") if m)
-        except ValueError as e:
-            self._send(400, json.dumps({"error": f"bad parameter: {e}"}))
-            return
+        chain = q.get("chain", [""])[0] or None
         tmp = tempfile.NamedTemporaryFile(suffix="." + ("cif" if fmt == "cif" else "pdb"),
                                           delete=False, mode="wb")
         try:
             tmp.write(body)
             tmp.close()
-            data = viewer_data(tmp.name, chain, sasa_cut, footprint, methods, top_k)
+            if parsed.path == "/inspect":
+                self._send(200, json.dumps(R.detect_complex(tmp.name, chain)))
+                return
+            try:
+                sasa_cut = float(q.get("sasa_cut", ["0.2"])[0])
+                footprint = float(q.get("footprint_radius", ["14"])[0])
+                top_k = int(q.get("top_k", ["0"])[0])
+                methods = tuple(m for m in q.get("methods", ["growpatch,eyeview"])[0].split(",") if m)
+            except ValueError as e:
+                self._send(400, json.dumps({"error": f"bad parameter: {e}"}))
+                return
+            mode = q.get("mode", ["growpatch"])[0]
+            data = viewer_data(tmp.name, chain or "A", sasa_cut, footprint, methods, top_k, mode)
             self._send(200, json.dumps(data))
         except Exception as e:                          # a bad upload must not crash the server
             self._send(400, json.dumps({"error": f"{type(e).__name__}: {e}"}))

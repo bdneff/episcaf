@@ -199,6 +199,74 @@ class Antigen:
 
 # ------------------------------------------------------------------ reading
 
+def _ranges(chain, nums):
+    """[10,11,12,20] -> 'A:10-12;A:20' (contiguous runs)."""
+    nums = sorted(set(nums))
+    if not nums:
+        return ""
+    out, a, prev = [], nums[0], nums[0]
+    for n in nums[1:]:
+        if n == prev + 1:
+            prev = n
+        else:
+            out.append(f"{chain}:{a}-{prev}" if a != prev else f"{chain}:{a}")
+            a = prev = n
+    out.append(f"{chain}:{a}-{prev}" if a != prev else f"{chain}:{a}")
+    return ";".join(out)
+
+
+def detect_complex(cif_path, antigen_chain=None, contact=4.0, min_pairs=10):
+    """Guess whether the structure is an antibody(partner)-antigen complex or a lone antigen.
+
+    Reads every protein chain; the antigen chain is the one given, else the largest. Any OTHER chain
+    making >= `min_pairs` heavy-atom contacts (within `contact` A) with the antigen is a bound partner
+    (an antibody, in the episcaf setting). If partners exist the epitope is already defined -- the
+    antigen residues within `contact` of a partner -- and growPatch is unnecessary.
+
+    This is a transparent heuristic ("is there a bound partner?"), not true antibody recognition; the
+    tool shows it as a guess the user can override. Returns:
+      {chains:[{id,n}], antigen_chain, is_complex, partner_chains, epitope, n_epitope}
+    """
+    import numpy as np
+    from scipy.spatial import cKDTree
+
+    model = next(iter(_parse_structure(cif_path)))
+    heavy, res_atoms, sizes = {}, {}, {}
+    for ch in model:
+        ra, hv = [], []
+        for r in ch:
+            if r.id[0] != " ":
+                continue
+            coords = [a.coord for a in r if a.element != "H"]
+            if not coords:
+                continue
+            arr = np.array(coords, dtype=float)
+            ra.append((r.id[1], arr))
+            hv.append(arr)
+        if ra:
+            res_atoms[ch.id], heavy[ch.id], sizes[ch.id] = ra, np.vstack(hv), len(ra)
+
+    if not sizes:
+        return dict(chains=[], antigen_chain=None, is_complex=False, partner_chains=[],
+                    epitope="", n_epitope=0)
+    if antigen_chain not in sizes:
+        antigen_chain = max(sizes, key=sizes.get)        # default: the largest chain is the antigen
+
+    ag_tree = cKDTree(heavy[antigen_chain])
+    partners = [c for c in heavy if c != antigen_chain
+                and ag_tree.count_neighbors(cKDTree(heavy[c]), contact) >= min_pairs]
+
+    epi = []
+    if partners:
+        pt = cKDTree(np.vstack([heavy[c] for c in partners]))
+        epi = [resnum for resnum, arr in res_atoms[antigen_chain] if pt.query(arr)[0].min() <= contact]
+
+    return dict(chains=[{"id": c, "n": sizes[c]} for c in sorted(sizes)],
+                antigen_chain=antigen_chain, is_complex=bool(partners),
+                partner_chains=sorted(partners), epitope=_ranges(antigen_chain, epi),
+                n_epitope=len(set(epi)))
+
+
 def parse_chains(spec):
     """'A' / 'A,B' / 'A+B' / 'A;B' -> ['A', 'B'] (order kept, duplicates dropped)."""
     out = []

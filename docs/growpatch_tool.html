@@ -95,7 +95,17 @@ a{color:#0033cc}
           <button data-m="eyeview">eye</button>
         </span>
       </div>
-      <div class="fld"><label>&nbsp;</label><button id="run" disabled>Run growPatch</button></div>
+      <div class="fld"><label>&nbsp;</label><button id="run" disabled>Run</button></div>
+    </div>
+    <div class="row" style="margin-top:11px">
+      <div class="fld"><label>input type</label>
+        <span class="seg" id="modeseg">
+          <button data-mode="growpatch" class="on">lone antigen &mdash; run growPatch</button>
+          <button data-mode="antibody">antibody present &mdash; epitope from contact</button>
+        </span>
+      </div>
+      <div class="fld" style="flex:1;min-width:200px"><label>&nbsp;</label>
+        <span id="guess" style="font-size:12px;color:#555"></span></div>
     </div>
     <div id="msg"></div>
   </div>
@@ -134,36 +144,59 @@ a{color:#0033cc}
 <script>
 "use strict";
 const BLUE="#296DC0", RED="#c0392b", GREY="#c4c4c4";
-let state={method:"growpatch,eyeview", view:"3d", sel:null, D:null, pdbText:null};
+let state={method:"growpatch,eyeview", mode:"growpatch", view:"3d", sel:null, D:null, pdbText:null};
 let viewer=null, FLAT=null;
 
 const $=id=>document.getElementById(id);
 function msg(t,cls){const m=$("msg");m.className=t?("msg "+(cls||"")):"";m.textContent=t||"";}
+const fileFmt=()=>($("file").files[0]&&$("file").files[0].name.toLowerCase().endsWith(".cif"))?"cif":"pdb";
 
-// file -> read text, detect chains
+function setMode(m){
+  state.mode=m;
+  document.querySelectorAll("#modeseg button").forEach(b=>b.classList.toggle("on",b.dataset.mode===m));
+  $("run").textContent = m==="antibody" ? "Show epitope" : "Run growPatch";
+  // the growPatch knobs don't apply in antibody mode
+  ["sasa","radius","topk"].forEach(id=>$(id).disabled=(m==="antibody"));
+  document.querySelectorAll("#methodseg button").forEach(b=>b.disabled=(m==="antibody"));
+}
+
+// file -> read text, then ask the server what it is
 $("file").onchange=()=>{
   const f=$("file").files[0]; if(!f){$("run").disabled=true;return;}
   const r=new FileReader();
-  r.onload=()=>{
-    state.pdbText=r.result;
-    const chains=[...new Set([...state.pdbText.matchAll(/^ATOM.{15}(.)/gm)].map(m=>m[1].trim()).filter(Boolean))];
-    const sel=$("chain"); sel.innerHTML=(chains.length?chains:["A"]).map(c=>`<option>${c}</option>`).join("");
-    $("run").disabled=false; msg("");
+  r.onload=async()=>{
+    state.pdbText=r.result; $("run").disabled=false; msg("");
+    $("guess").textContent="inspecting…";
+    try{
+      const res=await fetch("/inspect?fmt="+fileFmt(),{method:"POST",body:state.pdbText});
+      const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
+      $("chain").innerHTML=d.chains.map(c=>`<option value="${c.id}">${c.id} (${c.n} res)</option>`).join("");
+      if(d.antigen_chain) $("chain").value=d.antigen_chain;
+      if(d.is_complex){ setMode("antibody");
+        $("guess").innerHTML=`guess: <b>antibody present</b> &mdash; chain(s) ${d.partner_chains.join(", ")} contact ${d.antigen_chain} (${d.n_epitope}-residue epitope). growPatch not needed.`;
+      }else{ setMode("growpatch");
+        $("guess").innerHTML=`guess: <b>lone antigen</b> &mdash; no bound partner found. growPatch will enumerate candidate epitopes.`;
+      }
+    }catch(e){ $("guess").textContent="(could not inspect: "+e.message+" — is the server running?)"; }
   };
   r.readAsText(f);
 };
 
+document.querySelectorAll("#modeseg button").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
 document.querySelectorAll("#methodseg button").forEach(b=>b.onclick=()=>{
+  if(b.disabled) return;
   state.method=b.dataset.m;
   document.querySelectorAll("#methodseg button").forEach(x=>x.classList.toggle("on",x===b));
 });
 
 $("run").onclick=async()=>{
   if(!state.pdbText){msg("Choose a PDB file first.","err");return;}
-  const fmt=($("file").files[0].name.toLowerCase().endsWith(".cif"))?"cif":"pdb";
   const qs=new URLSearchParams({chain:$("chain").value, sasa_cut:$("sasa").value,
-    footprint_radius:$("radius").value, top_k:$("topk").value, methods:state.method, fmt});
-  $("run").disabled=true; msg("Running the enumerator… (freesasa + seed-and-grow + eye-view)","busy");
+    footprint_radius:$("radius").value, top_k:$("topk").value, methods:state.method,
+    mode:state.mode, fmt:fileFmt()});
+  $("run").disabled=true;
+  msg(state.mode==="antibody" ? "Finding the antibody-contact epitope…"
+      : "Running the enumerator… (freesasa + seed-and-grow + eye-view)","busy");
   try{
     const res=await fetch("/enumerate?"+qs.toString(),{method:"POST",body:state.pdbText});
     const data=await res.json();
@@ -171,18 +204,29 @@ $("run").onclick=async()=>{
     state.D=data; state.sel=null; FLAT=null;
     $("results").style.display="block"; msg("");
     buildStats(); buildList(); loadStructure(); setView(state.view);
-  }catch(e){ msg("Enumeration failed: "+e.message+"  (is the server running?)","err"); }
+    if(state.mode==="antibody" && data.patches.length) select(data.patches[0].i);   // show the epitope
+  }catch(e){ msg((state.mode==="antibody"?"Epitope detection":"Enumeration")+" failed: "+e.message+"  (is the server running?)","err"); }
   finally{ $("run").disabled=false; }
 };
 
 function buildStats(){
   const D=state.D;
-  const items=[["patches",D.n_patches],["found by both",D.n_both],["seed-and-grow",D.n_growpatch],
-    ["eye-view",D.n_eyeview],["surface",D.n_surface+" / "+D.n_residues]];
+  let items;
+  if(D.mode==="antibody"){
+    const p=D.patches[0]||{n_res:0,n_isl:0};
+    items=[["epitope residues",p.n_res],["islands",p.n_isl],
+           ["bound partner",(D.partner_chains||[]).join(", ")||"—"],
+           ["surface",D.n_surface+" / "+D.n_residues]];
+  }else{
+    items=[["patches",D.n_patches],["found by both",D.n_both],["seed-and-grow",D.n_growpatch],
+      ["eye-view",D.n_eyeview],["surface",D.n_surface+" / "+D.n_residues]];
+  }
   $("stats").innerHTML=items.map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
 }
-function mtag(m){return m.length===2?'<span class="mtag m-both">both</span>':
-  (m[0]==="growpatch"?'<span class="mtag m-growpatch">grow</span>':'<span class="mtag m-eyeview">eye</span>');}
+function mtag(m){
+  if(m.includes("antibody-contact")) return '<span class="mtag" style="background:#444">epitope</span>';
+  return m.length===2?'<span class="mtag m-both">both</span>':
+    (m[0]==="growpatch"?'<span class="mtag m-growpatch">grow</span>':'<span class="mtag m-eyeview">eye</span>');}
 function buildList(){
   const el=$("plist"); el.innerHTML=""; $("nshown").textContent=state.D.patches.length;
   for(const p of state.D.patches){
