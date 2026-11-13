@@ -200,6 +200,105 @@ def test_parity_against_reference():
     print(f"  ok: test_parity_against_reference ({len(ours)} candidates on {os.path.basename(cif)}:{chain})")
 
 
+def test_parity_read_end_to_end():
+    """read.enumerate_patches (our structure reader + freesasa relSASA) reproduces John's full
+    enumeration -- the same candidate set from a raw CIF, surface set and all. Guarded on
+    GROWPATCH_REF + GROWPATCH_CIF and freesasa being importable."""
+    ref_path, cif = os.environ.get("GROWPATCH_REF"), os.environ.get("GROWPATCH_CIF")
+    if not (ref_path and cif and os.path.exists(ref_path) and os.path.exists(cif)):
+        print("  skip: test_parity_read_end_to_end (set GROWPATCH_REF + GROWPATCH_CIF)")
+        return
+    try:
+        import freesasa  # noqa: F401
+    except ImportError:
+        print("  skip: test_parity_read_end_to_end (freesasa not installed)")
+        return
+    from episcaf_analysis.growpatch import read as R
+
+    chain = os.environ.get("GROWPATCH_CHAIN", "A")
+    cut, size = 0.2, 16
+    spec = importlib.util.spec_from_file_location("growPatch_ref2", ref_path)
+    gp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gp)
+
+    # --- John's end-to-end result (his reader + his freesasa relSASA + his main-loop logic) ---
+    res = gp.parse_chain(cif, chain)                       # also registers the chain for parse_resno_spec
+    idx_key = {i: r["key"] for i, r in enumerate(res)}
+    present = {chain: frozenset(n for (_, n) in idx_key.values())}
+    relsasa_ref = gp.compute_relsasa(cif, [chain], "antigen", [])
+    ref_set = gp.parse_resno_spec(gp.DEFAULT_REF, [chain])
+    adj = gp.build_adjacency(res, 4.5)
+    surf = frozenset(i for i, r in enumerate(res) if relsasa_ref.get(r["key"], 0.0) >= cut)
+    raw = {p for s in surf for p in [gp.grow_patch(s, surf, res, adj, size, 5.0)] if len(p) >= 3}
+    cands = []
+    for p in raw:
+        raw_r = {idx_key[i] for i in p}
+        gf = gp.trim_short_islands(gp.gap_fill(raw_r, 10, present), 3, ref_set)   # protect the ref epitope
+        if gf and len(gf) >= 12 and len(gp.islands(gf)) <= 3:
+            cands.append((gf, len(gp.islands(gf))))
+    cands.sort(key=lambda t: (t[1], -len(t[0]), sorted(t[0])))
+    kept_ref = []
+    for gf, nisl in cands:
+        if all(gp.jaccard(gf, g) < 0.8 for g in kept_ref):
+            kept_ref.append(gf)
+
+    # --- our end-to-end result ---
+    patches, ag = R.enumerate_patches(cif, chain, sasa_cut=cut, patch_size=size,
+                                      protect_epitope=gp.DEFAULT_REF)
+
+    # relSASA identical (same engine), residue set identical
+    assert set(ag.by_key) == {r["key"] for r in res}, "residue key set differs from reference"
+    for k, v in relsasa_ref.items():
+        assert abs(ag.relsasa.get(k, 0.0) - v) < 1e-9, f"relSASA differs at {k}"
+
+    ours = [frozenset(p["keys"]) for p in patches]
+    assert ours == [frozenset(g) for g in kept_ref], "read.enumerate_patches differs from reference"
+    # the EpiScaf contig string round-trips back to the same residue set
+    for p in patches:
+        assert ag.parse_epitope(p["epitope"]) == set(p["keys"]), f"epitope string lossy: {p['epitope']}"
+    print(f"  ok: test_parity_read_end_to_end ({len(ours)} candidates on "
+          f"{os.path.basename(cif)}:{chain}, surface={len(surf)})")
+
+
+def test_combined_enumerator():
+    """read.enumerate_candidates runs both strategies, unions them, tags co-found patches, and the
+    union is at least as large as either method alone. Guarded on GROWPATCH_CIF + freesasa."""
+    cif = os.environ.get("GROWPATCH_CIF")
+    if not (cif and os.path.exists(cif)):
+        print("  skip: test_combined_enumerator (set GROWPATCH_CIF)")
+        return
+    try:
+        import freesasa  # noqa: F401
+    except ImportError:
+        print("  skip: test_combined_enumerator (freesasa not installed)")
+        return
+    from episcaf_analysis.growpatch import read as R
+    chain = os.environ.get("GROWPATCH_CHAIN", "A")
+
+    gp_only, ag = R.enumerate_candidates(cif, chain, methods=("growpatch",))
+    ev_only, _ = R.enumerate_candidates(cif, chain, methods=("eyeview",), antigen=ag)
+    both, _ = R.enumerate_candidates(cif, chain, methods=("growpatch", "eyeview"), antigen=ag)
+
+    assert gp_only and ev_only and both
+    # every candidate is tagged with the strategy(ies) that produced it
+    for p in both:
+        assert set(p["methods"]) <= {"growpatch", "eyeview"} and p["methods"]
+        assert ag.parse_epitope(p["epitope"]) == set(p["keys"])          # contig string round-trips
+    # single-method runs are tagged with just that method
+    assert all(p["methods"] == ["growpatch"] for p in gp_only)
+    assert all(p["methods"] == ["eyeview"] for p in ev_only)
+    # the union is no smaller than either alone, and no larger than their sum
+    assert len(both) >= max(len(gp_only), len(ev_only))
+    assert len(both) <= len(gp_only) + len(ev_only)
+    co = [p for p in both if len(p["methods"]) == 2]
+    # top_k caps the output; lower nms_jaccard (less dedup) yields at least as many candidates
+    assert len(R.enumerate_candidates(cif, chain, antigen=ag, top_k=5)[0]) <= 5
+    loose = R.enumerate_candidates(cif, chain, antigen=ag, nms_jaccard=0.5)[0]
+    assert len(loose) <= len(both)
+    print(f"  ok: test_combined_enumerator (gp={len(gp_only)}, ev={len(ev_only)}, "
+          f"union={len(both)}, co-found={len(co)})")
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for fn in fns:

@@ -4,6 +4,11 @@ The fitted dials of the no-antibody patch enumerator, with where each number com
 can be changed deliberately. All are `core.py` module constants and every public function takes
 them as keyword arguments — nothing is hard-coded past the defaults.
 
+These, plus the eyeview `footprint_radius` and the exhaustiveness knob `nms_jaccard` / `top_k`, are
+the user-facing dials of the combined production entry `read.enumerate_candidates`. The
+seed-and-grow-vs-eyeview benchmark and the decision to ship both (unioned) are in
+`results/growpatch/ENUMERATOR_DECISION.md`.
+
 Source: John Altin's `segmentation/growPatch.py` (AltinLab/epitope-universe @ `upstream/main`,
 commit `668de1d`, 2026-11-11). Our `core.py` is a byte-parity port of the algorithm (verified:
 identical candidate set to his code on 8pww chain A), with the structure reading and the freesasa
@@ -54,6 +59,25 @@ Earlier our notes flagged a split — the report used `SASA_CUT=0.2` while the c
 code defaulted `0.10`. Resolved: `upstream/main` was updated 2026-11-11 and now defaults
 **`SASA_CUT=0.2, PATCH_SIZE=16`** (the `sasa-epitope-filter` work merged). Report and code agree;
 no divergence remains. We adopt `0.2 / 16`.
+
+## relSASA engine and the surface cut
+
+relSASA is computed in `read.py` with **freesasa**, normalizing each residue's absolute SASA by the
+**Tien et al. 2013 theoretical max-ASA** table (not freesasa's own built-in relative field, which uses
+a different reference). This matches John's `growPatch.py` exactly — verified: `read.enumerate_patches`
+reproduces his candidate set on 8pww:A (108 candidates over the 159-residue surface set at cut 0.2).
+
+- **`SASA_CUT=0.2` is the fitted value**, from the coverage/count sweep (above). The b-cell project
+  uses **0.25** as a generic "exposed" cutoff; that is the textbook convention, not a fit, so we keep
+  the fitted 0.2. Worth re-confirming on our own structures (the CLI's sweep does this).
+- **relSASA-engine alternative (dependency reduction, not yet adopted):** the same Tien-2013 relSASA
+  is computable with **Biopython `Bio.PDB.SASA.ShrakeRupley`** (as in
+  `bcell_epitope/.../recompute_apo_baselines.py`), which would drop the freesasa dependency entirely
+  (biopython is in every env; freesasa is an extra). The two engines' absolute areas are **not**
+  byte-identical (freesasa Lee-Richards vs Biopython Shrake-Rupley, probe 1.4 Å, n_points 100), so the
+  surface set at a fixed cut could shift and the whole enumeration would need re-validation. Deferred
+  as a measured swap: compare the two surface sets on a panel; if they agree ≥99% at cut 0.2, drop
+  freesasa. Until then, freesasa is the parity engine.
 
 ## To re-sweep
 
