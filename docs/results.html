@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>episcaf results</title>
+<style>
+:root{color-scheme:light;--blue:#296DC0;--ink:#1a1a1a;--good:#0a7a2f;--bad:#a00000}
+html,body{margin:0}
+body{background:#fff;color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5}
+.banner{background:linear-gradient(100deg,#21568f 0%,#296DC0 46%,#3b7fd1 100%);color:#fff;border-bottom:3px solid #1b4a86}
+.banner-inner{max-width:1120px;margin:0 auto;padding:15px 16px;display:flex;align-items:center;gap:13px}
+.blogo{width:40px;height:40px}.wm .name{font-size:25px;font-weight:bold;line-height:1}.wm .tag{font-size:12px;color:#dce8f7;margin-top:3px}
+.nav{background:#eef3f9;border-bottom:1px solid #d5deea}
+.nav-inner{max-width:1120px;margin:0 auto;padding:0 16px;display:flex;gap:2px}
+.nav a{display:inline-block;padding:9px 15px;font-size:13px;font-weight:bold;color:#3b6ea5;text-decoration:none}
+.nav a.on{background:#fff;color:#1b4a86;border:1px solid #d5deea;border-bottom:none;border-radius:4px 4px 0 0;position:relative;top:1px}
+.page{max-width:1120px;margin:0 auto;padding:18px 16px 40px}
+h1{font-size:21px;margin:0 0 3px}.lede{color:#333;margin:0 0 12px}
+.bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:10px 0}
+input[type=file]{font:inherit;font-size:13px}
+button{font:inherit;font-size:13px;padding:5px 12px;border:1px solid #888;background:#eee;border-radius:5px;cursor:pointer}
+button.on{background:var(--blue);color:#fff;border-color:#1b4a86;font-weight:bold}
+label.ck{font-size:12.5px;display:inline-flex;align-items:center;gap:5px}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.stat{background:#f6f8fb;border:1px solid #d9e2ee;border-radius:5px;padding:6px 11px;font-size:12.5px}
+.stat b{font-size:16px;color:var(--blue);display:block;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto;border:1px solid #ccc;max-height:68vh}
+table{border-collapse:collapse;font-size:12.5px;width:100%}
+th,td{border-bottom:1px solid #e4e4e4;border-right:1px solid #eee;padding:4px 9px;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{font-variant-numeric:tabular-nums}
+th{position:sticky;top:0;background:#eef3f9;cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.02em;color:#3b6ea5;z-index:1}
+th.sorted{color:#1b4a86}th .ar{color:#9bb0cc;font-size:9px}
+tr.pass td:first-child{box-shadow:inset 3px 0 0 var(--good)}
+td.good{color:var(--good)}td.bad{color:var(--bad)}
+.msg{font-size:12.5px;padding:8px 11px;border-radius:5px;margin:8px 0;background:#fdecea;border:1px solid #f5c6c0;color:#a0241a;display:none}
+.note{font-size:12px;color:#555;background:#f6f6f6;border:1px solid #ddd;padding:8px 11px;margin-top:14px}
+a{color:#0033cc}
+</style>
+</head>
+<body>
+<div class="banner"><div class="banner-inner">
+  <svg class="blogo" viewBox="0 0 44 44" fill="none" aria-hidden="true"><circle cx="22" cy="22" r="20" stroke="#fff" stroke-width="2.5" opacity=".9"/><circle cx="22" cy="22" r="7" fill="#fff"/></svg>
+  <div class="wm"><div class="name">episcaf</div><div class="tag">Epitope Scaffolder</div></div>
+</div></div>
+<div class="nav"><div class="nav-inner">
+  <a href="pipeline.html">Pipeline</a><a href="index.html">GUI tool</a>
+  <a href="growpatch.html">growPatch</a><a href="growpatch_tool.html">Run growPatch</a>
+  <a href="results.html" class="on">Results</a>
+</div></div>
+
+<div class="page">
+  <h1>Design results</h1>
+  <p class="lede">Load a run's metrics CSV (what the pipeline's stage&nbsp;5 produces) to rank and
+  filter designs by their AlphaFold3 metrics and composite score. Columns follow
+  <a href="RESULTS_SCHEMA.md">the results schema</a>; the viewer shows whatever metric columns are
+  present. Everything is in your browser &mdash; nothing is uploaded.</p>
+
+  <div class="bar">
+    <input type="file" id="file" accept=".csv,.tsv,.txt">
+    <label class="ck"><input type="checkbox" id="passonly"> passes only</label>
+    <button id="dl" disabled>Download shown</button>
+  </div>
+  <div class="msg" id="msg"></div>
+  <div class="stats" id="stats"></div>
+  <div class="tablewrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+
+  <div class="note"><b>Reading it.</b> A green left-edge marks a design that clears the four-filter
+  (<code>overall_rmsd&le;2</code>, <code>epitope_chunk_rmsd&le;1</code>, <code>mean_pae&lt;5</code>,
+  clash&nbsp;0). Click a column header to sort; it defaults to <code>composite</code> (then fidelity).
+  Accessibility is <code>af3_n_clash_res</code> where an antibody was present, else
+  <code>aomclash_pred</code>. See <a href="RESULTS_SCHEMA.md">RESULTS_SCHEMA.md</a>.</div>
+</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+let ROWS=[], COLS=[], sortCol=null, sortDir=-1;
+
+// metric orientation: lower-is-better set; everything else higher-is-better for sort defaults
+const LOWER=new Set(["epitope_chunk_rmsd","overall_rmsd","mean_pae","epitope_pae","scaffold_pae",
+  "af3_n_clash_res","aomclash_pred","cylinder_native_aware","cylinder_ca_clashes","rank_in_group"]);
+const GOODCELL={epitope_chunk_rmsd:v=>v<=1, overall_rmsd:v=>v<=2, mean_pae:v=>v<5,
+  af3_n_clash_res:v=>v===0, aomclash_pred:v=>v<3};
+const PREF=["design_id","id","target","epitope","source","composite","is_pass","rank_in_group",
+  "epitope_chunk_rmsd","overall_rmsd","mean_pae","epitope_pae","scaffold_pae","ptm","plddt",
+  "af3_n_clash_res","aomclash_pred"];
+
+function parseCSV(text){
+  const sep=text.indexOf("\t")>-1 && text.indexOf("\t")<text.indexOf("\n")?"\t":",";
+  const rows=[]; let i=0, f="", row=[], q=false;
+  const push=()=>{row.push(f);f="";}; const eol=()=>{push();rows.push(row);row=[];};
+  while(i<text.length){const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else { if(c==='"') q=true; else if(c===sep) push(); else if(c==='\n') eol();
+           else if(c==='\r'){} else f+=c; }
+    i++;}
+  if(f.length||row.length) eol();
+  const hdr=rows.shift().map(h=>h.trim());
+  return rows.filter(r=>r.length>1||(r.length===1&&r[0]!=="")).map(r=>{
+    const o={}; hdr.forEach((h,j)=>o[h]=r[j]!==undefined?r[j]:""); return o;});
+}
+const num=v=>{const n=parseFloat(v);return isNaN(n)?null:n;};
+function isPass(r){
+  const e=num(r.epitope_chunk_rmsd),o=num(r.overall_rmsd),p=num(r.mean_pae);
+  const cl = r.af3_n_clash_res!==undefined&&r.af3_n_clash_res!=="" ? num(r.af3_n_clash_res) : num(r.aomclash_pred);
+  if([e,o,p].some(x=>x===null)) return false;
+  return e<=1 && o<=2 && p<5 && (cl===null|| (r.af3_n_clash_res!==""&&r.af3_n_clash_res!==undefined? cl===0 : cl<3));
+}
+
+function orderCols(keys){
+  const inpref=PREF.filter(c=>keys.includes(c));
+  const rest=keys.filter(c=>!PREF.includes(c));
+  return inpref.concat(rest);
+}
+function shown(){
+  let r=ROWS;
+  if($("passonly").checked) r=r.filter(x=>x.__pass);
+  if(sortCol){ const lo=LOWER.has(sortCol);
+    r=[...r].sort((a,b)=>{const x=num(a[sortCol]),y=num(b[sortCol]);
+      if(x===null&&y===null) return (""+a[sortCol]).localeCompare(""+b[sortCol])*sortDir;
+      if(x===null) return 1; if(y===null) return -1;
+      return (x-y)*(lo? sortDir*-1 : sortDir);});   // dir -1 = best first
+  }
+  return r;
+}
+function render(){
+  const rs=shown();
+  const th=$("tbl").tHead, tb=$("tbl").tBodies[0];
+  th.innerHTML="<tr>"+COLS.map(c=>`<th data-c="${c}" class="${c===sortCol?'sorted':''}">${c}`+
+    (c===sortCol?` <span class="ar">${sortDir<0?'▼':'▲'}</span>`:"")+"</th>").join("")+"</tr>";
+  th.querySelectorAll("th").forEach(h=>h.onclick=()=>{const c=h.dataset.c;
+    if(sortCol===c) sortDir*=-1; else {sortCol=c; sortDir=-1;} render();});
+  tb.innerHTML=rs.map(r=>"<tr class='"+(r.__pass?"pass":"")+"'>"+COLS.map(c=>{
+    let cls=""; const g=GOODCELL[c], n=num(r[c]);
+    if(g&&n!==null) cls=g(n)?"good":"bad";
+    return `<td class="${cls}">${r[c]??""}</td>`;}).join("")+"</tr>").join("");
+  const npass=ROWS.filter(r=>r.__pass).length;
+  const tgtKey=COLS.includes("id")?"id":(COLS.includes("target")?"target":null);
+  const ntgt=tgtKey?new Set(ROWS.map(r=>r[tgtKey])).size:"—";
+  $("stats").innerHTML=[["designs",ROWS.length],["pass four-filter",npass],
+    ["pass rate",(100*npass/Math.max(1,ROWS.length)).toFixed(1)+"%"],["targets",ntgt],
+    ["showing",rs.length]].map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
+}
+
+$("file").onchange=()=>{
+  const f=$("file").files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      ROWS=parseCSV(r.result);
+      if(!ROWS.length) throw new Error("no data rows");
+      ROWS.forEach(x=>x.__pass=isPass(x));
+      COLS=orderCols(Object.keys(ROWS[0]).filter(k=>k!=="__pass"));
+      sortCol = COLS.includes("composite")?"composite":(COLS.includes("is_pass")?"is_pass":COLS[0]);
+      sortDir=-1; $("msg").style.display="none"; $("dl").disabled=false; render();
+    }catch(e){ $("msg").textContent="Could not read CSV: "+e.message; $("msg").style.display="block"; }
+  };
+  r.readAsText(f);
+};
+$("passonly").onchange=render;
+$("dl").onclick=()=>{
+  const rs=shown();
+  const csv=[COLS.join(",")].concat(rs.map(r=>COLS.map(c=>{
+    const v=(r[c]??"")+""; return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(","))).join("\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download="episcaf_results_shown.csv"; a.click();
+};
+</script>
+</body>
+</html>
