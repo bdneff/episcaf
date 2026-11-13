@@ -59,6 +59,7 @@ a{color:#0033cc}
 
   <div class="bar">
     <input type="file" id="file" accept=".csv,.tsv,.txt">
+    <label class="ck">rank by <select id="rankby" disabled></select></label>
     <label class="ck"><input type="checkbox" id="passonly"> passes only</label>
     <button id="dl" disabled>Download shown</button>
   </div>
@@ -76,7 +77,35 @@ a{color:#0033cc}
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
-let ROWS=[], COLS=[], sortCol=null, sortDir=-1;
+let ROWS=[], COLS=[], sortCol=null, sortDir=-1, pcMode=false;
+
+// ranking schemes offered in the dropdown, label -> column (or the passes+composite special)
+const RANKERS=[
+  ["four-filter, then composite", "__pc"],
+  ["composite score", "composite"],
+  ["binding model (DP4 logistic)", null],     // resolved to a /bind/i column if present
+  ["AOMclash (accessibility)", "aomclash_pred"],
+  ["AF3 clash (real)", "af3_n_clash_res"],
+  ["epitope RMSD", "epitope_chunk_rmsd"],
+  ["mean PAE", "mean_pae"],
+  ["pTM", "ptm"],
+  ["pLDDT", "plddt"],
+];
+function bindingCol(){ return COLS.find(c=>/bind/i.test(c)) || null; }
+function populateRank(){
+  const sel=$("rankby"); sel.innerHTML="";
+  for(const [label, col] of RANKERS){
+    const c = col===null ? bindingCol() : (col==="__pc" ? "__pc" : col);
+    if(c==="__pc" ? COLS.includes("composite") : (c && COLS.includes(c))){
+      const o=document.createElement("option"); o.value=c; o.textContent=label; sel.appendChild(o);
+    }
+  }
+  // any remaining numeric columns, so nothing is unreachable
+  for(const c of COLS) if(![...sel.options].some(o=>o.value===c) && ROWS.some(r=>num(r[c])!==null)){
+    const o=document.createElement("option"); o.value=c; o.textContent=c; sel.appendChild(o);
+  }
+  sel.disabled=false;
+}
 
 // metric orientation: lower-is-better set; everything else higher-is-better for sort defaults
 const LOWER=new Set(["epitope_chunk_rmsd","overall_rmsd","mean_pae","epitope_pae","scaffold_pae",
@@ -117,6 +146,13 @@ function orderCols(keys){
 function shown(){
   let r=ROWS;
   if($("passonly").checked) r=r.filter(x=>x.__pass);
+  if(pcMode){                                   // four-filter passes first, then composite desc
+    const comp=COLS.includes("composite")?"composite":null;
+    return [...r].sort((a,b)=>{
+      if(a.__pass!==b.__pass) return a.__pass?-1:1;
+      if(comp){const x=num(a[comp]),y=num(b[comp]); return (y===null?-1e9:y)-(x===null?-1e9:x);}
+      return 0;});
+  }
   if(sortCol){ const lo=LOWER.has(sortCol);
     r=[...r].sort((a,b)=>{const x=num(a[sortCol]),y=num(b[sortCol]);
       if(x===null&&y===null) return (""+a[sortCol]).localeCompare(""+b[sortCol])*sortDir;
@@ -131,7 +167,8 @@ function render(){
   th.innerHTML="<tr>"+COLS.map(c=>`<th data-c="${c}" class="${c===sortCol?'sorted':''}">${c}`+
     (c===sortCol?` <span class="ar">${sortDir<0?'▼':'▲'}</span>`:"")+"</th>").join("")+"</tr>";
   th.querySelectorAll("th").forEach(h=>h.onclick=()=>{const c=h.dataset.c;
-    if(sortCol===c) sortDir*=-1; else {sortCol=c; sortDir=-1;} render();});
+    pcMode=false; if(sortCol===c) sortDir*=-1; else {sortCol=c; sortDir=-1;}
+    const sel=$("rankby"); if([...sel.options].some(o=>o.value===c)) sel.value=c; render();});
   tb.innerHTML=rs.map(r=>"<tr class='"+(r.__pass?"pass":"")+"'>"+COLS.map(c=>{
     let cls=""; const g=GOODCELL[c], n=num(r[c]);
     if(g&&n!==null) cls=g(n)?"good":"bad";
@@ -153,13 +190,18 @@ $("file").onchange=()=>{
       if(!ROWS.length) throw new Error("no data rows");
       ROWS.forEach(x=>x.__pass=isPass(x));
       COLS=orderCols(Object.keys(ROWS[0]).filter(k=>k!=="__pass"));
-      sortCol = COLS.includes("composite")?"composite":(COLS.includes("is_pass")?"is_pass":COLS[0]);
-      sortDir=-1; $("msg").style.display="none"; $("dl").disabled=false; render();
+      populateRank();
+      pcMode = COLS.includes("composite");        // default scheme: four-filter passes, then composite
+      sortCol = pcMode ? null : (COLS.includes("is_pass")?"is_pass":COLS[0]); sortDir=-1;
+      $("rankby").value = pcMode ? "__pc" : (sortCol||"");
+      $("msg").style.display="none"; $("dl").disabled=false; render();
     }catch(e){ $("msg").textContent="Could not read CSV: "+e.message; $("msg").style.display="block"; }
   };
   r.readAsText(f);
 };
 $("passonly").onchange=render;
+$("rankby").onchange=()=>{const v=$("rankby").value;
+  if(v==="__pc"){pcMode=true;} else {pcMode=false; sortCol=v; sortDir=-1;} render();};
 $("dl").onclick=()=>{
   const rs=shown();
   const csv=[COLS.join(",")].concat(rs.map(r=>COLS.map(c=>{

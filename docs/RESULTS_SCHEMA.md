@@ -40,6 +40,7 @@ these are the canonical names.
 | column | meaning |
 |---|---|
 | `composite` | the weighted score (dials in `episcaf_analysis/presets.py`) |
+| `binding_pred` | predicted experimental-binding probability from the DP4 logistic model (L2-regularized logistic regression on the selected ~15 features; ROC-AUC ≈ 0.82). Optional; the Results tab's **rank-by** dropdown ranks by it when present. |
 | `rank_in_group` | rank within the target/epitope |
 | `is_pass` | DP3 four-filter: `overall_rmsd ≤ 2 ∧ epitope_chunk_rmsd ≤ 1 ∧ mean_pae < 5 ∧ (af3_n_clash_res == 0` on the antibody arm, else low `aomclash_pred)` |
 
