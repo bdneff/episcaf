@@ -52,6 +52,8 @@ tmp/
 !results/*.csv
 !results/*.tsv
 !results/*.json
+# binding-model derived feature table (small, tracked; the scorer depends on it)
+!results/feature_model/*.csv
 # cylinder-FP probe outputs: small point-cloud PDBs + frames, to round-trip to a local VMD
 !results/cylinder_fp/
 !results/cylinder_fp/**/*.pdb
