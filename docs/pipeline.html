@@ -151,7 +151,7 @@ a{color:#0033cc}
 </div></div>
 
 <div class="page">
-  <p class="updated">BLUEPRINT · UPDATED 2026-11-11</p>
+  <p class="updated">BLUEPRINT · UPDATED 2026-11-13</p>
   <h1>Pipeline blueprint</h1>
   <p class="lede">The route from an antigen to a synthesizable, epitope-presenting scaffold &mdash; and
   what is built versus still to come. The shipped DP4 backbone runs top to bottom; the shaded
@@ -348,14 +348,15 @@ a{color:#0033cc}
     <span class="tool">hpc/sbatch/rfd3_array.sbatch</span>
   </div>
 
-  <div data-id="prefilter" data-title="Backbone clash pre-filter" data-chip="plan">
-    <p class="how">A cheap gate right after backbone generation: score each backbone with AOMclash and drop
-    the ones whose scaffold mass sits where the antibody has to bind &mdash; before spending MPNN and AF3
-    on a design that can never pass accessibility.</p>
-    <p>It is the <i>same</i> learned metric used in scoring, applied early. It depends on the shipped
-    AOMclash scorer, so it follows AOMclash step&nbsp;1e.</p>
+  <div data-id="prefilter" data-title="Backbone clash pre-filter" data-chip="done">
+    <p class="how">A cheap gate right after backbone generation: score each RFd3 backbone with AOMclash
+    and keep only the least-clashy per epitope &mdash; before spending MPNN and AF3 on a design whose
+    scaffold mass sits where the antibody has to bind. The biggest compute win in the pipeline.</p>
+    <p>It is the <i>same</i> AOMclash score used at the end, applied early (on the bare backbone instead
+    of the AF3 model). The epitope&rsquo;s place in each backbone is read from its contig; keep rule is a
+    best-fraction-per-epitope or a cutoff. Cluster-side (backbones live on the cluster).</p>
     <h4>In the code</h4>
-    <span class="tool">episcaf_analysis/aomclash/ &rarr; score_design() (planned)</span>
+    <span class="tool">scripts/aomclash_prefilter.py · episcaf_analysis/aomclash/score.py</span>
   </div>
 
   <div data-id="mpnn" data-title="ProteinMPNN" data-chip="done">
@@ -376,16 +377,18 @@ a{color:#0033cc}
     <span class="tool">stage04_af3_emit_jsons · af3_array.sbatch</span>
   </div>
 
-  <div data-id="loop" data-title="Loop-back / partial diffusion" data-chip="plan">
-    <p class="how">Rather than one pass, the best designs of a round seed the next. Two moves: re-noise a
-    good backbone a little and denoise it with the epitope fixed (a <b>partial-diffusion child</b>, a
-    neighbor of something that worked), and randomize island order so the model does not lock onto one
-    arrangement. An escalating-scale stopping rule decides when to quit.</p>
-    <div class="note"><b>Open question first.</b> Is partial diffusion finding genuinely better designs, or
-    just best-of-N in a neighborhood that was already good (John&rsquo;s own false-discovery caveat)? That
-    answer sets the children-vs-<i>de-novo</i> budget, so it is worked out before the port.</div>
+  <div data-id="loop" data-title="Loop-back / partial diffusion" data-chip="done">
+    <p class="how">Rather than one pass, the best designs of a round seed the next: re-noise a good
+    backbone part-way and denoise it with the epitope fixed (a <b>partial-diffusion child</b>, a neighbor
+    of something that worked). A controller picks winners each round, splits the next round&rsquo;s budget
+    between fresh <i>de-novo</i> designs and children, and stops an epitope on success, a score plateau,
+    or a round cap.</p>
+    <div class="note"><b>Resolved: adaptive budget.</b> John&rsquo;s open question &mdash; are children
+    genuinely better or just best-of-N in a lucky basin? &mdash; is answered by letting each epitope
+    <i>earn</i> its children budget: start de-novo-only and raise the children share with a streak of
+    round-over-round improvement. The data decides per epitope instead of a fixed guess.</div>
     <h4>In the code</h4>
-    <span class="tool">port of efficientScaffolding/tamarind.R (planned)</span>
+    <span class="tool">episcaf_pipeline/ipd.py (controller) · ipd_driver.py · scripts/ipd_round.py</span>
   </div>
 
   <div data-id="metrics" data-title="Metrics" data-chip="done">
@@ -393,35 +396,31 @@ a{color:#0033cc}
     the numbers a design is judged on.</p>
     <p>Epitope RMSD and overall RMSD (did the fold hold the epitope / hold together), epitope PAE
     (confidence at the epitope), AF3 clashing-residue count (real accessibility where an antibody exists),
-    and the native-aware cylinder (the current geometric accessibility surrogate on the no-antibody arm,
-    which AOMclash is set to replace).</p>
+    and <b>AOMclash</b> (<code>aomclash_pred</code>) as the no-antibody accessibility metric &mdash; the
+    learned successor that has replaced the native-aware cylinder (kept only for before/after).</p>
     <h4>In the code</h4>
     <span class="tool">stage05_extract_metrics</span>
   </div>
 
-  <div data-id="aomclash" data-title="AOMclash — learned clash predictor" data-chip="prog">
-    <p class="how">Replaces the geometric native-aware cylinder with a gradient-boosted regressor that
-    reads an <b>antibody occupancy map</b> at each scaffold atom and predicts the clashing-residue count.
-    The map is built from ~1,036 SAbDab complexes using antibody geometry only, so it is
-    AlphaFold-version agnostic; we retrain only the regressor on our AF3 clash labels.</p>
-    <p>It is trained where a real antibody gives the true clash label and <b>deployed as the surrogate on
-    the no-antibody arm</b> (the growPatch / tiled patches), exactly the cylinder&rsquo;s
-    train-here / apply-there role. We ship the <b>39-feature</b> subset &mdash; the point where John&rsquo;s
-    own ablation plateaus &mdash; rather than his full 111-column bank.</p>
+  <div data-id="aomclash" data-title="AOMclash — learned clash predictor" data-chip="done">
+    <p class="how">Replaces the geometric native-aware cylinder as the no-antibody accessibility metric.
+    It reads an <b>antibody occupancy map</b> (built from ~1,029 SAbDab complexes, antibody geometry only,
+    so it is AlphaFold-version agnostic) at each scaffold atom. We ship a <b>single interpretable
+    number</b> &mdash; <code>s_p1_free</code>, the occupancy summed over the scaffold atoms that stick into
+    antibody territory beyond the native antigen &mdash; not John&rsquo;s 111-feature gradient-boosted
+    bank.</p>
+    <p>Why one feature: the carved occupancy sum is ~0.87&ndash;0.89 on its own and the full model only
+    ~0.02 higher &mdash; not worth ~38 correlated features and the overfitting risk. It is used in
+    <b>both</b> places accessibility matters: the backbone pre-filter (cheap early gate) and the final
+    composite (the no-antibody accessibility term). The map is vendored in-repo, so the scorer runs
+    offline.</p>
     <ul class="steps">
-      <li><span class="mk d">&#10003;</span><span class="tx"><b>1a Get the code.</b> Read John&rsquo;s map builder and feature extractor.</span></li>
-      <li><span class="mk d">&#10003;</span><span class="tx"><b>1b Reproduce the map.</b> Rebuilt from local SAbDab complexes; matches John&rsquo;s published map.</span></li>
-      <li><span class="mk d">&#10003;</span><span class="tx"><b>1c Port features.</b> Epitope-frame extractor ported and verified byte-for-byte against his <code>design_feats</code>; cylinder cross-checked to <code>native_cylinder_core</code>.</span></li>
-      <li><span class="mk p">&#9679;</span><span class="tx"><b>1d Model + retrain.</b> The 39-feature regressor (John&rsquo;s exact hyperparameters, leave-one-epitope-out CV) is written and tested. Remaining: a cluster-side loader builds the feature matrix from our AF3 structures, then train on <code>af3_n_clash_res</code> and validate against the cylinder on identical folds.</span></li>
-      <li><span class="mk o">&nbsp;</span><span class="tx"><b>1e Ship + wire in.</b> Pickle the map + regressor, emit an <code>aomclash_pred</code> column in stage05/06, swap it into the <code>twelvemer</code> preset.</span></li>
-      <li><span class="mk o">&nbsp;</span><span class="tx"><b>1f Docs + manuscript.</b> Cylinder &rarr; learned-model section, figures.</span></li>
+      <li><span class="mk d">&#10003;</span><span class="tx"><b>Map.</b> Vendored (<code>aom_map.pkl</code>), verified physical (occupancy peaks ~14&nbsp;&Aring; out on the antibody side).</span></li>
+      <li><span class="mk d">&#10003;</span><span class="tx"><b>Scorer.</b> <code>score.py</code> frames a design (PDB or AF3 CIF) and returns <code>s_p1_free</code>; parity-checked against John&rsquo;s extractor.</span></li>
+      <li><span class="mk d">&#10003;</span><span class="tx"><b>Wired in.</b> Backbone pre-filter + the final design scorer; the <code>twelvemer</code> preset now scores accessibility with <code>aomclash_pred</code>.</span></li>
     </ul>
-    <div class="note"><b>Report ahead of code.</b> John&rsquo;s report uses leave-one-epitope-out folds and
-    the 39-feature framing; every committed branch of his repo still does leave-one-antigen-out and keeps
-    the full bank. We follow the report, with the divergence flagged in the code &mdash; switching folds or
-    restoring the full bank is a one-argument change.</div>
     <h4>In the code</h4>
-    <span class="tool">episcaf_analysis/aomclash/ &rarr; aomclash_pred · feature reference: FEATURES.md</span>
+    <span class="tool">episcaf_analysis/aomclash/ (aom_map, score, features) · results/aomclash/feature_set_decision.md</span>
   </div>
 
   <div data-id="composite" data-title="Composite score + select" data-chip="done">
@@ -431,9 +430,13 @@ a{color:#0033cc}
     <p>It ranks designs rather than applying a hard gate, then takes the per-epitope top-k. The weights and
     transforms are dials in <code>presets.py</code>, with a preset per regime
     (<code>antibody_softgate</code> keeps the real AF3 clash; <code>twelvemer</code> is the no-antibody
-    arm).</p>
+    arm, now AOMclash-scored).</p>
+    <p>Beyond the geometric composite, an <b>interpretable binding model</b> (L2-logistic on a small,
+    inspectable feature set; grouped-by-epitope CV ROC-AUC ~0.83) predicts experimental binding and is a
+    selectable ranker &mdash; built on the DP4 assay data, with the bound-state dynamics features dropped
+    for cleaner static ones after a held-out check.</p>
     <h4>In the code</h4>
-    <span class="tool">stage06_select · presets.py (antibody_softgate · twelvemer)</span>
+    <span class="tool">stage06_select · presets.py · episcaf_analysis/binding_model/</span>
   </div>
 
   <div data-id="output" data-title="Assemble → encode → order" data-chip="done">
