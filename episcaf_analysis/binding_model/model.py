@@ -48,7 +48,11 @@ def _pipeline(C=1.0):
 
 @dataclass
 class BindingModel:
-    features: list = field(default_factory=lambda: list(D.BASELINE_FEATURES))
+    # v1b (adopted 2026-11-13): the clean-static feature set. A held-out, paired, grouped-by-epitope
+    # comparison (scripts/binding_v1b_heldout.py) had v1b beat the bound-state dynamics block by
+    # +0.013 ROC-AUC, 95% CI [+0.008,+0.018] -- reliably better out-of-sample AND causally cleaner
+    # (nothing downstream of binding). Use D.BASELINE_FEATURES to get the old dynamics-block v1.
+    features: list = field(default_factory=lambda: list(D.CLEAN_STATIC_FEATURES))
     C: float = 1.0
     pipeline: Pipeline = None
     id_col: str = D.ID_COL

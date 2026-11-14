@@ -1,5 +1,13 @@
 # Binding model v1 — findings
 
+> **UPDATE 2026-11-13: v1b ADOPTED as the shipped model.** A held-out, paired, grouped-by-epitope
+> comparison (`scripts/binding_v1b_heldout.py`, 40×5 folds) had the clean-static set
+> (`epi_coulomb + frame_ratio + ag_near15`) beat the bound-state dynamics block by **+0.013 ROC-AUC,
+> 95% CI [+0.008, +0.018]** — reliably better out-of-sample, not just non-inferior, and causally
+> cleaner (nothing downstream of binding). `BindingModel` now defaults to `CLEAN_STATIC_FEATURES`;
+> `binding_model_v1.pkl` re-fit on it. The analysis below (which recommended v1b pending this check)
+> stands as the record.
+
 The shippable interpretable binding-model scorer, and the Tier-1 new-feature keep test from
 `FEATURE_CATALOG.md`. All numbers are **repeated grouped-by-epitope cross-validation** (5 shuffles of
 `StratifiedGroupKFold(5)`), so every fold is tested on antibodies/epitopes it never trained on. Model
