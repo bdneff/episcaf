@@ -150,14 +150,17 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     <div class="tcard-b">
       <div class="tcol">
         <select id="target" aria-label="Target structure">
-          <option value="8PWW">8PWW &mdash; PfRH5 / scFv MAD8-151</option>
-          <option value="7OX3">7OX3 &mdash; hIL-9 / Fab 6D3</option>
-          <option value="5FHX">5FHX &mdash; IL-4 / CODV Fab</option>
-          <option value="8VDL">8VDL &mdash; PfEMP1 / Fab (EPCR epitope)</option>
-          <option value="upload" disabled>upload a PDB... (coming soon)</option>
+          <optgroup label="example complexes">
+            <option value="8PWW">8PWW &mdash; PfRH5 / scFv MAD8-151</option>
+            <option value="7OX3">7OX3 &mdash; hIL-9 / Fab 6D3</option>
+            <option value="5FHX">5FHX &mdash; IL-4 / CODV Fab</option>
+            <option value="8VDL">8VDL &mdash; PfEMP1 / Fab (EPCR epitope)</option>
+          </optgroup>
         </select>
         <div class="help" id="targethint"></div>
-        <div class="help tsoon">or type a PDB ID / drag in a structure &mdash; coming soon</div>
+        <div class="field" style="margin-top:7px"><label for="pdbfile">or upload your own structure</label>
+          <input type="file" id="pdbfile" accept=".pdb,.ent,.cif"></div>
+        <div class="help" id="uploadnote">PDB or mmCIF. The viewer loads it; with the local server running it auto-detects antibody vs lone antigen and the contact epitope.</div>
       </div>
       <div class="cpreview">
         <div id="cviewer" class="cviewer"></div>
@@ -426,6 +429,9 @@ function updateCaption(){
   if(state.epi==="antibody"){
     leg.innerHTML=sw(GREY)+" antigen &nbsp;"+sw(BLUE)+" antibody &nbsp;"+sw(RED)+" epitope";
     vn.textContent=name+" — epitope (red) is what gets scaffolded";
+  }else if(state.target==="__upload"){
+    leg.innerHTML=sw(GREY)+" antigen (no bound antibody)";
+    vn.textContent=name+" — lone antigen; growPatch enumerates candidate epitopes";
   }else{
     leg.innerHTML='predicted epitope likelihood &nbsp;<span style="display:inline-block;width:62px;height:9px;vertical-align:middle;background:linear-gradient(90deg,#2b47d6,#f2f2f2,#c0392b);border:1px solid #999"></span>&nbsp; low &rarr; high';
     const m=state.predictor==="bepipred3"?"BepiPred-3.0":"DiscoTope-3.0";
@@ -435,19 +441,26 @@ function updateCaption(){
 function useImgFallback(){var v=document.getElementById("cviewer");if(v)v.hidden=true;var im=document.getElementById("cimg");
   im.hidden=false;im.src="img/"+state.target+".png";im.alt=(DESCS[state.target]||state.target)+" complex";updateCaption();}
 /* VMD-like cartoon. Predict mode loads ONLY the antigen chain (no binding partner yet). */
-function renderPDB(txt){const c=CFG[state.target];cviewer.clear();cviewer.addModel(txt,"pdb");
+function renderPDB(txt,fmt){const c=CFG[state.target]||{};cviewer.clear();cviewer.addModel(txt,fmt||"pdb");
+  const up=state.target==="__upload";
   if(state.epi==="predict"){
-    // antigen-only, B-factor = epitope propensity (0-100); shade low(blue)->high(red)
-    cviewer.setStyle({},{cartoon:{colorscheme:{prop:'b',gradient:'rwb',min:100,max:0},thickness:0.8,arrows:true}});
+    if(up){
+      // uploaded lone antigen: grey cartoon (no baked-in propensity to shade by)
+      cviewer.setStyle({},{cartoon:{color:GREY,thickness:0.8,arrows:true}});
+    }else{
+      // example antigen: B-factor = epitope propensity (0-100); shade low(blue)->high(red)
+      cviewer.setStyle({},{cartoon:{colorscheme:{prop:'b',gradient:'rwb',min:100,max:0},thickness:0.8,arrows:true}});
+    }
   }else{
     cviewer.setStyle({},{cartoon:{color:GREY,thickness:0.75,arrows:true}});
-    cviewer.setStyle({chain:c.ab},{cartoon:{color:BLUE,thickness:0.75,arrows:true}});
-    cviewer.setStyle({chain:c.ag,resi:c.epi},{cartoon:{color:RED,thickness:0.95,arrows:true}});
+    if(c.ab&&c.ab.length) cviewer.setStyle({chain:c.ab},{cartoon:{color:BLUE,thickness:0.75,arrows:true}});
+    if(c.ag&&c.epi&&c.epi.length) cviewer.setStyle({chain:c.ag,resi:c.epi},{cartoon:{color:RED,thickness:0.95,arrows:true}});
   }
   cviewer.zoomTo();cviewer.zoom(1.3);cviewer.render();updateCaption();}
 let _pdbCache={};
 function loadComplex(){
   if(!cviewer){useImgFallback();return;}
+  if(state.target==="__upload"){ if(uploadText) renderPDB(uploadText, uploadFmt); return; }
   const file = state.epi==="predict" ? ("pdb/"+state.target+"_scored.pdb") : ("pdb/"+state.target+".pdb");
   if(_pdbCache[file]){renderPDB(_pdbCache[file]);return;}
   fetch(file).then(r=>{if(!r.ok)throw 0;return r.text();}).then(txt=>{
@@ -512,6 +525,42 @@ $("#ipdrounds").addEventListener("input",e=>{state.ipdrounds=clamp(e.target.valu
 $("#prefilter").addEventListener("change",e=>{state.prefilter=e.target.checked;$("#prefwrap").style.display=state.prefilter?"":"none";rerun();});
 $("#keepfrac").addEventListener("input",e=>{state.keepfrac=Math.max(0.05,Math.min(1,+e.target.value||0.5));rerun();});
 $("#mpnnn").addEventListener("input",e=>{state.mpnnn=clamp(e.target.value,1,32,8);rerun();});
+
+/* --- PDB upload: load into the viewer; with the local server, auto-detect the epitope --- */
+let uploadText=null, uploadFmt="pdb";
+function epiResids(spec){const out=[];String(spec||"").split(";").forEach(tok=>{
+  const m=tok.trim().match(/^[A-Za-z0-9]+:(-?\d+)(?:-(-?\d+))?$/);
+  if(m){const a=+m[1],b=+(m[2]||m[1]);for(let r=a;r<=b;r++)out.push(r);}});return out;}
+function firstChain(txt){const m=txt.match(/^ATOM.{15}(.)/m);return (m&&m[1].trim())||"A";}
+$("#pdbfile").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=async()=>{
+    uploadText=rd.result; uploadFmt=f.name.toLowerCase().endsWith(".cif")?"cif":"pdb";
+    const name=f.name.replace(/\.(pdb|ent|cif)$/i,""); DESCS["__upload"]=name;
+    const sel=$("#target");
+    if(![...sel.options].some(o=>o.value==="__upload")){const o=document.createElement("option");o.value="__upload";sel.appendChild(o);}
+    [...sel.options].forEach(o=>{if(o.value==="__upload")o.textContent="uploaded: "+name;});
+    sel.value="__upload"; state.target="__upload";
+    $("#uploadnote").textContent="loaded "+f.name+" — detecting epitope…";
+    try{
+      const res=await fetch("/inspect?fmt="+uploadFmt,{method:"POST",body:uploadText});
+      const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
+      CFG["__upload"]={ag:d.antigen_chain,ab:d.partner_chains||[],epi:epiResids(d.epitope)};
+      state.epi=d.is_complex?"antibody":"predict";
+      const r=document.querySelector('input[name=epi][value="'+state.epi+'"]'); if(r)r.checked=true;
+      $("#uploadnote").innerHTML=d.is_complex
+        ? "detected an <b>antibody</b> (chain "+(d.partner_chains||[]).join(", ")+") bound to chain <b>"+d.antigen_chain+"</b>; epitope = "+d.n_epitope+" contact residues (red)."
+        : "no bound partner &mdash; <b>lone antigen</b> (chain "+d.antigen_chain+"); growPatch enumerates candidate epitopes.";
+    }catch(err){
+      CFG["__upload"]={ag:firstChain(uploadText),ab:[],epi:[]};
+      state.epi="predict"; const r=document.querySelector('input[name=epi][value="predict"]'); if(r)r.checked=true;
+      $("#uploadnote").innerHTML="loaded "+f.name+". Epitope auto-detection needs the local server (<code>python scripts/growpatch_serve.py</code>); showing the structure only.";
+    }
+    syncHints(); loadComplex(); rerun();
+  };
+  rd.readAsText(f);
+});
 
 $("#form").addEventListener("submit",e=>{
   e.preventDefault(); const b=$("#runbtn"); b.disabled=true;
