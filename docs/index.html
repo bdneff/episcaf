@@ -94,6 +94,14 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 .nav a{display:inline-block;padding:9px 16px;font-size:13px;font-weight:bold;color:#3b6ea5;text-decoration:none;border:1px solid transparent;border-bottom:none}
 .nav a:hover{color:#21568f}
 .nav a.on{background:#ffffff;color:#1b4a86;border-color:#d5deea;border-radius:4px 4px 0 0;position:relative;top:1px}
+.step{border:1px solid #d5deea;border-radius:6px;margin:10px 0;background:#fcfdfe}
+.steph{font-size:12px;font-weight:bold;letter-spacing:.03em;text-transform:uppercase;color:#296DC0;background:#eef3f9;border-bottom:1px solid #d5deea;padding:6px 12px;display:flex;align-items:center;gap:9px;border-radius:6px 6px 0 0}
+.stepn{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:#296DC0;color:#fff;font-size:11px;flex:none}
+.stepb{padding:10px 12px}
+.stepb .field{margin:7px 0}
+.stepb .sub{font-size:12px;color:#777;margin:2px 0 0}
+.stepq{font-size:12px;color:#8a6d1f;background:#fdf7e3;border:1px solid #efe3b8;border-radius:4px;padding:5px 9px;margin-top:7px}
+.fixed-note{font-size:12.5px;color:#555;padding:2px 0}
 </style>
 </head>
 <body>
@@ -162,34 +170,70 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   </section>
 
   <form id="form" autocomplete="off">
-    <h2>Job</h2>
+    <h2>Design protocol</h2>
+    <p class="sub" style="color:#777;margin:-4px 0 10px">Set the options for each step. The run and the Gemini job below update to match.</p>
 
-    <div class="field">
-      <label for="ndes">Number of designs wanted:</label>
-      <input type="number" id="ndes" value="20" min="1" max="500">
-      &nbsp;&nbsp;&nbsp;
-      <label for="runtime">Max run time (min):</label>
-      <input type="number" id="runtime" value="60" min="1" max="1440">
-    </div>
-
-    <div class="field">
-      <label for="strategy">Scoring strategy:</label>
-      <select id="strategy">
-        <option value="logistic">logistic regression &mdash; recommended (AUC 0.81)</option>
-        <option value="gbt">gradient-boosted tree (AUC 0.80)</option>
-        <option value="composite">composite, hand-set (AUC 0.73)</option>
-        <option value="dl">overtrained DL net (overfits, AUC 0.65)</option>
-      </select>
-      <div class="stratbox" id="stratbox"></div>
-    </div>
-
-    <div class="field">
-      <label>Selection:</label>
-      <div class="radios">
-        <label class="radio"><input type="radio" name="mode" value="threshold" checked> designs that pass the four-filter threshold</label>
-        <label class="radio"><input type="radio" name="mode" value="topn"> top-N by score within the time budget</label>
+    <section class="step">
+      <div class="steph"><span class="stepn">1</span> Generate backbones &mdash; RFdiffusion3</div>
+      <div class="stepb">
+        <div class="field"><label for="rfd3n">Backbones per epitope contig</label>
+          <input type="number" id="rfd3n" value="8" min="1" max="64"></div>
+        <div class="field"><label for="helix">Helicity bias</label>
+          <input type="range" id="helix" min="0" max="1" step="0.05" value="0" style="vertical-align:middle;width:140px">
+          <span id="helixv" style="color:#296DC0;font-variant-numeric:tabular-nums">0.00</span>
+          <div class="sub">Bias toward helical scaffolds. 0 = neutral (recommended &mdash; helicity can just track how well a design behaves in cryo-EM, not true binding).</div></div>
+        <label class="radio"><input type="checkbox" id="ipd"> Iterative loop &mdash; seed later rounds from the best designs (partial diffusion)</label>
+        <div class="field" id="ipdwrap" hidden><label for="ipdrounds">Max rounds</label>
+          <input type="number" id="ipdrounds" value="4" min="1" max="10">
+          <div class="sub">Each epitope earns its exploitation budget by improving round over round (adaptive).</div></div>
       </div>
-    </div>
+    </section>
+
+    <section class="step">
+      <div class="steph"><span class="stepn">2</span> Backbone clash pre-filter &mdash; AOMclash</div>
+      <div class="stepb">
+        <label class="radio"><input type="checkbox" id="prefilter" checked> Drop clashy backbones before MPNN / AF3 (a cheap early gate &mdash; the biggest compute saving)</label>
+        <div class="field" id="prefwrap"><label for="keepfrac">Keep best fraction per epitope</label>
+          <input type="number" id="keepfrac" value="0.5" min="0.05" max="1" step="0.05"></div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="steph"><span class="stepn">3</span> Sequence design &mdash; ProteinMPNN</div>
+      <div class="stepb">
+        <div class="field"><label for="mpnnn">Sequences per backbone</label>
+          <input type="number" id="mpnnn" value="8" min="1" max="32"></div>
+        <div class="sub">Epitope positions are held fixed, so the epitope keeps its native identity.</div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="steph"><span class="stepn">4</span> Fold &mdash; AlphaFold3</div>
+      <div class="stepb"><p class="fixed-note">Single-sequence, seed 1, no MSA &mdash; the honest test that the design folds with the epitope in native geometry. No options.</p></div>
+    </section>
+
+    <section class="step">
+      <div class="steph"><span class="stepn">5</span> Score &amp; select</div>
+      <div class="stepb">
+        <div class="field"><label for="strategy">Scoring model</label>
+          <select id="strategy">
+            <option value="logistic">Interpretable binding model (logistic) &mdash; recommended</option>
+            <option value="composite">Composite (hand-weighted geometry)</option>
+            <option value="gbt">Gradient-boosted trees</option>
+            <option value="dl">Deep net (overfits) &mdash; for comparison</option>
+          </select>
+          <div class="stratbox" id="stratbox"></div></div>
+        <div class="field"><label>Selection</label>
+          <div class="radios">
+            <label class="radio"><input type="radio" name="mode" value="threshold" checked> Designs that pass the four-filter</label>
+            <label class="radio"><input type="radio" name="mode" value="topn"> Top-N by score within the budget</label>
+          </div></div>
+        <div class="field"><label for="ndes">Designs wanted</label>
+          <input type="number" id="ndes" value="20" min="1" max="500">
+          &nbsp;&nbsp;<label for="runtime">Max run time (min)</label>
+          <input type="number" id="runtime" value="60" min="1" max="1440"></div>
+      </div>
+    </section>
 
     <div class="field">
       <button type="submit" id="runbtn">Run scaffolding</button>
@@ -231,7 +275,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 /* model constants (documented in footer) */
 const FF_PASS=0.0045, PREFILTER_KEEP=0.12, GEN_PER_MIN=100;
 const STRAT={
-  logistic:{bind:0.34,label:"logistic regression"},
+  logistic:{bind:0.34,label:"the binding model"},
   gbt:{bind:0.32,label:"gradient-boosted tree"},
   composite:{bind:0.24,label:"composite"},
   dl:{bind:0.14,label:"overtrained DL net"}
@@ -242,7 +286,8 @@ const fmt=n=>n.toLocaleString("en-US");
 function hash(str){let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
 function rng(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
 
-const state={target:"8PWW",epi:"antibody",predictor:"discotope3",n:20,runtime:60,strategy:"logistic",mode:"threshold"};
+const state={target:"8PWW",epi:"antibody",predictor:"discotope3",n:20,runtime:60,strategy:"logistic",mode:"threshold",
+  rfd3n:8,helix:0,ipd:false,ipdrounds:4,prefilter:true,keepfrac:0.5,mpnnn:8};
 
 /* the job model — one place; swap for a fetch() to go live */
 function computeJob(s){
@@ -252,7 +297,8 @@ function computeJob(s){
     const need=Math.ceil(s.n/FF_PASS);
     generated=Math.min(need,cap); elapsed=generated/GEN_PER_MIN; reached=generated>=need;
   }else{ generated=cap; elapsed=s.runtime; reached=Math.floor(generated*FF_PASS)>=s.n; }
-  const kept=Math.round(generated*PREFILTER_KEEP);
+  const keep = s.prefilter ? s.keepfrac : 1.0;
+  const kept=Math.round(generated*keep);
   const passers=Math.floor(generated*FF_PASS);
   const returned=s.mode==="threshold"?Math.min(passers,s.n):s.n;
   return {generated,kept,folded:kept,passers,returned,elapsed,reached,avoided:generated-kept,
@@ -270,15 +316,27 @@ function buildRows(s,returned,passers){
   }
   return rows;
 }
-function jobSpec(s){return{target:s.target,epitope_source:s.epi==="antibody"?"known_antibody":("predict:"+s.predictor),
-  n_designs:s.n,max_runtime_min:s.runtime,scoring:s.strategy,selection:s.mode,pipeline:"rfd3 -> prefilter(D6) -> mpnn -> af3 -> score"};}
+function jobSpec(s){return{
+  target:s.target,
+  epitope_source:s.epi==="antibody"?"known_antibody":("growpatch:"+s.predictor),
+  generate:{backbones_per_contig:s.rfd3n, helix_bias:s.helix,
+            iterative_loop:(s.ipd?{enabled:true,max_rounds:s.ipdrounds,children_budget:"adaptive"}:false)},
+  prefilter:(s.prefilter?{method:"aomclash",keep_fraction:s.keepfrac}:false),
+  mpnn:{sequences_per_backbone:s.mpnnn},
+  af3:{single_sequence:true,seed:1},
+  score:{model:s.strategy, selection:s.mode, n_designs:s.n, max_runtime_min:s.runtime},
+  pipeline:"rfd3 -> aomclash prefilter -> mpnn -> af3 -> score"};}
 
 function geminiCmd(s){
   const spec=jobSpec(s);
+  const tgt=s.target+".pdb", preset=s.epi==="antibody"?"antibody_softgate":"twelvemer";
   const pred = s.epi==="antibody"
     ? "# epitope = antibody contact residues from the complex"
-    : "# epitope predicted ("+s.predictor+"); antibody ignored\npython episcaf_v3/predict/run_predictor.py --target "+s.target+" --method "+s.predictor;
-  return [
+    : "# no antibody: growPatch enumerates candidate epitopes\npython -m episcaf_pipeline.build_growpatch_designs --cif "+tgt+" --chain A --out $RUN_DIR/designs.parquet";
+  const gen = s.ipd
+    ? "python scripts/ipd_round.py init --base-dir $RUN_DIR --antigen "+tgt+" --designs-table $RUN_DIR/designs.csv   # iterative; advance after each scored round (<= "+s.ipdrounds+" rounds)"
+    : "bash scripts/run_whole_epitope_rfd3.sh "+s.target+"   # "+s.rfd3n+" backbones/contig"+(s.helix>0?", helix_bias "+s.helix.toFixed(2):"");
+  const lines=[
     "# Gemini (login node), repo root",
     "conda activate ~/rfd3/env/rfd3_py312",
     "export RUN_DIR=$WS/runs/"+s.target.toLowerCase()+"_scaffold",
@@ -287,21 +345,26 @@ function geminiCmd(s){
     JSON.stringify(spec),
     "",
     pred,
-    "# 1. stage + generate RFD3 backbones (prints sbatch; does not submit)",
-    "bash scripts/run_whole_epitope_rfd3.sh "+s.target,
-    "",
-    "# 2. backbone pre-filter (D6): drop clashing / bad-epitope folds before AF3",
-    "python episcaf_v3/filters/run_filter.py --run $RUN_DIR",
-    "",
-    "# 3. survivors -> ProteinMPNN -> AlphaFold3",
-    "python scripts/stage03_mpnn_submit.py --fixed_pdb_dir $RUN_DIR/03_mpnn/fixed_pdbs.pass",
+    "# 1. generate RFd3 backbones",
+    gen,
+    ""];
+  let step=2;
+  if(s.prefilter){
+    lines.push("# "+step+". AOMclash backbone pre-filter: keep best "+Math.round(s.keepfrac*100)+"% per epitope before MPNN/AF3",
+      "python scripts/aomclash_prefilter.py --backbones $RUN_DIR/02_rfd3/outputs \\",
+      "  --contigs $RUN_DIR/designs.csv --antigen "+tgt+" --keep-frac "+s.keepfrac, "");
+    step++;
+  }
+  lines.push("# "+step+". kept backbones -> ProteinMPNN -> AlphaFold3",
+    "python scripts/stage03_mpnn_submit.py --fixed_pdb_dir $RUN_DIR/03_mpnn/fixed_pdbs"+(s.prefilter?".pass":"")+"   # "+s.mpnnn+" seqs/backbone",
     "python scripts/stage04_af3_emit_jsons.py --run $RUN_DIR",
-    "sbatch scripts/stage04_af3_array.sbatch $RUN_DIR",
-    "",
-    "# 4. score + select ("+(s.mode==="threshold"?("until "+s.n+" pass"):("top "+s.n))+", <= "+s.runtime+" min)",
-    "python -m episcaf_analysis.score --preset antibody_softgate \\",
-    "  --strategy "+s.strategy+" --select "+s.mode+" --n "+s.n+" --metrics-csv $RUN_DIR/05_analysis/metrics.csv"
-  ].join("\n");
+    "sbatch scripts/stage04_af3_array.sbatch $RUN_DIR", "");
+  step++;
+  lines.push("# "+step+". AOMclash on the AF3 designs, then score + select ("+(s.mode==="threshold"?("until "+s.n+" pass"):("top "+s.n))+", <= "+s.runtime+" min)",
+    "python scripts/aomclash_score_designs.py --designs $RUN_DIR/04_af3/outputs \\",
+    "  --contigs $RUN_DIR/designs.csv --antigen "+tgt+" --merge $RUN_DIR/05_analysis/metrics.csv --out $RUN_DIR/05_analysis/metrics.csv",
+    "python -m episcaf_analysis.score --preset "+preset+" --select "+s.mode+" --n "+s.n+" --metrics-csv $RUN_DIR/05_analysis/metrics.csv");
+  return lines.join("\n");
 }
 function cmdHTML(txt){return txt.split("\n").map(l=>l.trimStart().startsWith("#")?'<span class="cmt">'+esc(l)+'</span>':esc(l)).join("\n");}
 function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
@@ -414,8 +477,10 @@ const STRAT_INFO={
 function setStratBox(){const i=STRAT_INFO[state.strategy];let eq="";
   try{if(window.katex)eq=katex.renderToString(i.tex,{displayMode:true,throwOnError:false});}catch(e){}
   if(!eq)eq='<span style="font-family:monospace;font-size:13px">'+i.tex+'</span>';
-  $("#stratbox").innerHTML='<div class="eq">'+eq+'</div><div class="arch">'+i.arch+'</div><div class="d">'+i.desc+'</div>'+
-    '<details><summary>read more</summary><div class="morec">'+i.more+'</div></details>';}
+  // progressive disclosure: show the plain-language description by default; tuck the equation and the
+  // deep detail behind a collapsed expander so the math only appears when asked for.
+  $("#stratbox").innerHTML='<div class="arch">'+i.arch+'</div><div class="d">'+i.desc+'</div>'+
+    '<details><summary>the math &amp; details</summary><div class="eq">'+eq+'</div><div class="morec">'+i.more+'</div></details>';}
 function initCViewer(){
   if(typeof $3Dmol==="undefined"){useImgFallback();return;}
   try{cviewer=$3Dmol.createViewer("cviewer",{backgroundColor:"white",ambientOcclusion:{strength:0.9}});
@@ -436,8 +501,17 @@ $$('input[name=mode]').forEach(r=>r.addEventListener("change",()=>{state.mode=do
 $("#target").addEventListener("change",e=>{state.target=e.target.value;syncHints();loadComplex();});
 $("#predictor").addEventListener("change",e=>{state.predictor=e.target.value;updateCaption();});
 $("#strategy").addEventListener("change",e=>{state.strategy=e.target.value;setStratBox();});
-$("#ndes").addEventListener("input",e=>{state.n=Math.max(1,Math.min(500,+e.target.value||1));syncHints();});
-$("#runtime").addEventListener("input",e=>{state.runtime=Math.max(1,Math.min(1440,+e.target.value||1));syncHints();});
+function rerun(){paint(computeJob(state),false);}
+const clamp=(v,lo,hi,d)=>Math.max(lo,Math.min(hi,+v||d));
+$("#ndes").addEventListener("input",e=>{state.n=clamp(e.target.value,1,500,1);syncHints();rerun();});
+$("#runtime").addEventListener("input",e=>{state.runtime=clamp(e.target.value,1,1440,1);syncHints();rerun();});
+$("#rfd3n").addEventListener("input",e=>{state.rfd3n=clamp(e.target.value,1,64,8);rerun();});
+$("#helix").addEventListener("input",e=>{state.helix=+e.target.value;$("#helixv").textContent=state.helix.toFixed(2);rerun();});
+$("#ipd").addEventListener("change",e=>{state.ipd=e.target.checked;$("#ipdwrap").hidden=!state.ipd;rerun();});
+$("#ipdrounds").addEventListener("input",e=>{state.ipdrounds=clamp(e.target.value,1,10,4);rerun();});
+$("#prefilter").addEventListener("change",e=>{state.prefilter=e.target.checked;$("#prefwrap").style.display=state.prefilter?"":"none";rerun();});
+$("#keepfrac").addEventListener("input",e=>{state.keepfrac=Math.max(0.05,Math.min(1,+e.target.value||0.5));rerun();});
+$("#mpnnn").addEventListener("input",e=>{state.mpnnn=clamp(e.target.value,1,32,8);rerun();});
 
 $("#form").addEventListener("submit",e=>{
   e.preventDefault(); const b=$("#runbtn"); b.disabled=true;
