@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>episcaf — Epitope Scaffolder</title>
+<link rel="stylesheet" href="site.css">
+<style>
+.page{max-width:900px;margin:0 auto}
+p{margin:9px 0}
+.sub{color:#666666;font-size:12.5px;margin:0 0 6px;max-width:72ch}
+code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0f0;padding:0 3px}
+
+.q{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#296DC0;font-weight:bold;margin:20px 0 2px}
+.fork{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px}
+@media(max-width:680px){.fork{grid-template-columns:1fr}}
+.card{border:1px solid #d5deea;border-radius:9px;background:#fbfcfe;display:flex;flex-direction:column;overflow:hidden;transition:box-shadow .12s,border-color .12s}
+.card:hover{border-color:#8fb0db;box-shadow:0 6px 20px rgba(23,60,110,.12)}
+.card-h{padding:14px 16px 10px;border-bottom:1px solid #e8edf4}
+.card-eyebrow{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#566b85;font-weight:bold}
+.card-t{font-size:18px;font-weight:bold;color:#1b4a86;margin:3px 0 0;display:flex;align-items:center;gap:9px}
+.card-ico{width:30px;height:30px;flex:none}
+.card-b{padding:12px 16px 4px;flex:1}
+.card-b p{margin:0 0 9px;color:#333333}
+.when{font-size:12.5px;color:#555;background:#eef3f9;border:1px solid #dce5f1;border-radius:5px;padding:6px 10px;margin:4px 0 10px}
+.when b{color:#1b4a86}
+.readmore{font-size:12.5px;color:#296DC0;font-weight:600;text-decoration:none}
+.readmore:hover{text-decoration:underline}
+.card-f{padding:10px 16px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.steps{color:#555;font-size:12.5px;margin-top:4px}
+.steps code{background:#eef3f9}
+.footline{margin-top:26px;border-top:1px solid #e2e8f1;padding-top:12px;color:#666;font-size:12.5px}
+.footline a{color:#0033cc}
+</style>
+</head>
+<body>
+<div class="banner"><div class="banner-inner">
+  <div class="brand">
+    <svg class="blogo" viewBox="0 0 44 44" fill="none" aria-hidden="true">
+      <path d="M5 31 C 13 13, 21 13, 25 24 C 28 32, 33 33, 39 15" stroke="#dce8f7" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+      <circle cx="25" cy="20" r="4.4" fill="#e5543f"/>
+    </svg>
+    <div class="wm"><div class="name">episcaf</div><div class="tag">Epitope Scaffolder</div></div>
+  </div>
+  <svg class="motif" viewBox="0 0 170 46" fill="none" aria-hidden="true">
+    <path d="M6 23 C 20 9, 28 9, 36 23 C 44 37, 52 37, 60 23 C 68 9, 76 9, 84 23 C 92 37, 100 37, 108 23 C 116 9, 124 9, 132 23 C 140 37, 148 37, 156 23" stroke="#bcd6f2" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+    <circle cx="84" cy="16" r="5" fill="#e5543f"/>
+    <circle cx="60" cy="23" r="3" fill="#ffffff" opacity=".85"/>
+    <circle cx="108" cy="23" r="3" fill="#ffffff" opacity=".85"/>
+  </svg>
+</div></div>
+<div class="nav"><div class="nav-inner">
+  <a href="home.html" class="on">Home</a>
+  <a href="methods.html">Docs</a>
+  <a href="pipeline.html">Pipeline</a>
+  <a href="results.html">Results</a>
+</div></div>
+<div class="page">
+  <h1>Design protein scaffolds that present an epitope</h1>
+  <p class="lede">episcaf takes a target and designs scaffolds that display its epitope in the native,
+  antibody-binding conformation &mdash; <a href="pipeline.html">RFdiffusion3</a> &rarr; backbone
+  pre-filter &rarr; ProteinMPNN &rarr; AlphaFold3 &rarr; scoring. Start with the question that
+  matches what you have.</p>
+
+  <p class="q">What are you starting from?</p>
+
+  <div class="fork">
+
+    <!-- ===== Option 1: exhaustive scan ===== -->
+    <div class="card">
+      <div class="card-h">
+        <div class="card-eyebrow">No antibody yet</div>
+        <div class="card-t">
+          <svg class="card-ico" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+            <circle cx="15" cy="15" r="11" stroke="#296DC0" stroke-width="2"/>
+            <circle cx="15" cy="15" r="3.4" fill="#e5543f"/>
+            <path d="M15 1.5V5 M15 25V28.5 M1.5 15H5 M25 15H28.5" stroke="#296DC0" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          Scan the surface for epitopes
+        </div>
+      </div>
+      <div class="card-b">
+        <p>You have an antigen but no antibody, so there is no known epitope. Rather than
+        <i>predict</i> one, episcaf runs <b>growPatch</b>, an exhaustive surface-space search: it
+        enumerates every region that could plausibly be an antibody footprint, so you can scaffold them all and
+        let the experiment decide. The first step,
+        <a class="readmore" href="methods.html#seedgrow"><b>seed-and-grow</b></a>, grows candidate
+        patches outward from exposed surface residues; an
+        <a class="readmore" href="methods.html#eyeview">antibody&rsquo;s-eye-view</a> pass adds the
+        footprints a real antibody could cover but growing never reaches.</p>
+        <div class="when"><b>Use this when:</b> you want broad coverage of a target's surface, or
+        you are building a tiled library and don't want to commit to one site.</div>
+        <a class="readmore" href="methods.html#epitope">Read how the surface search works &rarr;</a>
+      </div>
+      <div class="card-f">
+        <a class="btn-primary" href="growpatch.html">See it on 8PWW &rarr;</a>
+        <a class="btn-secondary" href="growpatch_tool.html">run on your own antigen (needs the local server) &rarr;</a>
+      </div>
+    </div>
+
+    <!-- ===== Option 2: known epitope ===== -->
+    <div class="card">
+      <div class="card-h">
+        <div class="card-eyebrow">Epitope in hand</div>
+        <div class="card-t">
+          <svg class="card-ico" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+            <path d="M4 20 C 9 9, 14 9, 16 16 C 18 22, 23 22, 26 11" stroke="#296DC0" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            <circle cx="16" cy="13.5" r="3.4" fill="#e5543f"/>
+          </svg>
+          Scaffold a known epitope
+        </div>
+      </div>
+      <div class="card-b">
+        <p>You already know the epitope &mdash; from an antibody&ndash;antigen complex, or a chosen
+        set of residues. The scaffolder designs a protein that presents it in its native,
+        antibody-binding conformation, then scores each design on
+        <a class="readmore" href="methods.html#score"><b>fidelity and accessibility</b></a>.</p>
+        <div class="when"><b>Use this when:</b> you have a complex (e.g. a SAbDab entry) or a
+        specific site you want displayed on a stable, synthesizable scaffold.</div>
+        <a class="readmore" href="methods.html#generate">Read how scaffolding works &rarr;</a>
+      </div>
+      <div class="card-f">
+        <a class="btn-primary" href="scaffold.html">Open the scaffolder &rarr;</a>
+        <a class="btn-secondary" href="pipeline.html">see the full pipeline</a>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="footline">New here? The <a href="methods.html">Docs</a> explain each step and why it is
+  built the way it is; the <a href="pipeline.html">Pipeline</a> map shows what is shipped versus
+  next-gen; <a href="results.html">Results</a> ranks a finished run's designs.</p>
+</div>
+</body>
+</html>

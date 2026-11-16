@@ -8,7 +8,7 @@ running episcaf's actual, validated enumerator on the uploaded structure -- no r
 same code the pipeline uses.
 
 Run:
-    /Users/bneff/micromamba/envs/bcell-repair/bin/python scripts/growpatch_serve.py --port 8765
+    python scripts/growpatch_serve.py
 then open http://localhost:8765/ and upload a PDB.
 
 Note: input validation (is this antigen suitable for episcaf?) is deferred -- a later gate.
@@ -45,10 +45,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/" or self.path.startswith("/?"):
             try:
-                with open(os.path.join(DOCS, "growpatch_tool.html"), "rb") as fh:
+                with open(os.path.join(DOCS, "index.html"), "rb") as fh:  # redirects to home.html
                     self._send(200, fh.read(), "text/html; charset=utf-8")
             except FileNotFoundError:
-                self._send(404, b"growpatch_tool.html not found")
+                self._send(404, b"index.html not found")
             return
         return super().do_GET()                        # static files from docs/ (pdb, data, ...)
 
