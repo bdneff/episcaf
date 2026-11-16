@@ -20,96 +20,17 @@ import functools
 import http.server
 import json
 import os
-import re
 import sys
 import tempfile
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from episcaf_analysis.growpatch import read as R   # noqa: E402
-from episcaf_pipeline import build_growpatch_designs as BGD   # noqa: E402
+# viewer_data / stage_run live in episcaf_service.staging (one source of truth, shared with the
+# cluster FastAPI service); _resi is re-exported so this module's callers keep working unchanged.
+from episcaf_service.staging import _resi, stage_run, viewer_data   # noqa: E402,F401
 
 DOCS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs")
-
-
-def _resi(label):
-    m = re.match(r"-?\d+", str(label))
-    return int(m.group()) if m else None
-
-
-def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k, mode="growpatch"):
-    """Residues + candidate patches for the viewer (like docs/data/growpatch_*.js).
-
-    mode 'growpatch' -> enumerate candidate epitopes (lone antigen).
-    mode 'antibody'  -> the epitope is already defined by the bound partner; return it as one patch,
-                        no enumeration (growPatch unnecessary).
-    """
-    ag = R.read_antigen(cif_path, chain, relsasa=True)
-    residues = [dict(resi=_resi(ag.label(c, s)), resn=r["resname"],
-                     rel=round(float(ag.rs(r["key"])), 3),
-                     surf=bool(ag.rs(r["key"]) >= sasa_cut),
-                     p=[round(float(x), 2) for x in r["rep"]])
-                for r in ag.residues for (c, s) in [r["key"]]]
-    extra = {}
-    if mode == "antibody":
-        det = R.detect_complex(cif_path, chain)
-        epi = det["epitope"]
-        resis = sorted({_resi(ag.label(c, s)) for (c, s) in ag.parse_epitope(epi)}) if epi else []
-        patches = ([dict(i=0, methods=["antibody-contact"], epitope=epi, n_res=len(resis),
-                         n_isl=len([t for t in epi.split(";") if t]), resis=resis)] if resis else [])
-        extra = dict(mode="antibody", partner_chains=det["partner_chains"])
-    else:
-        cands, _ = R.enumerate_candidates(cif_path, chain, antigen=ag, methods=methods,
-                                          sasa_cut=sasa_cut, footprint_radius=footprint_radius,
-                                          top_k=(top_k or None))
-        patches = [dict(i=p["patch"], methods=p["methods"], epitope=p["epitope"],
-                        n_res=p["n_res"], n_isl=p["n_islands"],
-                        resis=sorted({_resi(ag.label(c, s)) for (c, s) in p["keys"]}))
-                   for p in cands]
-        extra = dict(mode="growpatch")
-    return dict(chain=chain, sasa_cut=sasa_cut, n_residues=len(residues),
-                n_surface=sum(r["surf"] for r in residues), n_patches=len(patches),
-                n_growpatch=sum("growpatch" in p["methods"] for p in patches),
-                n_eyeview=sum("eyeview" in p["methods"] for p in patches),
-                n_both=sum(len(p["methods"]) == 2 for p in patches),
-                residues=residues, patches=patches, **extra)
-
-
-def stage_run(cif_path, chain, epitopes, cfg):
-    """Build the RFd3 contigs for the chosen epitopes + a run spec the cluster consumes.
-
-    Returns (run_spec dict, contigs_csv str, n_contigs, skipped). The heavy run (RFd3->MPNN->AF3) is
-    cluster/GPU work; this stages the job, it does not run it.
-    """
-    import csv as _csv
-    import datetime
-    import io
-    chains = R.parse_chains(chain)
-    cands = [dict(patch=i, epitope=e, n_islands=len([t for t in e.split(";") if t]),
-                  n_res=0, methods=[]) for i, e in enumerate(epitopes)]
-    rows, skipped = BGD.build_rows(cfg["name"], chains, cands, cfg["total_len"],
-                                   cfg["variants"], cfg["seed"])
-    cols = ["id", "contig_id", "contig_string", "contig_length", "epitope_chunks", "source",
-            "pdb_id", "chains", "growpatch_epitope", "growpatch_methods", "growpatch_n_res", "variant"]
-    buf = io.StringIO()
-    w = _csv.DictWriter(buf, fieldnames=cols)
-    w.writeheader()
-    w.writerows({k: r.get(k) for k in cols} for r in rows)
-    n_epi = len(epitopes)
-    run_spec = {
-        "created": datetime.datetime.now().isoformat(timespec="seconds"),
-        "antigen": cfg["name"], "chain": chain, "mode": cfg.get("mode", "growpatch"),
-        "n_epitopes": n_epi, "epitopes": epitopes,
-        "generation": {"flank_variants": cfg["variants"], "total_len": cfg["total_len"],
-                       "rfd3_designs_per_contig": cfg["rfd3"], "mpnn_seqs_per_backbone": cfg["mpnn"],
-                       "helix_bias": cfg.get("helix_bias", 0.0)},   # RFd3 secondary-structure bias (0 = neutral)
-        "budget": cfg["budget"],
-        "n_contigs": len(rows),
-        "designs_at_full_fanout": len(rows) * cfg["rfd3"] * cfg["mpnn"],
-        "note": "Stage only. Run RFd3->MPNN->AF3 on the cluster; score + view the metrics CSV in "
-                "the Results tab. accessibility metric = AOMclash (aomclash_pred).",
-    }
-    return run_spec, buf.getvalue(), len(rows), skipped
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):

@@ -239,6 +239,12 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     </section>
 
     <div class="field">
+      <label for="backend">Backend URL (optional)</label>
+      <input type="text" id="backend" placeholder="http://127.0.0.1:8808" style="width:240px">
+      <span class="help">Blank = simulated demo. With the cluster service tunneled (see foot of page), uploading a structure and running stages a <b>real</b> job on the cluster and returns its submit script.</span>
+    </div>
+
+    <div class="field">
       <button type="submit" id="runbtn">Run scaffolding</button>
       <span class="help" id="runnote"></span>
     </div>
@@ -265,7 +271,14 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   <h2>Gemini job</h2>
   <pre id="cmd"></pre>
   <p><button id="cmdbtn" type="button">Copy command</button></p>
-  <p class="help">The job this run maps to. The page cannot submit it; run it on Gemini, or have a backend service post this spec to the cluster.</p>
+  <p class="help">The job this run maps to. The page cannot submit it; run it on Gemini, or set a Backend URL above to stage it for real.</p>
+
+  <div id="stagedwrap" hidden>
+    <h2>Staged job (live backend)</h2>
+    <pre id="staged"></pre>
+    <p><button id="fetchres" type="button" hidden>Fetch results</button>
+       <span class="help" id="fetchnote"></span></p>
+  </div>
 
   <hr>
   <p class="foot"><b>How this becomes a real server.</b> This page is a static frontend &mdash; it runs the same whether served from GitHub Pages or opened locally. To route a job to Gemini it would call a small backend API (FastAPI/Flask) on a cluster-access host, which submits RFdiffusion &rarr; backbone pre-filter &rarr; ProteinMPNN &rarr; AlphaFold3 and reports back. <code>runJob()</code> in this page can swap its simulated result for a <code>fetch()</code> to that API.<br>
@@ -331,42 +344,43 @@ function jobSpec(s){return{
   pipeline:"rfd3 -> aomclash prefilter -> mpnn -> af3 -> score"};}
 
 function geminiCmd(s){
-  const spec=jobSpec(s);
-  const tgt=s.target+".pdb", preset=s.epi==="antibody"?"antibody_softgate":"twelvemer";
-  const pred = s.epi==="antibody"
-    ? "# epitope = antibody contact residues from the complex"
-    : "# no antibody: growPatch enumerates candidate epitopes\npython -m episcaf_pipeline.build_growpatch_designs --cif "+tgt+" --chain A --out $RUN_DIR/designs.parquet";
-  const gen = s.ipd
-    ? "python scripts/ipd_round.py init --base-dir $RUN_DIR --antigen "+tgt+" --designs-table $RUN_DIR/designs.csv   # iterative; advance after each scored round (<= "+s.ipdrounds+" rounds)"
-    : "bash scripts/run_whole_epitope_rfd3.sh "+s.target+"   # "+s.rfd3n+" backbones/contig"+(s.helix>0?", helix_bias "+s.helix.toFixed(2):"");
+  // Mirrors episcaf_service build_submit_sh: the same verified command sequence the live backend
+  // writes to submit.sh. Generation is always via ipd_round.py init (the one entry that consumes the
+  // staged designs.csv); scoring is stage06_select.py --topk. When a backend is connected we show its
+  // real submit.sh instead of this preview.
+  const preset=s.epi==="antibody"?"antibody_softgate":"twelvemer";
+  const inp="$RUN_DIR/input.pdb";
+  const tgt=(s.target==="__upload"?(DESCS["__upload"]||"antigen"):s.target).toLowerCase();
   const lines=[
-    "# Gemini (login node), repo root",
+    "# Gemini (cluster), repo root. $RUN_DIR holds input.pdb, designs.csv, run_spec.json (staged).",
     "conda activate ~/rfd3/env/rfd3_py312",
-    "export RUN_DIR=$WS/runs/"+s.target.toLowerCase()+"_scaffold",
+    "export RUN_DIR=$WS/runs/"+tgt+"_scaffold",
     "",
-    "# job spec",
-    JSON.stringify(spec),
-    "",
-    pred,
-    "# 1. generate RFd3 backbones",
-    gen,
+    "# 1. RFd3 backbones from the staged contigs"+(s.ipd?(" (IPD loop: adaptive children, partial diffusion, <= "+s.ipdrounds+" rounds)"):" (single round)"),
+    'python scripts/ipd_round.py init --base-dir "$RUN_DIR" --antigen "'+inp+'" \\',
+    '    --designs-table "$RUN_DIR/designs.csv" --mode adaptive --max-rounds '+(s.ipd?s.ipdrounds:1),
+    '#    submit the RFd3 array it prints:  sbatch --array=1-N episcaf_pipeline/hpc/sbatch/rfd3_array.sbatch "$RUN_DIR"',
     ""];
   let step=2;
   if(s.prefilter){
     lines.push("# "+step+". AOMclash backbone pre-filter: keep best "+Math.round(s.keepfrac*100)+"% per epitope before MPNN/AF3",
-      "python scripts/aomclash_prefilter.py --backbones $RUN_DIR/02_rfd3/outputs \\",
-      "  --contigs $RUN_DIR/designs.csv --antigen "+tgt+" --keep-frac "+s.keepfrac, "");
+      'python scripts/aomclash_prefilter.py --backbones "$RUN_DIR/02_rfd3/outputs" \\',
+      '    --contigs "$RUN_DIR/designs.csv" --antigen "'+inp+'" --keep-frac '+s.keepfrac+' \\',
+      '    --out "$RUN_DIR/aomclash_prefilter.csv"', "");
     step++;
   }
-  lines.push("# "+step+". kept backbones -> ProteinMPNN -> AlphaFold3",
-    "python scripts/stage03_mpnn_submit.py --fixed_pdb_dir $RUN_DIR/03_mpnn/fixed_pdbs"+(s.prefilter?".pass":"")+"   # "+s.mpnnn+" seqs/backbone",
-    "python scripts/stage04_af3_emit_jsons.py --run $RUN_DIR",
-    "sbatch scripts/stage04_af3_array.sbatch $RUN_DIR", "");
+  lines.push("# "+step+". kept backbones -> ProteinMPNN -> AlphaFold3 (cluster-specific; see run_whole_epitope_mpnn_af3.sh)",
+    'python scripts/stage03_mpnn_fixed_pdbs.py --run "$RUN_DIR"',
+    'python scripts/stage03_mpnn_submit.py --fixed_pdb_dir "$RUN_DIR/03_mpnn/fixed_pdbs" --outdir "$RUN_DIR/03_mpnn/out"',
+    'python scripts/stage04_af3_emit_jsons.py --mpnn_pdb_dir "$RUN_DIR/03_mpnn/out" --out_dir "$RUN_DIR/04_af3/in" --seed 1',
+    'sbatch --array=1-N scripts/stage04_af3_array.sbatch "$RUN_DIR"', "");
   step++;
-  lines.push("# "+step+". AOMclash on the AF3 designs, then score + select ("+(s.mode==="threshold"?("until "+s.n+" pass"):("top "+s.n))+", <= "+s.runtime+" min)",
-    "python scripts/aomclash_score_designs.py --designs $RUN_DIR/04_af3/outputs \\",
-    "  --contigs $RUN_DIR/designs.csv --antigen "+tgt+" --merge $RUN_DIR/05_analysis/metrics.csv --out $RUN_DIR/05_analysis/metrics.csv",
-    "python -m episcaf_analysis.score --preset "+preset+" --select "+s.mode+" --n "+s.n+" --metrics-csv $RUN_DIR/05_analysis/metrics.csv");
+  lines.push("# "+step+". AOMclash on the AF3 designs, then composite score + select (top "+s.n+")",
+    'python scripts/aomclash_score_designs.py --designs "$RUN_DIR/04_af3/outputs" \\',
+    '    --contigs "$RUN_DIR/designs.csv" --antigen "'+inp+'" \\',
+    '    --merge "$RUN_DIR/05_analysis/metrics.csv" --out "$RUN_DIR/05_analysis/metrics.csv"',
+    'python scripts/stage06_select.py --preset '+preset+' --metrics-csv "$RUN_DIR/05_analysis/metrics.csv" \\',
+    '    --group id --topk '+s.n+' --out "$RUN_DIR/05_analysis/ranked.csv"');
   return lines.join("\n");
 }
 function cmdHTML(txt){return txt.split("\n").map(l=>l.trimStart().startsWith("#")?'<span class="cmt">'+esc(l)+'</span>':esc(l)).join("\n");}
@@ -544,7 +558,7 @@ $("#pdbfile").addEventListener("change",e=>{
     sel.value="__upload"; state.target="__upload";
     $("#uploadnote").textContent="loaded "+f.name+" — detecting epitope…";
     try{
-      const res=await fetch("/inspect?fmt="+uploadFmt,{method:"POST",body:uploadText});
+      const res=await fetch(apiBase()+"/inspect?fmt="+uploadFmt,{method:"POST",body:uploadText});
       const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
       CFG["__upload"]={ag:d.antigen_chain,ab:d.partner_chains||[],epi:epiResids(d.epitope)};
       state.epi=d.is_complex?"antibody":"predict";
@@ -564,9 +578,73 @@ $("#pdbfile").addEventListener("change",e=>{
 
 $("#form").addEventListener("submit",e=>{
   e.preventDefault(); const b=$("#runbtn"); b.disabled=true;
-  paint(computeJob(state),true);
-  setTimeout(()=>b.disabled=false, reduced?0:1500);
+  if(apiBase() && uploadText){                       // live backend + an uploaded structure -> stage for real
+    stageReal().finally(()=>{b.disabled=false;});
+  }else{                                             // demo: simulate, and print the (now-correct) command
+    paint(computeJob(state),true);
+    setTimeout(()=>b.disabled=false, reduced?0:1500);
+  }
 });
+
+/* --- live backend: stage a real job, then fetch its scored results --- */
+function apiBase(){const el=$("#backend");return el?el.value.trim().replace(/\/$/,""):"";}
+let lastRunId=null;
+async function stageReal(){
+  const base=apiBase();
+  const name=(DESCS["__upload"]||"antigen").toLowerCase().replace(/[^a-z0-9_.-]/g,"_");
+  const mode=state.epi==="antibody"?"antibody":"growpatch";
+  const chain=(CFG["__upload"]&&CFG["__upload"].ag)||"A";
+  $("#stagedwrap").hidden=false; const box=$("#staged"); box.textContent="staging on "+base+" …";
+  try{
+    let epis="";
+    if(mode==="growpatch"){                          // lone antigen: enumerate candidate epitopes first
+      const er=await fetch(base+"/enumerate?fmt="+uploadFmt+"&chain="+chain+"&mode=growpatch",{method:"POST",body:uploadText});
+      const ed=await er.json(); if(!er.ok||ed.error) throw new Error(ed.error||("enumerate HTTP "+er.status));
+      epis=(ed.patches||[]).slice(0,8).map(p=>p.epitope).join("|");
+      if(!epis) throw new Error("growPatch found no candidate epitopes on chain "+chain);
+    }
+    const q="/submit?fmt="+uploadFmt+"&chain="+chain+"&mode="+mode+"&name="+encodeURIComponent(name)
+      +"&epitopes="+encodeURIComponent(epis)+"&rfd3="+state.rfd3n+"&mpnn="+state.mpnnn
+      +"&helix_bias="+state.helix+"&ipd="+(state.ipd?"true":"false")+"&ipdrounds="+state.ipdrounds
+      +"&prefilter="+(state.prefilter?"true":"false")+"&keepfrac="+state.keepfrac+"&topn="+state.n;
+    const r=await fetch(base+q,{method:"POST",body:uploadText});
+    const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||("submit HTTP "+r.status));
+    lastRunId=d.run_id;
+    box.textContent="staged "+d.n_contigs+" contig"+(d.n_contigs===1?"":"s")+" from "+d.n_epitopes
+      +" epitope"+(d.n_epitopes===1?"":"s")+"\n"+d.run_dir+"\n\n# run this on the cluster:\n"+d.submit_sh;
+    $("#cmd").textContent=d.submit_sh;
+    $("#fetchres").hidden=false;
+    $("#fetchnote").textContent="run "+d.run_id+" staged. After RFd3→MPNN→AF3 + scoring finish, fetch the designs.";
+  }catch(err){
+    box.textContent="staging failed: "+err.message+"\n(is the backend reachable at "+base+"? see episcaf_service/README.md)";
+  }
+}
+async function fetchResults(){
+  const base=apiBase(); if(!base||!lastRunId) return;
+  const note=$("#fetchnote"); note.textContent="fetching results for "+lastRunId+" …";
+  try{
+    const preset=state.epi==="antibody"?"antibody_softgate":"twelvemer";
+    const r=await fetch(base+"/results/"+lastRunId+"?preset="+preset+"&topk="+state.n);
+    if(r.status===409){ note.textContent="not scored yet — the cluster run hasn't produced metrics.csv. Try again after AF3 + scoring finish."; return; }
+    const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||("HTTP "+r.status));
+    fillRealResults(d); note.textContent="showing "+d.rows.length+" scored designs (ranked by "+d.info.ranked_by+").";
+  }catch(err){ note.textContent="fetch failed: "+err.message; }
+}
+function fillRealResults(d){
+  const tb=$("#rbody"); tb.innerHTML="";
+  const col=c=>d.columns.includes(c)?c:null;
+  const idc=col("design_id")||col("id")||d.columns[0];
+  const rmsdc=col("overall_rmsd")||col("epitope_chunk_rmsd");
+  const clashc=col("af3_n_clash_res")||col("aomclash_pred");
+  const scorec=col("composite")||col("binding_pred");
+  d.rows.forEach((row,i)=>{const tr=document.createElement("tr");
+    [i+1,row[idc],rmsdc?(+row[rmsdc]).toFixed(2):"—",clashc?(+row[clashc]).toFixed(1):"—",
+     scorec?(+row[scorec]).toFixed(3):"—","scored"].forEach(c=>{
+       const td=document.createElement("td");td.textContent=c;tr.appendChild(td);});
+    tb.appendChild(tr);});
+  $("#tablecap").textContent="Live results from the backend ("+d.info.n_designs+" designs scored; ranked by "+d.info.ranked_by+").";
+}
+$("#fetchres").addEventListener("click",fetchResults);
 
 function copyText(txt,btn){const done=()=>{const o=btn.textContent;btn.textContent="copied";setTimeout(()=>btn.textContent=o,1200);};
   if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done).catch(()=>fb(txt,done));else fb(txt,done);}
