@@ -11,13 +11,16 @@ html,body{margin:0}
 body{background:#fff;color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5}
 .page{max-width:960px;margin:0 auto;padding:18px 16px 40px}
 .banner{background:linear-gradient(100deg,#21568f 0%,#296DC0 46%,#3b7fd1 100%);color:#fff;border-bottom:3px solid #1b4a86}
-.banner-inner{max-width:960px;margin:0 auto;padding:15px 16px;display:flex;align-items:center;gap:13px}
-.blogo{width:40px;height:40px;flex:none}
-.wm .name{font-size:25px;font-weight:bold;line-height:1}
-.wm .tag{font-size:12px;color:#dce8f7;margin-top:3px}
+.banner-inner{max-width:960px;margin:0 auto;padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.brand{display:flex;align-items:center;gap:13px;min-width:0}
+.blogo{width:44px;height:44px;flex:none}
+.wm .name{font-size:27px;font-weight:bold;letter-spacing:.02em;line-height:1}
+.wm .tag{font-size:12.5px;color:#dce8f7;margin-top:3px;letter-spacing:.02em}
+.motif{height:44px;width:auto;flex:none;opacity:.95}
+@media(max-width:540px){.motif{display:none}.wm .name{font-size:23px}}
 .nav{background:#eef3f9;border-bottom:1px solid #d5deea}
-.nav-inner{max-width:960px;margin:0 auto;padding:0 16px;display:flex;gap:2px}
-.nav a{display:inline-block;padding:9px 16px;font-size:13px;font-weight:bold;color:#3b6ea5;text-decoration:none}
+.nav-inner{max-width:960px;margin:0 auto;padding:0 16px;display:flex;gap:2px;flex-wrap:wrap}
+.nav a{display:inline-block;padding:9px 16px;font-size:13px;font-weight:bold;color:#3b6ea5;text-decoration:none;border:1px solid transparent;border-bottom:none}
 .nav a.on{background:#fff;color:#1b4a86;border:1px solid #d5deea;border-bottom:none;border-radius:4px 4px 0 0;position:relative;top:1px}
 h1{font-size:21px;margin:0 0 3px}
 .lede{color:#333;margin:0 0 12px}
@@ -63,8 +66,19 @@ a{color:#0033cc}
 </head>
 <body>
 <div class="banner"><div class="banner-inner">
-  <svg class="blogo" viewBox="0 0 44 44" fill="none" aria-hidden="true"><circle cx="22" cy="22" r="20" stroke="#fff" stroke-width="2.5" opacity=".9"/><circle cx="22" cy="22" r="7" fill="#fff"/></svg>
-  <div class="wm"><div class="name">episcaf</div><div class="tag">Epitope Scaffolder</div></div>
+  <div class="brand">
+    <svg class="blogo" viewBox="0 0 44 44" fill="none" aria-hidden="true">
+      <path d="M5 31 C 13 13, 21 13, 25 24 C 28 32, 33 33, 39 15" stroke="#dce8f7" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+      <circle cx="25" cy="20" r="4.4" fill="#e5543f"/>
+    </svg>
+    <div class="wm"><div class="name">episcaf</div><div class="tag">Epitope Scaffolder</div></div>
+  </div>
+  <svg class="motif" viewBox="0 0 170 46" fill="none" aria-hidden="true">
+    <path d="M6 23 C 20 9, 28 9, 36 23 C 44 37, 52 37, 60 23 C 68 9, 76 9, 84 23 C 92 37, 100 37, 108 23 C 116 9, 124 9, 132 23 C 140 37, 148 37, 156 23" stroke="#bcd6f2" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+    <circle cx="84" cy="16" r="5" fill="#e5543f"/>
+    <circle cx="60" cy="23" r="3" fill="#ffffff" opacity=".85"/>
+    <circle cx="108" cy="23" r="3" fill="#ffffff" opacity=".85"/>
+  </svg>
 </div></div>
 <div class="nav"><div class="nav-inner">
   <a href="pipeline.html">Pipeline</a>
