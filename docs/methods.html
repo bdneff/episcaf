@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>How it works &middot; Epitope Scaffolder</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<style>
+:root{color-scheme:light}
+html,body{margin:0}
+body{background:#ffffff;color:#1a1a1a;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55}
+.page{max-width:730px;margin:0 auto;padding:18px 16px 56px}
+.banner{background:linear-gradient(100deg,#21568f 0%,#296DC0 46%,#3b7fd1 100%);color:#fff;border-bottom:3px solid #1b4a86}
+.banner-inner{max-width:730px;margin:0 auto;padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.brand{display:flex;align-items:center;gap:13px;min-width:0}
+.blogo{width:44px;height:44px;flex:none}
+.wm .name{font-size:27px;font-weight:bold;letter-spacing:.02em;line-height:1}
+.wm .tag{font-size:12.5px;color:#dce8f7;margin-top:3px;letter-spacing:.02em}
+.motif{height:44px;width:auto;flex:none;opacity:.95}
+@media(max-width:540px){.motif{display:none}.wm .name{font-size:23px}}
+h1{font-size:21px;margin:0 0 3px;font-weight:bold}
+h2{font-size:16px;margin:30px 0 9px;font-weight:bold;border-bottom:2px solid #296DC0;padding-bottom:3px;color:#1b4a86}
+h3{font-size:14px;margin:18px 0 5px;font-weight:bold;color:#21568f}
+p{margin:9px 0}
+a{color:#0033cc}
+.lede{color:#333;margin:0 0 10px}
+code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0f0;padding:0 3px}
+.nav{background:#eef3f9;border-bottom:1px solid #d5deea}
+.nav-inner{max-width:730px;margin:0 auto;padding:0 16px;display:flex;gap:2px;flex-wrap:wrap}
+.nav a{display:inline-block;padding:9px 14px;font-size:13px;font-weight:bold;color:#3b6ea5;text-decoration:none;border:1px solid transparent;border-bottom:none}
+.nav a:hover{color:#21568f}
+.nav a.on{background:#fff;color:#1b4a86;border-color:#d5deea;border-radius:4px 4px 0 0;position:relative;top:1px}
+.updated{font-size:11px;letter-spacing:.08em;color:#8a98a8;text-transform:uppercase;margin:0 0 4px}
+.toc{background:#f6f8fb;border:1px solid #d5deea;border-radius:7px;padding:11px 14px;margin:14px 0 4px;font-size:13px}
+.toc b{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6f7f90;margin-bottom:5px}
+.toc a{display:inline-block;margin:2px 14px 2px 0;color:#296DC0;text-decoration:none;font-weight:600}
+.toc a:hover{text-decoration:underline}
+.card{border:1px solid #d5deea;border-radius:7px;background:#fcfdfe;padding:3px 14px 12px;margin:12px 0}
+.mode{display:inline-block;font-size:10.5px;font-weight:bold;letter-spacing:.04em;text-transform:uppercase;padding:1px 7px;border-radius:3px;vertical-align:middle;margin-left:7px}
+.mode.ab{background:#e8f1fb;color:#21568f;border:1px solid #bcd6f2}
+.mode.noab{background:#eaf5ec;color:#1f7a3a;border:1px solid #b7ddc0}
+.why{background:#fdf9ec;border:1px solid #efe3b8;border-radius:6px;padding:8px 12px;margin:10px 0;font-size:13px}
+.why b{color:#6f5410}
+.loc{font-size:11.5px;color:#6a7686;margin-top:7px;font-family:"Courier New",Courier,monospace}
+.loc::before{content:"\1F4C1  ";font-family:Arial}
+ul{margin:7px 0;padding-left:22px}li{margin:3px 0}
+.k{font-weight:bold;color:#1a1a1a}
+details{margin:9px 0 2px;border-top:1px solid #e4e4e4;padding-top:7px}
+summary{cursor:pointer;color:#0033cc;font-size:12px;font-weight:600;list-style:none;user-select:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"\25B8  "}
+details[open] summary::before{content:"\25BE  "}
+.eq{margin:9px 0;overflow-x:auto;overflow-y:hidden}
+.mnote{font-size:12px;color:#555;margin:6px 0}
+.flow{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f6f6f6;border:1px solid #cccccc;border-radius:5px;padding:9px 11px;overflow-x:auto;color:#333;line-height:1.5}
+.foot{font-size:12px;color:#666;line-height:1.6;margin-top:10px}
+.foot b{color:#444}
+</style>
+</head>
+<body>
+<div class="banner"><div class="banner-inner">
+  <div class="brand">
+    <svg class="blogo" viewBox="0 0 44 44" fill="none" aria-hidden="true">
+      <path d="M5 31 C 13 13, 21 13, 25 24 C 28 32, 33 33, 39 15" stroke="#dce8f7" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+      <circle cx="25" cy="20" r="4.4" fill="#e5543f"/>
+    </svg>
+    <div class="wm"><div class="name">episcaf</div><div class="tag">Epitope Scaffolder</div></div>
+  </div>
+  <svg class="motif" viewBox="0 0 170 46" fill="none" aria-hidden="true">
+    <path d="M6 23 C 20 9, 28 9, 36 23 C 44 37, 52 37, 60 23 C 68 9, 76 9, 84 23 C 92 37, 100 37, 108 23 C 116 9, 124 9, 132 23 C 140 37, 148 37, 156 23" stroke="#bcd6f2" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+    <circle cx="84" cy="16" r="5" fill="#e5543f"/>
+    <circle cx="60" cy="23" r="3" fill="#ffffff" opacity=".85"/>
+    <circle cx="108" cy="23" r="3" fill="#ffffff" opacity=".85"/>
+  </svg>
+</div></div>
+<div class="nav"><div class="nav-inner">
+  <a href="pipeline.html">Pipeline</a>
+  <a href="methods.html" class="on">How it works</a>
+  <a href="index.html">GUI tool</a>
+  <a href="growpatch.html">growPatch</a>
+  <a href="growpatch_tool.html">Run growPatch</a>
+  <a href="results.html">Results</a>
+</div></div>
+
+<div class="page">
+  <p class="updated">Methods reference &middot; updated 2026-11-16</p>
+  <h1>How it works</h1>
+  <p class="lede">What each part of the pipeline does, how it does it, and why it is built the way it
+  is. The <a href="pipeline.html">Pipeline</a> page is the map; this is the manual. Equations sit
+  behind the expanders, so you can read the reasoning first and open the math where you want it.</p>
+
+  <div class="flow">antigen in
+  &rarr; choose epitope (known antibody │ growPatch)
+  &rarr; RFdiffusion3 &rarr; AOMclash pre-filter &rarr; ProteinMPNN &rarr; AlphaFold3
+  &rarr; score (accessibility + binding) &rarr; ranked designs out</div>
+
+  <div class="toc"><b>On this page</b>
+    <a href="#epitope">Choosing the epitope</a>
+    <a href="#generate">Generation loop</a>
+    <a href="#score">Scoring</a>
+    <a href="#tool">How the tool runs</a>
+    <a href="#repro">Reproducibility</a>
+  </div>
+
+  <p>The goal is narrow and specific: present a target epitope on a small de novo protein in the same
+  shape it has on the native antigen, so an antibody that binds the antigen also binds the scaffold.
+  The generative backbone (RFdiffusion3 &rarr; ProteinMPNN &rarr; AlphaFold3) proposes candidates;
+  everything episcaf adds is a way to <em>choose the epitope well</em> and <em>rank the candidates</em>
+  by two things that matter for a real binder &mdash; whether the epitope kept its native geometry and
+  whether an antibody can actually reach it.</p>
+
+  <!-- ============================================================ -->
+  <h2 id="epitope">1 &nbsp; Choosing the epitope</h2>
+  <p>There are two ways in, depending on whether you already know where the antibody binds. The tool
+  detects which case you are in from the uploaded structure and lets you override its guess.</p>
+
+  <div class="card">
+    <h3>Known antibody <span class="mode ab">epitope given</span></h3>
+    <p>When the upload is an antibody&ndash;antigen complex, the epitope is not something to predict &mdash;
+    it is observed. We take every antigen residue with a heavy atom within 4&nbsp;&Aring; of the
+    antibody as the contact epitope, group the residues into sequence islands, and hand that to
+    generation. The same 4&nbsp;&Aring; contact rule recovers the published epitope on the 8PWW
+    benchmark exactly.</p>
+    <p class="loc">episcaf_analysis/growpatch/read.py &middot; detect_complex()</p>
+  </div>
+
+  <div class="card">
+    <h3>No antibody &mdash; growPatch <span class="mode noab">epitope enumerated</span></h3>
+    <p>With a lone antigen you do not know the epitope, and the honest move is not to guess one. Tools
+    like DiscoTope and BepiPred answer a different question &mdash; <em>which</em> surface is most
+    antibody-like &mdash; and they commit to a prediction. growPatch is built for <span class="k">recall,
+    not prediction</span>: it enumerates every footprint-sized surface patch so that whatever the real
+    epitope turns out to be, some candidate already represents it. You then scaffold the candidates and
+    let the downstream scores and, eventually, the assay decide.</p>
+    <p>Two enumerators run, and the tool ships the <span class="k">union</span> of both because they
+    miss different things:</p>
+    <ul>
+      <li><span class="k">Seed and grow.</span> Start from each exposed surface residue
+      (relative SASA &ge; 0.2), grow outward to a patch of 16 residues by adding the nearest surface
+      neighbours, bridge sequence gaps of up to 10, and cap a candidate at 3 sequence islands. Near-duplicate
+      patches are removed by Jaccard overlap (&ge; 0.8), preferring fewer islands and then larger patches.</li>
+      <li><span class="k">Antibody&rsquo;s-eye view.</span> Sample viewing directions evenly over a sphere
+      (a Fibonacci lattice) and, from each direction, take the cap of residues an approaching antibody
+      would see first. This catches compact, geometrically-defined patches that the sequence-growing
+      pass can split across islands.</li>
+    </ul>
+    <div class="why"><b>Why trust it:</b> the seed-and-grow port reproduces the reference implementation
+    byte-for-byte &mdash; 227 identical candidates on chain A of 8PWW &mdash; so the enumeration is the
+    established method, not a re-derivation.</div>
+    <details><summary>the math &mdash; relative SASA and patch overlap</summary>
+      <p class="mnote">A residue counts as surface by its <b>relative</b> solvent-accessible area: its SASA
+      in the structure divided by the maximum that residue type can expose (Tien 2013 theoretical MAXASA).
+      Relative, so a buried large residue and a buried small one read the same.</p>
+      <div class="eq" data-tex="\mathrm{relSASA}(i)=\dfrac{\mathrm{SASA}(i)}{\mathrm{MaxASA}(\text{restype}_i)}\;\ge\;0.2"></div>
+      <p class="mnote">Two candidate patches <span class="k">A</span> and <span class="k">B</span> are near-duplicates when their residue sets overlap enough:</p>
+      <div class="eq" data-tex="J(A,B)=\dfrac{|A\cap B|}{|A\cup B|}\;\ge\;0.8\;\Rightarrow\;\text{drop the weaker}"></div>
+    </details>
+    <p class="loc">episcaf_analysis/growpatch/{core,read,eyeview}.py</p>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="generate">2 &nbsp; Generation &mdash; the IPD loop</h2>
+  <p>Generation is a loop, not a single pass. Each round builds backbones around the fixed epitope,
+  filters and folds them, scores the results, and lets the winners seed the next round. The expensive
+  steps (diffusion and folding) run on the cluster GPU; the cheap filter in the middle is what makes
+  the budget go further.</p>
+
+  <div class="card">
+    <h3>RFdiffusion3 &mdash; backbones</h3>
+    <p>RFdiffusion3 diffuses a protein backbone around the epitope, which is held fixed as a contig so
+    its geometry is preserved while the scaffold is invented around it. The default is 8 backbones per
+    contig; more backbones means more raw diversity at linear cost. An optional <span class="k">helix
+    bias</span> pushes the scaffold toward helical secondary structure.</p>
+    <div class="why"><b>Why a helix dial, and why it is only a dial:</b> helical scaffolds often score as
+    stronger binders, but that may be real or it may be a confound &mdash; helical designs tend to be
+    better-behaved in the cryo-EM experiments the training data comes from. We expose it as an
+    adjustable bias rather than baking it in, because we have not separated the two explanations.</div>
+    <p class="mnote">We stay on RFdiffusion3. RFD4 / Proteina is tracked as a possible future switch, not
+    an adopted one &mdash; it is not unambiguously better for this fixed-epitope task yet.</p>
+  </div>
+
+  <div class="card">
+    <h3>AOMclash backbone pre-filter</h3>
+    <p>Before spending MPNN and AlphaFold3 on a backbone, score it for antibody accessibility and drop
+    the ones that bury the epitope. This runs on the bare backbone, needs no sequence or fold, and is
+    the single biggest compute saving in the loop: clashy backbones are removed before the two
+    expensive steps touch them. The score is AOMclash (below); the pre-filter keeps the best fraction
+    per epitope (default half).</p>
+    <p class="loc">scripts/aomclash_prefilter.py</p>
+  </div>
+
+  <div class="card">
+    <h3>ProteinMPNN &rarr; AlphaFold3</h3>
+    <p>ProteinMPNN designs sequences for each surviving backbone with the epitope positions held fixed
+    (8 sequences per backbone by default), so the epitope keeps its identity while the scaffold sequence
+    is optimised for the fold. AlphaFold3 then predicts the structure of each sequence (single-sequence,
+    fixed seed). That predicted structure is what every downstream metric is measured on &mdash; epitope
+    RMSD to the native, clash, PAE.</p>
+    <p class="loc">scripts/stage03_mpnn_*.py &middot; stage04_af3_*</p>
+  </div>
+
+  <div class="card">
+    <h3>Partial-diffusion children &amp; the adaptive budget</h3>
+    <p>When a design scores well, the backbones near it in shape space are worth exploring. A
+    <span class="k">partial-diffusion child</span> takes a winning backbone, adds a little noise back,
+    and denoises again with the epitope fixed &mdash; a controlled step to a neighbour of something that
+    already worked. The loop also randomises island order between rounds so a multi-island epitope is
+    not always built in the same sequence layout.</p>
+    <p>How much of each round&rsquo;s budget goes to children rather than fresh de-novo backbones is
+    <span class="k">adaptive</span>. Round 0 is all de-novo (there are no winners yet). After that the
+    child share grows with a streak of improving rounds and is capped, so a run that keeps finding
+    better designs leans into exploitation, while a stalled run keeps exploring.</p>
+    <div class="why"><b>The honest caveat:</b> branching off winners risks turning the search into
+    best-of-N inside one lucky neighbourhood rather than genuinely finding better designs (John&rsquo;s
+    own false-discovery note). The cap and the de-novo floor are there to keep the loop from collapsing
+    onto a single family.</div>
+    <details><summary>the math &mdash; the children fraction</summary>
+      <div class="eq" data-tex="f_{\text{child}}(r)=\min\!\big(f_{\max},\; s_{\text{step}}\cdot \text{streak}(r)\big),\qquad f_{\text{child}}(0)=0"></div>
+      <p class="mnote">with per-streak step <span class="k">s<sub>step</sub></span> = 0.25 and cap
+      <span class="k">f<sub>max</sub></span> = 0.6. <code>streak(r)</code> is the number of consecutive
+      rounds whose best score beat the previous round&rsquo;s.</p>
+    </details>
+    <p class="loc">episcaf_pipeline/ipd.py &middot; ipd_driver.py &middot; scripts/ipd_round.py</p>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="score">3 &nbsp; Scoring</h2>
+  <p>Two models and one combiner. One asks whether an antibody can physically reach the epitope on the
+  design; the other predicts whether the design will actually bind in the assay. The composite folds
+  them together with epitope-fidelity metrics into a single rank.</p>
+
+  <div class="card">
+    <h3>AOMclash &mdash; antibody accessibility</h3>
+    <p>A scaffold can present the epitope perfectly and still be useless if its own bulk sits where the
+    antibody needs to be. AOMclash measures that. From roughly a thousand real antibody&ndash;antigen
+    complexes it builds an <span class="k">occupancy map</span>: in a frame centred on the epitope, a
+    boolean 33&times;33&times;33 grid at 2&nbsp;&Aring; marks where antibody atoms tend to sit, averaged
+    over all the complexes. The map is antibody geometry only &mdash; it never sees the design &mdash; so
+    it transfers to a new antigen by construction. For a design, we read the map at each scaffold atom
+    and sum it over the atoms that fall <em>outside</em> the native antigen&rsquo;s own volume (the
+    &ldquo;free&rdquo; atoms, more than 4&nbsp;&Aring; from any native-antigen atom). That sum,
+    <code>s_p1_free</code>, is high when the scaffold intrudes into antibody space.</p>
+    <div class="why"><b>Why one feature, not forty:</b> a 39-feature gradient-boosted version was built
+    and tested. It added about 0.02 AUROC over the single feature &mdash; a small gain bought with 38
+    mostly-correlated inputs and real overfitting risk. We ship the one interpretable, monotone feature,
+    calibrated onto the AlphaFold3 clash count, and keep the 39-feature model only as the recorded,
+    rejected baseline. AOMclash replaces the older geometric &ldquo;native-aware cylinder&rdquo; surrogate
+    everywhere: it is the continuous, finer-grained successor.</div>
+    <details><summary>the math &mdash; occupancy map and the free-atom sum</summary>
+      <p class="mnote">Each complex contributes a boolean occupancy grid in the epitope frame; the map is
+      their mean (an empirical probability that antibody mass occupies a voxel):</p>
+      <div class="eq" data-tex="P_1(v)=\frac{1}{N}\sum_{c=1}^{N}\mathbb{1}\big[\text{antibody atom of }c\text{ in voxel }v\big]"></div>
+      <p class="mnote">The shipped score reads that map at each scaffold atom <span class="k">a</span>, counting only atoms far from the native antigen:</p>
+      <div class="eq" data-tex="s\_p1\_free=\sum_{a\,:\,d_{\text{ag}}(a)>4\,\text{\AA}} P_1\big(\text{voxel}(a)\big)"></div>
+      <p class="mnote">A monotone isotonic fit then maps <code>s_p1_free</code> onto the AF3 clashing-residue
+      count, so the score reads in clash units while staying one rank-preserving feature.</p>
+    </details>
+    <p class="loc">episcaf_analysis/aomclash/ &middot; SHIPPED_FEATURE = s_p1_free</p>
+  </div>
+
+  <div class="card">
+    <h3>Interpretable binding model</h3>
+    <p>Beyond geometry, a small logistic model predicts whether a design will bind in the assay. It is
+    deliberately a scorecard, not a black box: L2-regularised logistic regression over an inspectable
+    feature set &mdash; the design metrics, secondary-structure content, and three native-context terms
+    (an intra-epitope electrostatic sum, a scaffold-to-epitope size ratio, and local antigen crowding).
+    Evaluated with cross-validation grouped by epitope, so every design is scored by a model that never
+    trained on its antibody, it reaches ROC-AUC 0.812.</p>
+    <div class="why"><b>Why this feature set:</b> an earlier version leaned on structure-dynamics features
+    (B-factor, elastic-network flexibility). Those are read off the bound complex and are confounded by
+    it &mdash; rigid-when-bound is a consequence of binding, not a cause. A clean, static feature set
+    beat that dynamics block out of sample by +0.013 AUROC (95% CI [+0.008, +0.018]) in a paired,
+    held-out test, and it is causally cleaner because nothing in it sits downstream of binding. So we
+    adopted it.</div>
+    <p>Read as a re-ranking layer, the payoff is enrichment: a random design in this setting binds about
+    8% of the time; the classic four-filter passers bind about 24%; ranking those by the model lifts the
+    top band to roughly a third, and the very top few percent higher still.</p>
+    <details><summary>the math &mdash; the logistic score</summary>
+      <div class="eq" data-tex="P(\text{bind})=\sigma\!\Big(\beta_0+\textstyle\sum_j \beta_j\,\tilde{x}_j\Big),\qquad \sigma(z)=\frac{1}{1+e^{-z}}"></div>
+      <p class="mnote">Features <span class="k">x̃</span> are median-imputed and standardised; the weights
+      <span class="k">&beta;</span> are L2-regularised and class-balanced for the 8% base rate. Because the
+      score is additive in interpretable features, each weight reads directly as that feature&rsquo;s pull.</p>
+    </details>
+    <p class="loc">episcaf_analysis/binding_model/ &middot; results/feature_model/model_v1_findings.md</p>
+  </div>
+
+  <div class="card">
+    <h3>Composite &amp; selection</h3>
+    <p>The final rank is a weighted sum of a few transformed metrics, set by a named preset rather than
+    hard-coded, so the dials live in one readable file. Each metric is first put on a common scale
+    (a percentile or a saturating sigmoid), then combined. The accessibility term is where the two input
+    modes differ, and it is the only place they differ:</p>
+    <ul>
+      <li><span class="k">Known antibody</span> &mdash; use the real AlphaFold3 clash against the actual
+      antibody (it is ground truth). Preset <code>antibody_softgate</code>.</li>
+      <li><span class="k">No antibody</span> &mdash; use AOMclash in its place, at the same weight. Preset
+      <code>twelvemer</code>.</li>
+    </ul>
+    <p>Selection ranks and takes the top designs per epitope; it does not apply a hard pass/fail gate, so
+    a strong design is never thrown out for narrowly missing one threshold.</p>
+    <details><summary>the math &mdash; the composite</summary>
+      <div class="eq" data-tex="\text{composite}=\sum_{m} w_m\, T_m(x_m),\qquad \sum_m w_m = 1"></div>
+      <p class="mnote">T<sub>m</sub> is the per-metric transform (percentile or sigmoid). Weights
+      renormalise over whichever metrics are present, so a missing column rescales the rest rather than
+      breaking the score.</p>
+    </details>
+    <p class="loc">episcaf_analysis/presets.py &middot; score.py &middot; scripts/stage06_select.py</p>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="tool">4 &nbsp; How the tool runs</h2>
+  <p>The site you are reading is static &mdash; GitHub Pages cannot run Python. The real work happens in
+  two backends, and the page talks to whichever one is available.</p>
+  <div class="card">
+    <h3>Three layers</h3>
+    <ul>
+      <li><span class="k">Static pages.</span> The 3D viewer, the pipeline blueprint, and the results
+      table are plain HTML and run anywhere, including straight from Pages. No compute.</li>
+      <li><span class="k">Local server</span> (<code>scripts/growpatch_serve.py</code>). A small
+      standard-library server you run on your own machine. It does the CPU work &mdash; detect the
+      antibody, run growPatch, build the RFd3 contigs &mdash; so &ldquo;run it on your own antigen&rdquo;
+      is real, not a mock. No extra dependencies.</li>
+      <li><span class="k">Cluster service</span> (<code>episcaf_service/</code>, FastAPI). The backend
+      that reaches the GPU pipeline. You run it on a cluster-access host and reach it over a private SSH
+      tunnel. Set its URL in the GUI tool and a run stages for real.</li>
+    </ul>
+    <div class="why"><b>Stage, don&rsquo;t auto-launch:</b> the service does every CPU step for real and
+    then <em>stops at the GPU boundary</em>. A run writes its job folder and an exact submit script under
+    the durable workspace; you launch the diffusion and folding jobs yourself. Nothing the web tool does
+    spends GPU time on its own &mdash; that is deliberate, both so a run is never triggered by accident and
+    because job submission stays in your hands. Making the service public (an API key, rate limits) is a
+    later step; for now it is private over the tunnel.</div>
+    <p class="loc">episcaf_service/README.md &middot; /submit stages, /results scores</p>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="repro">5 &nbsp; Reproducibility</h2>
+  <p>Every number on this page comes from code run on real structures, and each method points at the file
+  that implements it (the grey paths above). The scorer weights and transforms are dials in a preset
+  file, not constants buried in code; the occupancy map is a vendored, regenerable artifact; and the
+  binding model&rsquo;s cross-validation is reproducible from one script. The manuscript is the full
+  written record, and the <a href="pipeline.html">Pipeline</a> page shows what is shipped versus still in
+  progress.</p>
+
+  <p class="foot"><b>In one line:</b> pick the epitope well (observed, or enumerated for recall), build
+  scaffolds around it in a filtered loop, and rank them by whether the epitope kept its shape and whether
+  an antibody can reach it &mdash; with the reasoning, and the math, open to inspection.</p>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded",function(){
+  if(typeof katex==="undefined")return;
+  document.querySelectorAll(".eq[data-tex]").forEach(function(el){
+    try{katex.render(el.getAttribute("data-tex"),el,{displayMode:true,throwOnError:false});}
+    catch(e){el.textContent=el.getAttribute("data-tex");}
+  });
+});
+</script>
+</body>
+</html>
