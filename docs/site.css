@@ -1,0 +1,56 @@
+/* episcaf shared chrome — single source for banner, nav, headings, buttons, focus.
+   Linked from every page BEFORE its inline <style>, so page-specific rules still override.
+   Unified token set:
+     ink #1a1a1a · muted #555 · faint #666 · link #0033cc
+     blue #296DC0 · blue-d #21568f · blue-dd #1b4a86 · blue-end #3b7fd1
+     nav-ink #3b6ea5 · line #d5deea · input-line #999 · accent-red #e5543f */
+
+:root{color-scheme:light}
+html{scrollbar-gutter:stable}
+html,body{margin:0}
+body{background:#fff;color:#1a1a1a;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5}
+
+/* ---- banner ---- */
+.banner{background:linear-gradient(100deg,#21568f 0%,#296DC0 46%,#3b7fd1 100%);color:#fff;border-bottom:3px solid #1b4a86}
+.banner-inner{max-width:1120px;margin:0 auto;padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.brand{display:flex;align-items:center;gap:13px;min-width:0}
+.blogo{width:44px;height:44px;flex:none}
+.wm .name{font-size:27px;font-weight:bold;letter-spacing:.02em;line-height:1}
+.wm .tag{font-size:12.5px;color:#dce8f7;margin-top:3px;letter-spacing:.02em}
+.motif{height:44px;width:auto;flex:none;opacity:.95}
+@media(max-width:540px){.motif{display:none}.wm .name{font-size:23px}}
+
+/* ---- nav (four tabs) ---- */
+.nav{background:#eef3f9;border-bottom:1px solid #d5deea}
+.nav-inner{max-width:1120px;margin:0 auto;padding:0 16px;display:flex;gap:2px;flex-wrap:wrap}
+.nav a{display:inline-block;padding:9px 16px;font-size:13px;font-weight:bold;color:#3b6ea5;text-decoration:none;border:1px solid transparent;border-bottom:none}
+.nav a:hover{color:#21568f}
+.nav a.on{background:#fff;color:#1b4a86;border-color:#d5deea;border-radius:4px 4px 0 0;position:relative;top:1px}
+
+/* ---- links ---- */
+a{color:#0033cc}
+
+/* ---- headings (canonical) ---- */
+h1{font-size:21px;margin:0 0 4px;font-weight:bold;color:#1a1a1a}
+h2{font-size:16px;margin:28px 0 9px;font-weight:bold;color:#1b4a86;border-bottom:2px solid #296DC0;padding-bottom:3px}
+h3{font-size:14px;margin:18px 0 5px;font-weight:bold;color:#21568f}
+
+/* ---- lede ---- */
+.lede{color:#333;margin:0 0 12px;max-width:70ch}
+
+/* ---- button roles ---- */
+.btn-primary{background:#296DC0;color:#fff;border:1px solid #21568f;border-radius:6px;padding:8px 16px;font-weight:bold;font-size:13.5px;cursor:pointer;text-decoration:none;display:inline-block}
+.btn-primary:hover{background:#21568f}
+.btn-primary:disabled{background:#9bb6e6;border-color:#9bb6e6;cursor:default}
+.btn-secondary{background:#eee;color:#1a1a1a;border:1px solid #999;border-radius:5px;padding:5px 12px;font-size:13px;cursor:pointer}
+.btn-secondary:hover{background:#e2e2e2}
+.btn-secondary:disabled{color:#999;cursor:default}
+
+/* ---- focus ---- */
+a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
+
+/* ---- page base padding (each page keeps its own max-width inline) ---- */
+.page{padding:18px 16px 48px}
+
+/* ---- compact In -> Out line (methods / pipeline step descriptions) ---- */
+.io{font-size:12.5px;color:#555;background:#f6f8fb;border-left:3px solid #296DC0;padding:5px 10px;margin:6px 0}

@@ -3,43 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>growPatch tool</title>
+<title>growPatch · episcaf</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
+<link rel="stylesheet" href="site.css">
 <style>
-:root{color-scheme:light;--blue:#296DC0;--ink:#1a1a1a;--red:#c0392b;--purple:#7a4fb0;--green:#0a7a2f}
-html,body{margin:0}
-body{background:#fff;color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5}
-.page{max-width:960px;margin:0 auto;padding:18px 16px 40px}
-.banner{background:linear-gradient(100deg,#21568f 0%,#296DC0 46%,#3b7fd1 100%);color:#fff;border-bottom:3px solid #1b4a86}
-.banner-inner{max-width:960px;margin:0 auto;padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
-.brand{display:flex;align-items:center;gap:13px;min-width:0}
-.blogo{width:44px;height:44px;flex:none}
-.wm .name{font-size:27px;font-weight:bold;letter-spacing:.02em;line-height:1}
-.wm .tag{font-size:12.5px;color:#dce8f7;margin-top:3px;letter-spacing:.02em}
-.motif{height:44px;width:auto;flex:none;opacity:.95}
-@media(max-width:540px){.motif{display:none}.wm .name{font-size:23px}}
-.nav{background:#eef3f9;border-bottom:1px solid #d5deea}
-.nav-inner{max-width:960px;margin:0 auto;padding:0 16px;display:flex;gap:2px;flex-wrap:wrap}
-.nav a{display:inline-block;padding:9px 16px;font-size:13px;font-weight:bold;color:#3b6ea5;text-decoration:none;border:1px solid transparent;border-bottom:none}
-.nav a.on{background:#fff;color:#1b4a86;border:1px solid #d5deea;border-bottom:none;border-radius:4px 4px 0 0;position:relative;top:1px}
-h1{font-size:21px;margin:0 0 3px}
-.lede{color:#333;margin:0 0 12px}
-.card{border:1px solid #d9e2ee;border-radius:7px;background:#fbfcfe;padding:13px 15px;margin:12px 0}
+:root{--blue:#296DC0;--ink:#1a1a1a;--red:#c0392b;--purple:#7a4fb0;--green:#0a7a2f}
+.page{max-width:960px;margin:0 auto}
+.card{border:1px solid #d5deea;border-radius:7px;background:#fbfcfe;padding:13px 15px;margin:12px 0}
 .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
 .fld{display:flex;flex-direction:column;gap:3px}
-.fld label{font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:.03em;color:#777}
+.fld label{font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:.03em;color:#666}
 input,select{font:inherit;font-size:13px;padding:4px 6px;border:1px solid #999;background:#fff;color:#1a1a1a;border-radius:4px}
 input[type=number]{width:72px}
 button{font:inherit;font-size:13px;padding:6px 14px;border:1px solid #1b4a86;background:var(--blue);color:#fff;font-weight:bold;cursor:pointer;border-radius:5px}
 button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color:#9bb6e6;cursor:default}
-.seg{display:inline-flex;border:1px solid #bcc6d2;border-radius:5px;overflow:hidden}
+.seg{display:inline-flex;border:1px solid #d5deea;border-radius:5px;overflow:hidden}
 .seg button{font-weight:normal;padding:5px 11px;border:0;border-right:1px solid #d5deea;background:#fff;color:#3b6ea5}
 .seg button:last-child{border-right:0}
 .seg button.on{background:var(--blue);color:#fff;font-weight:bold}
 .stats{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-.stat{background:#f6f8fb;border:1px solid #d9e2ee;border-radius:5px;padding:6px 11px;font-size:12.5px}
+.stat{background:#f6f8fb;border:1px solid #d5deea;border-radius:5px;padding:6px 11px;font-size:12.5px}
 .stat b{font-size:16px;color:var(--blue);display:block;font-variant-numeric:tabular-nums}
-.lbl{font-size:12px;color:#777;font-weight:bold;text-transform:uppercase;letter-spacing:.03em}
+.lbl{font-size:12px;color:#666;font-weight:bold;text-transform:uppercase;letter-spacing:.03em}
 .main{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
 .listwrap{flex:1;min-width:240px;max-width:340px}
 .plist{border:1px solid #ccc;max-height:470px;overflow-y:auto}
@@ -47,7 +32,7 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .prow:hover{background:#f2f6fc}
 .prow.on{background:#eef4fd;box-shadow:inset 3px 0 0 var(--blue)}
 .prow .ep{flex:1;min-width:0;font-variant-numeric:tabular-nums}
-.prow .meta{color:#888;font-size:11px}
+.prow .meta{color:#666;font-size:11px}
 .mtag{font-size:9.5px;font-weight:bold;padding:1px 5px;border-radius:3px;color:#fff}
 .m-growpatch{background:var(--blue)} .m-eyeview{background:var(--purple)} .m-both{background:var(--green)}
 .viewwrap{flex:2;min-width:300px}
@@ -60,7 +45,6 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .msg.err{background:#fdecea;border:1px solid #f5c6c0;color:#a0241a}
 .msg.busy{background:#eef4fd;border:1px solid #bcd3f0;color:#1b4a86}
 .note{font-size:12px;color:#555;background:#f6f6f6;border:1px solid #ddd;padding:8px 11px;margin-top:14px}
-a{color:#0033cc}
 @media(max-width:640px){.listwrap{max-width:none}#viewer{height:360px}}
 </style>
 </head>
@@ -81,16 +65,15 @@ a{color:#0033cc}
   </svg>
 </div></div>
 <div class="nav"><div class="nav-inner">
+  <a href="home.html">Home</a>
+  <a href="methods.html">Docs</a>
   <a href="pipeline.html">Pipeline</a>
-  <a href="methods.html">How it works</a>
-  <a href="index.html">GUI tool</a>
-  <a href="growpatch.html">growPatch</a>
-  <a href="growpatch_tool.html" class="on">Run growPatch</a>
   <a href="results.html">Results</a>
 </div></div>
 
 <div class="page">
   <h1>Run growPatch on your antigen</h1>
+  <p style="font-size:12.5px;color:#555;margin:0 0 10px"><a href="growpatch.html">See the 8PWW demo</a> if you just want to look. This page runs the real enumerator on your upload and needs the local server.</p>
   <p class="lede">Upload an antigen structure (PDB). growPatch enumerates candidate conformational
   epitopes over its surface &mdash; the exhaustive &ldquo;what could an antibody target&rdquo; list,
   not a single prediction. Pick a candidate to highlight it; drag to rotate; switch to the flat
@@ -111,7 +94,7 @@ a{color:#0033cc}
           <button data-m="eyeview">eye</button>
         </span>
       </div>
-      <div class="fld"><label>&nbsp;</label><button id="run" disabled>Run</button></div>
+      <div class="fld"><label>&nbsp;</label><button id="run" class="btn-primary" disabled>Run</button></div>
     </div>
     <div class="row" style="margin-top:11px">
       <div class="fld"><label>input type</label>
@@ -159,12 +142,13 @@ a{color:#0033cc}
         <div class="fld"><label>value</label><input type="number" id="budgetval" value="200" min="1"></div>
         <div class="fld" title="Bias RFd3 toward helical scaffolds (0 = neutral). Fed to the RFd3 stage via the run spec.">
           <label>helicity bias <span id="helixval" style="color:var(--blue);font-variant-numeric:tabular-nums">0.00</span></label>
-          <input type="range" id="helix" min="0" max="1" step="0.05" value="0" style="width:120px"></div>
-        <div class="fld"><label>&nbsp;</label><button id="stage">Stage run</button></div>
+          <input type="range" id="helix" min="-1" max="1" step="0.05" value="0" style="width:120px"></div>
+        <div class="fld"><label>&nbsp;</label><button id="stage" class="btn-primary">Stage run</button></div>
       </div>
       <div style="font-size:11.5px;color:#8a6d1f;background:#fdf7e3;border:1px solid #efe3b8;border-radius:4px;padding:5px 9px;margin-top:8px">
-        Helicity bias is exploratory: helical designs may bind better &mdash; or may just be <b>better behaved in cryo-EM</b>,
-        so the correlation can be a reporting artifact rather than a true binding effect. Prefer neutral (0) unless testing this.
+        Helicity bias is exploratory and <b>not yet wired into generation</b>: helical designs may bind better &mdash; or may just be
+        <b>better behaved in cryo-EM</b>, so the correlation can be a reporting artifact rather than a true binding effect. The slider
+        runs &minus;1 (away from helix) &hellip; 0 (neutral) &hellip; +1 (toward helix); leave it at 0 for now.
       </div>
       <div style="font-size:12px;color:#555;margin-top:8px" id="stagesel"></div>
       <div id="stagemsg"></div>
@@ -349,6 +333,8 @@ document.querySelectorAll("#viewseg button").forEach(b=>b.onclick=()=>setView(b.
 // --- stage a run ---
 document.querySelectorAll("#budgetseg button").forEach(b=>b.onclick=()=>{
   state.budgetMode=b.dataset.b;
+  // sensible default per mode: ~200 designs/epitope, or ~4 h of wall-time
+  $("budgetval").value = (b.dataset.b==="time") ? 4 : 200;
   document.querySelectorAll("#budgetseg button").forEach(x=>x.classList.toggle("on",x===b));
 });
 $("helix").oninput=()=>{$("helixval").textContent=parseFloat($("helix").value).toFixed(2);};

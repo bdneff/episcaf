@@ -3,36 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>episcaf — Pipeline blueprint</title>
+<title>Pipeline · episcaf</title>
+<link rel="stylesheet" href="site.css">
 <style>
 :root{
-  color-scheme:light;
   --ink:#1a1a1a; --mut:#4e5a67; --faint:#808b97;
-  --blue:#296DC0; --blued:#1b4a86; --line:#d3dce6;
+  --blue:#296DC0; --blued:#1b4a86; --line:#d5deea;
   --done:#2e9e57; --prog:#d8a93a; --plan:#9aa7b4;
   --ng-bg:#fffaf0; --ng-line:#ead9a8; --ng-ink:#8a6413;
 }
-html,body{margin:0}
-body{background:#ffffff;color:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55}
 body.locked{overflow:hidden}
-.page{max-width:720px;margin:0 auto;padding:18px 16px 52px}
-.banner{background:linear-gradient(100deg,#21568f 0%,#296DC0 46%,#3b7fd1 100%);color:#fff;border-bottom:3px solid #1b4a86}
-.banner-inner{max-width:720px;margin:0 auto;padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
-.brand{display:flex;align-items:center;gap:13px;min-width:0}
-.blogo{width:44px;height:44px;flex:none}
-.wm .name{font-size:27px;font-weight:bold;letter-spacing:.02em;line-height:1}
-.wm .tag{font-size:12.5px;color:#dce8f7;margin-top:3px;letter-spacing:.02em}
-.motif{height:44px;width:auto;flex:none;opacity:.95}
-@media(max-width:540px){.motif{display:none}.wm .name{font-size:23px}}
-.nav{background:#eef3f9;border-bottom:1px solid #d5deea}
-.nav-inner{max-width:720px;margin:0 auto;padding:0 16px;display:flex;gap:2px}
-.nav a{display:inline-block;padding:9px 16px;font-size:13px;font-weight:bold;color:#3b6ea5;text-decoration:none;border:1px solid transparent;border-bottom:none}
-.nav a:hover{color:#21568f}
-.nav a.on{background:#fff;color:#1b4a86;border-color:#d5deea;border-radius:4px 4px 0 0;position:relative;top:1px}
+.page{max-width:720px;margin:0 auto}
 h1{font-size:22px;margin:18px 0 4px;font-weight:bold}
 h2{font-size:16px;margin:34px 0 4px;font-weight:bold}
 p{margin:9px 0}
-a{color:#0033cc}
 .updated{font-size:12px;color:var(--faint);margin:0 0 4px;letter-spacing:.02em}
 .lede{color:var(--mut);margin:0 0 14px;max-width:62ch}
 .sub{color:var(--mut);margin:4px 0 14px;max-width:62ch;font-size:13px}
@@ -143,11 +127,9 @@ a{color:#0033cc}
   </svg>
 </div></div>
 <div class="nav"><div class="nav-inner">
+  <a href="home.html">Home</a>
+  <a href="methods.html">Docs</a>
   <a href="pipeline.html" class="on">Pipeline</a>
-  <a href="methods.html">How it works</a>
-  <a href="index.html">GUI tool</a>
-  <a href="growpatch.html">growPatch</a>
-  <a href="growpatch_tool.html">Run growPatch</a>
   <a href="results.html">Results</a>
 </div></div>
 
@@ -283,7 +265,7 @@ a{color:#0033cc}
     <code>docs/DP4_LIBRARY.md</code> · scorer dials: <code>episcaf_analysis/presets.py</code> ·
     AOMclash feature reference: <code>episcaf_analysis/aomclash/FEATURES.md</code>.
     Reference implementations: <code>AltinLab/epitope-universe</code>.
-    This page is the project&rsquo;s living pipeline view; the <a href="index.html">GUI tool</a> tab is the
+    This page is the project&rsquo;s living pipeline view; the <a href="home.html">GUI tool</a> tab is the
     interactive prototype for running a scaffold job.
   </div>
 </div>
@@ -305,12 +287,13 @@ a{color:#0033cc}
     <p class="how">When the antigen has a solved antibody&ndash;antigen complex, the epitope is already
     known: it is the set of antigen residues the antibody contacts (4&nbsp;&Aring; cutoff). No prediction
     needed &mdash; this is the ground-truth setting where we know exactly where &ldquo;good&rdquo; is.</p>
-    <p>Those contact residues are compiled into RFdiffusion <b>contigs</b>, which fix the epitope
+    <p>Those contact residues are compiled into RFdiffusion3 <b>contigs</b>, which fix the epitope
     residues&rsquo; identity and sequence order. One complex can yield more than one <b>patch</b>
     (<code>0P</code>, <code>1P</code>, &hellip;); each patch is a separate target. A patch is in turn one
     or more <b>islands</b> &mdash; spatially contiguous runs &mdash; and the contig constrains residues
     within an island far more tightly than the geometry <i>between</i> islands, which is the known
     multi-island failure mode.</p>
+    <p class="io"><b>In:</b> antibody&ndash;antigen complex (PDB). <b>&rarr; Out:</b> the epitope &mdash; the antigen residues the antibody contacts.</p>
     <h4>In the code</h4>
     <span class="tool">stage01_compile_contigs · stage02_emit_rfd3_inputs</span>
   </div>
@@ -331,6 +314,7 @@ a{color:#0033cc}
     </ul>
     <p style="margin-top:12px">Each surviving patch becomes a candidate epitope (an EpiScaf contig string)
     handed to the same contig machinery as the known-antibody arm.</p>
+    <p class="io"><b>In:</b> antigen structure (one chain, PDB). <b>&rarr; Out:</b> a set of candidate epitope patches, each a residue set that could be an antibody footprint.</p>
     <div class="note"><b>Status.</b> Ported and verified &mdash; reproduces John&rsquo;s reference enumeration
     byte-for-byte on 8pww chain A. Benchmarked on 117 conformational SAbDab epitopes: seed-and-grow and
     antibody&rsquo;s-eye-view tie head-to-head but are complementary, so the shipped default unions them
@@ -345,6 +329,7 @@ a{color:#0033cc}
     8 per contig. This is the first point where a real 3-D scaffold exists.</p>
     <p>The contig fixes the epitope residues and their order but leaves the rest of the fold free, so each
     backbone is a different way of presenting the same epitope. Runs as a SLURM array on the cluster.</p>
+    <p class="io"><b>In:</b> epitope residues held fixed (a contig spec on the antigen). <b>&rarr; Out:</b> de novo backbone(s) presenting that epitope &mdash; coordinates, no sequence yet.</p>
     <h4>In the code</h4>
     <span class="tool">hpc/sbatch/rfd3_array.sbatch</span>
   </div>
@@ -356,6 +341,7 @@ a{color:#0033cc}
     <p>It is the <i>same</i> AOMclash score used at the end, applied early (on the bare backbone instead
     of the AF3 model). The epitope&rsquo;s place in each backbone is read from its contig; keep rule is a
     best-fraction-per-epitope or a cutoff. Cluster-side (backbones live on the cluster).</p>
+    <p class="io"><b>In:</b> RFd3 backbones + the epitope frame. <b>&rarr; Out:</b> the subset of backbones kept &mdash; those whose epitope stays sterically accessible, by keep-frac.</p>
     <h4>In the code</h4>
     <span class="tool">scripts/aomclash_prefilter.py · episcaf_analysis/aomclash/score.py</span>
   </div>
@@ -365,6 +351,7 @@ a{color:#0033cc}
     8 sequences per backbone, so the epitope keeps its native identity while the scaffold is free to be
     whatever folds.</p>
     <p>The <code>*_fixed.pdb</code> naming contract carries the epitope-fix information to the next stage.</p>
+    <p class="io"><b>In:</b> a backbone. <b>&rarr; Out:</b> amino-acid sequence(s) for it.</p>
     <h4>In the code</h4>
     <span class="tool">stage03_mpnn_fixed_pdbs · stage03_mpnn_submit</span>
   </div>
@@ -374,6 +361,7 @@ a{color:#0033cc}
     with the epitope in native geometry. Single-sequence prediction, seed 1, no MSA / data pipeline.</p>
     <p>AF3 produces the structures everything downstream scores &mdash; the first honest test of whether a
     design holds together.</p>
+    <p class="io"><b>In:</b> a designed sequence (with antigen/epitope context). <b>&rarr; Out:</b> predicted structure + confidence/metrics (pLDDT, PAE, RMSD, clash counts).</p>
     <h4>In the code</h4>
     <span class="tool">stage04_af3_emit_jsons · af3_array.sbatch</span>
   </div>
@@ -399,6 +387,7 @@ a{color:#0033cc}
     (confidence at the epitope), AF3 clashing-residue count (real accessibility where an antibody exists),
     and <b>AOMclash</b> (<code>aomclash_pred</code>) as the no-antibody accessibility metric &mdash; the
     learned successor that has replaced the native-aware cylinder (kept only for before/after).</p>
+    <p class="io"><b>In:</b> each AF3 structure, aligned to the native complex on the epitope. <b>&rarr; Out:</b> the per-design metrics &mdash; epitope &amp; overall RMSD, epitope PAE, AF3 clash, AOMclash.</p>
     <h4>In the code</h4>
     <span class="tool">stage05_extract_metrics</span>
   </div>
@@ -415,6 +404,7 @@ a{color:#0033cc}
     <b>both</b> places accessibility matters: the backbone pre-filter (cheap early gate) and the final
     composite (the no-antibody accessibility term). The map is vendored in-repo, so the scorer runs
     offline.</p>
+    <p class="io"><b>In:</b> a design's scaffold atoms, framed on the epitope. <b>&rarr; Out:</b> <code>s_p1_free</code> &mdash; occupancy summed over the free atoms, an accessibility score in AF3-clash units.</p>
     <ul class="steps">
       <li><span class="mk d">&#10003;</span><span class="tx"><b>Map.</b> Vendored (<code>aom_map.pkl</code>), verified physical (occupancy peaks ~14&nbsp;&Aring; out on the antibody side).</span></li>
       <li><span class="mk d">&#10003;</span><span class="tx"><b>Scorer.</b> <code>score.py</code> frames a design (PDB or AF3 CIF) and returns <code>s_p1_free</code>; parity-checked against John&rsquo;s extractor.</span></li>
@@ -436,6 +426,7 @@ a{color:#0033cc}
     inspectable feature set; grouped-by-epitope CV ROC-AUC ~0.83) predicts experimental binding and is a
     selectable ranker &mdash; built on the DP4 assay data, with the bound-state dynamics features dropped
     for cleaner static ones after a held-out check.</p>
+    <p class="io"><b>In:</b> per-design metrics (with <code>binding_pred</code> where features exist), plus a preset. <b>&rarr; Out:</b> designs ranked by composite score, then the per-epitope top-k selected.</p>
     <h4>In the code</h4>
     <span class="tool">stage06_select · presets.py · episcaf_analysis/binding_model/</span>
   </div>
@@ -445,6 +436,7 @@ a{color:#0033cc}
     <p>Concatenate the design components, case-encode them, translate peptide&rarr;DNA with the LadnerLab
     oligo encoder and the DP3 codon weights, and emit a Twist-ready order file. DP4 shipped at 36,000
     constructs.</p>
+    <p class="io"><b>In:</b> the selected designs. <b>&rarr; Out:</b> a Twist-ready DNA order file (concatenated, case-encoded, peptide&rarr;DNA).</p>
     <h4>In the code</h4>
     <span class="tool">stage06_assemble · oligo_encoding · stage07_order_file</span>
   </div>
