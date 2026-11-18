@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Scaffold a known epitope · episcaf</title>
+<title>Scaffold a selected epitope · episcaf</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
@@ -37,7 +37,6 @@ table{border-collapse:collapse;font-size:13px;margin-top:2px}
 th,td{border:1px solid #cccccc;padding:4px 10px;text-align:left;white-space:nowrap}
 th{background:#eeeeee;font-size:11.5px;font-weight:bold}
 td{font-variant-numeric:tabular-nums}
-tr.real td{background:#eef4fd}
 .tag{font-size:10px;color:#0033cc;border:1px solid #9bb6e6;padding:0 4px;margin-left:6px}
 .pass{color:#0a7a2f} .fail{color:#a00000}
 .cimg{width:100%;max-width:560px;border:1px solid #cccccc;background:#ffffff;display:block;margin-top:2px}
@@ -108,7 +107,11 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 </div></div>
 <div class="page">
   <p class="lede">Given an antibody&ndash;antigen complex &mdash; or a lone antigen, from which the epitope is predicted off the structure &mdash; design protein scaffolds that present the epitope in its native, antibody-binding conformation. Pipeline: RFdiffusion3 &rarr; backbone pre-filter &rarr; ProteinMPNN &rarr; AlphaFold3 &rarr; scoring.</p>
-  <p class="note"><b>Prototype.</b> Runs are simulated using the project's real DP4 enrichment rates; the selected structure is shown in an interactive 3D view of the real PDB (drag to rotate). The page does not compute &mdash; it prints the Gemini job it would submit. Live routing needs the backend service (see bottom). Per-row design metrics except #1 are illustrative.</p>
+  <p class="note"><b>This page is a planning simulation.</b> It does not run designs. It shows the cluster
+  job that would be submitted and estimates throughput from the project's measured DP4 enrichment rates;
+  the per-design rows below are illustrative, not completed predictions. The selected structure is a real
+  PDB shown in 3D (drag to rotate). To stage a real job, upload a structure and set a Backend URL (see
+  foot of page); the design itself then runs on the cluster.</p>
 
   <hr>
 
@@ -118,7 +121,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
       <span class="tlab">Epitope source:</span>
       <label class="radio"><input type="radio" name="epi" value="antibody" checked> known antibody (use the complex's contact epitope)</label>
       <label class="radio"><input type="radio" name="epi" value="predict"> predict from the antigen (no antibody)</label>
-      <span id="predwrap" hidden>No antibody yet? The surface scan enumerates candidate epitopes (and can predict them with DiscoTope). <a href="growpatch.html" class="btn-primary">Go to the surface scan &rarr;</a>
+      <span id="predwrap" hidden>No binding site specified? The surface scan samples candidate surface patches (and can rank them with DiscoTope-3.0). <a href="growpatch.html" class="btn-primary">Go to the surface scan</a>
         <select id="predictor" hidden style="display:none" aria-hidden="true" tabindex="-1">
           <option value="discotope3">DiscoTope-3.0</option>
         </select>
@@ -159,9 +162,9 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <div class="field"><label for="rfd3n">Backbones per epitope contig</label>
           <input type="number" id="rfd3n" value="8" min="1" max="64"></div>
         <div class="field"><label for="helix">Helicity bias</label>
-          <input type="range" id="helix" min="-1" max="1" step="0.05" value="0" style="vertical-align:middle;width:140px">
-          <span id="helixv" style="color:#296DC0;font-variant-numeric:tabular-nums">0.00</span>
-          <div class="sub">&minus;1 &hellip; 0 (neutral) &hellip; +1, biasing away from or toward helical scaffolds. <b>Exploratory &mdash; not yet wired into generation</b> (helicity can also just track how well a design behaves in cryo-EM, not true binding).</div></div>
+          <input type="range" id="helix" min="-1" max="1" step="0.05" value="0" disabled style="vertical-align:middle;width:140px">
+          <span id="helixv" style="color:#9aa3ad;font-variant-numeric:tabular-nums">0.00</span>
+          <div class="sub">&minus;1 &hellip; 0 (neutral) &hellip; +1, intended to bias away from or toward helical scaffolds. <b>Not yet wired into generation</b>, so the control is disabled; it is shown to mark a planned option.</div></div>
         <label class="radio"><input type="checkbox" id="ipd"> Iterative loop &mdash; seed later rounds from the best designs (partial diffusion)</label>
         <div class="field" id="ipdwrap" hidden><label for="ipdrounds">Max rounds</label>
           <input type="number" id="ipdrounds" value="4" min="1" max="10">
@@ -189,7 +192,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 
     <section class="step">
       <div class="steph"><span class="stepn">4</span> Fold &mdash; AlphaFold3</div>
-      <div class="stepb"><p class="fixed-note">Single-sequence, seed 1, no MSA &mdash; the honest test that the design folds with the epitope in native geometry. No options.</p></div>
+      <div class="stepb"><p class="fixed-note">Single-sequence, seed 1, no MSA: tests whether the design folds with the epitope in native geometry without template or coevolution cues. No options.</p></div>
     </section>
 
     <section class="step">
@@ -223,8 +226,8 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     </div>
 
     <div class="field">
-      <div class="demobadge">Prototype &mdash; numbers are simulated unless you upload a structure and set a Backend URL.</div>
-      <div><button type="submit" id="runbtn" class="btn-primary">Run scaffolding</button>
+      <div class="demobadge">With no Backend URL this simulates a run (illustrative numbers). With a Backend URL and an uploaded structure it prepares real design inputs on the cluster; the design still runs there.</div>
+      <div><button type="submit" id="runbtn" class="btn-primary">Simulate a run</button>
       <span class="help" id="runnote"></span></div>
     </div>
   </form>
@@ -235,8 +238,25 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   <pre id="log"></pre>
   <p id="summary"></p>
 
-  <h2>Scaffolded epitope designs</h2>
-  <div class="demobadge">Prototype &mdash; numbers are simulated unless you upload a structure and set a Backend URL.</div>
+  <section id="recorded" hidden>
+    <h2>Recorded example &mdash; 8PWW (PfRH5)</h2>
+    <p class="note"><b>Recorded result from a completed run.</b> A real top-ranked design for the 8PWW
+    epitope. Changing the settings above does not rerun it. Metrics come from the ranked run table
+    (<code>results/dp4_C2_single_island_ranked.csv</code>).</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>design</th><th>epitope RMSD (&Aring;)</th><th>overall RMSD (&Aring;)</th><th>mean PAE</th><th>antibody clashes</th><th>four-filter</th></tr></thead>
+      <tbody><tr>
+        <td>8pww_0P &middot; contig1 &middot; seed0 &middot; rep0</td><td>0.23</td><td>0.86</td><td>3.5</td><td>0</td><td class="pass">pass</td>
+      </tr></tbody>
+    </table></div>
+    <p class="help">Structure: <a href="pdb/8pww_design.pdb" download>8pww_design.pdb</a>. Epitope RMSD is
+    the epitope backbone RMSD to native; antibody clashes are measured against the reference antibody
+    (<code>af3_n_clash_res</code>). A predicted structure that passes these filters is not an
+    experimental measurement of folding or binding.</p>
+  </section>
+
+  <h2>Simulated designs</h2>
+  <div class="demobadge">Simulation &mdash; these rows are illustrative, drawn at the measured DP4 statistics. They are not completed predictions. Upload a structure and set a Backend URL to stage a real job.</div>
   <div class="tablewrap">
     <table id="results">
       <thead><tr><th>#</th><th>design</th><th>epitope RMSD (&Aring;)</th><th>Ab clash</th><th>score</th><th>status</th></tr></thead>
@@ -248,10 +268,10 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
      <button id="zipbtn" type="button" class="btn-secondary">Download bundle (.zip)</button>
      <span class="help" id="dlnote">CSV of the ranked designs; the bundle adds structures and sequences.</span></p>
 
-  <h2>Gemini job</h2>
+  <h2>Cluster job (preview)</h2>
   <pre id="cmd"></pre>
   <p><button id="cmdbtn" type="button" class="btn-secondary">Copy command</button></p>
-  <p class="help">The job this run maps to. The page cannot submit it; run it on Gemini, or set a Backend URL above to stage it for real.</p>
+  <p class="help">The commands this run maps to. The page cannot submit them; run them on the cluster, or set a Backend URL above to stage the job for real.</p>
 
   <div id="stagedwrap" hidden>
     <h2>Staged job (live backend)</h2>
@@ -301,14 +321,14 @@ function computeJob(s){
     bind:st.bind,strat:st,rows:buildRows(s,returned,passers)};
 }
 function buildRows(s,returned,passers){
-  const rnd=rng(hash(s.target+s.strategy+s.mode+s.n+s.runtime+s.epi)); const real=s.target==="8PWW"; const rows=[];
+  const rnd=rng(hash(s.target+s.strategy+s.mode+s.n+s.runtime+s.epi)); const rows=[];
   for(let i=0;i<returned;i++){
     let epi,clash,score,ok;
-    if(i===0&&real){epi=0.22;clash=0;score=0.98;ok=true;}
-    else if(i<passers){epi=+(0.30+rnd()*0.95).toFixed(2);clash=0;score=+(Math.max(0.60,0.92-i*0.9/Math.max(returned,1))-rnd()*0.05).toFixed(2);ok=true;}
+    if(i<passers){epi=+(0.30+rnd()*0.68).toFixed(2);clash=0;score=+(Math.max(0.60,0.92-i*0.9/Math.max(returned,1))-rnd()*0.05).toFixed(2);ok=true;}
     else{epi=+(1.5+rnd()*2.2).toFixed(2);clash=Math.floor(1+rnd()*9);score=+(0.55-rnd()*0.3).toFixed(2);ok=false;}
-    rows.push({i:i+1,id:`${s.target.toLowerCase()}_d${String(1+Math.floor(rnd()*9000)).padStart(4,"0")}`,
-      epi,clash,score:Math.max(score,0.05),ok,real:(i===0&&real)});
+    // ids are deterministic by position (sim###) so they read as simulated, never as recorded designs
+    rows.push({i:i+1,id:`${s.target.toLowerCase()}_sim${String(i+1).padStart(3,"0")}`,
+      epi,clash,score:Math.max(score,0.05),ok});
   }
   return rows;
 }
@@ -392,16 +412,15 @@ function writeLog(job,animate){
 function paint(job,animate){
   writeLog(job,animate);
   const expB=Math.round(job.returned*job.bind), bind=Math.round(job.bind*100);
-  $("#summary").innerHTML=`Returned <b>${fmt(job.returned)}</b> design${job.returned===1?"":"s"} in ${job.elapsed.toFixed(0)} min. `+
+  $("#summary").innerHTML=`<b>Estimated:</b> ${fmt(job.returned)} design${job.returned===1?"":"s"} in ~${job.elapsed.toFixed(0)} min. `+
     `Expected binders about <b>${fmt(expB)}</b> (${bind}% at ${job.strat.label}). `+
     `The backbone pre-filter folded ${fmt(job.kept)} of ${fmt(job.generated)} backbones, avoiding AlphaFold3 on ${fmt(job.avoided)} (${Math.round(100*job.avoided/job.generated)}%).`;
-  $("#rbody").innerHTML=job.rows.map(r=>`<tr class="${r.real?"real":""}">
-    <td>${r.i}</td><td>${r.id}${r.real?'<span class="tag">real AF3</span>':''}</td>
+  $("#rbody").innerHTML=job.rows.map(r=>`<tr>
+    <td>${r.i}</td><td>${r.id}</td>
     <td>${r.epi.toFixed(2)}</td><td>${r.clash}</td><td>${r.score.toFixed(2)}</td>
     <td class="${r.ok?"pass":"fail"}">${r.ok?"pass":"below"}</td></tr>`).join("");
-  $("#tablecap").textContent = state.target==="8PWW"
-    ? "Row 1 is a real design result; remaining rows are illustrative at the real pass and clash statistics."
-    : "Illustrative designs at the real DP4 statistics.";
+  $("#tablecap").textContent =
+    "Simulated designs drawn at the measured DP4 pass and clash statistics. These are illustrative, not completed predictions.";
   $("#cmd").innerHTML=cmdHTML(geminiCmd(state));
 }
 
@@ -425,7 +444,7 @@ function updateCaption(){
     vn.textContent=name+" — epitope (red) is what gets scaffolded";
   }else if(state.target==="__upload"){
     leg.innerHTML=sw(GREY)+" antigen (no bound antibody)";
-    vn.textContent=name+" — lone antigen; growPatch enumerates candidate epitopes";
+    vn.textContent=name+" — lone antigen; the surface scan samples candidate surface patches";
   }else{
     leg.innerHTML='predicted epitope likelihood &nbsp;<span style="display:inline-block;width:62px;height:9px;vertical-align:middle;background:linear-gradient(90deg,#2b47d6,#f2f2f2,#c0392b);border:1px solid #999"></span>&nbsp; low &rarr; high';
     const m=state.predictor==="bepipred3"?"BepiPred-3.0":"DiscoTope-3.0";
@@ -494,11 +513,17 @@ function initCViewer(){
     loadComplex();}
   catch(e){useImgFallback();}
 }
+function updateRunBtn(){
+  const b=$("#runbtn"); if(!b) return;
+  b.textContent = (apiBase() && uploadText) ? "Prepare design inputs" : "Simulate a run";
+}
 function syncHints(){
   $("#targethint").textContent = state.epi==="antibody"
     ? "antibody-antigen complex; the viewer shows antigen (grey), antibody (blue), contact epitope (red)."
     : "antigen only; residues shaded by DiscoTope-3.0 predicted epitope likelihood.";
   $("#predwrap").hidden = state.epi!=="predict";
+  $("#recorded").hidden = state.target!=="8PWW";
+  updateRunBtn();
   $("#runnote").textContent = state.mode==="threshold"
     ? `will stop early if ${state.n} pass before ${state.runtime} min`
     : `will return the best ${state.n} after up to ${state.runtime} min`;
@@ -519,6 +544,7 @@ $("#ipdrounds").addEventListener("input",e=>{state.ipdrounds=clamp(e.target.valu
 $("#prefilter").addEventListener("change",e=>{state.prefilter=e.target.checked;$("#prefwrap").style.display=state.prefilter?"":"none";rerun();});
 $("#keepfrac").addEventListener("input",e=>{state.keepfrac=Math.max(0.05,Math.min(1,+e.target.value||0.5));rerun();});
 $("#mpnnn").addEventListener("input",e=>{state.mpnnn=clamp(e.target.value,1,32,8);rerun();});
+$("#backend").addEventListener("input",updateRunBtn);
 
 /* --- PDB upload: load into the viewer; with the local server, auto-detect the epitope --- */
 let uploadText=null, uploadFmt="pdb";
@@ -545,7 +571,7 @@ $("#pdbfile").addEventListener("change",e=>{
       const r=document.querySelector('input[name=epi][value="'+state.epi+'"]'); if(r)r.checked=true;
       $("#uploadnote").innerHTML=d.is_complex
         ? "detected an <b>antibody</b> (chain "+(d.partner_chains||[]).join(", ")+") bound to chain <b>"+d.antigen_chain+"</b>; epitope = "+d.n_epitope+" contact residues (red)."
-        : "no bound partner &mdash; <b>lone antigen</b> (chain "+d.antigen_chain+"); growPatch enumerates candidate epitopes.";
+        : "no bound partner &mdash; <b>lone antigen</b> (chain "+d.antigen_chain+"); the surface scan samples candidate surface patches.";
     }catch(err){
       CFG["__upload"]={ag:firstChain(uploadText),ab:[],epi:[]};
       state.epi="predict"; const r=document.querySelector('input[name=epi][value="predict"]'); if(r)r.checked=true;
@@ -575,23 +601,27 @@ async function stageReal(){
   const mode=state.epi==="antibody"?"antibody":"growpatch";
   const chain=(CFG["__upload"]&&CFG["__upload"].ag)||"A";
   $("#stagedwrap").hidden=false; const box=$("#staged"); box.textContent="staging on "+base+" …";
+  const PATCH_CAP=8; let capNote="";
   try{
     let epis="";
-    if(mode==="growpatch"){                          // lone antigen: enumerate candidate epitopes first
+    if(mode==="growpatch"){                          // lone antigen: sample candidate patches first
       const er=await fetch(base+"/enumerate?fmt="+uploadFmt+"&chain="+chain+"&mode=growpatch",{method:"POST",body:uploadText});
       const ed=await er.json(); if(!er.ok||ed.error) throw new Error(ed.error||("enumerate HTTP "+er.status));
-      epis=(ed.patches||[]).slice(0,8).map(p=>p.epitope).join("|");
-      if(!epis) throw new Error("growPatch found no candidate epitopes on chain "+chain);
+      const all=(ed.patches||[]);
+      epis=all.slice(0,PATCH_CAP).map(p=>p.epitope).join("|");
+      if(!epis) throw new Error("the surface scan found no candidate patches on chain "+chain);
+      if(all.length>PATCH_CAP) capNote="\nstaged the top "+PATCH_CAP+" of "+all.length+" candidate patches (by growPatch order)";
     }
     const q="/submit?fmt="+uploadFmt+"&chain="+chain+"&mode="+mode+"&name="+encodeURIComponent(name)
       +"&epitopes="+encodeURIComponent(epis)+"&rfd3="+state.rfd3n+"&mpnn="+state.mpnnn
       +"&helix_bias="+state.helix+"&ipd="+(state.ipd?"true":"false")+"&ipdrounds="+state.ipdrounds
-      +"&prefilter="+(state.prefilter?"true":"false")+"&keepfrac="+state.keepfrac+"&topn="+state.n;
+      +"&prefilter="+(state.prefilter?"true":"false")+"&keepfrac="+state.keepfrac+"&topn="+state.n
+      +"&model="+encodeURIComponent(state.strategy)+"&selection="+state.mode+"&runtime="+state.runtime;
     const r=await fetch(base+q,{method:"POST",body:uploadText});
     const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||("submit HTTP "+r.status));
     lastRunId=d.run_id;
     box.textContent="staged "+d.n_contigs+" contig"+(d.n_contigs===1?"":"s")+" from "+d.n_epitopes
-      +" epitope"+(d.n_epitopes===1?"":"s")+"\n"+d.run_dir+"\n\n# run this on the cluster:\n"+d.submit_sh;
+      +" epitope"+(d.n_epitopes===1?"":"s")+capNote+"\n"+d.run_dir+"\n\n# run this on the cluster:\n"+d.submit_sh;
     $("#cmd").textContent=d.submit_sh;
     $("#fetchres").hidden=false;
     $("#fetchnote").textContent="run "+d.run_id+" staged. After RFd3→MPNN→AF3 + scoring finish, fetch the designs.";
@@ -604,7 +634,7 @@ async function fetchResults(){
   const note=$("#fetchnote"); note.textContent="fetching results for "+lastRunId+" …";
   try{
     const preset=state.epi==="antibody"?"antibody_softgate":"twelvemer";
-    const r=await fetch(base+"/results/"+lastRunId+"?preset="+preset+"&topk="+state.n);
+    const r=await fetch(base+"/results/"+lastRunId+"?preset="+preset+"&topk="+state.n+"&model="+encodeURIComponent(state.strategy));
     if(r.status===409){ note.textContent="not scored yet — the cluster run hasn't produced metrics.csv. Try again after AF3 + scoring finish."; return; }
     const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||("HTTP "+r.status));
     fillRealResults(d); note.textContent="showing "+d.rows.length+" scored designs (ranked by "+d.info.ranked_by+").";
@@ -614,9 +644,10 @@ function fillRealResults(d){
   const tb=$("#rbody"); tb.innerHTML="";
   const col=c=>d.columns.includes(c)?c:null;
   const idc=col("design_id")||col("id")||d.columns[0];
-  const rmsdc=col("overall_rmsd")||col("epitope_chunk_rmsd");
+  const rmsdc=col("epitope_chunk_rmsd");               // the column heading is "epitope RMSD"; bind it, don't substitute overall
   const clashc=col("af3_n_clash_res")||col("aomclash_pred");
-  const scorec=col("composite")||col("binding_pred");
+  // show the score column that matches the chosen scorer, not always composite
+  const scorec=state.strategy==="composite"?(col("composite")||col("binding_pred")):(col("binding_pred")||col("composite"));
   d.rows.forEach((row,i)=>{const tr=document.createElement("tr");
     [i+1,row[idc],rmsdc?(+row[rmsdc]).toFixed(2):"—",clashc?(+row[clashc]).toFixed(1):"—",
      scorec?(+row[scorec]).toFixed(3):"—","scored"].forEach(c=>{
@@ -642,11 +673,11 @@ function bundleReadme(){return [
   "Target:    "+state.target+"  ("+(DESCS[state.target]||"")+")",
   "Strategy:  "+STRAT[state.strategy].label+"   Selection: "+state.mode+"   N requested: "+state.n,
   "",
-  "designs.csv       the ranked designs shown in the tool (illustrative, except row 1 for 8PWW).",
-  "structures/       the target antibody:antigen complex (PDB)"+(state.target==="8PWW"?", plus a real top-design scaffold.":"."),
-  (state.target==="8PWW"?"sequences.fasta   the real 8PWW top-design sequence (103-mer).":""),
+  "designs.csv       the simulated designs shown in the tool (illustrative, not completed predictions).",
+  "structures/       the target antibody:antigen complex (PDB)"+(state.target==="8PWW"?", plus a real recorded top-design scaffold.":"."),
+  (state.target==="8PWW"?"sequences.fasta   the real 8PWW recorded top-design sequence (103-mer).":""),
   "",
-  "This is a prototype: the run is simulated. A live run returns one PDB and one FASTA",
+  "The design rows are simulated. A live run returns one PDB and one FASTA",
   "record per design, from the RFdiffusion3 -> backbone pre-filter -> ProteinMPNN -> AlphaFold3 pipeline."
 ].filter(Boolean).join("\n");}
 $("#csvbtn").addEventListener("click",()=>dl("episcaf_"+state.target+"_designs.csv",new Blob([resultsCSV()],{type:"text/csv"})));

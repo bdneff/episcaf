@@ -134,7 +134,7 @@ p{margin:9px 0}
 </div></div>
 
 <div class="page">
-  <p class="updated">BLUEPRINT · UPDATED 2026-11-13</p>
+  <p class="updated">BLUEPRINT · UPDATED 2026-11-18</p>
   <h1>Pipeline blueprint</h1>
   <p class="lede">The route from an antigen to a synthesizable, epitope-presenting scaffold &mdash; and
   what is built versus still to come. The shipped DP4 backbone runs top to bottom; the shaded
@@ -144,7 +144,7 @@ p{margin:9px 0}
     <span class="chip done">shipped</span>
     <span class="chip prog">in&nbsp;progress</span>
     <span class="chip plan">planned</span>
-    <span><span class="ng-tag">NEXT-GEN</span> &nbsp;John&rsquo;s new method</span>
+    <span><span class="ng-tag">NEXT-GEN</span> &nbsp;a newer method being folded in</span>
   </div>
   <p class="hint"><span class="cur">&#128073;</span> Click any component for how it works, its status, and where it lives in the code.</p>
 
@@ -163,9 +163,9 @@ p{margin:9px 0}
           <span class="more">How it works &rarr;</span>
         </div>
         <div class="orbubble">OR</div>
-        <div class="stage ng s-plan" data-detail="growpatch" tabindex="0" role="button" aria-label="growPatch — details">
-          <div class="st-top"><span class="st-name">No antibody <span class="ng-tag">NEXT-GEN</span></span><span class="chip plan">planned</span></div>
-          <p class="st-desc"><b>growPatch</b> enumerates footprint-sized surface patches, then a learned score ranks them.</p>
+        <div class="stage ng s-done" data-detail="growpatch" tabindex="0" role="button" aria-label="growPatch — details">
+          <div class="st-top"><span class="st-name">No antibody <span class="ng-tag">NEXT-GEN</span></span><span class="chip done">shipped</span></div>
+          <p class="st-desc"><b>growPatch</b> samples candidate surface patches across the antigen; downstream scoring ranks them.</p>
           <span class="more">How it works &rarr;</span>
         </div>
       </div>
@@ -298,28 +298,30 @@ p{margin:9px 0}
     <span class="tool">stage01_compile_contigs · stage02_emit_rfd3_inputs</span>
   </div>
 
-  <div data-id="growpatch" data-title="growPatch — exhaustive no-antibody enumeration" data-chip="done">
-    <p class="how">With no antibody there is no known epitope. growPatch does <b>not</b> predict the most
-    likely one &mdash; that is what DiscoTope and BepiPred do, optimizing precision and often wrong.
-    It does the opposite: enumerate <b>every</b> surface region that could plausibly be an antibody
-    footprint, an exhaustive list optimized for coverage and recall, so we can scaffold them all and
-    let the experiment decide. It replaces the old tiled 12-mer approach, which (being sequence-linear)
-    could never propose a conformational epitope.</p>
+  <div data-id="growpatch" data-title="growPatch — no-antibody surface sampling" data-chip="done">
+    <p class="how">With no antibody there is no known epitope. growPatch does not predict the single most
+    likely one; that is the task of epitope predictors such as DiscoTope and BepiPred, which rank how
+    antibody-like each surface residue is and return a predicted epitope. growPatch instead samples
+    candidate surface patches across the antigen, for coverage rather than a single call, so the
+    candidates can be scaffolded and ranked downstream. It replaces the old tiled 12-mer approach, which
+    (being sequence-linear) could not propose a conformational epitope.</p>
     <ul class="steps">
-      <li><span class="mk o">1</span><span class="tx"><b>Surface.</b> Relative SASA per residue (freesasa, Tien-2013 normalization); residues with relSASA &ge; 0.2 are &ldquo;surface.&rdquo;</span></li>
-      <li><span class="mk o">2</span><span class="tx"><b>Enumerate, two complementary ways.</b> <i>Seed &amp; grow</i> &mdash; from every surface residue, accrete the nearest connected surface residue to footprint size (~16). <i>Antibody&rsquo;s-eye-view</i> &mdash; sample approach directions and take the surface cap an antibody from each direction would contact. Both produce conformational (sequence-discontinuous) patches.</span></li>
-      <li><span class="mk o">3</span><span class="tx"><b>Clean up.</b> Gap-fill, keep patches large enough (&ge;12 residues) and not too fragmented (&le;3 islands).</span></li>
-      <li><span class="mk o">4</span><span class="tx"><b>Union &amp; dedupe.</b> Merge both strategies and Jaccard non-max suppress; patches both methods found are tagged as co-found. Exhaustiveness is a dial (dedup threshold + optional cap).</span></li>
-      <li><span class="mk o">5</span><span class="tx"><b>Optional ranking layer.</b> A learned DiscoTope-style score can <i>prioritize</i> the list when compute is limited &mdash; but it sits on top; the enumeration underneath stays complete.</span></li>
+      <li><span class="mk o">1</span><span class="tx"><b>Surface.</b> Relative solvent accessibility per residue (freesasa, Tien-2013 normalization); residues exposing &ge; 20% of their type&rsquo;s area (relSASA &ge; 0.2) are &ldquo;surface.&rdquo;</span></li>
+      <li><span class="mk o">2</span><span class="tx"><b>Two sampling methods.</b> <i>Neighbor-based patch growth</i> (seed &amp; grow) &mdash; from a surface residue, accrete the nearest connected surface residues to footprint size (~16). <i>Directional surface sampling</i> (antibody&rsquo;s-eye view) &mdash; sample approach directions and take the surface cap an antibody from each direction would contact. Both produce conformational (sequence-discontinuous) patches.</span></li>
+      <li><span class="mk o">3</span><span class="tx"><b>Clean up.</b> Gap-fill, keep patches large enough (&ge;12 residues) and not too fragmented (&le;3 sequence segments, or &ldquo;islands&rdquo;).</span></li>
+      <li><span class="mk o">4</span><span class="tx"><b>Combine &amp; dedupe.</b> Merge both methods and apply Jaccard non-max suppression; a patch found by both methods is tagged as such (provenance, not on its own a confidence claim). How much overlap is kept is set by the dedup threshold and an optional cap.</span></li>
+      <li><span class="mk o">5</span><span class="tx"><b>Optional ranking layer.</b> A DiscoTope-style per-residue score can prioritize the list when compute is limited; it sits on top of the sampled set.</span></li>
     </ul>
-    <p style="margin-top:12px">Each surviving patch becomes a candidate epitope (an EpiScaf contig string)
+    <p style="margin-top:12px">Each surviving patch becomes a candidate epitope (an episcaf contig string)
     handed to the same contig machinery as the known-antibody arm.</p>
-    <p class="io"><b>In:</b> antigen structure (one chain, PDB). <b>&rarr; Out:</b> a set of candidate epitope patches, each a residue set that could be an antibody footprint.</p>
-    <div class="note"><b>Status.</b> Ported and verified &mdash; reproduces John&rsquo;s reference enumeration
-    byte-for-byte on 8pww chain A. Benchmarked on 117 conformational SAbDab epitopes: seed-and-grow and
-    antibody&rsquo;s-eye-view tie head-to-head but are complementary, so the shipped default unions them
-    &mdash; recall@0.8 = 0.92 vs ~0.80 either alone. The surface cutoff is settled at
-    <code>SASA_CUT=0.2</code>. Next: the interactive patch viewer.</div>
+    <p class="io"><b>In:</b> antigen structure (one chain, PDB). <b>&rarr; Out:</b> a set of candidate surface patches, each a residue set that could be an antibody footprint.</p>
+    <div class="note"><b>Status.</b> The sampling method is implemented and parity-verified: on chain A of
+    8PWW it reproduces the reference implementation for that input and configuration (227 identical
+    candidate patches). Benchmarked on 117 conformational SAbDab epitopes, neighbor-based growth and
+    directional sampling perform comparably alone and are complementary, so the default combines them
+    (recall@0.8 = 0.92 versus ~0.80 for either alone). The surface cutoff is settled at
+    <code>SASA_CUT=0.2</code>, and the interactive patch viewer is live. Still being brought up: staging
+    a full no-antibody design run end-to-end through the tool.</div>
     <h4>In the code</h4>
     <span class="tool">episcaf_analysis/growpatch/{core,read,eyeview}.py · results/growpatch/ENUMERATOR_DECISION.md · ref: segmentation/growPatch.py</span>
   </div>
@@ -334,7 +336,7 @@ p{margin:9px 0}
     <span class="tool">hpc/sbatch/rfd3_array.sbatch</span>
   </div>
 
-  <div data-id="prefilter" data-title="Backbone clash pre-filter" data-chip="done">
+  <div data-id="prefilter" data-title="Backbone clash pre-filter" data-chip="plan">
     <p class="how">A cheap gate right after backbone generation: score each RFd3 backbone with AOMclash
     and keep only the least-clashy per epitope &mdash; before spending MPNN and AF3 on a design whose
     scaffold mass sits where the antibody has to bind. The biggest compute win in the pipeline.</p>
@@ -359,21 +361,21 @@ p{margin:9px 0}
   <div data-id="af3" data-title="AlphaFold3" data-chip="done">
     <p class="how">Fold each designed sequence to check whether it actually adopts the intended structure
     with the epitope in native geometry. Single-sequence prediction, seed 1, no MSA / data pipeline.</p>
-    <p>AF3 produces the structures everything downstream scores &mdash; the first honest test of whether a
-    design holds together.</p>
+    <p>AF3 produces the structures everything downstream scores. It tests whether a design folds as
+    intended; it does not measure stability or binding.</p>
     <p class="io"><b>In:</b> a designed sequence (with antigen/epitope context). <b>&rarr; Out:</b> predicted structure + confidence/metrics (pLDDT, PAE, RMSD, clash counts).</p>
     <h4>In the code</h4>
     <span class="tool">stage04_af3_emit_jsons · af3_array.sbatch</span>
   </div>
 
-  <div data-id="loop" data-title="Loop-back / partial diffusion" data-chip="done">
+  <div data-id="loop" data-title="Loop-back / partial diffusion" data-chip="plan">
     <p class="how">Rather than one pass, the best designs of a round seed the next: re-noise a good
     backbone part-way and denoise it with the epitope fixed (a <b>partial-diffusion child</b>, a neighbor
     of something that worked). A controller picks winners each round, splits the next round&rsquo;s budget
     between fresh <i>de-novo</i> designs and children, and stops an epitope on success, a score plateau,
     or a round cap.</p>
-    <div class="note"><b>Resolved: adaptive budget.</b> John&rsquo;s open question &mdash; are children
-    genuinely better or just best-of-N in a lucky basin? &mdash; is answered by letting each epitope
+    <div class="note"><b>Design decision: adaptive budget.</b> The open question &mdash; are children
+    genuinely better or just best-of-N in a lucky basin? &mdash; is handled by letting each epitope
     <i>earn</i> its children budget: start de-novo-only and raise the children share with a streak of
     round-over-round improvement. The data decides per epitope instead of a fixed guess.</div>
     <h4>In the code</h4>
@@ -392,12 +394,12 @@ p{margin:9px 0}
     <span class="tool">stage05_extract_metrics</span>
   </div>
 
-  <div data-id="aomclash" data-title="AOMclash — learned clash predictor" data-chip="done">
+  <div data-id="aomclash" data-title="AOMclash — learned clash predictor" data-chip="prog">
     <p class="how">Replaces the geometric native-aware cylinder as the no-antibody accessibility metric.
     It reads an <b>antibody occupancy map</b> (built from ~1,029 SAbDab complexes, antibody geometry only,
     so it is AlphaFold-version agnostic) at each scaffold atom. We ship a <b>single interpretable
     number</b> &mdash; <code>s_p1_free</code>, the occupancy summed over the scaffold atoms that stick into
-    antibody territory beyond the native antigen &mdash; not John&rsquo;s 111-feature gradient-boosted
+    antibody territory beyond the native antigen &mdash; rather than a 111-feature gradient-boosted
     bank.</p>
     <p>Why one feature: the carved occupancy sum is ~0.87&ndash;0.89 on its own and the full model only
     ~0.02 higher &mdash; not worth ~38 correlated features and the overfitting risk. It is used in
@@ -407,8 +409,8 @@ p{margin:9px 0}
     <p class="io"><b>In:</b> a design's scaffold atoms, framed on the epitope. <b>&rarr; Out:</b> <code>s_p1_free</code> &mdash; occupancy summed over the free atoms, an accessibility score in AF3-clash units.</p>
     <ul class="steps">
       <li><span class="mk d">&#10003;</span><span class="tx"><b>Map.</b> Vendored (<code>aom_map.pkl</code>), verified physical (occupancy peaks ~14&nbsp;&Aring; out on the antibody side).</span></li>
-      <li><span class="mk d">&#10003;</span><span class="tx"><b>Scorer.</b> <code>score.py</code> frames a design (PDB or AF3 CIF) and returns <code>s_p1_free</code>; parity-checked against John&rsquo;s extractor.</span></li>
-      <li><span class="mk d">&#10003;</span><span class="tx"><b>Wired in.</b> Backbone pre-filter + the final design scorer; the <code>twelvemer</code> preset now scores accessibility with <code>aomclash_pred</code>.</span></li>
+      <li><span class="mk d">&#10003;</span><span class="tx"><b>Scorer.</b> <code>score.py</code> frames a design (PDB or AF3 CIF) and returns <code>s_p1_free</code>; parity-checked against the reference extractor.</span></li>
+      <li><span class="mk d">&#10003;</span><span class="tx"><b>Scorer wired into the composite.</b> The <code>twelvemer</code> preset scores accessibility with <code>aomclash_pred</code>. Still in progress: the backbone pre-filter stage and cluster-side training/validation against the cylinder on matched folds.</span></li>
     </ul>
     <h4>In the code</h4>
     <span class="tool">episcaf_analysis/aomclash/ (aom_map, score, features) · results/aomclash/feature_set_decision.md</span>
@@ -423,9 +425,9 @@ p{margin:9px 0}
     (<code>antibody_softgate</code> keeps the real AF3 clash; <code>twelvemer</code> is the no-antibody
     arm, now AOMclash-scored).</p>
     <p>Beyond the geometric composite, an <b>interpretable binding model</b> (L2-logistic on a small,
-    inspectable feature set; grouped-by-epitope CV ROC-AUC ~0.83) predicts experimental binding and is a
-    selectable ranker &mdash; built on the DP4 assay data, with the bound-state dynamics features dropped
-    for cleaner static ones after a held-out check.</p>
+    inspectable feature set; grouped-by-epitope CV ROC-AUC ~0.81) gives a binding score used to rank
+    designs and is a selectable ranker &mdash; built on the DP4 assay data, with the bound-state dynamics
+    features dropped for cleaner static ones after a held-out check.</p>
     <p class="io"><b>In:</b> per-design metrics (with <code>binding_pred</code> where features exist), plus a preset. <b>&rarr; Out:</b> designs ranked by composite score, then the per-epitope top-k selected.</p>
     <h4>In the code</h4>
     <span class="tool">stage06_select · presets.py · episcaf_analysis/binding_model/</span>

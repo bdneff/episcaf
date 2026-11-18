@@ -101,44 +101,57 @@ details[open] summary::before{content:"\25BE  "}
   <!-- ============================================================ -->
   <details class="sec"><summary><h2 id="epitope">1 &nbsp; Choosing the epitope</h2></summary>
   <div class="secbody">
-  <p>There are two ways in, depending on whether you already know where the antibody binds. The tool
-  detects which case you are in from the uploaded structure and lets you override its guess.</p>
+  <p>There are two ways in, depending on whether the binding site is already known. The tool infers
+  which case applies from the uploaded structure and lets you override that choice.</p>
 
   <div class="card">
     <h3>Known antibody <span class="mode ab">epitope given</span></h3>
     <p>When the upload is an antibody&ndash;antigen complex, the epitope is not something to predict &mdash;
     it is observed. We take every antigen residue with a heavy atom within 4&nbsp;&Aring; of the
-    antibody as the contact epitope, group the residues into sequence islands, and hand that to
-    generation. The same 4&nbsp;&Aring; contact rule recovers the published epitope on the 8PWW
-    benchmark exactly.</p>
+    antibody as the contact epitope, group the residues into sequence segments (stretches of the
+    amino-acid sequence; one epitope can draw from several that sit next to each other in the folded
+    structure, called islands elsewhere on this page), and hand that to generation. On the 8PWW
+    benchmark this 4&nbsp;&Aring; contact rule returns the same epitope residues reported for that
+    complex.</p>
     <p class="io"><b>In:</b> antibody&ndash;antigen complex (PDB). <b>&rarr; Out:</b> the epitope &mdash; the antigen residues the antibody contacts.</p>
     <p class="loc">episcaf_analysis/growpatch/read.py &middot; detect_complex()</p>
   </div>
 
   <div class="card">
-    <h3>No antibody &mdash; growPatch <span class="mode noab">epitope enumerated</span></h3>
-    <p>With a lone antigen you do not know the epitope, and the honest move is not to guess one. Tools
-    like DiscoTope and BepiPred answer a different question &mdash; <em>which</em> surface is most
-    antibody-like &mdash; and they commit to a prediction. growPatch is built for <span class="k">recall,
-    not prediction</span>: it enumerates every footprint-sized surface patch so that whatever the real
-    epitope turns out to be, some candidate already represents it. You then scaffold the candidates and
-    let the downstream scores and, eventually, the assay decide.</p>
+    <h3>No antibody &mdash; growPatch <span class="mode noab">candidate regions sampled</span></h3>
+    <p>With a lone antigen the epitope is not known in advance. growPatch <span class="k">samples
+    candidate surface patches</span> across the antigen, so that a range of plausible antibody
+    footprints is available to scaffold and screen. The sampling is bounded: a surface-exposure cut, a
+    fixed patch size, a cap on the number of sequence segments per patch, and deduplication (parameters
+    below) all limit it, so it covers many surface patches rather than every possible one.</p>
+    <p>This is a different task from epitope predictors such as DiscoTope and BepiPred. Those rank how
+    antibody-like each surface residue is and return a predicted epitope. growPatch does not rank
+    surfaces by binding likelihood; it generates candidate regions as input to downstream design and
+    scoring. A patch here is a candidate for design, not a claim that an antibody binds it.</p>
     <p class="io"><b>In:</b> antigen structure (one chain, PDB). <b>&rarr; Out:</b> a set of candidate epitope patches, each a residue set that could be an antibody footprint.</p>
-    <p>Two enumerators run, and the tool ships the <span class="k">union</span> of both because they
-    miss different things:</p>
+    <p>Two sampling methods run, and the tool combines them into one candidate set (labelled
+    <span class="k">All candidates</span> in the viewer) because each finds patches the other misses:</p>
     <ul>
-      <li id="seedgrow"><span class="k">Seed and grow.</span> Start from each exposed surface residue
-      (relative SASA &ge; 0.2), grow outward to a patch of 16 residues by adding the nearest surface
-      neighbours, bridge sequence gaps of up to 10, and cap a candidate at 3 sequence islands. Near-duplicate
-      patches are removed by Jaccard overlap (&ge; 0.8), preferring fewer islands and then larger patches.</li>
-      <li id="eyeview"><span class="k">Antibody&rsquo;s-eye view.</span> Sample viewing directions evenly over a sphere
-      (a Fibonacci lattice) and, from each direction, take the cap of residues an approaching antibody
-      would see first. This catches compact, geometrically-defined patches that the sequence-growing
-      pass can split across islands.</li>
+      <li id="seedgrow"><span class="k">Neighbor-based patch growth</span> (seed and grow). Start from
+      each exposed surface residue (relative solvent accessibility &ge; 0.2, i.e. a residue exposing at
+      least 20% of the area its residue type can expose), grow outward to a patch of 16 residues by
+      adding the nearest surface neighbours, bridge sequence gaps of up to 10, and cap a candidate at 3
+      sequence segments. Near-duplicate patches are removed by Jaccard overlap (&ge; 0.8), preferring
+      fewer segments and then larger patches.</li>
+      <li id="eyeview"><span class="k">Directional surface sampling</span> (antibody&rsquo;s-eye view).
+      Sample viewing directions evenly over a sphere (a Fibonacci lattice) and, from each direction,
+      take the cap of residues an approaching antibody would see first. This catches compact,
+      geometrically-defined patches that the growth pass can split across sequence segments.</li>
     </ul>
-    <div class="why"><b>Why trust it:</b> the seed-and-grow port reproduces the reference implementation
-    byte-for-byte &mdash; 227 identical candidates on chain A of 8PWW &mdash; so the enumeration is the
-    established method, not a re-derivation.</div>
+    <p>Each candidate records which method or methods produced it. Agreement between the two methods is
+    <span class="k">provenance</span> (the same patch was reached two ways); it is not on its own
+    evidence that the patch is a real epitope.</p>
+    <div class="why"><b>Port check:</b> on chain A of 8PWW, the neighbor-growth port reproduces its
+    reference implementation for that input and configuration &mdash; 227 identical candidate patches.
+    This checks that the port matches the reference, not that the candidates are true epitopes. The
+    browser demo on the <a href="growpatch.html">growPatch</a> page reports different counts (137
+    combined, 106 from neighbor growth) under its own structure-processing configuration; the two
+    settings are not directly comparable.</div>
     <details><summary>the math &mdash; relative SASA and patch overlap</summary>
       <p class="mnote">A residue counts as surface by its <b>relative</b> solvent-accessible area: its SASA
       in the structure divided by the maximum that residue type can expose (Tien 2013 theoretical MAXASA).
@@ -153,7 +166,7 @@ details[open] summary::before{content:"\25BE  "}
   <!-- ============================================================ -->
   </div></details>
 
-  <details class="sec"><summary><h2 id="generate">2 &nbsp; Generation &mdash; the IPD loop</h2></summary>
+  <details class="sec"><summary><h2 id="generate">2 &nbsp; Generation &mdash; the iterative design loop</h2></summary>
   <div class="secbody">
   <p>Generation is a loop, not a single pass. Each round builds backbones around the fixed epitope,
   filters and folds them, scores the results, and lets the winners seed the next round. The expensive
@@ -162,15 +175,16 @@ details[open] summary::before{content:"\25BE  "}
 
   <div class="card">
     <h3>RFdiffusion3 &mdash; backbones</h3>
-    <p>RFdiffusion3 diffuses a protein backbone around the epitope, which is held fixed as a contig so
-    its geometry is preserved while the scaffold is invented around it. The default is 8 backbones per
+    <p>RFdiffusion3 diffuses a protein backbone around the epitope, which is held fixed as a
+    <span class="k">contig</span> (a span of residues whose coordinates stay fixed during diffusion) so
+    its geometry is preserved while the scaffold is built around it. The default is 8 backbones per
     contig; more backbones means more raw diversity at linear cost. An optional <span class="k">helix
     bias</span> pushes the scaffold toward helical secondary structure.</p>
     <p class="io"><b>In:</b> epitope residues held fixed (a contig spec on the antigen). <b>&rarr; Out:</b> de novo backbone(s) presenting that epitope &mdash; coordinates, no sequence yet.</p>
-    <div class="why"><b>Why a helix dial, and why it is only a dial:</b> helical scaffolds often score as
-    stronger binders, but that may be real or it may be a confound &mdash; helical designs tend to be
-    better-behaved in the cryo-EM experiments the training data comes from. We expose it as an
-    adjustable bias rather than baking it in, because we have not separated the two explanations.</div>
+    <div class="why"><b>Helix bias:</b> helical scaffolds often score as stronger binders. That signal
+    may be real, or it may be a confound, since helical designs tend to be better-behaved in the
+    cryo-EM experiments the training data comes from. The two explanations have not been separated, so
+    helicity is exposed as an adjustable bias rather than fixed in the protocol.</div>
     <p class="mnote">We stay on RFdiffusion3. RFD4 / Proteina is tracked as a possible future switch, not
     an adopted one &mdash; it is not unambiguously better for this fixed-epitope task yet.</p>
   </div>
@@ -191,8 +205,9 @@ details[open] summary::before{content:"\25BE  "}
     <p>ProteinMPNN designs sequences for each surviving backbone with the epitope positions held fixed
     (8 sequences per backbone by default), so the epitope keeps its identity while the scaffold sequence
     is optimised for the fold. AlphaFold3 then predicts the structure of each sequence (single-sequence,
-    fixed seed). That predicted structure is what every downstream metric is measured on &mdash; epitope
-    RMSD to the native, clash, PAE.</p>
+    fixed seed). Every downstream metric is computed on that predicted structure: epitope RMSD to the
+    native, antibody clashes, PAE. These are quantities read off a prediction; AlphaFold3 does not
+    measure whether a design folds, stays stable, or binds.</p>
     <p class="io"><b>ProteinMPNN &mdash; In:</b> a backbone. <b>&rarr; Out:</b> amino-acid sequence(s) for it.</p>
     <p class="io"><b>AlphaFold3 &mdash; In:</b> a designed sequence (with antigen/epitope context). <b>&rarr; Out:</b> predicted structure + confidence/metrics (pLDDT, PAE, RMSD, clash counts).</p>
     <p class="loc">scripts/stage03_mpnn_*.py &middot; stage04_af3_*</p>
@@ -209,10 +224,9 @@ details[open] summary::before{content:"\25BE  "}
     <span class="k">adaptive</span>. Round 0 is all de-novo (there are no winners yet). After that the
     child share grows with a streak of improving rounds and is capped, so a run that keeps finding
     better designs leans into exploitation, while a stalled run keeps exploring.</p>
-    <div class="why"><b>The honest caveat:</b> branching off winners risks turning the search into
-    best-of-N inside one lucky neighbourhood rather than genuinely finding better designs (John&rsquo;s
-    own false-discovery note). The cap and the de-novo floor are there to keep the loop from collapsing
-    onto a single family.</div>
+    <div class="why"><b>Caveat:</b> branching off winners risks turning the search into best-of-N inside
+    one lucky neighbourhood rather than finding genuinely better designs (a false-discovery risk). The
+    cap and the de-novo floor keep the loop from collapsing onto a single family.</div>
     <details><summary>the math &mdash; the children fraction</summary>
       <div class="eq" data-tex="f_{\text{child}}(r)=\min\!\big(f_{\max},\; s_{\text{step}}\cdot \text{streak}(r)\big),\qquad f_{\text{child}}(0)=0"></div>
       <p class="mnote">with per-streak step <span class="k">s<sub>step</sub></span> = 0.25 and cap
@@ -228,8 +242,33 @@ details[open] summary::before{content:"\25BE  "}
   <details class="sec"><summary><h2 id="score">3 &nbsp; Scoring</h2></summary>
   <div class="secbody">
   <p>Two models and one combiner. One asks whether an antibody can physically reach the epitope on the
-  design; the other predicts whether the design will actually bind in the assay. The composite folds
-  them together with epitope-fidelity metrics into a single rank.</p>
+  design; the other estimates whether the design will bind in the assay. The composite folds them
+  together with epitope-fidelity metrics into a single rank.</p>
+
+  <div class="card">
+    <h3>The metrics, defined</h3>
+    <p>Every metric below is computed on the AlphaFold3-predicted structure unless stated otherwise.</p>
+    <ul>
+      <li><span class="k">Epitope RMSD</span> &mdash; root-mean-square deviation of the epitope backbone
+      from the native reference after alignment, in &Aring;. Lower is a closer match to the native
+      geometry.</li>
+      <li><span class="k">PAE</span> (predicted aligned error) &mdash; AlphaFold3&rsquo;s own estimate of
+      the error in the relative position of two residues, in &Aring;. Lower means AlphaFold3 is more
+      confident about where parts of the structure sit relative to each other.</li>
+      <li><span class="k">Antibody clashes (measured against a known antibody)</span> &mdash; the count
+      of scaffold residues that overlap the reference antibody after the design is aligned onto the
+      complex. Available only when an antibody structure is in hand.</li>
+      <li><span class="k">Estimated antibody clashes (AOMclash)</span> &mdash; a model-based estimate of
+      the same quantity, used when no reference antibody is available (below). It is an estimate from
+      antibody geometry, not a measurement on a real complex.</li>
+      <li><span class="k">Four-filter pass</span> &mdash; the design clears the four DP3 filters
+      (epitope RMSD &le; 1&nbsp;&Aring;, overall RMSD &le; 2&nbsp;&Aring;, mean PAE &lt; 5, and zero
+      AlphaFold3 antibody clashes). Passing is a computational screen on predicted structures; it does
+      not establish experimental binding.</li>
+    </ul>
+    <p class="mnote">Where a required metric is missing, a design is not evaluated on that criterion
+    rather than treated as a pass.</p>
+  </div>
 
   <div class="card">
     <h3>AOMclash &mdash; antibody accessibility</h3>
@@ -243,12 +282,17 @@ details[open] summary::before{content:"\25BE  "}
     &ldquo;free&rdquo; atoms, more than 4&nbsp;&Aring; from any native-antigen atom). That sum,
     <code>s_p1_free</code>, is high when the scaffold intrudes into antibody space.</p>
     <p class="io"><b>In:</b> a design's scaffold atoms, framed on the epitope. <b>&rarr; Out:</b> <code>s_p1_free</code> &mdash; the occupancy summed over the free atoms, an accessibility score in AF3-clash units.</p>
-    <div class="why"><b>Why one feature, not forty:</b> a 39-feature gradient-boosted version was built
-    and tested. It added about 0.02 AUROC over the single feature &mdash; a small gain bought with 38
-    mostly-correlated inputs and real overfitting risk. We ship the one interpretable, monotone feature,
-    calibrated onto the AlphaFold3 clash count, and keep the 39-feature model only as the recorded,
-    rejected baseline. AOMclash replaces the older geometric &ldquo;native-aware cylinder&rdquo; surrogate
-    everywhere: it is the continuous, finer-grained successor.</div>
+    <p class="mnote">AOMclash is a model-based estimate of accessibility, not a measurement on a real
+    antibody&ndash;antigen complex. The isotonic step below reports it in AlphaFold3 clash-count units,
+    which are themselves counts on a predicted structure, so this is an estimate calibrated to another
+    model&rsquo;s output.</p>
+    <div class="why"><b>One feature, not forty:</b> a 39-feature gradient-boosted version was built and
+    tested. It added about 0.02 AUROC over the single feature, a small gain from 38 mostly-correlated
+    inputs with real overfitting risk. The shipped score is the one interpretable, monotone feature
+    (<code>s_p1_free</code>), calibrated onto the AlphaFold3 clash count; the 39-feature model is kept
+    as the recorded, rejected baseline. AOMclash replaces the earlier geometric accessibility surrogate
+    (a native-aware cylinder fitted over the epitope) throughout, as a continuous, finer-grained
+    estimate.</div>
     <details><summary>the math &mdash; occupancy map and the free-atom sum</summary>
       <p class="mnote">Each complex contributes a boolean occupancy grid in the epitope frame; the map is
       their mean (an empirical probability that antibody mass occupies a voxel):</p>
@@ -263,27 +307,31 @@ details[open] summary::before{content:"\25BE  "}
 
   <div class="card">
     <h3>Interpretable binding model</h3>
-    <p>Beyond geometry, a small logistic model predicts whether a design will bind in the assay. It is
-    deliberately a scorecard, not a black box: L2-regularised logistic regression over an inspectable
-    feature set &mdash; the design metrics, secondary-structure content, and three native-context terms
-    (an intra-epitope electrostatic sum, a scaffold-to-epitope size ratio, and local antigen crowding).
-    Evaluated with cross-validation grouped by epitope, so every design is scored by a model that never
-    trained on its antibody, it reaches ROC-AUC 0.812.</p>
-    <p class="io"><b>In:</b> a design's features (design metrics, secondary-structure content, static native-context terms). <b>&rarr; Out:</b> a predicted probability the design binds, <code>binding_pred</code>.</p>
+    <p>Beyond geometry, a small logistic model produces a binding score for each design. It is a
+    scorecard, not a black box: L2-regularised logistic regression over an inspectable feature set, the
+    design metrics, secondary-structure content, and three native-context terms (an intra-epitope
+    electrostatic sum, a scaffold-to-epitope size ratio, and local antigen crowding). Performance is
+    measured by repeated cross-validation grouped by epitope (56 epitopes, 2,720 assayed designs, 217
+    binders, base rate 8%), so every design is scored by a model that never trained on its antibody. On
+    that held-out evaluation it reaches ROC-AUC 0.812.</p>
+    <p class="io"><b>In:</b> a design's features (design metrics, secondary-structure content, static native-context terms). <b>&rarr; Out:</b> a binding score, <code>binding_pred</code>, used to rank designs; higher is a stronger predicted binder under the model.</p>
     <div class="why"><b>Why this feature set:</b> an earlier version leaned on structure-dynamics features
     (B-factor, elastic-network flexibility). Those are read off the bound complex and are confounded by
     it &mdash; rigid-when-bound is a consequence of binding, not a cause. A clean, static feature set
     beat that dynamics block out of sample by +0.013 AUROC (95% CI [+0.008, +0.018]) in a paired,
     held-out test, and it is causally cleaner because nothing in it sits downstream of binding. So we
     adopted it.</div>
-    <p>Read as a re-ranking layer, the payoff is enrichment: a random design in this setting binds about
-    8% of the time; the classic four-filter passers bind about 24%; ranking those by the model lifts the
-    top band to roughly a third, and the very top few percent higher still.</p>
+    <p>Read as a re-ranking layer, the model enriches for binders: a random design in this setting binds
+    about 8% of the time; designs that pass the four DP3 filters (defined above) bind about 24%; ranking
+    those passers by the binding score lifts the top band to roughly a third, and the very top few
+    percent higher still.</p>
     <details><summary>the math &mdash; the logistic score</summary>
       <div class="eq" data-tex="P(\text{bind})=\sigma\!\Big(\beta_0+\textstyle\sum_j \beta_j\,\tilde{x}_j\Big),\qquad \sigma(z)=\frac{1}{1+e^{-z}}"></div>
       <p class="mnote">Features <span class="k">x̃</span> are median-imputed and standardised; the weights
-      <span class="k">&beta;</span> are L2-regularised and class-balanced for the 8% base rate. Because the
-      score is additive in interpretable features, each weight reads directly as that feature&rsquo;s pull.</p>
+      <span class="k">&beta;</span> are L2-regularised and class-balanced for the 8% base rate. Class
+      balancing makes the output order designs reliably but shifts its level, so <code>binding_pred</code>
+      is used as a ranking score rather than a calibrated binding probability. Because the score is
+      additive in interpretable features, each weight reads directly as that feature&rsquo;s pull.</p>
     </details>
     <p class="loc">episcaf_analysis/binding_model/ &middot; results/feature_model/model_v1_findings.md</p>
   </div>
@@ -300,9 +348,10 @@ details[open] summary::before{content:"\25BE  "}
       <li><span class="k">No antibody</span> &mdash; use AOMclash in its place, at the same weight. Preset
       <code>twelvemer</code>.</li>
     </ul>
-    <p>Selection ranks and takes the top designs per epitope; it does not apply a hard pass/fail gate, so
-    a strong design is never thrown out for narrowly missing one threshold.</p>
-    <p class="io"><b>In:</b> AF3 per-design metrics (with <code>binding_pred</code> where features exist), plus a preset. <b>&rarr; Out:</b> designs ranked by composite score, then the per-epitope top-k selected.</p>
+    <p>Selection ranks by composite score and takes the top <em>k</em> designs per epitope (the
+    <span class="k">top-k</span>, with <em>k</em> set per run). It does not apply a hard pass/fail gate,
+    so a strong design is not thrown out for narrowly missing one threshold.</p>
+    <p class="io"><b>In:</b> AF3 per-design metrics (with <code>binding_pred</code> where features exist), plus a preset. <b>&rarr; Out:</b> designs ranked by composite score, then the top <em>k</em> per epitope selected.</p>
     <details><summary>the math &mdash; the composite</summary>
       <div class="eq" data-tex="\text{composite}=\sum_{m} w_m\, T_m(x_m),\qquad \sum_m w_m = 1"></div>
       <p class="mnote">T<sub>m</sub> is the per-metric transform (percentile or sigmoid). Weights
@@ -325,9 +374,9 @@ details[open] summary::before{content:"\25BE  "}
       <li><span class="k">Static pages.</span> The 3D viewer, the pipeline blueprint, and the results
       table are plain HTML and run anywhere, including straight from Pages. No compute.</li>
       <li><span class="k">Local server</span> (<code>scripts/growpatch_serve.py</code>). A small
-      standard-library server you run on your own machine. It does the CPU work &mdash; detect the
-      antibody, run growPatch, build the RFd3 contigs &mdash; so &ldquo;run it on your own antigen&rdquo;
-      is real, not a mock. No extra dependencies.</li>
+      standard-library server you run on your own machine. It does the CPU work (detect the antibody,
+      run growPatch, build the RFd3 contigs), so processing your own antigen runs the actual steps
+      rather than a canned response. No extra dependencies.</li>
       <li><span class="k">Cluster service</span> (<code>episcaf_service/</code>, FastAPI). The backend
       that reaches the GPU pipeline. You run it on a cluster-access host and reach it over a private SSH
       tunnel. Set its URL in the GUI tool and a run stages for real.</li>
@@ -355,9 +404,10 @@ details[open] summary::before{content:"\25BE  "}
 
   </div></details>
 
-  <p class="foot"><b>In one line:</b> pick the epitope well (observed, or enumerated for recall), build
-  scaffolds around it in a filtered loop, and rank them by whether the epitope kept its shape and whether
-  an antibody can reach it &mdash; with the reasoning, and the math, open to inspection.</p>
+  <p class="foot"><b>In short:</b> fix the epitope (observed on a complex, or sampled as candidate
+  patches on a lone antigen), build scaffolds around it in a filtered loop, and rank them by whether the
+  epitope kept its shape and whether an antibody can reach it, with the reasoning and the math open to
+  inspection.</p>
 </div>
 
 <script>

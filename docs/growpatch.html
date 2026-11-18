@@ -39,7 +39,25 @@
 .sel b{color:var(--ink)}
 .note{font-size:12px;color:#555;background:#f6f6f6;border:1px solid #ddd;padding:8px 11px;margin-top:14px}
 .note b{color:var(--ink)}
+.prow{flex-wrap:wrap}
+.prow .rowmeta{width:100%;color:#666;font-size:11px;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mtag{cursor:default}
 .prow:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
+.prow[aria-selected="true"]{background:#eef4fd;box-shadow:inset 3px 0 0 var(--blue)}
+.seg button:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
+.empty{padding:12px 10px;font-size:12.5px;color:#777}
+.viewbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.viewctrls{display:inline-flex;gap:6px}
+.viewctrls button{font:inherit;font-size:12px;padding:4px 10px;border:1px solid #c9d4e3;background:#fff;color:#3b6ea5;border-radius:5px;cursor:pointer}
+.viewctrls button:hover{background:#f2f6fc}
+.viewctrls button:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
+.viewmsg{font-size:12px;min-height:1.2em;margin:0 0 6px;color:#555}
+.viewmsg.err{color:#a0241a}
+#viewer img.fallback{width:100%;height:100%;object-fit:contain;display:block}
+.flathdr{font-size:12.5px;color:#444;padding:8px 10px 0;line-height:1.4}
+.flathdr b{color:var(--ink)}
+.flatlegend{font-size:11px;color:#666;padding:5px 10px 8px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.flatlegend .sw{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:4px}
 @media(max-width:620px){.listwrap{max-width:none}#viewer{height:360px}}
 </style>
 </head>
@@ -69,26 +87,29 @@
 <div class="page">
   <h1>growPatch &mdash; candidate epitope viewer</h1>
   <p style="font-size:12.5px;color:#555;margin:0 0 10px">This is a fixed 8PWW demo &mdash; <a href="growpatch_tool.html">run growPatch on your own antigen &rarr;</a> (needs the local server).</p>
-  <p class="lede">With no antibody, there is no known epitope. growPatch does not <i>predict</i> one
-  (that is DiscoTope / BepiPred); it <b>enumerates every surface region that could plausibly be an
-  antibody footprint</b>, so you can scaffold them all and let the experiment decide. Two
-  complementary strategies &mdash; <b>seed-and-grow</b> and the <b>antibody&rsquo;s-eye-view</b>
-  direction caps &mdash; are unioned. Below is the real output on <b>8PWW chain A</b>; click a
-  candidate to highlight it, drag to rotate, or switch to the flat-surface map.</p>
+  <p class="lede">Without a bound antibody there is no known binding site, so growPatch
+  <b>samples candidate surface patches</b> across the antigen that could be antibody footprints.
+  You can then scaffold the candidates and screen them. It does not predict which regions are
+  epitopes (that is the task of tools such as DiscoTope and BepiPred). Two methods are combined:
+  <b>neighbor-based patch growth</b> and <b>directional surface sampling</b>. Each candidate records
+  which method or methods produced it. Below is the recorded output on <b>8PWW chain A</b>; click a
+  candidate to highlight it, drag to rotate, or switch to the projection map.</p>
+  <p style="font-size:12px;color:#666;margin:-2px 0 10px">These are candidate regions for design and
+  screening. Their generation does not establish that an antibody binds them.</p>
 
   <div class="stats" id="stats"></div>
 
   <div class="bar">
-    <span class="lbl">show</span>
-    <span class="seg" id="methodseg">
-      <button data-m="all" class="on">both methods</button>
-      <button data-m="growpatch">seed-and-grow</button>
-      <button data-m="eyeview">eye-view</button>
+    <span class="lbl" id="methodlbl">show</span>
+    <span class="seg" id="methodseg" role="group" aria-labelledby="methodlbl">
+      <button data-m="all" class="on" aria-pressed="true">All candidates</button>
+      <button data-m="growpatch" aria-pressed="false">Neighbor-based patch growth</button>
+      <button data-m="eyeview" aria-pressed="false">Directional surface sampling</button>
     </span>
-    <span class="lbl">view</span>
-    <span class="seg" id="viewseg">
-      <button data-v="3d" class="on">3D structure</button>
-      <button data-v="flat">flat surface</button>
+    <span class="lbl" id="viewlbl">view</span>
+    <span class="seg" id="viewseg" role="group" aria-labelledby="viewlbl">
+      <button data-v="3d" class="on" aria-pressed="true">3D structure</button>
+      <button data-v="flat" aria-pressed="false">Projection map</button>
     </span>
   </div>
 
@@ -100,18 +121,40 @@
       <div class="plist" id="plist" role="listbox" aria-label="candidate epitopes"></div>
     </div>
     <div class="viewwrap">
-      <div id="viewer"></div>
-      <div id="flatwrap"><svg id="flat" viewBox="0 0 720 360" preserveAspectRatio="xMidYMid meet"></svg></div>
+      <div class="viewbar">
+        <span class="viewctrls" id="viewctrls">
+          <button type="button" id="btnreset">Reset view</button>
+          <button type="button" id="btnfit">Fit structure</button>
+        </span>
+      </div>
+      <div id="viewmsg" class="viewmsg" role="status" aria-live="polite"></div>
+      <div id="viewer" aria-label="3D structure of 8PWW chain A; a selected candidate's residues appear in red"></div>
+      <div id="flatwrap">
+        <div class="flathdr"><b>Projection of residue positions about the centroid.</b> This is not a
+        surface unwrap; 2D distances on this map do not equal distances in the molecule, and it does
+        not establish that residues are adjacent or exposed.</div>
+        <div class="flatlegend">
+          <span>x = angle around the centroid, y = angle above/below it</span>
+          <span><span class="sw" style="background:#d6d6d6"></span>buried</span>
+          <span><span class="sw" style="background:#296dc0"></span>exposed (relative SASA)</span>
+          <span><span class="sw" style="background:#c0392b"></span>selected candidate</span>
+        </div>
+        <svg id="flat" viewBox="0 0 720 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Projection of residue positions about the chain centroid, colored by relative solvent accessibility"></svg>
+      </div>
     </div>
   </div>
 
   <div class="note"><b>How to read this.</b> Grey is the antigen; a selected candidate's residues are
-  red. The flat-surface map is an equirectangular projection of the chain around its centroid (each
-  dot a residue, shaded by relative SASA, light = buried &rarr; blue = exposed) &mdash; a lossy
-  overview for seeing where a patch sits on the whole surface, not a faithful metric space. Patches
-  tagged <span class="mtag m-both">both</span> were found by both strategies (higher confidence);
-  <span class="mtag m-growpatch">grow</span> and <span class="mtag m-eyeview">eye</span> are
-  method-exclusive. Data regenerated by <code>scripts/growpatch_viz_data.py</code>.</div>
+  red. <b>Sequence segments:</b> a patch can contain residues from separate stretches of the amino
+  acid sequence that lie next to one another in the folded protein, so one candidate may span more
+  than one segment. The <b>projection map</b> places each residue by its angle about the chain
+  centroid, shaded by relative solvent accessibility (light = buried &rarr; blue = exposed); it is a
+  rough overview of where a patch sits, not a surface unwrap, and its 2D distances are not molecular
+  distances. The method tag on each candidate is provenance, not a confidence score:
+  <span class="mtag m-both">Found by both methods</span> was produced by both,
+  <span class="mtag m-growpatch">Neighbor-based growth</span> and
+  <span class="mtag m-eyeview">Directional sampling</span> by one method only. Data regenerated by
+  <code>scripts/growpatch_viz_data.py</code>.</div>
 </div>
 
 <script>
@@ -124,16 +167,19 @@ let viewer=null, loaded=false;
 // ---- stats ----
 (function(){
   const s=document.getElementById("stats");
-  const items=[["patches",D.n_patches],["found by both",D.n_both],
-    ["seed-and-grow",D.n_growpatch],["eye-view",D.n_eyeview],
+  const items=[["candidate patches",D.n_patches],["found by both methods",D.n_both],
+    ["neighbor-based growth",D.n_growpatch],["directional sampling",D.n_eyeview],
     ["surface residues",D.n_surface+" / "+D.n_residues]];
   s.innerHTML=items.map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
 })();
 
+const METHOD_NAME={growpatch:"neighbor-based patch growth",eyeview:"directional surface sampling"};
+function segText(n){return n===1?"1 sequence segment":n+" sequence segments";}
 function mtag(methods){
-  if(methods.length===2) return '<span class="mtag m-both">both</span>';
-  return methods[0]==="growpatch" ? '<span class="mtag m-growpatch">grow</span>'
-                                  : '<span class="mtag m-eyeview">eye</span>';
+  if(methods.length===2) return '<span class="mtag m-both" title="Produced by both methods">Found by both methods</span>';
+  return methods[0]==="growpatch"
+    ? '<span class="mtag m-growpatch" title="Neighbor-based patch growth">Neighbor-based growth</span>'
+    : '<span class="mtag m-eyeview" title="Directional surface sampling">Directional sampling</span>';
 }
 function shown(){
   return D.patches.filter(p=> state.method==="all" ? true : p.methods.includes(state.method));
@@ -145,13 +191,18 @@ function buildList(){
   document.getElementById("nshown").textContent=list.length;
   const el=document.getElementById("plist");
   el.innerHTML="";
+  if(!list.length){
+    el.innerHTML='<div class="empty">No candidates for this method.</div>';
+    return;
+  }
   for(const p of list){
     const row=document.createElement("div");
     row.className="prow"+(state.sel===p.i?" on":"");
     row.setAttribute("role","option"); row.tabIndex=0;
+    row.setAttribute("aria-selected", state.sel===p.i ? "true" : "false");
     row.dataset.i=p.i;
     row.innerHTML=`<span class="ep">${p.epitope}</span>`+
-      `<span class="meta">${p.n_res}r&middot;${p.n_isl}i</span>${mtag(p.methods)}`;
+      `<span class="rowmeta">${p.n_res} residues &middot; ${segText(p.n_isl)} &middot; ${mtag(p.methods)}</span>`;
     row.onclick=()=>select(p.i);
     row.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(p.i);}};
     el.appendChild(row);
@@ -163,47 +214,92 @@ function patchById(i){return D.patches.find(p=>p.i===i);}
 function select(i){
   state.sel=i;
   const p=patchById(i);
+  const by = p ? p.methods.map(m=>METHOD_NAME[m]||m).join(" and ") : "";
   document.getElementById("sel").innerHTML = p ?
-    `<b>${p.epitope}</b> &mdash; ${p.n_res} residues, ${p.n_isl} island(s), found by ${p.methods.join(" + ")}` :
+    `<b>${p.epitope}</b> &mdash; ${p.n_res} residues, ${segText(p.n_isl)}, found by ${by}` :
     "No patch selected.";
-  document.querySelectorAll(".prow").forEach(r=>r.classList.toggle("on",+r.dataset.i===i));
+  document.querySelectorAll(".prow").forEach(r=>{
+    const on=+r.dataset.i===i; r.classList.toggle("on",on); r.setAttribute("aria-selected",on?"true":"false");
+  });
   if(state.view==="3d") paint3d(); else paintFlat();
 }
 
 // ---- 3D viewer ----
+// States are explicit: loading -> success (status cleared), or a failure path that falls back to the
+// static render (docs/img/<PDB>.png) with a message. The flat projection map is pure SVG and keeps
+// working regardless, so a dead 3D view never blanks the whole page silently.
+function viewMsg(t,isErr){
+  const m=document.getElementById("viewmsg"); if(!m) return;
+  m.className="viewmsg"+(isErr?" err":""); m.innerHTML=t||"";
+}
+function webglOK(){
+  try{
+    const c=document.createElement("canvas");
+    return !!(window.WebGLRenderingContext && (c.getContext("webgl")||c.getContext("experimental-webgl")));
+  }catch(e){ return false; }
+}
+function showFallback(reason){
+  loaded=false;
+  const img='img/'+D.pdb.toUpperCase()+'.png';
+  document.getElementById("viewer").innerHTML=
+    '<img class="fallback" src="'+img+'" alt="Static render of '+D.pdb.toUpperCase()+' chain '+D.chain+'">';
+  viewMsg(reason+' Showing the static render instead; use the projection map to locate a selected candidate.',true);
+}
 function paint3d(){
   if(!viewer||!loaded) return;
-  viewer.setStyle({},{});
-  viewer.setStyle({chain:D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
-  const p=state.sel!=null?patchById(state.sel):null;
-  if(p){
-    const sel={chain:D.chain,resi:p.resis};
-    viewer.setStyle(sel,{cartoon:{color:RED,thickness:1.0,arrows:true}});
-    viewer.setStyle(Object.assign({},sel,{not:{atom:["N","C","O"]}}),
-                    {cartoon:{color:RED,thickness:1.0,arrows:true},stick:{color:RED,radius:0.18}});
+  try{
+    viewer.setStyle({},{});
+    viewer.setStyle({chain:D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
+    const p=state.sel!=null?patchById(state.sel):null;
+    if(p){
+      const sel={chain:D.chain,resi:p.resis};
+      viewer.setStyle(sel,{cartoon:{color:RED,thickness:1.0,arrows:true}});
+      viewer.setStyle(Object.assign({},sel,{not:{atom:["N","C","O"]}}),
+                      {cartoon:{color:RED,thickness:1.0,arrows:true},stick:{color:RED,radius:0.18}});
+    }
+    viewer.render();
+  }catch(e){ showFallback("The 3D viewer hit a rendering error ("+((e&&e.message)||e)+")."); }
+}
+function fitStructure(){
+  if(viewer&&loaded){ try{ viewer.zoomTo({chain:D.chain}); viewer.render(); }catch(e){} }
+}
+function resetView(){
+  if(viewer&&loaded){
+    try{
+      viewer.setStyle({},{});
+      viewer.setStyle({chain:D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
+      if(state.sel!=null) paint3d(); else { viewer.zoomTo({chain:D.chain}); viewer.render(); return; }
+      viewer.zoomTo({chain:D.chain}); viewer.render();
+    }catch(e){}
   }
-  viewer.render();
 }
 function initViewer(){
   if(typeof $3Dmol==="undefined"){
-    document.getElementById("viewer").innerHTML=
-      '<p style="padding:14px;color:#a00">3Dmol.js did not load (offline?). The flat-surface view still works.</p>';
+    showFallback("The 3D library (3Dmol.js) did not load; check your connection.");
     return;
   }
-  viewer=$3Dmol.createViewer("viewer",{backgroundColor:"white"});
-  fetch("pdb/"+D.pdb.toUpperCase()+".pdb").then(r=>r.ok?r.text():Promise.reject(r.status))
+  if(!webglOK()){
+    showFallback("This browser reports no available WebGL, so the interactive 3D view cannot start.");
+    return;
+  }
+  viewMsg("Loading structure…");
+  try{ viewer=$3Dmol.createViewer("viewer",{backgroundColor:"white"}); }
+  catch(e){ showFallback("The 3D viewer could not start ("+((e&&e.message)||e)+")."); return; }
+  fetch("pdb/"+D.pdb.toUpperCase()+".pdb").then(r=>r.ok?r.text():Promise.reject("HTTP "+r.status))
     .then(txt=>{
-      viewer.addModel(txt,"pdb");
-      viewer.setStyle({},{});
-      viewer.setStyle({chain:D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
-      viewer.zoomTo({chain:D.chain}); viewer.render(); loaded=true;
-      if(state.sel!=null) paint3d();
+      try{
+        viewer.addModel(txt,"pdb");
+        viewer.setStyle({},{});
+        viewer.setStyle({chain:D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
+        viewer.zoomTo({chain:D.chain}); viewer.render(); loaded=true;
+        viewMsg("");
+        if(state.sel!=null) paint3d();
+      }catch(e){ showFallback("The structure loaded but could not be rendered ("+((e&&e.message)||e)+")."); }
     })
-    .catch(e=>{document.getElementById("viewer").innerHTML=
-      '<p style="padding:14px;color:#a00">Could not load pdb/'+D.pdb.toUpperCase()+'.pdb ('+e+').</p>';});
+    .catch(e=>{ showFallback("Could not download pdb/"+D.pdb.toUpperCase()+".pdb ("+e+")."); });
 }
 
-// ---- flat surface projection (equirectangular around the chain centroid) ----
+// ---- projection map (residue positions about the chain centroid) ----
 let FLAT=null;
 function flatGeom(){
   if(FLAT) return FLAT;
@@ -257,13 +353,19 @@ function paintFlat(){
 function setView(v){
   state.view=v;
   document.getElementById("viewer").style.display = v==="3d"?"block":"none";
+  document.getElementById("viewmsg").style.display = v==="3d"?"block":"none";
+  document.getElementById("viewctrls").style.display = v==="3d"?"inline-flex":"none";
   document.getElementById("flatwrap").style.display = v==="flat"?"block":"none";
-  document.querySelectorAll("#viewseg button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  document.querySelectorAll("#viewseg button").forEach(b=>{
+    const on=b.dataset.v===v; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on?"true":"false");
+  });
   if(v==="3d") paint3d(); else paintFlat();
 }
 document.querySelectorAll("#methodseg button").forEach(b=>b.onclick=()=>{
   state.method=b.dataset.m;
-  document.querySelectorAll("#methodseg button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll("#methodseg button").forEach(x=>{
+    const on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false");
+  });
   // if the selected patch is filtered out, drop the selection
   if(state.sel!=null && !shown().some(p=>p.i===state.sel)){state.sel=null;
     document.getElementById("sel").textContent="No patch selected — click one in the list.";
@@ -271,6 +373,8 @@ document.querySelectorAll("#methodseg button").forEach(b=>b.onclick=()=>{
   buildList();
 });
 document.querySelectorAll("#viewseg button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
+document.getElementById("btnreset").onclick=resetView;
+document.getElementById("btnfit").onclick=fitStructure;
 
 // ---- go ----
 buildList();

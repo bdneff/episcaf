@@ -24,8 +24,12 @@ td{font-variant-numeric:tabular-nums}
 th{position:sticky;top:0;background:#eef3f9;cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.02em;color:#3b6ea5;z-index:1}
 th.sorted{color:#1b4a86}th .ar{color:#9bb0cc;font-size:9px}
 tr.pass td:first-child{box-shadow:inset 3px 0 0 var(--good)}
+tr.na td:first-child{box-shadow:inset 3px 0 0 #bbb}
+tr.na td{color:#777}
 td.good{color:var(--good)}td.bad{color:var(--bad)}
 .msg{font-size:12.5px;padding:8px 11px;border-radius:5px;margin:8px 0;background:#fdecea;border:1px solid #f5c6c0;color:#a0241a;display:none}
+.empty{font-size:13px;color:#444;background:#f6f8fb;border:1px dashed #c9d4e5;border-radius:6px;padding:14px 16px;margin:10px 0;line-height:1.55}
+.empty code{background:#eef2f8;padding:0 3px;border-radius:2px}
 .note{font-size:12px;color:#555;background:#f6f6f6;border:1px solid #ddd;padding:8px 11px;margin-top:14px}
 </style>
 </head>
@@ -66,20 +70,57 @@ td.good{color:var(--good)}td.bad{color:var(--bad)}
     <button id="dl" class="btn-secondary" disabled>Download shown</button>
   </div>
   <div class="msg" id="msg"></div>
+  <div class="empty" id="empty">
+    <p><b>No results loaded.</b> Load a run's metrics CSV to rank and filter designs. The viewer shows
+    whichever metric columns are present; canonical column names and their meanings are in
+    <a href="RESULTS_SCHEMA.md">the results schema</a>.</p>
+    <p class="help" style="margin:6px 0 0">Expected columns include <code>design_id</code>,
+    <code>epitope_chunk_rmsd</code> (epitope backbone RMSD to native, &Aring;), <code>overall_rmsd</code>
+    (&Aring;), <code>mean_pae</code> (&Aring;), <code>af3_n_clash_res</code> (measured antibody clashes)
+    or <code>aomclash_pred</code> (model estimate), and a <code>composite</code> or binding score.
+    Everything is processed in your browser; nothing is uploaded.</p>
+  </div>
   <div class="stats" id="stats"></div>
   <div class="tablewrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
 
-  <div class="note"><b>Reading it.</b> A green left-edge marks a design that clears the four-filter
-  (<code>overall_rmsd&le;2</code>, <code>epitope_chunk_rmsd&le;1</code>, <code>mean_pae&lt;5</code>,
-  clash&nbsp;0). Click a column header to sort; it defaults to <code>composite</code> (then fidelity).
-  Accessibility is <code>af3_n_clash_res</code> where an antibody was present, else
-  <code>aomclash_pred</code>. See <a href="RESULTS_SCHEMA.md">RESULTS_SCHEMA.md</a>.</div>
+  <div class="note"><b>Reading it.</b> Each design is <b>pass</b>, <b>fail</b>, or <b>not evaluated</b>.
+  A green left-edge marks a <b>pass</b>: it clears all four filters &mdash; epitope RMSD &le; 1&nbsp;&Aring;,
+  overall RMSD &le; 2&nbsp;&Aring;, mean PAE &lt; 5, and no antibody clash. Clash uses the measured count
+  <code>af3_n_clash_res</code> (must be 0) when a reference antibody was present, otherwise the model
+  estimate <code>aomclash_pred</code> (must be &lt; 3); these are different quantities. A grey left-edge
+  marks <b>not evaluated</b> &mdash; a required metric, including any clash measurement, is missing, so the
+  design is not counted as a pass. Click a column header to sort; it defaults to <code>composite</code>
+  (then epitope fidelity). Passing these filters does not establish experimental binding. See
+  <a href="RESULTS_SCHEMA.md">RESULTS_SCHEMA.md</a>.</div>
 </div>
 
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
 let ROWS=[], COLS=[], sortCol=null, sortDir=-1, pcMode=false;
+
+// imported CSV text is untrusted: escape before it ever reaches innerHTML
+const esc=s=>(""+(s??"")).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const escA=s=>esc(s).replace(/"/g,"&quot;");
+// friendly column names + one-line definitions (canonical names kept as the data keys)
+const LABELS={design_id:"design",id:"design",target:"target",epitope:"epitope",source:"found by",
+  composite:"composite score",is_pass:"four-filter",rank_in_group:"rank",
+  epitope_chunk_rmsd:"epitope RMSD (Å)",overall_rmsd:"overall RMSD (Å)",mean_pae:"mean PAE (Å)",
+  epitope_pae:"epitope PAE (Å)",scaffold_pae:"scaffold PAE (Å)",ptm:"pTM",plddt:"pLDDT",
+  af3_n_clash_res:"antibody clashes",aomclash_pred:"est. antibody clashes",binding_pred:"binding score"};
+const DEFS={
+  epitope_chunk_rmsd:"Epitope backbone RMSD to the reference after alignment (Å). Lower is closer.",
+  overall_rmsd:"Whole-window backbone RMSD to the reference after alignment (Å). Lower is closer.",
+  mean_pae:"AlphaFold3 mean predicted aligned error (Å). Lower = more confident relative placement.",
+  epitope_pae:"Predicted aligned error within the epitope (Å). Lower is better.",
+  scaffold_pae:"Predicted aligned error within the scaffold (Å). Lower is better.",
+  af3_n_clash_res:"Measured: scaffold residues overlapping the reference antibody after alignment. The filter requires 0.",
+  aomclash_pred:"Model-based estimate of antibody clashes, used when no reference antibody is present. Lower is better.",
+  composite:"Hand-weighted geometry score. Higher is better.",
+  binding_pred:"Score from the model fit to the binding assay. Higher = greater predicted binding under the model.",
+  ptm:"AlphaFold3 predicted TM-score. Higher is better.",
+  plddt:"AlphaFold3 mean per-residue confidence. Higher is better.",
+  source:"Which method(s) produced this candidate."};
 
 // ranking schemes offered in the dropdown, label -> column (or the passes+composite special)
 const RANKERS=[
@@ -132,12 +173,17 @@ function parseCSV(text){
   return rows.filter(r=>r.length>1||(r.length===1&&r[0]!=="")).map(r=>{
     const o={}; hdr.forEach((h,j)=>o[h]=r[j]!==undefined?r[j]:""); return o;});
 }
-const num=v=>{const n=parseFloat(v);return isNaN(n)?null:n;};
-function isPass(r){
+const num=v=>{if(v===null||v===undefined||(""+v).trim()==="")return null;const n=Number(v);return Number.isFinite(n)?n:null;};
+const has=v=>v!==undefined&&(""+v).trim()!=="";
+// Three states. "pass" clears all four filters; "fail" is fully measured but misses one; "na" is
+// missing a required metric (including any clash measurement) — a missing measurement is never a pass.
+function classify(r){
   const e=num(r.epitope_chunk_rmsd),o=num(r.overall_rmsd),p=num(r.mean_pae);
-  const cl = r.af3_n_clash_res!==undefined&&r.af3_n_clash_res!=="" ? num(r.af3_n_clash_res) : num(r.aomclash_pred);
-  if([e,o,p].some(x=>x===null)) return false;
-  return e<=1 && o<=2 && p<5 && (cl===null|| (r.af3_n_clash_res!==""&&r.af3_n_clash_res!==undefined? cl===0 : cl<3));
+  const measured=has(r.af3_n_clash_res), estimated=has(r.aomclash_pred);
+  const cl = measured ? num(r.af3_n_clash_res) : (estimated ? num(r.aomclash_pred) : null);
+  if([e,o,p].some(x=>x===null) || cl===null) return "na";
+  const clashOk = measured ? cl===0 : cl<3;     // measured AF3 clashes must be 0; model estimate < 3
+  return (e<=1 && o<=2 && p<5 && clashOk) ? "pass" : "fail";
 }
 
 function orderCols(keys){
@@ -166,20 +212,24 @@ function shown(){
 function render(){
   const rs=shown();
   const th=$("tbl").tHead, tb=$("tbl").tBodies[0];
-  th.innerHTML="<tr>"+COLS.map(c=>`<th data-c="${c}" class="${c===sortCol?'sorted':''}">${c}`+
+  th.innerHTML="<tr>"+COLS.map(c=>`<th data-c="${escA(c)}" title="${escA(DEFS[c]||c)}" class="${c===sortCol?'sorted':''}">${esc(LABELS[c]||c)}`+
     (c===sortCol?` <span class="ar">${sortDir<0?'▼':'▲'}</span>`:"")+"</th>").join("")+"</tr>";
   th.querySelectorAll("th").forEach(h=>h.onclick=()=>{const c=h.dataset.c;
     pcMode=false; if(sortCol===c) sortDir*=-1; else {sortCol=c; sortDir=-1;}
     const sel=$("rankby"); if([...sel.options].some(o=>o.value===c)) sel.value=c; render();});
-  tb.innerHTML=rs.map(r=>"<tr class='"+(r.__pass?"pass":"")+"'>"+COLS.map(c=>{
+  tb.innerHTML=rs.map(r=>"<tr class='"+(r.__cls||"")+"'>"+COLS.map(c=>{
     let cls=""; const g=GOODCELL[c], n=num(r[c]);
     if(g&&n!==null) cls=g(n)?"good":"bad";
-    return `<td class="${cls}">${r[c]??""}</td>`;}).join("")+"</tr>").join("");
-  const npass=ROWS.filter(r=>r.__pass).length;
+    return `<td class="${cls}">${esc(r[c]??"")}</td>`;}).join("")+"</tr>").join("");
+  const npass=ROWS.filter(r=>r.__cls==="pass").length;
+  const nfail=ROWS.filter(r=>r.__cls==="fail").length;
+  const nna=ROWS.filter(r=>r.__cls==="na").length;
+  const neval=npass+nfail;
   const tgtKey=COLS.includes("id")?"id":(COLS.includes("target")?"target":null);
   const ntgt=tgtKey?new Set(ROWS.map(r=>r[tgtKey])).size:"—";
-  $("stats").innerHTML=[["designs",ROWS.length],["pass four-filter",npass],
-    ["pass rate",(100*npass/Math.max(1,ROWS.length)).toFixed(1)+"%"],["targets",ntgt],
+  $("empty").style.display = ROWS.length ? "none" : "block";
+  $("stats").innerHTML=[["designs",ROWS.length],["pass",npass],["fail",nfail],["not evaluated",nna],
+    ["pass rate",neval?(100*npass/neval).toFixed(1)+"%":"—"],["targets",ntgt],
     ["showing",rs.length]].map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
 }
 
@@ -190,7 +240,7 @@ $("file").onchange=()=>{
     try{
       ROWS=parseCSV(r.result);
       if(!ROWS.length) throw new Error("no data rows");
-      ROWS.forEach(x=>x.__pass=isPass(x));
+      ROWS.forEach(x=>{x.__cls=classify(x);x.__pass=x.__cls==="pass";});
       COLS=orderCols(Object.keys(ROWS[0]).filter(k=>k!=="__pass"));
       populateRank();
       pcMode = COLS.includes("composite");        // default scheme: four-filter passes, then composite

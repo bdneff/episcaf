@@ -45,6 +45,31 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .msg.err{background:#fdecea;border:1px solid #f5c6c0;color:#a0241a}
 .msg.busy{background:#eef4fd;border:1px solid #bcd3f0;color:#1b4a86}
 .note{font-size:12px;color:#555;background:#f6f6f6;border:1px solid #ddd;padding:8px 11px;margin-top:14px}
+.conn{font-size:12.5px;border-radius:6px;padding:9px 12px;margin:4px 0 12px;line-height:1.45}
+.conn.ok{background:#eaf6ee;border:1px solid #bfe3c9;color:#1f6b36}
+.conn.bad{background:#fdf2e3;border:1px solid #efd8a8;color:#7a551a}
+.conn b{color:inherit}
+.conn code{background:rgba(0,0,0,.06);padding:1px 4px;border-radius:3px;font-size:11.5px}
+.conn a{color:inherit;font-weight:bold}
+.hint{font-size:11px;color:#777;font-weight:normal;text-transform:none;letter-spacing:0;margin-top:2px}
+.fld label{display:block}
+.prow{flex-wrap:wrap}
+.prow .rowmeta{width:100%;color:#666;font-size:11px;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.prow[aria-selected="true"]{background:#eef4fd;box-shadow:inset 3px 0 0 var(--blue)}
+.prow:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
+.seg button:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
+.mtag{cursor:default}
+.empty{padding:12px 10px;font-size:12.5px;color:#777}
+.viewbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.viewctrls{display:inline-flex;gap:6px}
+.viewctrls button{font:inherit;font-size:12px;padding:4px 10px;border:1px solid #c9d4e3;background:#fff;color:#3b6ea5;border-radius:5px;cursor:pointer;font-weight:normal}
+.viewctrls button:hover{background:#f2f6fc}
+.viewmsg{font-size:12px;min-height:1.2em;margin:0 0 6px;color:#555}
+.viewmsg.err{color:#a0241a}
+.flathdr{font-size:12.5px;color:#444;padding:8px 10px 0;line-height:1.4}
+.flathdr b{color:var(--ink)}
+.flatlegend{font-size:11px;color:#666;padding:5px 10px 8px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.flatlegend .sw{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:4px}
 @media(max-width:640px){.listwrap{max-width:none}#viewer{height:360px}}
 </style>
 </head>
@@ -73,34 +98,35 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 
 <div class="page">
   <h1>Run growPatch on your antigen</h1>
-  <p style="font-size:12.5px;color:#555;margin:0 0 10px"><a href="growpatch.html">See the 8PWW demo</a> if you just want to look. This page runs the real enumerator on your upload and needs the local server.</p>
-  <p class="lede">Upload an antigen structure (PDB). growPatch enumerates candidate conformational
-  epitopes over its surface &mdash; the exhaustive &ldquo;what could an antibody target&rdquo; list,
-  not a single prediction. Pick a candidate to highlight it; drag to rotate; switch to the flat
-  surface map. <b>This page needs the local server</b> (<code>python scripts/growpatch_serve.py</code>)
-  &mdash; it runs the real enumerator on your upload.</p>
+  <p style="font-size:12.5px;color:#555;margin:0 0 10px"><a href="growpatch.html">See the 8PWW demo</a> if you just want to look. This page runs the real enumerator on your upload and needs the local service.</p>
+  <p class="lede">Upload an antigen structure (PDB). growPatch samples candidate surface patches that
+  could be antibody footprints; it does not predict which regions are epitopes. Pick a candidate to
+  highlight it, drag to rotate, or switch to the projection map. This page runs the real enumerator
+  on your upload, so it requires the local service (<code>python scripts/growpatch_serve.py</code>).</p>
 
-  <div class="card">
+  <div class="conn" id="conn" role="status" aria-live="polite">Checking for the local service&hellip;</div>
+
+  <div class="card" id="formcard">
     <div class="row">
-      <div class="fld"><label>antigen PDB</label><input type="file" id="file" accept=".pdb,.ent,.cif"></div>
-      <div class="fld"><label>chain</label><select id="chain"><option value="A">A</option></select></div>
-      <div class="fld"><label>relSASA cut</label><input type="number" id="sasa" value="0.2" step="0.05" min="0" max="1"></div>
-      <div class="fld"><label>eye-view radius (&Aring;)</label><input type="number" id="radius" value="14" step="1" min="6" max="22"></div>
-      <div class="fld"><label>max candidates</label><input type="number" id="topk" value="0" step="10" min="0" title="0 = all"></div>
-      <div class="fld"><label>methods</label>
-        <span class="seg" id="methodseg">
-          <button data-m="growpatch,eyeview" class="on">both</button>
-          <button data-m="growpatch">grow</button>
-          <button data-m="eyeview">eye</button>
+      <div class="fld"><label for="file">antigen PDB</label><input type="file" id="file" accept=".pdb,.ent,.cif"></div>
+      <div class="fld"><label for="chain">chain</label><select id="chain"><option value="A">A</option></select></div>
+      <div class="fld"><label for="sasa">relSASA cut</label><input type="number" id="sasa" value="0.2" step="0.05" min="0" max="1"><span class="hint">relative solvent accessibility; residues at or above this count as surface</span></div>
+      <div class="fld"><label for="radius">sampling radius (&Aring;)</label><input type="number" id="radius" value="14" step="1" min="6" max="22"><span class="hint">cap radius for directional surface sampling</span></div>
+      <div class="fld"><label for="topk">max candidates</label><input type="number" id="topk" value="0" step="10" min="0" title="0 keeps all candidates"><span class="hint">0 keeps all</span></div>
+      <div class="fld"><label id="methodlbl">methods</label>
+        <span class="seg" id="methodseg" role="group" aria-labelledby="methodlbl">
+          <button data-m="growpatch,eyeview" class="on" aria-pressed="true">Both methods</button>
+          <button data-m="growpatch" aria-pressed="false">Neighbor-based patch growth</button>
+          <button data-m="eyeview" aria-pressed="false">Directional surface sampling</button>
         </span>
       </div>
-      <div class="fld"><label>&nbsp;</label><button id="run" class="btn-primary" disabled>Run</button></div>
+      <div class="fld"><label aria-hidden="true">&nbsp;</label><button id="run" class="btn-primary" disabled>Run growPatch</button></div>
     </div>
     <div class="row" style="margin-top:11px">
-      <div class="fld"><label>input type</label>
-        <span class="seg" id="modeseg">
-          <button data-mode="growpatch" class="on">lone antigen &mdash; run growPatch</button>
-          <button data-mode="antibody">antibody present &mdash; epitope from contact</button>
+      <div class="fld"><label id="modelbl">input type</label>
+        <span class="seg" id="modeseg" role="group" aria-labelledby="modelbl">
+          <button data-mode="growpatch" class="on" aria-pressed="true">Lone antigen &mdash; run growPatch</button>
+          <button data-mode="antibody" aria-pressed="false">Antibody present &mdash; epitope from contact</button>
         </span>
       </div>
       <div class="fld" style="flex:1;min-width:200px"><label>&nbsp;</label>
@@ -112,38 +138,54 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
   <div id="results" style="display:none">
     <div class="stats" id="stats"></div>
     <div class="row" style="margin:4px 0 10px">
-      <span class="lbl">view</span>
-      <span class="seg" id="viewseg">
-        <button data-v="3d" class="on">3D structure</button>
-        <button data-v="flat">flat surface</button>
+      <span class="lbl" id="viewlbl">view</span>
+      <span class="seg" id="viewseg" role="group" aria-labelledby="viewlbl">
+        <button data-v="3d" class="on" aria-pressed="true">3D structure</button>
+        <button data-v="flat" aria-pressed="false">Projection map</button>
+      </span>
+      <span class="viewctrls" id="viewctrls">
+        <button type="button" id="btnreset">Reset view</button>
+        <button type="button" id="btnfit">Fit structure</button>
       </span>
     </div>
     <div class="sel" id="sel">No patch selected &mdash; click one in the list.</div>
     <div class="main">
       <div class="listwrap">
         <span class="lbl">candidates (<span id="nshown">0</span>)</span>
-        <div class="plist" id="plist" role="listbox"></div>
+        <div class="plist" id="plist" role="listbox" aria-label="candidate epitopes"></div>
       </div>
       <div class="viewwrap">
-        <div id="viewer"></div>
-        <div id="flatwrap"><svg id="flat" viewBox="0 0 720 360" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div id="viewmsg" class="viewmsg" role="status" aria-live="polite"></div>
+        <div id="viewer" aria-label="3D structure of the uploaded antigen; a selected candidate's residues appear in red"></div>
+        <div id="flatwrap">
+          <div class="flathdr"><b>Projection of residue positions about the centroid.</b> This is not a
+          surface unwrap; 2D distances on this map do not equal distances in the molecule, and it does
+          not establish that residues are adjacent or exposed.</div>
+          <div class="flatlegend">
+            <span>x = angle around the centroid, y = angle above/below it</span>
+            <span><span class="sw" style="background:#d6d6d6"></span>buried</span>
+            <span><span class="sw" style="background:#296dc0"></span>exposed (relative SASA)</span>
+            <span><span class="sw" style="background:#c0392b"></span>selected candidate</span>
+          </div>
+          <svg id="flat" viewBox="0 0 720 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Projection of residue positions about the chain centroid, colored by relative solvent accessibility"></svg>
+        </div>
       </div>
     </div>
 
     <div class="card" style="margin-top:14px">
-      <div class="lbl" style="margin-bottom:8px">Stage a run &mdash; take to the cluster</div>
+      <div class="lbl" style="margin-bottom:8px">Prepare design inputs for the cluster</div>
       <div class="row">
-        <div class="fld"><label>name</label><input id="runname" value="antigen" style="width:100px"></div>
-        <div class="fld"><label>flank variants</label><input type="number" id="variants" value="4" min="1" max="30"></div>
-        <div class="fld"><label>RFd3 / contig</label><input type="number" id="rfd3" value="8" min="1"></div>
-        <div class="fld"><label>MPNN / backbone</label><input type="number" id="mpnn" value="8" min="1"></div>
-        <div class="fld"><label>budget</label>
-          <span class="seg" id="budgetseg"><button data-b="n_designs" class="on">N designs/epitope</button><button data-b="time">time (h)</button></span></div>
-        <div class="fld"><label>value</label><input type="number" id="budgetval" value="200" min="1"></div>
-        <div class="fld" title="Bias RFd3 toward helical scaffolds (0 = neutral). Fed to the RFd3 stage via the run spec.">
-          <label>helicity bias <span id="helixval" style="color:var(--blue);font-variant-numeric:tabular-nums">0.00</span></label>
+        <div class="fld"><label for="runname">name</label><input id="runname" value="antigen" style="width:100px"></div>
+        <div class="fld"><label for="variants">flank variants</label><input type="number" id="variants" value="4" min="1" max="30"></div>
+        <div class="fld"><label for="rfd3">RFdiffusion3 / contig</label><input type="number" id="rfd3" value="8" min="1"></div>
+        <div class="fld"><label for="mpnn">ProteinMPNN / backbone</label><input type="number" id="mpnn" value="8" min="1"></div>
+        <div class="fld"><label id="budgetlbl">budget</label>
+          <span class="seg" id="budgetseg" role="group" aria-labelledby="budgetlbl"><button data-b="n_designs" class="on" aria-pressed="true">designs per epitope</button><button data-b="time" aria-pressed="false">time (h)</button></span></div>
+        <div class="fld"><label for="budgetval" id="budgetvallbl">designs per epitope</label><input type="number" id="budgetval" value="200" min="1"></div>
+        <div class="fld" title="Bias RFdiffusion3 toward helical scaffolds (0 = neutral). Fed to the RFdiffusion3 stage via the run spec.">
+          <label for="helix">helicity bias <span id="helixval" style="color:var(--blue);font-variant-numeric:tabular-nums">0.00</span></label>
           <input type="range" id="helix" min="-1" max="1" step="0.05" value="0" style="width:120px"></div>
-        <div class="fld"><label>&nbsp;</label><button id="stage" class="btn-primary">Stage run</button></div>
+        <div class="fld"><label aria-hidden="true">&nbsp;</label><button id="stage" class="btn-primary">Prepare design inputs</button></div>
       </div>
       <div style="font-size:11.5px;color:#8a6d1f;background:#fdf7e3;border:1px solid #efe3b8;border-radius:4px;padding:5px 9px;margin-top:8px">
         Helicity bias is exploratory and <b>not yet wired into generation</b>: helical designs may bind better &mdash; or may just be
@@ -155,13 +197,18 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
     </div>
   </div>
 
-  <div class="note"><b>Notes.</b> The flat-surface map is an equirectangular projection around the
-  chain centroid (dots = residues, shaded by relative SASA, selected patch in red) &mdash; a lossy
-  overview, not a metric space. Whether an uploaded antigen is actually suitable for episcaf is not
-  yet checked. Candidates come from the real enumerator (<code>episcaf_analysis/growpatch</code>);
-  method tags: <span class="mtag m-both">both</span> found by both strategies,
-  <span class="mtag m-growpatch">grow</span> seed-and-grow, <span class="mtag m-eyeview">eye</span>
-  antibody&rsquo;s-eye-view.</div>
+  <div class="note"><b>Notes.</b> A candidate patch can contain residues from separate stretches of the
+  amino acid sequence that lie next to one another in the folded protein (sequence segments). The
+  <b>projection map</b> places each residue by its angle about the chain centroid, shaded by relative
+  solvent accessibility (light = buried &rarr; blue = exposed); it is a rough overview, not a surface
+  unwrap, and its 2D distances are not molecular distances. Whether an uploaded antigen is actually
+  suitable for episcaf is not yet checked. Candidates come from the enumerator
+  (<code>episcaf_analysis/growpatch</code>); the method tag is provenance, not a confidence score:
+  <span class="mtag m-both">Found by both methods</span> was produced by both,
+  <span class="mtag m-growpatch">Neighbor-based growth</span> and
+  <span class="mtag m-eyeview">Directional sampling</span> by one method only. "Prepare design inputs"
+  writes a contigs CSV and run spec for RFdiffusion3&rarr;ProteinMPNN&rarr;AlphaFold3; it does not
+  start the design job.</div>
 </div>
 
 <script>
@@ -177,7 +224,9 @@ const fileFmt=()=>($("file").files[0]&&$("file").files[0].name.toLowerCase().end
 
 function setMode(m){
   state.mode=m;
-  document.querySelectorAll("#modeseg button").forEach(b=>b.classList.toggle("on",b.dataset.mode===m));
+  document.querySelectorAll("#modeseg button").forEach(b=>{
+    const on=b.dataset.mode===m; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on?"true":"false");
+  });
   $("run").textContent = m==="antibody" ? "Show epitope" : "Run growPatch";
   // the growPatch knobs don't apply in antibody mode
   ["sasa","radius","topk"].forEach(id=>$(id).disabled=(m==="antibody"));
@@ -210,7 +259,9 @@ document.querySelectorAll("#modeseg button").forEach(b=>b.onclick=()=>setMode(b.
 document.querySelectorAll("#methodseg button").forEach(b=>b.onclick=()=>{
   if(b.disabled) return;
   state.method=b.dataset.m;
-  document.querySelectorAll("#methodseg button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll("#methodseg button").forEach(x=>{
+    const on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false");
+  });
 });
 
 $("run").onclick=async()=>{
@@ -220,7 +271,7 @@ $("run").onclick=async()=>{
     mode:state.mode, fmt:fileFmt()});
   $("run").disabled=true;
   msg(state.mode==="antibody" ? "Finding the antibody-contact epitope…"
-      : "Running the enumerator… (freesasa + seed-and-grow + eye-view)","busy");
+      : "Running the enumerator… (surface accessibility, neighbor-based patch growth, directional surface sampling)","busy");
   try{
     const res=await fetch("/enumerate?"+qs.toString(),{method:"POST",body:state.pdbText});
     const data=await res.json();
@@ -238,26 +289,34 @@ function buildStats(){
   let items;
   if(D.mode==="antibody"){
     const p=D.patches[0]||{n_res:0,n_isl:0};
-    items=[["epitope residues",p.n_res],["islands",p.n_isl],
+    items=[["epitope residues",p.n_res],["sequence segments",p.n_isl],
            ["bound partner",(D.partner_chains||[]).join(", ")||"—"],
-           ["surface",D.n_surface+" / "+D.n_residues]];
+           ["surface residues",D.n_surface+" / "+D.n_residues]];
   }else{
-    items=[["patches",D.n_patches],["found by both",D.n_both],["seed-and-grow",D.n_growpatch],
-      ["eye-view",D.n_eyeview],["surface",D.n_surface+" / "+D.n_residues]];
+    items=[["candidate patches",D.n_patches],["found by both methods",D.n_both],["neighbor-based growth",D.n_growpatch],
+      ["directional sampling",D.n_eyeview],["surface residues",D.n_surface+" / "+D.n_residues]];
   }
   $("stats").innerHTML=items.map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
 }
+const METHOD_NAME={growpatch:"neighbor-based patch growth",eyeview:"directional surface sampling","antibody-contact":"antibody contact"};
+function segText(n){return n===1?"1 sequence segment":n+" sequence segments";}
 function mtag(m){
-  if(m.includes("antibody-contact")) return '<span class="mtag" style="background:#444">epitope</span>';
-  return m.length===2?'<span class="mtag m-both">both</span>':
-    (m[0]==="growpatch"?'<span class="mtag m-growpatch">grow</span>':'<span class="mtag m-eyeview">eye</span>');}
+  if(m.includes("antibody-contact")) return '<span class="mtag" style="background:#444" title="Epitope read from antibody contact">Antibody-contact epitope</span>';
+  if(m.length===2) return '<span class="mtag m-both" title="Produced by both methods">Found by both methods</span>';
+  return m[0]==="growpatch"
+    ? '<span class="mtag m-growpatch" title="Neighbor-based patch growth">Neighbor-based growth</span>'
+    : '<span class="mtag m-eyeview" title="Directional surface sampling">Directional sampling</span>';
+}
 function buildList(){
   const el=$("plist"); el.innerHTML=""; $("nshown").textContent=state.D.patches.length;
+  if(!state.D.patches.length){ el.innerHTML='<div class="empty">No candidates were returned for these settings.</div>'; updateStageSel(); return; }
   for(const p of state.D.patches){
     const row=document.createElement("div");
     row.className="prow"+(state.sel===p.i?" on":""); row.tabIndex=0; row.dataset.i=p.i;
-    row.innerHTML=`<input type="checkbox" class="pick" ${state.picked.has(p.i)?"checked":""} title="include in run">`+
-      `<span class="ep">${p.epitope}</span><span class="meta">${p.n_res}r&middot;${p.n_isl}i</span>${mtag(p.methods)}`;
+    row.setAttribute("role","option"); row.setAttribute("aria-selected", state.sel===p.i ? "true":"false");
+    row.innerHTML=`<input type="checkbox" class="pick" ${state.picked.has(p.i)?"checked":""} aria-label="Include ${p.epitope} in the staged run">`+
+      `<span class="ep">${p.epitope}</span>`+
+      `<span class="rowmeta">${p.n_res} residues &middot; ${segText(p.n_isl)} &middot; ${mtag(p.methods)}</span>`;
     row.querySelector(".pick").onclick=e=>{e.stopPropagation();
       if(e.target.checked) state.picked.add(p.i); else state.picked.delete(p.i); updateStageSel();};
     row.onclick=()=>select(p.i);
@@ -275,27 +334,54 @@ function updateStageSel(){
 const patchById=i=>state.D.patches.find(p=>p.i===i);
 function select(i){
   state.sel=i; const p=patchById(i);
-  $("sel").innerHTML=p?`<b>${p.epitope}</b> &mdash; ${p.n_res} residues, ${p.n_isl} island(s), found by ${p.methods.join(" + ")}`:"No patch selected.";
-  document.querySelectorAll(".prow").forEach(r=>r.classList.toggle("on",+r.dataset.i===i));
+  const by=p?p.methods.map(m=>METHOD_NAME[m]||m).join(" and "):"";
+  $("sel").innerHTML=p?`<b>${p.epitope}</b> &mdash; ${p.n_res} residues, ${segText(p.n_isl)}, found by ${by}`:"No patch selected.";
+  document.querySelectorAll(".prow").forEach(r=>{
+    const on=+r.dataset.i===i; r.classList.toggle("on",on); r.setAttribute("aria-selected",on?"true":"false");
+  });
   if(state.view==="3d") paint3d(); else paintFlat();
 }
 
+// Explicit viewer states: loading -> success (status cleared) or failure (message, no silent blank).
+// The upload has no pre-rendered image, so there is no static fallback here; the projection map
+// (pure SVG) still works and locates a selected candidate.
+let viewerDead=false;
+function viewMsg(t,isErr){const m=$("viewmsg");if(!m)return;m.className="viewmsg"+(isErr?" err":"");m.innerHTML=t||"";}
+function webglOK(){
+  try{const c=document.createElement("canvas");
+    return !!(window.WebGLRenderingContext && (c.getContext("webgl")||c.getContext("experimental-webgl")));
+  }catch(e){return false;}
+}
+function viewerFail(reason){
+  viewerDead=true;
+  $("viewer").innerHTML='<p style="padding:14px;color:#a0241a;font-size:12.5px">'+reason+
+    ' The projection map still works &mdash; switch to it to locate a selected candidate.</p>';
+  viewMsg("");
+}
 function loadStructure(){
-  if(typeof $3Dmol==="undefined"){$("viewer").innerHTML='<p style="padding:14px;color:#a00">3Dmol.js did not load.</p>';return;}
-  if(!viewer) viewer=$3Dmol.createViewer("viewer",{backgroundColor:"white"});
-  viewer.clear(); viewer.addModel(state.pdbText, "pdb");
-  viewer.setStyle({},{}); viewer.setStyle({chain:state.D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
-  viewer.zoomTo({chain:state.D.chain}); viewer.render();
+  viewerDead=false; viewMsg("Loading structure…");
+  if(typeof $3Dmol==="undefined"){ viewerFail("The 3D library (3Dmol.js) did not load; check your connection."); return; }
+  if(!webglOK()){ viewerFail("This browser reports no available WebGL, so the interactive 3D view cannot start."); return; }
+  try{
+    if(!viewer || $("viewer").querySelector("p")){ $("viewer").innerHTML=""; viewer=$3Dmol.createViewer("viewer",{backgroundColor:"white"}); }
+    viewer.clear(); viewer.addModel(state.pdbText, "pdb");
+    viewer.setStyle({},{}); viewer.setStyle({chain:state.D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
+    viewer.zoomTo({chain:state.D.chain}); viewer.render(); viewMsg("");
+  }catch(e){ viewerFail("The structure could not be rendered ("+((e&&e.message)||e)+")."); }
 }
 function paint3d(){
-  if(!viewer) return;
-  viewer.setStyle({},{}); viewer.setStyle({chain:state.D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
-  const p=state.sel!=null?patchById(state.sel):null;
-  if(p){const sel={chain:state.D.chain,resi:p.resis};
-    viewer.setStyle(sel,{cartoon:{color:RED,thickness:1.0,arrows:true}});
-    viewer.setStyle(Object.assign({},sel,{not:{atom:["N","C","O"]}}),{cartoon:{color:RED,thickness:1.0,arrows:true},stick:{color:RED,radius:0.18}});}
-  viewer.render();
+  if(!viewer||viewerDead) return;
+  try{
+    viewer.setStyle({},{}); viewer.setStyle({chain:state.D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
+    const p=state.sel!=null?patchById(state.sel):null;
+    if(p){const sel={chain:state.D.chain,resi:p.resis};
+      viewer.setStyle(sel,{cartoon:{color:RED,thickness:1.0,arrows:true}});
+      viewer.setStyle(Object.assign({},sel,{not:{atom:["N","C","O"]}}),{cartoon:{color:RED,thickness:1.0,arrows:true},stick:{color:RED,radius:0.18}});}
+    viewer.render();
+  }catch(e){ viewerFail("The 3D viewer hit a rendering error ("+((e&&e.message)||e)+")."); }
 }
+function fitStructure(){ if(viewer&&!viewerDead&&state.D){try{viewer.zoomTo({chain:state.D.chain});viewer.render();}catch(e){}} }
+function resetView(){ if(viewer&&!viewerDead&&state.D){try{paint3d();viewer.zoomTo({chain:state.D.chain});viewer.render();}catch(e){}} }
 function flatGeom(){
   if(FLAT) return FLAT;
   const R=state.D.residues, n=R.length, c=[0,0,0];
@@ -324,18 +410,27 @@ function paintFlat(){
 function setView(v){
   state.view=v;
   $("viewer").style.display=v==="3d"?"block":"none";
+  $("viewmsg").style.display=v==="3d"?"block":"none";
+  $("viewctrls").style.display=v==="3d"?"inline-flex":"none";
   $("flatwrap").style.display=v==="flat"?"block":"none";
-  document.querySelectorAll("#viewseg button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  document.querySelectorAll("#viewseg button").forEach(b=>{
+    const on=b.dataset.v===v; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on?"true":"false");
+  });
   if(v==="3d") paint3d(); else paintFlat();
 }
 document.querySelectorAll("#viewseg button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
+$("btnreset").onclick=resetView;
+$("btnfit").onclick=fitStructure;
 
 // --- stage a run ---
 document.querySelectorAll("#budgetseg button").forEach(b=>b.onclick=()=>{
   state.budgetMode=b.dataset.b;
   // sensible default per mode: ~200 designs/epitope, or ~4 h of wall-time
   $("budgetval").value = (b.dataset.b==="time") ? 4 : 200;
-  document.querySelectorAll("#budgetseg button").forEach(x=>x.classList.toggle("on",x===b));
+  $("budgetvallbl").textContent = (b.dataset.b==="time") ? "hours" : "designs per epitope";
+  document.querySelectorAll("#budgetseg button").forEach(x=>{
+    const on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false");
+  });
 });
 $("helix").oninput=()=>{$("helixval").textContent=parseFloat($("helix").value).toFixed(2);};
 function smsg(t,cls){const m=$("stagemsg");m.className=t?("msg "+(cls||"")):"";m.innerHTML=t||"";}
@@ -354,10 +449,49 @@ $("stage").onclick=async()=>{
     const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
     dl(d.run_spec.antigen+"_contigs.csv", d.contigs_csv, "text/csv");
     dl(d.run_spec.antigen+"_run_spec.json", JSON.stringify(d.run_spec,null,2), "application/json");
-    smsg(`Staged <b>${d.n_contigs}</b> contigs for ${chosen.length} epitope(s) &mdash; ~${d.run_spec.designs_at_full_fanout.toLocaleString()} designs at full fanout. Downloaded <code>contigs.csv</code> + <code>run_spec.json</code>. Run RFd3&rarr;MPNN&rarr;AF3 on the cluster, then load the metrics CSV in the Results tab.`,"busy");
-  }catch(e){ smsg("Staging failed: "+e.message+"  (is the server running?)","err"); }
+    smsg(`Prepared <b>${d.n_contigs}</b> contigs for ${chosen.length} epitope(s) &mdash; about ${d.run_spec.designs_at_full_fanout.toLocaleString()} designs at full fanout. Downloaded <code>contigs.csv</code> + <code>run_spec.json</code>. The design job has not started: run RFdiffusion3&rarr;ProteinMPNN&rarr;AlphaFold3 on the cluster, then load the metrics CSV in the Results tab.`,"busy");
+  }catch(e){ smsg("Preparing inputs failed: "+e.message+"  (is the local service running?)","err"); }
   finally{ $("stage").disabled=false; }
 };
+
+// --- local-service connection status ---------------------------------------
+// This page's /inspect, /enumerate and /stage calls are same-origin, so they only reach a backend
+// when the page is itself served by scripts/growpatch_serve.py (http://127.0.0.1:8765/). Opened from
+// GitHub Pages or as a file://, those paths hit a static origin with no service and the form would
+// fail silently. We detect that up front from the origin, then confirm the server is actually
+// listening with one lightweight same-origin request (no new endpoint, no side effects).
+function setFormEnabled(on){
+  ["file","run","stage"].forEach(id=>{const e=$(id);if(e)e.disabled=on?e.disabled:true;});
+  if(!on){ $("run").disabled=true; $("stage").disabled=true; }
+  else { $("stage").disabled=false; }  // run stays disabled until a file is chosen
+  $("formcard").style.opacity=on?"1":"0.55";
+}
+function renderConn(ok){
+  const c=$("conn");
+  if(ok){
+    c.className="conn ok";
+    c.innerHTML='<b>Service connected.</b> This page is served by the local growPatch service, '+
+      'so uploads run the real enumerator on your machine.';
+  }else{
+    c.className="conn bad";
+    c.innerHTML='<b>Service not connected.</b> Processing a new structure requires the local service. '+
+      'This page must be opened from the local server: run <code>python scripts/growpatch_serve.py</code>, '+
+      'then open <code>http://127.0.0.1:8765/growpatch_tool.html</code>. '+
+      'Or <a href="growpatch.html">explore the recorded 8PWW example</a> in the browser.';
+  }
+  setFormEnabled(ok);
+}
+async function checkService(){
+  const host=location.hostname;
+  const isLocal=(location.protocol==="http:"||location.protocol==="https:") &&
+                (host==="localhost"||host==="127.0.0.1"||host==="::1"||host==="[::1]");
+  if(!isLocal){ renderConn(false); return; }
+  try{
+    const r=await fetch(location.pathname,{method:"HEAD",cache:"no-store"});
+    renderConn(!!r.ok);
+  }catch(e){ renderConn(false); }
+}
+checkService();
 </script>
 </body>
 </html>
