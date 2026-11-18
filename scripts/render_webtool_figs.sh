@@ -48,4 +48,28 @@ render design_scaffold   docs/pdb/8pww_design.pdb A 1 -75 20 $DES_EPI
 
 echo "post-processing (trim + transparent background) ..."
 /Users/bneff/micromamba/envs/bcell-repair/bin/python scripts/trim_transparent.py "$OUT"/antigen_epitope.png "$OUT"/cand_a.png "$OUT"/cand_b.png "$OUT"/cand_selected.png "$OUT"/design_scaffold.png
+
+# ---- "Generate scaffolds" trio: three real episcaf designs, one shared epitope ----
+# Eight distinct RFdiffusion3 backbones for the same grafted motif (7a3t-derived epitope4_case1;
+# contig "34, A149, 33, A297-299, 33" => motif at scaffold resid 35,69-71). Three most-distinct
+# designs (model_0/1/4; 6-11 A CA-RMSD apart, ~11-19% seq id), superposed on the epitope CA so the
+# red patch registers across panels, montaged 1x3. Source is the known_antigen sibling run dir.
+RUN="$HOME/Desktop/projects/episcaf/known_antigen/runs/run_epitope4_case1_with_ab_20260212_091338/pdb"
+if [ -d "$RUN" ]; then
+  echo "  rendering scaffolds_trio ..."
+  FONT=/System/Library/Fonts/Supplemental/Arial.ttf
+  "$VMD" -dispdev text -e scripts/render_scaffold_trio.tcl -args "$TMP/scaf" "35 69 70 71" -75 20 \
+    "$RUN/epitope4_case1_with_antibody_epitope4_case1_0_model_0.pdb" \
+    "$RUN/epitope4_case1_with_antibody_epitope4_case1_0_model_1.pdb" \
+    "$RUN/epitope4_case1_with_antibody_epitope4_case1_0_model_4.pdb" > "$TMP/scaf.vmd.log" 2>&1
+  for i in 0 1 2; do
+    "$TACHYON" "$TMP/scaf_$i.dat" -res 900 900 -aasamples 12 -format TARGA -o "$TMP/scaf_$i.tga" > /dev/null 2>&1
+    sips -s format png "$TMP/scaf_$i.tga" --out "$TMP/scaf_$i.png" > /dev/null 2>&1
+  done
+  /Users/bneff/micromamba/envs/bcell-repair/bin/python scripts/trim_transparent.py "$TMP"/scaf_0.png "$TMP"/scaf_1.png "$TMP"/scaf_2.png
+  montage -font "$FONT" "$TMP"/scaf_0.png "$TMP"/scaf_1.png "$TMP"/scaf_2.png -tile 3x1 -geometry x420+14+0 -background none "$OUT/scaffolds_trio.png"
+  magick "$OUT/scaffolds_trio.png" -trim +repage "$OUT/scaffolds_trio.png"
+else
+  echo "  (skipping scaffolds_trio: $RUN not found)"
+fi
 echo "done -> $OUT"
