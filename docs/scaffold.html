@@ -143,22 +143,23 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   <a href="results.html">Results</a>
 </div></div>
 <div class="page">
-  <p class="lede">Start from an antibody&ndash;antigen complex, or specify the antibody chains or residues on an uploaded structure and episcaf derives the contact epitope. Then design protein scaffolds that present that epitope in its native, antibody-binding conformation. Pipeline: RFdiffusion3 &rarr; antibody-obstruction filter &rarr; ProteinMPNN &rarr; AlphaFold3 &rarr; scoring.</p>
-  <p class="note"><b>This page is a planning simulation.</b> It does not run designs. It shows the cluster
-  job that would be submitted and estimates throughput from the project's measured DP4 enrichment rates;
-  the per-design rows below are illustrative, not completed predictions. The selected structure is a real
-  PDB shown in 3D (drag to rotate). To stage a real job, upload a structure and set a Backend URL (see
-  foot of page); the design itself then runs on the cluster.</p>
+  <h1>Configure scaffold design</h1>
+  <p class="lede">Define the epitope from an antibody&ndash;antigen complex or select antigen residues
+  directly. Configure backbone generation, sequence design, structure prediction, and ranking below.</p>
+  <p class="note"><b>Without a connected service, this page simulates a run.</b> With a service and an
+  uploaded structure, it prepares design inputs and a cluster submission script; cluster calculations
+  begin when that script is submitted. The structure viewer displays the selected example or uploaded
+  file, and changing protocol settings does not rerun a recorded example.</p>
 
   <hr>
 
   <section class="tcard">
-    <div class="tcard-h">Target complex</div>
+    <div class="tcard-h">Structure and epitope</div>
     <div class="tcard-top">
-      <span class="tlab">Epitope source:</span>
-      <label class="radio"><input type="radio" name="epi" value="antibody" checked> Antibody present &mdash; derive the contact epitope from the antibody (on an uploaded complex, tune the distance &amp; gap&#8209;fill)</label>
-      <label class="radio"><input type="radio" name="epi" value="manual"> Specify the epitope residues yourself (select them on the structure)</label>
-      <div class="help" style="margin-top:3px">No antibody and no known site? <a href="growpatch.html">Use the surface scan to find candidate regions &rsaquo;</a></div>
+      <span class="tlab">Epitope selection:</span>
+      <label class="radio"><input type="radio" name="epi" value="antibody" checked> Use antibody contact residues &mdash; derive the contact epitope from the antibody (on an uploaded complex, tune the cutoff &amp; gap&#8209;fill)</label>
+      <label class="radio"><input type="radio" name="epi" value="manual"> Select antigen residues &mdash; specify the epitope residues on the structure</label>
+      <div class="help" style="margin-top:3px">No antibody and no known site? <a href="growpatch.html">Generate candidate surface regions &rsaquo;</a></div>
     </div>
     <div class="tcard-b">
       <div class="tcol">
@@ -171,7 +172,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
           </optgroup>
         </select>
         <div class="help" id="targethint"></div>
-        <div class="field" style="margin-top:7px"><label for="pdbfile">or upload your own structure</label>
+        <div class="field" style="margin-top:7px"><label for="pdbfile">Upload a PDB or mmCIF file</label>
           <input type="file" id="pdbfile" accept=".pdb,.ent,.cif"></div>
         <div class="help" id="uploadnote">PDB or mmCIF. The viewer loads it. With the local server it auto-detects the antibody and epitope; from anywhere, use the sequence below to pick the antibody chain yourself.</div>
       </div>
@@ -191,54 +192,53 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         Its residues within the contact cutoff of the antibody (heavy atoms) become the epitope. Computed
         in your browser; no server needed.</div>
       <div id="selmode" class="selmode" role="group" aria-label="How to mark the antibody">
-        <button type="button" id="modechain" class="modebtn on" aria-pressed="true">Whole chain(s)</button>
-        <button type="button" id="moderes" class="modebtn" aria-pressed="false">Selected residues</button>
+        <button type="button" id="modechain" class="modebtn on" aria-pressed="true">Select antibody chains</button>
+        <button type="button" id="moderes" class="modebtn" aria-pressed="false">Select antibody residues</button>
       </div>
       <div class="seqparams">
-        <label for="cutoff">contact cutoff <input type="number" id="cutoff" value="4.0" min="2" max="12" step="0.5"> &Aring;</label>
-        <label for="gapfill">gap fill <input type="number" id="gapfill" value="0" min="0" max="20" step="1"> residues</label>
-        <span class="phelp">gap fill bridges short sequence gaps between contact residues on the antigen (0 = off).</span>
+        <label for="cutoff">Heavy-atom contact cutoff (&Aring;) <input type="number" id="cutoff" value="4.0" min="2" max="12" step="0.5"></label>
+        <label for="gapfill">Maximum sequence gap to fill (residues) <input type="number" id="gapfill" value="0" min="0" max="20" step="1"></label>
+        <span class="phelp">Fill sequence gaps up to this length between selected antigen residues. Set to 0 to leave the gaps unchanged.</span>
       </div>
       <div id="chainpills" class="chainpills" role="group" aria-label="Chains"></div>
       <div id="seqstatus" class="seqstatus"></div>
       <div id="seqbody" class="seqbody" aria-label="Sequence by chain"></div>
-      <div class="seqlegend">Letters are colored by chain. On the antigen chain, <span class="epimark">boxed</span> residues are the epitope; in residue mode, <span class="absmark">shaded</span> residues are the antibody you selected.</div>
+      <div class="seqlegend">Chain colors identify the protein chains. <span class="epimark">Boxed</span> antigen residues belong to the epitope. <span class="absmark">Shaded</span> antibody residues identify the antibody selection.</div>
     </div>
   </section>
 
   <form id="form" autocomplete="off">
     <h2>Design protocol</h2>
-    <p class="sub" style="color:#666;margin:-4px 0 10px">Set the options for each step. The run and the Gemini job below update to match.</p>
+    <p class="sub" style="color:#666;margin:-4px 0 10px">Configure the design steps below. The simulation and submission-script preview update with the supported settings.</p>
 
     <section class="step">
       <div class="steph"><span class="stepn">1</span> Generate backbones &mdash; RFdiffusion3</div>
       <div class="stepb">
         <p class="sub" style="margin:0 0 8px">RFdiffusion3 generates <i>de novo</i> backbones &mdash; the scaffold&rsquo;s 3D shape, before any amino-acid sequence is assigned &mdash; that hold the epitope in its native geometry.</p>
-        <div class="field"><label for="rfd3n">Backbones generated per epitope</label>
+        <div class="field"><label for="rfd3n">Backbones per epitope</label>
           <input type="number" id="rfd3n" value="8" min="1" max="64">
-          <div class="sub">How many candidate backbones RFdiffusion3 generates for each epitope. More backbones explore more folds and cost more compute. These are the population the next step filters.</div></div>
+          <div class="sub">Number of candidate backbones requested for each epitope. Each retained backbone proceeds to sequence design.</div></div>
         <div class="field"><label for="helix">Helix bias</label>
           <input type="range" id="helix" min="-1" max="1" step="0.05" value="0" disabled style="vertical-align:middle;width:140px">
           <span id="helixv" style="color:#9aa3ad;font-variant-numeric:tabular-nums">0.00</span>
-          <div class="sub">Intended to bias toward (+1) or away from (&minus;1) helical scaffolds. <b>Not yet wired into generation</b>, so the control is disabled; it marks a planned option and changing it would have no effect.</div></div>
-        <label class="radio"><input type="checkbox" id="ipd"> Iterative design loop &mdash; reuse the best backbones of each round to seed the next (partial diffusion)</label>
-        <div class="sub" style="margin:2px 0 0 22px">When on, after each round the best-scoring designs are re-diffused into nearby variants and mixed with fresh designs, instead of running a single pass. This raises the chance of improving on a good fold, at the cost of more rounds. <a href="methods.html#generate">How the loop works &rsaquo;</a></div>
-        <div class="field" id="ipdwrap" hidden><label for="ipdrounds">Maximum rounds</label>
+          <div class="sub">Planned setting. Helix bias is not connected to the current generation workflow.</div></div>
+        <label class="radio"><input type="checkbox" id="ipd"> Generate additional rounds by partial diffusion</label>
+        <div class="sub" style="margin:2px 0 0 22px">Use selected designs from one round to generate variants for the next round. Each round also includes independently generated backbones. <a href="methods.html#generate">How the loop works &rsaquo;</a></div>
+        <div class="field" id="ipdwrap" hidden><label for="ipdrounds">Maximum design rounds</label>
           <input type="number" id="ipdrounds" value="4" min="1" max="10">
-          <div class="sub">Caps how many times the loop repeats. Each epitope stops early once it stops improving (an adaptive per-epitope budget).</div></div>
+          <div class="sub">Upper limit on the number of rounds. An epitope can stop earlier under the configured improvement criterion.</div></div>
       </div>
     </section>
 
     <section class="step" id="step-filter">
-      <div class="steph"><span class="stepn">2</span> Filter backbones for potential antibody obstruction</div>
+      <div class="steph"><span class="stepn">2</span> Backbone obstruction filter</div>
       <div class="stepb">
-        <p class="sub" style="margin:0 0 8px">Before designing sequences, estimate whether each proposed backbone would obstruct antibody binding to the epitope. This is separate from whether the backbone holds the epitope&rsquo;s shape, and separate from any internal clash within the scaffold.</p>
-        <label class="radio"><input type="checkbox" id="prefilter" checked> Remove backbones predicted to obstruct antibody binding</label>
-        <div class="sub" style="margin:2px 0 0 22px">Uses AOMclash to estimate obstruction from an antibody-occupancy map, before sequence design (ProteinMPNN) and structure prediction (AlphaFold3). It is the pipeline&rsquo;s main compute saving. <a href="aomclash.html">How antibody obstruction is estimated &rsaquo;</a></div>
+        <p class="sub" style="margin:0 0 8px">AOMclash estimates whether a generated backbone could obstruct antibody binding. Candidates with lower obstruction scores are prioritized before sequence design.</p>
+        <label class="radio"><input type="checkbox" id="prefilter" checked> Filter backbones before sequence design</label>
+        <div class="sub" style="margin:2px 0 0 22px">Uses AOMclash to estimate obstruction from an antibody-occupancy map, before sequence design (ProteinMPNN) and structure prediction (AlphaFold&nbsp;3). <a href="aomclash.html">AOMclash calculation and validation &rsaquo;</a></div>
         <div class="field" id="prefwrap">
-          <label for="keepfrac">Backbones to send to sequence design</label>
-          <div class="sub" style="margin:2px 0 5px">For each epitope, the generated backbones are ranked by their predicted obstruction of antibody binding (AOMclash <code>s_p1_free</code>; lower is less obstruction). Choose the percentage to keep; the rest are discarded before ProteinMPNN and AlphaFold3. Ranking is done separately for each epitope.</div>
-          <label for="keepfrac" style="font-weight:normal">Percentage to keep</label>
+          <label for="keepfrac">Percentage of backbones to retain</label>
+          <div class="sub" style="margin:2px 0 5px">Backbones are ranked separately for each epitope by AOMclash score (<code>s_p1_free</code>; lower is less obstruction). The selected percentage with the lowest scores continues to ProteinMPNN and AlphaFold&nbsp;3; the rest are discarded.</div>
           <input type="number" id="keepfrac" value="50" min="5" max="100" step="5"> %
           <div class="sub" id="keepexample" style="margin-top:4px"></div></div>
       </div>
@@ -250,33 +250,33 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <p class="sub" style="margin:0 0 8px">ProteinMPNN assigns an amino-acid sequence to each kept backbone, holding the epitope positions fixed so the epitope keeps its native identity while the rest of the scaffold is free.</p>
         <div class="field"><label for="mpnnn">Sequences per backbone</label>
           <input type="number" id="mpnnn" value="8" min="1" max="32">
-          <div class="sub">How many sequences ProteinMPNN designs for each kept backbone. Each sequence becomes a separate design to fold and score.</div></div>
+          <div class="sub">Number of sequence candidates generated for each retained backbone. Each sequence is evaluated by structure prediction.</div></div>
       </div>
     </section>
 
     <section class="step">
       <div class="steph"><span class="stepn">4</span> Predict structure &mdash; AlphaFold3</div>
-      <div class="stepb"><p class="fixed-note">AlphaFold3 folds each designed sequence to check whether it adopts the intended structure with the epitope in native geometry. Single sequence, seed 1, no MSA, so the prediction uses no template or coevolution cues. No options.</p></div>
+      <div class="stepb"><p class="fixed-note">AlphaFold&nbsp;3 predicts a structure for each sequence. The predicted structure is compared with the intended design and reference epitope. Single-sequence input (a self-only MSA); templates disabled; seed 1.</p></div>
     </section>
 
     <section class="step">
-      <div class="steph"><span class="stepn">5</span> Score and select</div>
+      <div class="steph"><span class="stepn">5</span> Design ranking and selection</div>
       <div class="stepb">
-        <div class="field"><label for="strategy">Scoring model</label>
-          <div class="sub" style="margin:2px 0 4px">The model that ranks the folded designs. The interpretable binding model is recommended; the others are shown for comparison.</div>
+        <div class="field"><label for="strategy">Ranking method</label>
+          <div class="sub" style="margin:2px 0 4px">Choose the score used to rank the predicted designs. Model definitions and evaluation results are available in the linked documentation. Default: logistic regression, based on the documented validation comparison.</div>
           <select id="strategy">
-            <option value="logistic">Interpretable binding model (logistic) &mdash; recommended</option>
-            <option value="composite">Composite (hand-weighted geometry)</option>
+            <option value="logistic">Logistic regression</option>
+            <option value="composite">Composite structural score</option>
             <option value="gbt">Gradient-boosted trees</option>
-            <option value="dl">Deep net (overfits) &mdash; for comparison</option>
+            <option value="dl">Neural-network comparison</option>
           </select>
           <div class="stratbox" id="stratbox"></div></div>
-        <div class="field"><label>Which designs to return</label>
+        <div class="field"><label>Selection rule</label>
           <div class="radios">
-            <label class="radio"><input type="radio" name="mode" value="threshold" checked> Every design that clears the four filters (epitope RMSD, overall RMSD, mean PAE, antibody clashes)</label>
-            <label class="radio"><input type="radio" name="mode" value="topn"> The top designs by the scoring model above, up to the number set below, within the time limit</label>
+            <label class="radio"><input type="radio" name="mode" value="threshold" checked> Return designs that pass the structural filters (epitope RMSD, overall RMSD, mean PAE, antibody clashes)</label>
+            <label class="radio"><input type="radio" name="mode" value="topn"> Return the highest-ranked designs up to the requested count, within the time limit</label>
           </div></div>
-        <div class="field"><label for="ndes">Number of designs to return</label>
+        <div class="field"><label for="ndes">Requested design count</label>
           <input type="number" id="ndes" value="20" min="1" max="500">
           &nbsp;&nbsp;<label for="runtime">Time limit (minutes)</label>
           <input type="number" id="runtime" value="60" min="1" max="1440"></div>
@@ -284,14 +284,14 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     </section>
 
     <div class="field">
-      <label for="backend">Backend URL (optional)</label>
+      <label for="backend">Service URL</label>
       <input type="text" id="backend" placeholder="http://127.0.0.1:8808" style="width:240px">
-      <span class="help">Blank = simulated demo. With the cluster service tunneled (see foot of page), uploading a structure and running stages a <b>real</b> job on the cluster and returns its submit script.</span>
-      <div class="help">Backend staging applies to uploaded structures; the built-in example targets always run the simulated demo.</div>
+      <span class="help">Enter the service URL to prepare inputs for an uploaded structure. Example targets use the simulation mode.</span>
+      <div class="help">Input preparation applies to uploaded structures; the built-in example targets always run the simulation.</div>
     </div>
 
     <div class="field">
-      <div class="demobadge">With no Backend URL this simulates a run (illustrative numbers). With a Backend URL and an uploaded structure it prepares real design inputs on the cluster; the design still runs there.</div>
+      <div class="demobadge">With no service URL this simulates a run (illustrative numbers). With a service URL and an uploaded structure it prepares real design inputs on the cluster; the design still runs there.</div>
       <div><button type="submit" id="runbtn" class="btn-primary">Simulate a run</button>
       <span class="help" id="runnote"></span></div>
     </div>
@@ -304,9 +304,10 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   <p id="summary"></p>
 
   <section id="recorded" hidden>
-    <h2>Recorded example &mdash; 8PWW (PfRH5)</h2>
-    <p class="note"><b>Recorded result from a completed run.</b> A real top-ranked design for the 8PWW
-    epitope. Changing the settings above does not rerun it. Metrics come from the ranked run table
+    <h2>Recorded 8PWW design</h2>
+    <p class="note"><b>Recorded result from a completed run.</b> This example comes from a completed run for
+    the PfRH5 epitope in 8PWW. Its structure and metrics are fixed and do not change with the protocol
+    settings. Metrics come from the ranked run table
     (<code>results/dp4_C2_single_island_ranked.csv</code>).</p>
     <div class="tablewrap"><table>
       <thead><tr><th>design</th><th>epitope RMSD (&Aring;)</th><th>overall RMSD (&Aring;)</th><th>mean PAE</th><th>antibody clashes</th><th>four-filter</th></tr></thead>
@@ -315,13 +316,13 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
       </tr></tbody>
     </table></div>
     <p class="help">Structure: <a href="pdb/8pww_design.pdb" download>8pww_design.pdb</a>. Epitope RMSD is
-    the epitope backbone RMSD to native; antibody clashes are measured against the reference antibody
-    (<code>af3_n_clash_res</code>). A predicted structure that passes these filters is not an
-    experimental measurement of folding or binding.</p>
+    calculated against the reference epitope; antibody clashes are calculated against the reference
+    antibody after alignment (<code>af3_n_clash_res</code>). A predicted structure that passes these
+    filters is distinct from an experimental measurement of folding or binding.</p>
   </section>
 
-  <h2>Simulated designs</h2>
-  <div class="demobadge">Simulation &mdash; these rows are illustrative, drawn at the measured DP4 statistics. They are not completed predictions. Upload a structure and set a Backend URL to stage a real job.</div>
+  <h2>Simulated output</h2>
+  <div class="demobadge">The table illustrates the interface using simulated design metrics. It does not contain new structure predictions. Upload a structure and set a service URL to prepare a real job.</div>
   <div class="tablewrap">
     <table id="results">
       <thead><tr><th>#</th><th>design</th><th>epitope RMSD (&Aring;)</th><th>Ab clash</th><th>score</th><th>status</th></tr></thead>
@@ -329,25 +330,27 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     </table>
   </div>
   <p class="help" id="tablecap"></p>
-  <p><button id="csvbtn" type="button" class="btn-secondary">Download CSV</button>
-     <button id="zipbtn" type="button" class="btn-secondary">Download bundle (.zip)</button>
-     <span class="help" id="dlnote">CSV of the ranked designs; the bundle adds structures and sequences.</span></p>
+  <p><button id="csvbtn" type="button" class="btn-secondary">Download simulated results</button>
+     <button id="zipbtn" type="button" class="btn-secondary">Download example bundle (.zip)</button>
+     <span class="help" id="dlnote">CSV of the simulated rows shown above; the bundle adds the recorded structures and sequence.</span></p>
 
-  <h2>Cluster job (preview)</h2>
+  <h2>Submission-script preview</h2>
   <pre id="cmd"></pre>
-  <p><button id="cmdbtn" type="button" class="btn-secondary">Copy command</button></p>
-  <p class="help">The commands this run maps to. The page cannot submit them; run them on the cluster, or set a Backend URL above to stage the job for real.</p>
+  <p><button id="cmdbtn" type="button" class="btn-secondary">Copy submission script</button></p>
+  <p class="help">The submission script this run maps to. The page cannot submit it; run it on the cluster, or set a service URL above to prepare the job for real.</p>
 
   <div id="stagedwrap" hidden>
-    <h2>Staged job (live backend)</h2>
+    <h2>Prepared job</h2>
     <pre id="staged"></pre>
-    <p><button id="fetchres" type="button" hidden class="btn-secondary">Fetch results</button>
+    <p><button id="fetchres" type="button" hidden class="btn-secondary">Load completed results</button>
        <span class="help" id="fetchnote"></span></p>
   </div>
 
   <hr>
-  <p class="foot"><b>How this becomes a real server.</b> This page is a static frontend &mdash; it runs the same whether served from GitHub Pages or opened locally. To route a job to Gemini it would call a small backend API (FastAPI/Flask) on a cluster-access host, which submits RFdiffusion3 &rarr; backbone pre-filter &rarr; ProteinMPNN &rarr; AlphaFold3 and reports back. <code>runJob()</code> in this page can swap its simulated result for a <code>fetch()</code> to that API.<br>
-  <b>Numbers (DP4 IM0276, grouped-CV by epitope):</b> base binding rate 8% &middot; four-filter passers 24% &middot; model-ranked top ~34% &middot; raw four-filter design pass rate 0.45%.</p>
+  <p class="foot"><b>Running real jobs.</b> With a service URL, preparing a job writes the input files and
+  submission script to the configured workspace. It does not start RFdiffusion3 or AlphaFold&nbsp;3;
+  submit the generated script on the cluster to begin those calculations. See
+  <code>episcaf_service/README.md</code> for setup and the SSH tunnel.</p>
 </div>
 
 <script>
@@ -356,10 +359,10 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 /* model constants (documented in footer) */
 const FF_PASS=0.0045, PREFILTER_KEEP=0.12, GEN_PER_MIN=100;
 const STRAT={
-  logistic:{bind:0.34,label:"the binding model"},
-  gbt:{bind:0.32,label:"gradient-boosted tree"},
-  composite:{bind:0.24,label:"composite"},
-  dl:{bind:0.14,label:"overtrained DL net"}
+  logistic:{bind:0.33,label:"the logistic binding model"},
+  gbt:{bind:0.32,label:"gradient-boosted trees"},
+  composite:{bind:0.24,label:"the composite score"},
+  dl:{bind:0.14,label:"the neural-network comparison"}
 };
 const reduced=matchMedia("(prefers-reduced-motion:reduce)").matches;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -477,13 +480,13 @@ function writeLog(job,animate){
 function paint(job,animate){
   writeLog(job,animate);
   const expB=Math.round(job.returned*job.bind), bind=Math.round(job.bind*100);
-  $("#summary").innerHTML=`<b>Estimated:</b> ${fmt(job.returned)} design${job.returned===1?"":"s"} in ~${job.elapsed.toFixed(0)} min. `+
-    `Expected binders about <b>${fmt(expB)}</b> (${bind}% at ${job.strat.label}). `+
-    `The backbone pre-filter folded ${fmt(job.kept)} of ${fmt(job.generated)} backbones, avoiding AlphaFold3 on ${fmt(job.avoided)} (${Math.round(100*job.avoided/job.generated)}%).`;
+  $("#summary").innerHTML=`<b>Simulation estimate:</b> ${fmt(job.returned)} design${job.returned===1?"":"s"} in approximately ${job.elapsed.toFixed(0)} minutes. `+
+    `Backbone filtering retains ${fmt(job.kept)} of ${fmt(job.generated)} candidates for subsequent calculations. `+
+    `Applying the reference binding rate to this simulated count gives about <b>${fmt(expB)}</b> expected binders (${bind}% under ${job.strat.label}). This is a scenario estimate.`;
   $("#rbody").innerHTML=job.rows.map(r=>`<tr>
     <td>${r.i}</td><td>${r.id}</td>
     <td>${r.epi.toFixed(2)}</td><td>${r.clash}</td><td>${r.score.toFixed(2)}</td>
-    <td class="${r.ok?"pass":"fail"}">${r.ok?"pass":"below"}</td></tr>`).join("");
+    <td class="${r.ok?"pass":"fail"}" title="${r.ok?"Meets simulated filter criteria":"Does not meet simulated filter criteria"}">${r.ok?"meets filters":"does not meet"}</td></tr>`).join("");
   $("#tablecap").textContent =
     "Simulated designs drawn at the measured DP4 pass and clash statistics. These are illustrative, not completed predictions.";
   $("#cmd").innerHTML=cmdHTML(geminiCmd(state));
@@ -564,24 +567,24 @@ function loadComplex(){
   }).catch(()=>useImgFallback());
 }
 /* scoring-method card (equation + one-line description), from the DP4 findings */
-const FEAT15='<u>Design metrics (9):</u> cylinder clashes, epitope RMSD, overall RMSD, epitope PAE, scaffold PAE, mean PAE, pTM, AF3 clashes, island index<br><u>Secondary structure of the epitope (3):</u> helix fraction, strand fraction, number of islands<br><u>Native context &amp; dynamics (3):</u> bound-state rigidity (B-factor, z-scored), change in network-model flexibility on binding, surface buried on binding';
+const FEAT15='<u>Design metrics (9):</u> cylinder clashes, epitope RMSD, overall RMSD, epitope PAE, scaffold PAE, mean PAE, pTM, AF3 clashes, island index<br><u>Secondary structure of the epitope (3):</u> helix fraction, strand fraction, number of islands<br><u>Static antigen context (3):</u> intra-epitope electrostatic sum, scaffold-to-epitope size ratio, local antigen crowding';
 const STRAT_INFO={
   logistic:{tex:'p(\\text{bind})=\\sigma(\\mathbf{w}\\cdot\\mathbf{x}+b),\\quad \\sigma(z)=\\dfrac{1}{1+e^{-z}}',
     arch:'Logistic regression &middot; 15 features &middot; <b>16 fitted weights</b>',
-    desc:'Logistic regression over 15 design and epitope features, fit to the DP4 binding assay. Under five-fold cross-validation grouped by epitope it attains ROC-AUC 0.81, and its top-ranked designs bind at 34% against an 8% assay-wide rate. Each feature enters as an additive log-odds term with a fitted coefficient, so the contribution of any one feature to a score is read off directly. It is the default selector.',
-    more:'<u>Features (15):</u><br>'+FEAT15+'<br>Fit by L2-regularized logistic regression on standardized, class-balanced features and evaluated by five-fold cross-validation grouped by epitope, so each design is scored by a model trained only on other antibodies. Accuracy tracks the feature set rather than the model family: design metrics alone give 0.741, the secondary-structure counts raise it to 0.783, and the native-context and dynamics block brings it to 0.810. A block-wise Shapley decomposition assigns most of that gain to the epitope&rsquo;s own structure (secondary structure +0.128, design metrics +0.109, dynamics +0.059), so the native configuration of the epitope is more informative than any single design metric.'},
+    desc:'Logistic regression that ranks designs from their structural and epitope features. It is fitted to the DP4 binding assay and evaluated with cross-validation grouped by epitope, reaching ROC-AUC 0.817. Applied as a re-ranking layer, the top 10% of designs bind at about 33% against an 8% assay-wide rate. It is the default ranking method.',
+    more:'<u>Features (15):</u><br>'+FEAT15+'<br>Fit by L2-regularized logistic regression on median-imputed, standardized, class-balanced features, and evaluated by repeated cross-validation grouped by epitope (all designs from an epitope held out together) on 2,720 assayed designs across 56 epitopes (217 binders). The current feature set uses static antigen-context descriptors in place of the earlier bound-state dynamics descriptors; the paired, held-out evaluation reported a ROC-AUC increase of 0.013 (95% CI 0.008&ndash;0.018). The class-balanced output is used as a ranking score, not a calibrated binding probability.'},
   gbt:{tex:'F(\\mathbf{x})=\\sum_{m=1}^{M}\\gamma_m\\,h_m(\\mathbf{x})',
     arch:'Histogram gradient boosting &middot; ~100 trees, depth &le; 3',
-    desc:'Gradient-boosted trees over the same 15 features, reaching ROC-AUC 0.80, marginally below logistic regression and random forest (both 0.81). The binding signal is near-additive, so the feature interactions that trees capture contribute little, and the ranked designs closely track those of logistic regression.',
-    more:'<u>Features (15):</u><br>'+FEAT15+'<br>A depth sweep selects shallow trees, and depth-1 stumps, which add one feature at a time, match deeper trees; the fitted model is therefore effectively additive, with no useful feature interactions. Logistic regression (0.81) and random forest (0.81) reach the same accuracy, so once the model is this simple the family is immaterial and the features determine the result.'},
+    desc:'Gradient-boosted trees over the same feature set, evaluated for comparison on the same split. In the recorded evaluation it reaches ROC-AUC 0.796 &plusmn; 0.019, close to logistic regression (0.810) and random forest (0.811).',
+    more:'<u>Features (15):</u><br>'+FEAT15+'<br>The model settings, feature list, and validation results are documented in the model comparison. On the recorded evaluation the gradient-boosted model reaches ROC-AUC 0.796 &plusmn; 0.019; logistic regression and random forest reach 0.810 and 0.811 on the same split.'},
   composite:{tex:'S=\\sum_i w_i\\,\\sigma\\!\\left(\\dfrac{x_i-m_i}{s_i}\\right)+\\text{pass bonus}',
-    arch:'Hand-weighted logistic model &middot; 5 metrics + four-filter promotion &middot; <b>weights fixed</b>',
-    desc:'The hand-set score the pipeline uses by default, with weights set from the DP3 prior rather than fit to DP4. Functionally it is a logistic model: each metric passes through a saturating sigmoid, is multiplied by a hand-set weight, and summed, with a fixed promotion for designs clearing all four Lawson filters. It reaches ROC-AUC 0.73; refitting the weights on the assay changes little (0.74), as the improvement in the fitted models comes from the added epitope features rather than the weights. It requires no assay data to apply.',
-    more:'Weights (episcaf_analysis/presets.py, ANTIBODY_SOFTGATE) act on sigmoid-transformed metrics: <u>cylinder accessibility 0.35</u>, <u>epitope RMSD 0.35</u>, mean PAE 0.15, overall RMSD 0.15, each sigmoid centered at the corresponding DP3 threshold.<br>Designs clearing all four Lawson filters (epitope RMSD &le; 1 &Aring;, overall &le; 2 &Aring;, mean PAE &lt; 5, no clashes) receive a fixed promotion. None of these values is fit to DP4; the score is the baseline against which the fitted models are measured.'},
+    arch:'Weighted structural score &middot; preset weights &middot; <b>weights fixed</b>',
+    desc:'A weighted sum of sigmoid-transformed structural metrics, with weights set by the selected preset rather than fit to the current binding-assay dataset. Each metric passes through a saturating sigmoid, is multiplied by a preset weight, and summed, with a fixed promotion for designs clearing the structural filters. It requires no assay data to apply.',
+    more:'Weights (episcaf_analysis/presets.py, ANTIBODY_SOFTGATE) act on sigmoid-transformed metrics: <u>antibody clashes 0.45</u>, <u>epitope RMSD 0.25</u>, overall RMSD 0.20, epitope PAE 0.10.<br>Designs clearing the structural filters (epitope RMSD &le; 1 &Aring;, overall RMSD &le; 2 &Aring;, mean PAE &lt; 5 &Aring;, no clashes) receive a fixed promotion. The preset defines the included metrics, their transformations, the weights, and the promotion; none of these values is fit to the assay.'},
   dl:{tex:'\\mathbf{x}_{15}\\;\\rightarrow\\;32\\rightarrow16\\;\\rightarrow\\;\\hat{y}',
-    arch:'Multilayer perceptron &middot; 2 hidden layers (32, 16) &middot; <b>overfits</b>',
-    desc:'A multilayer perceptron over the same 15 features. It is the least accurate model at every feature set (ROC-AUC 0.65) and, unlike the others, degrades as features are added, the behavior of an over-parameterized model on a small, noisy dataset. It is included to document that failure, not to select designs.',
-    more:'With two hidden layers (32 and 16 units) the network overfits: ROC-AUC 0.672 on the design metrics alone, falling to 0.646 and then 0.654 as the secondary-structure and dynamics blocks are added, while every simpler model improves over the same progression. Added capacity worsens it further. Across 2,720 designs and 56 epitopes there are too few examples to fit a flexible network, and it fits antibody identity rather than features that generalize. The data support a simple, additive model.'}
+    arch:'Multilayer perceptron &middot; 2 hidden layers (32, 16)',
+    desc:'A multilayer perceptron over the same feature set, evaluated for comparison with the other ranking methods. In the recorded evaluation it is the least accurate method (ROC-AUC &asymp; 0.65), and its validation performance does not improve as feature blocks are added.',
+    more:'The analysis record reports the network architecture, training settings, and validation performance. On the recorded evaluation the network reaches ROC-AUC 0.672 on the design metrics and 0.646&ndash;0.654 as the further feature blocks are added, below every simpler model on the same progression &mdash; consistent with overfitting a flexible model on a limited dataset (2,720 designs, 56 epitopes).'}
 };
 function setStratBox(){const i=STRAT_INFO[state.strategy];let eq="";
   try{if(window.katex)eq=katex.renderToString(i.tex,{displayMode:true,throwOnError:false});}catch(e){}
@@ -589,7 +592,7 @@ function setStratBox(){const i=STRAT_INFO[state.strategy];let eq="";
   // progressive disclosure: show the plain-language description by default; tuck the equation and the
   // deep detail behind a collapsed expander so the math only appears when asked for.
   $("#stratbox").innerHTML='<div class="arch">'+i.arch+'</div><div class="d">'+i.desc+'</div>'+
-    '<details><summary>the math &amp; details</summary><div class="eq">'+eq+'</div><div class="morec">'+i.more+'</div></details>';}
+    '<details><summary>Equation and details</summary><div class="eq">'+eq+'</div><div class="morec">'+i.more+'</div></details>';}
 function initCViewer(){
   if(typeof $3Dmol==="undefined" || !webglOK()){useImgFallback();return;}
   try{cviewer=$3Dmol.createViewer("cviewer",{backgroundColor:"white",ambientOcclusion:{strength:0.9}});
@@ -809,9 +812,9 @@ function applySeqSelection(){
     return;
   }
   if(!abSelected()) st.textContent = selMode==="residue"
-    ? "Click residues in the sequence to mark the antibody; shift-click to extend a range."
-    : "Click the antibody chain(s) above to compute the epitope.";
-  else if(!ag) st.textContent="Leave at least one residue or chain as the antigen.";
+    ? "Select the antibody residues in the sequence; shift-click to extend a range."
+    : "Select the antibody chains to calculate the contact epitope.";
+  else if(!ag) st.textContent="The selection leaves no antigen available. Keep an antigen chain outside the antibody selection.";
   else{
     const abDesc = selMode==="residue" ? (abRes.size+" residues") : ("chain "+[...abSet].join(", "));
     st.innerHTML="Antigen: chain <b>"+ag+"</b> &middot; antibody: "+abDesc+
@@ -889,8 +892,8 @@ $("#pdbfile").addEventListener("change",e=>{
     if(![...sel.options].some(o=>o.value==="__upload")){const o=document.createElement("option");o.value="__upload";sel.appendChild(o);}
     [...sel.options].forEach(o=>{if(o.value==="__upload")o.textContent="uploaded: "+name;});
     sel.value="__upload"; state.target="__upload";
-    $("#uploadnote").textContent="loaded "+f.name+" — detecting epitope…";
-    showLoading("Detecting epitope…");
+    $("#uploadnote").textContent="Loaded "+f.name+". Detecting the epitope…";
+    showLoading("Detecting the epitope…");
     try{
       const res=await fetch(apiBase()+"/inspect?fmt="+uploadFmt,{method:"POST",body:uploadText});
       const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
@@ -902,10 +905,10 @@ $("#pdbfile").addEventListener("change",e=>{
         ? "detected an <b>antibody</b> (chain "+(d.partner_chains||[]).join(", ")+") bound to chain <b>"+d.antigen_chain+"</b>; epitope = "+d.n_epitope+" contact residues (red)."
         : "no bound partner &mdash; <b>lone antigen</b> (chain "+d.antigen_chain+"); specify the epitope residues on the structure below, or use the <a href=\"growpatch.html\">surface scan</a> to find candidate regions.";
     }catch(err){
-      // detection could not run (no local service / no Backend URL): do NOT assume "no antibody".
+      // detection could not run (no local service / no service URL): do NOT assume "no antibody".
       uploadDetected=false;
       CFG["__upload"]={ag:firstChain(uploadText),ab:[],epi:[]};
-      $("#uploadnote").innerHTML="loaded "+f.name+". <b>Could not detect the epitope.</b> Antibody-vs-antigen detection needs the local service: open this page from <code>http://127.0.0.1:8765/</code> (run <code>python scripts/growpatch_serve.py</code>), or set a Backend URL above. Showing the raw structure; choose the epitope source manually.";
+      $("#uploadnote").innerHTML="Loaded "+f.name+". <b>Epitope detection is unavailable.</b> Select the antigen residues manually, or connect the local service (open this page from <code>http://127.0.0.1:8765/</code> after running <code>python scripts/growpatch_serve.py</code>, or set a service URL above).";
     }
     syncHints(); loadComplex();
     buildSeqPanel((CFG["__upload"]&&CFG["__upload"].ab)||[]);   // sequence strip + manual chain assignment
@@ -935,12 +938,12 @@ async function stageReal(){
   const epiChain = state.epi==="manual" ? (MANUAL.ag || (CFG["__upload"]&&CFG["__upload"].ag) || "A")
                                         : ((CFG["__upload"]&&CFG["__upload"].ag) || "A");
   const chain = epiChain;
-  $("#stagedwrap").hidden=false; const box=$("#staged"); box.textContent="staging on "+base+" …";
+  $("#stagedwrap").hidden=false; const box=$("#staged"); box.textContent="Preparing design inputs…";
   let capNote="";
   try{
     const epiList = state.epi==="manual" ? (MANUAL.epi||[]) : ((CFG["__upload"]&&CFG["__upload"].epi)||[]);
     const epis = epiSpec(epiChain, epiList);
-    if(!epis) throw new Error("no epitope selected — pick the epitope residues (or an antibody) first");
+    if(!epis) throw new Error("Select the epitope residues or an antibody first.");
     const q="/submit?fmt="+uploadFmt+"&chain="+chain+"&mode="+mode+"&name="+encodeURIComponent(name)
       +"&epitopes="+encodeURIComponent(epis)+"&rfd3="+state.rfd3n+"&mpnn="+state.mpnnn
       +"&helix_bias="+state.helix+"&ipd="+(state.ipd?"true":"false")+"&ipdrounds="+state.ipdrounds
@@ -949,25 +952,25 @@ async function stageReal(){
     const r=await fetch(base+q,{method:"POST",body:uploadText});
     const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||("submit HTTP "+r.status));
     lastRunId=d.run_id;
-    box.textContent="staged "+d.n_contigs+" contig"+(d.n_contigs===1?"":"s")+" from "+d.n_epitopes
-      +" epitope"+(d.n_epitopes===1?"":"s")+capNote+"\n"+d.run_dir+"\n\n# run this on the cluster:\n"+d.submit_sh;
+    box.textContent="Prepared "+d.n_contigs+" design specification"+(d.n_contigs===1?"":"s")+" for "+d.n_epitopes
+      +" epitope"+(d.n_epitopes===1?"":"s")+capNote+".\n"+d.run_dir+"\n\n# submit this on the cluster:\n"+d.submit_sh;
     $("#cmd").textContent=d.submit_sh;
     $("#fetchres").hidden=false;
-    $("#fetchnote").textContent="run "+d.run_id+" staged. After RFd3→MPNN→AF3 + scoring finish, fetch the designs.";
+    $("#fetchnote").textContent="Inputs for run "+d.run_id+" are ready. Submit the script on the cluster before loading results.";
   }catch(err){
-    box.textContent="staging failed: "+err.message+"\n(is the backend reachable at "+base+"? see episcaf_service/README.md)";
+    box.textContent="Could not prepare the design inputs. Check the service connection.\n("+err.message+")";
   }
 }
 async function fetchResults(){
   const base=apiBase(); if(!base||!lastRunId) return;
-  const note=$("#fetchnote"); note.textContent="fetching results for "+lastRunId+" …";
+  const note=$("#fetchnote"); note.textContent="Loading results for "+lastRunId+"…";
   try{
     const preset=state.epi==="antibody"?"antibody_softgate":"twelvemer";
     const r=await fetch(base+"/results/"+lastRunId+"?preset="+preset+"&topk="+state.n+"&model="+encodeURIComponent(state.strategy));
-    if(r.status===409){ note.textContent="not scored yet — the cluster run hasn't produced metrics.csv. Try again after AF3 + scoring finish."; return; }
+    if(r.status===409){ note.textContent="Results are not ready. The run has not produced the required metrics file."; return; }
     const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||("HTTP "+r.status));
-    fillRealResults(d); note.textContent="showing "+d.rows.length+" scored designs (ranked by "+d.info.ranked_by+").";
-  }catch(err){ note.textContent="fetch failed: "+err.message; }
+    fillRealResults(d); note.textContent="Loaded "+d.rows.length+" designs, ranked by "+d.info.ranked_by+".";
+  }catch(err){ console.warn("results:",err); note.textContent="Could not load the results. Check the service connection."; }
 }
 function fillRealResults(d){
   const tb=$("#rbody"); tb.innerHTML="";
@@ -986,7 +989,7 @@ function fillRealResults(d){
 }
 $("#fetchres").addEventListener("click",fetchResults);
 
-function copyText(txt,btn){const done=()=>{const o=btn.textContent;btn.textContent="copied";setTimeout(()=>btn.textContent=o,1200);};
+function copyText(txt,btn){const done=()=>{const o=btn.textContent;btn.textContent="Copied";setTimeout(()=>btn.textContent=o,1200);};
   if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done).catch(()=>fb(txt,done));else fb(txt,done);}
 function fb(txt,done){const ta=document.createElement("textarea");ta.value=txt;ta.style.position="fixed";ta.style.opacity="0";
   document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){}document.body.removeChild(ta);}
@@ -997,23 +1000,26 @@ function resultsCSV(){const rows=[["rank","design","epitope_rmsd_A","ab_clash","
   return rows.map(r=>r.join(",")).join("\n");}
 function dl(name,blob){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;
   document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);}
+const RANKING_LABEL={logistic:"logistic regression",gbt:"gradient-boosted trees",composite:"composite structural score",dl:"neural-network comparison"};
+const SELECTION_LABEL={threshold:"designs that pass the structural filters",topn:"highest-ranked designs up to the requested count"};
 function bundleReadme(){return [
-  "episcaf — Epitope Scaffolder (prototype bundle)",
-  "Target:    "+state.target+"  ("+(DESCS[state.target]||"")+")",
-  "Strategy:  "+STRAT[state.strategy].label+"   Selection: "+state.mode+"   N requested: "+state.n,
+  "episcaf example bundle",
   "",
-  "designs.csv       the simulated designs shown in the tool (illustrative, not completed predictions).",
-  "structures/       the target antibody:antigen complex (PDB)"+(state.target==="8PWW"?", plus a real recorded top-design scaffold.":"."),
-  (state.target==="8PWW"?"sequences.fasta   the real 8PWW recorded top-design sequence (103-mer).":""),
+  "Target:          "+state.target+"  ("+(DESCS[state.target]||"")+")",
+  "Ranking method:  "+(RANKING_LABEL[state.strategy]||state.strategy),
+  "Selection rule:  "+(SELECTION_LABEL[state.mode]||state.mode),
   "",
-  "The design rows are simulated. A live run returns one PDB and one FASTA",
-  "record per design, from the RFdiffusion3 -> backbone pre-filter -> ProteinMPNN -> AlphaFold3 pipeline."
+  "designs.csv       contains the simulated rows displayed in the tool.",
+  "structures/       contains the recorded structures identified in the file list.",
+  (state.target==="8PWW"?"sequences.fasta   contains the corresponding recorded sequence where provided.":""),
+  "",
+  "The simulated rows do not correspond to newly generated protein structures."
 ].filter(Boolean).join("\n");}
 $("#csvbtn").addEventListener("click",()=>dl("episcaf_"+state.target+"_designs.csv",new Blob([resultsCSV()],{type:"text/csv"})));
 $("#zipbtn").addEventListener("click",async()=>{
   const b=$("#zipbtn"),o=b.textContent;
   if(typeof JSZip==="undefined"){dl("episcaf_"+state.target+"_designs.csv",new Blob([resultsCSV()],{type:"text/csv"}));return;}
-  b.disabled=true;b.textContent="building…";
+  b.disabled=true;b.textContent="Preparing download…";
   try{
     const zip=new JSZip();
     zip.file("designs.csv",resultsCSV());
