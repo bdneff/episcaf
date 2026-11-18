@@ -46,6 +46,12 @@ details[open] summary::before{content:"\25BE  "}
 .sec[open]>summary{border-bottom:1px solid #e8edf4;border-radius:8px 8px 0 0}
 .secbody{padding:2px 16px 14px}
 .secbody>p:first-child{margin-top:6px}
+figure.dgm{margin:14px 0 6px;padding:0;text-align:center}
+figure.dgm svg{display:block;width:100%;height:auto;margin:0 auto}
+figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width:62ch;line-height:1.5;text-align:left}
+.dgm .dlbl{font-size:11px;font-weight:bold;fill:currentColor}
+.dgm .dtxt{font-size:10.5px;fill:currentColor}
+.dgm .dmut{font-size:10px;fill:currentColor;opacity:.62}
 </style>
 </head>
 <body>
@@ -113,6 +119,32 @@ details[open] summary::before{content:"\25BE  "}
     structure, called islands elsewhere on this page), and hand that to generation. On the 8PWW
     benchmark this 4&nbsp;&Aring; contact rule returns the same epitope residues reported for that
     complex.</p>
+    <figure class="dgm">
+    <svg viewBox="0 0 480 262" role="img" aria-label="Schematic of sequence islands: three separate stretches of the primary sequence that sit next to one another once the chain folds." style="max-width:460px">
+    <title>Sequence segments (islands)</title>
+    <text class="dmut" x="40" y="34" text-anchor="start">primary sequence (N &#8594; C)</text>
+    <rect x="40" y="46" width="400" height="28" rx="5" fill="#9aa3ad" fill-opacity=".13" stroke="#9aa3ad"/>
+    <rect x="95" y="46" width="42" height="28" rx="3" fill="#e5543f"/>
+    <rect x="210" y="46" width="52" height="28" rx="3" fill="#e5543f"/>
+    <rect x="350" y="46" width="34" height="28" rx="3" fill="#e5543f"/>
+    <text class="dtxt" x="116" y="90" text-anchor="middle">1</text>
+    <text class="dtxt" x="236" y="90" text-anchor="middle">2</text>
+    <text class="dtxt" x="367" y="90" text-anchor="middle">3</text>
+    <g fill="none" stroke="currentColor" stroke-opacity=".35" stroke-dasharray="4 3">
+      <path d="M116,96 C 150,120 180,135 205,152"/>
+      <path d="M236,96 C 238,118 239,130 240,140"/>
+      <path d="M367,96 C 330,120 300,140 277,153"/>
+    </g>
+    <ellipse cx="240" cy="188" rx="112" ry="60" fill="#9aa3ad" fill-opacity=".13" stroke="#9aa3ad"/>
+    <circle cx="205" cy="160" r="13" fill="#e5543f"/>
+    <circle cx="240" cy="150" r="13" fill="#e5543f"/>
+    <circle cx="275" cy="162" r="13" fill="#e5543f"/>
+    <text class="dtxt" x="240" y="252" text-anchor="middle">folded structure</text>
+    </svg>
+    <figcaption>Conceptual schematic. One epitope is often several separate stretches of the sequence
+    (islands, red) that are far apart along the chain but sit next to one another once it folds.
+    Generation must reproduce each island and the geometry between them.</figcaption>
+    </figure>
     <p class="io"><b>In:</b> antibody&ndash;antigen complex (PDB). <b>&rarr; Out:</b> the epitope &mdash; the antigen residues the antibody contacts.</p>
     <p class="loc">episcaf_analysis/growpatch/read.py &middot; detect_complex()</p>
   </div>
@@ -143,6 +175,83 @@ details[open] summary::before{content:"\25BE  "}
       take the cap of residues an approaching antibody would see first. This catches compact,
       geometrically-defined patches that the growth pass can split across sequence segments.</li>
     </ul>
+    <figure class="dgm">
+    <svg viewBox="0 0 670 200" role="img" aria-label="Three-panel schematic of seed-and-grow patch growth: one seed residue, then its nearest surface neighbours added, then a footprint-sized patch of about sixteen residues." style="max-width:670px">
+    <title>Neighbor-based patch growth (seed and grow)</title>
+    <defs><marker id="mkg" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/></marker></defs>
+    <g transform="translate(10,0)">
+      <text class="dlbl" x="100" y="16" text-anchor="middle">1 &middot; pick a seed</text>
+      <ellipse cx="100" cy="95" rx="72" ry="62" fill="#9aa3ad" fill-opacity=".12" stroke="#9aa3ad"/>
+      <g fill="none" stroke="#9aa3ad">
+        <circle cx="126" cy="95" r="7"/><circle cx="113" cy="72.5" r="7"/><circle cx="87" cy="72.5" r="7"/><circle cx="74" cy="95" r="7"/><circle cx="87" cy="117.5" r="7"/><circle cx="113" cy="117.5" r="7"/>
+        <circle cx="150" cy="95" r="7"/><circle cx="143" cy="70" r="7"/><circle cx="125" cy="52" r="7"/><circle cx="100" cy="45" r="7"/><circle cx="75" cy="52" r="7"/><circle cx="57" cy="70" r="7"/><circle cx="50" cy="95" r="7"/><circle cx="57" cy="120" r="7"/><circle cx="75" cy="138" r="7"/><circle cx="100" cy="145" r="7"/><circle cx="125" cy="138" r="7"/><circle cx="143" cy="120" r="7"/>
+      </g>
+      <circle cx="100" cy="95" r="7.5" fill="#e5543f" stroke="#e5543f"/>
+      <text class="dmut" x="100" y="188" text-anchor="middle">exposed residue</text>
+    </g>
+    <g color="currentColor"><line x1="180" y1="95" x2="236" y2="95" stroke="currentColor" stroke-width="1.5" marker-end="url(#mkg)"/><text class="dmut" x="208" y="88" text-anchor="middle">grow</text></g>
+    <g transform="translate(235,0)">
+      <text class="dlbl" x="100" y="16" text-anchor="middle">2 &middot; add nearest neighbours</text>
+      <ellipse cx="100" cy="95" rx="72" ry="62" fill="#9aa3ad" fill-opacity=".12" stroke="#9aa3ad"/>
+      <g fill="none" stroke="#9aa3ad">
+        <circle cx="150" cy="95" r="7"/><circle cx="143" cy="70" r="7"/><circle cx="125" cy="52" r="7"/><circle cx="100" cy="45" r="7"/><circle cx="75" cy="52" r="7"/><circle cx="57" cy="70" r="7"/><circle cx="50" cy="95" r="7"/><circle cx="57" cy="120" r="7"/><circle cx="75" cy="138" r="7"/><circle cx="100" cy="145" r="7"/><circle cx="125" cy="138" r="7"/><circle cx="143" cy="120" r="7"/>
+      </g>
+      <g fill="#2b47d6" fill-opacity=".55" stroke="#2b47d6">
+        <circle cx="126" cy="95" r="7"/><circle cx="113" cy="72.5" r="7"/><circle cx="87" cy="72.5" r="7"/><circle cx="74" cy="95" r="7"/><circle cx="87" cy="117.5" r="7"/><circle cx="113" cy="117.5" r="7"/>
+      </g>
+      <circle cx="100" cy="95" r="7.5" fill="#e5543f" stroke="#e5543f"/>
+      <text class="dmut" x="100" y="188" text-anchor="middle">first ring added</text>
+    </g>
+    <g color="currentColor"><line x1="405" y1="95" x2="461" y2="95" stroke="currentColor" stroke-width="1.5" marker-end="url(#mkg)"/><text class="dmut" x="433" y="88" text-anchor="middle">grow</text></g>
+    <g transform="translate(460,0)">
+      <text class="dlbl" x="100" y="16" text-anchor="middle">3 &middot; footprint (~16 residues)</text>
+      <ellipse cx="100" cy="95" rx="72" ry="62" fill="#9aa3ad" fill-opacity=".12" stroke="#9aa3ad"/>
+      <ellipse cx="100" cy="82" rx="56" ry="46" fill="none" stroke="#2b47d6" stroke-width="1.4" stroke-dasharray="4 3"/>
+      <g fill="none" stroke="#9aa3ad">
+        <circle cx="75" cy="138" r="7"/><circle cx="100" cy="145" r="7"/><circle cx="125" cy="138" r="7"/>
+      </g>
+      <g fill="#2b47d6" fill-opacity=".3" stroke="#2b47d6">
+        <circle cx="150" cy="95" r="7"/><circle cx="143" cy="70" r="7"/><circle cx="125" cy="52" r="7"/><circle cx="100" cy="45" r="7"/><circle cx="75" cy="52" r="7"/><circle cx="57" cy="70" r="7"/><circle cx="50" cy="95" r="7"/><circle cx="57" cy="120" r="7"/><circle cx="143" cy="120" r="7"/>
+      </g>
+      <g fill="#2b47d6" fill-opacity=".55" stroke="#2b47d6">
+        <circle cx="126" cy="95" r="7"/><circle cx="113" cy="72.5" r="7"/><circle cx="87" cy="72.5" r="7"/><circle cx="74" cy="95" r="7"/><circle cx="87" cy="117.5" r="7"/><circle cx="113" cy="117.5" r="7"/>
+      </g>
+      <circle cx="100" cy="95" r="7.5" fill="#e5543f" stroke="#e5543f"/>
+      <text class="dmut" x="100" y="188" text-anchor="middle">candidate patch</text>
+    </g>
+    </svg>
+    <figcaption>Conceptual schematic. Neighbor-based growth starts at one exposed surface residue (red)
+    and accretes its nearest surface neighbours (blue, filling outward) until the patch reaches
+    footprint size, about 16 residues. The run repeats from many seeds; residues left grey here fall to
+    patches other seeds grow.</figcaption>
+    </figure>
+    <figure class="dgm">
+    <svg viewBox="0 0 600 262" role="img" aria-label="Schematic of directional surface sampling: an antigen blob with two approach-direction arrows, each highlighting the surface cap it would contact first." style="max-width:600px">
+    <title>Directional surface sampling (antibody's-eye view)</title>
+    <defs><marker id="mke" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/></marker></defs>
+    <ellipse cx="300" cy="135" rx="95" ry="78" fill="#9aa3ad" fill-opacity=".13" stroke="#9aa3ad"/>
+    <g fill="none" stroke="#9aa3ad">
+      <circle cx="332" cy="62" r="6.5"/><circle cx="300" cy="57" r="6.5"/><circle cx="268" cy="208" r="6.5"/><circle cx="347" cy="202" r="6.5"/><circle cx="300" cy="213" r="6.5"/>
+    </g>
+    <g fill="#2b47d6" fill-opacity=".55" stroke="#2b47d6">
+      <circle cx="252" cy="68" r="6.5"/><circle cx="227" cy="85" r="6.5"/><circle cx="211" cy="108" r="6.5"/><circle cx="205" cy="135" r="6.5"/><circle cx="211" cy="162" r="6.5"/>
+    </g>
+    <g fill="#2b47d6" fill-opacity=".55" stroke="#2b47d6">
+      <circle cx="382" cy="96" r="6.5"/><circle cx="394" cy="121" r="6.5"/><circle cx="395" cy="135" r="6.5"/><circle cx="394" cy="148" r="6.5"/><circle cx="382" cy="174" r="6.5"/>
+    </g>
+    <g color="currentColor">
+      <line x1="70" y1="55" x2="228" y2="103" stroke="currentColor" stroke-width="1.8" marker-end="url(#mke)"/>
+      <line x1="545" y1="214" x2="406" y2="158" stroke="currentColor" stroke-width="1.8" marker-end="url(#mke)"/>
+    </g>
+    <text class="dtxt" x="66" y="44" text-anchor="start">direction 1</text>
+    <text class="dtxt" x="548" y="230" text-anchor="end">direction 2</text>
+    <text class="dmut" x="150" y="150" text-anchor="middle">surface cap 1</text>
+    <text class="dmut" x="455" y="120" text-anchor="middle">surface cap 2</text>
+    </svg>
+    <figcaption>Conceptual schematic. Each arrow is one viewing direction, swept over a sphere with a
+    Fibonacci lattice; the highlighted cap is the surface those residues present to that direction. The
+    arrow is sampling geometry, not a predicted antibody pose.</figcaption>
+    </figure>
     <p>Each candidate records which method or methods produced it. Agreement between the two methods is
     <span class="k">provenance</span> (the same patch was reached two ways); it is not on its own
     evidence that the patch is a real epitope.</p>
@@ -173,6 +282,50 @@ details[open] summary::before{content:"\25BE  "}
   steps (diffusion and folding) run on the cluster GPU; the cheap filter in the middle is what makes
   the budget go further.</p>
 
+  <figure class="dgm">
+  <svg viewBox="0 0 720 252" role="img" aria-label="Flowchart of the iterative design loop: generate backbones, predict and score, pick winners, re-seed the next round with partial-diffusion children and fresh de-novo backbones, looping until a stop condition sends designs to the ranked output." style="max-width:720px">
+  <title>Iterative design loop (partial diffusion)</title>
+  <defs>
+    <marker id="mkf" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/></marker>
+    <marker id="mkfb" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#2b47d6"/></marker>
+  </defs>
+  <g fill="#2b47d6" fill-opacity=".06" stroke="#2b47d6">
+    <rect x="24" y="40" width="168" height="58" rx="8"/>
+    <rect x="276" y="40" width="180" height="58" rx="8"/>
+    <rect x="540" y="40" width="156" height="58" rx="8"/>
+    <rect x="276" y="150" width="180" height="64" rx="8"/>
+  </g>
+  <rect x="540" y="153" width="156" height="58" rx="8" fill="none" stroke="currentColor" stroke-width="1.6"/>
+  <g text-anchor="middle" fill="currentColor">
+    <text class="dlbl" x="108" y="64">Generate backbones</text>
+    <text class="dmut" x="108" y="82">epitope held fixed</text>
+    <text class="dlbl" x="366" y="64">Predict + score</text>
+    <text class="dmut" x="366" y="82">MPNN &#8594; AF3 &#8594; metrics</text>
+    <text class="dlbl" x="618" y="74">Pick winners</text>
+    <text class="dlbl" x="366" y="174">Re-seed next round</text>
+    <text class="dmut" x="366" y="190">partial-diffusion children</text>
+    <text class="dmut" x="366" y="205">+ fresh de-novo</text>
+    <text class="dlbl" x="618" y="186">Ranked designs out</text>
+  </g>
+  <g color="currentColor" stroke="currentColor" stroke-width="1.6" fill="none">
+    <line x1="192" y1="69" x2="270" y2="69" marker-end="url(#mkf)"/>
+    <line x1="456" y1="69" x2="534" y2="69" marker-end="url(#mkf)"/>
+    <path d="M560,98 L560,128 L366,128 L366,144" marker-end="url(#mkf)"/>
+    <line x1="640" y1="98" x2="640" y2="147" marker-end="url(#mkf)"/>
+  </g>
+  <path d="M276,182 L110,182 L110,102" fill="none" stroke="#2b47d6" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#mkfb)"/>
+  <text class="dmut" x="24" y="30" text-anchor="start">round 0: all de-novo</text>
+  <text class="dtxt" x="118" y="150" text-anchor="start" fill="#2b47d6">next round</text>
+  <text class="dmut" x="470" y="122" text-anchor="start">winners</text>
+  <text class="dmut" x="582" y="116" text-anchor="start">stop when:</text>
+  <text class="dmut" x="582" y="129" text-anchor="start">success &middot; plateau &middot; cap</text>
+  <text class="dmut" x="366" y="238" text-anchor="middle">children share grows with a streak of improving rounds (capped; a de-novo floor keeps exploring)</text>
+  </svg>
+  <figcaption>Conceptual schematic. Generation runs as a loop: scored winners re-seed the next round as
+  partial-diffusion children alongside fresh de-novo backbones, and the loop stops on success, a score
+  plateau, or a round cap.</figcaption>
+  </figure>
+
   <div class="card">
     <h3>RFdiffusion3 &mdash; backbones</h3>
     <p>RFdiffusion3 diffuses a protein backbone around the epitope, which is held fixed as a
@@ -194,7 +347,8 @@ details[open] summary::before{content:"\25BE  "}
     <p>Before spending MPNN and AlphaFold3 on a backbone, score it for antibody accessibility and drop
     the ones that bury the epitope. This runs on the bare backbone, needs no sequence or fold, and is
     the single biggest compute saving in the loop: clashy backbones are removed before the two
-    expensive steps touch them. The score is AOMclash (below); the pre-filter keeps the best fraction
+    expensive steps touch them. The score is AOMclash (<a href="aomclash.html">how antibody obstruction
+    is estimated</a>; defined below); the pre-filter keeps the best fraction
     per epitope (default half).</p>
     <p class="io"><b>In:</b> RFd3 backbones + the epitope frame. <b>&rarr; Out:</b> the subset of backbones kept &mdash; those whose epitope stays sterically accessible, by keep-frac.</p>
     <p class="loc">scripts/aomclash_prefilter.py</p>

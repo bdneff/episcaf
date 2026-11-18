@@ -108,6 +108,12 @@ p{margin:9px 0}
 .steps .tx b{color:var(--ink)}
 .note{background:var(--ng-bg);border:1px solid var(--ng-line);border-radius:7px;padding:9px 12px;font-size:12px;color:#6f5410;margin:12px 0 0}
 .note b{color:#5c450d}
+figure.dgm{margin:4px 0 2px;padding:0;text-align:center}
+figure.dgm svg{display:block;width:100%;height:auto;margin:0 auto}
+figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line-height:1.5;text-align:left}
+.dgm .dlbl{font-size:11px;font-weight:bold;fill:currentColor}
+.dgm .dtxt{font-size:10.5px;fill:currentColor}
+.dgm .dmut{font-size:10px;fill:currentColor;opacity:.62}
 </style>
 </head>
 <body>
@@ -253,7 +259,8 @@ p{margin:9px 0}
 
   <div class="focus">
     <span class="ic">&#9733;</span>
-    <span><b>Current focus:</b> AOMclash. The 39-feature regressor and the epitope-frame extractor are
+    <span><b>Current focus:</b> AOMclash (<a href="aomclash.html">how antibody obstruction is
+    estimated</a>). The 39-feature regressor and the epitope-frame extractor are
     ported, tested, and committed; the explainer is written up. Next is the cluster-side loader that
     builds the feature matrix from our AF3 structures, then training the regressor on
     <code>af3_n_clash_res</code> with leave-one-epitope-out folds and validating it against the cylinder
@@ -374,6 +381,42 @@ p{margin:9px 0}
     of something that worked). A controller picks winners each round, splits the next round&rsquo;s budget
     between fresh <i>de-novo</i> designs and children, and stops an epitope on success, a score plateau,
     or a round cap.</p>
+    <figure class="dgm">
+    <svg viewBox="0 0 320 312" role="img" aria-label="Compact flowchart of the iterative design loop: generate, predict and score, pick winners, re-seed; the loop repeats, and winners that meet a stop condition exit to the ranked output." style="max-width:300px">
+    <title>Iterative design loop</title>
+    <defs>
+      <marker id="mkc" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/></marker>
+      <marker id="mkcb" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#2b47d6"/></marker>
+    </defs>
+    <g fill="#2b47d6" fill-opacity=".06" stroke="#2b47d6">
+      <rect x="70" y="16" width="150" height="40" rx="7"/>
+      <rect x="70" y="76" width="150" height="40" rx="7"/>
+      <rect x="70" y="136" width="150" height="40" rx="7"/>
+      <rect x="70" y="196" width="150" height="50" rx="7"/>
+    </g>
+    <rect x="85" y="264" width="150" height="34" rx="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+    <g text-anchor="middle" fill="currentColor">
+      <text class="dlbl" x="145" y="40">Generate backbones</text>
+      <text class="dlbl" x="145" y="100">Predict + score</text>
+      <text class="dlbl" x="145" y="160">Pick winners</text>
+      <text class="dlbl" x="145" y="218">Re-seed next round</text>
+      <text class="dmut" x="145" y="234">children + fresh de-novo</text>
+      <text class="dlbl" x="160" y="285">Ranked designs out</text>
+    </g>
+    <g color="currentColor" stroke="currentColor" stroke-width="1.5" fill="none">
+      <line x1="145" y1="56" x2="145" y2="70" marker-end="url(#mkc)"/>
+      <line x1="145" y1="116" x2="145" y2="130" marker-end="url(#mkc)"/>
+      <line x1="145" y1="176" x2="145" y2="190" marker-end="url(#mkc)"/>
+      <path d="M70,156 L36,156 L36,281 L82,281" marker-end="url(#mkc)"/>
+    </g>
+    <path d="M220,221 L286,221 L286,36 L220,36" fill="none" stroke="#2b47d6" stroke-width="1.7" stroke-dasharray="5 3" marker-end="url(#mkcb)"/>
+    <text class="dmut" x="40" y="150" text-anchor="start">stop</text>
+    <text class="dtxt" x="292" y="132" text-anchor="middle" fill="#2b47d6" transform="rotate(90,292,132)">next round</text>
+    </svg>
+    <figcaption>Conceptual schematic. Scored winners re-seed the next round as partial-diffusion children
+    alongside fresh de-novo backbones; an epitope exits to the ranked output on success, a score plateau,
+    or a round cap.</figcaption>
+    </figure>
     <div class="note"><b>Design decision: adaptive budget.</b> The open question &mdash; are children
     genuinely better or just best-of-N in a lucky basin? &mdash; is handled by letting each epitope
     <i>earn</i> its children budget: start de-novo-only and raise the children share with a streak of

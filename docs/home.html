@@ -32,6 +32,31 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 .caps{margin:20px 0 0;color:#555;font-size:12.5px;line-height:1.5}
 .footline{margin-top:18px;border-top:1px solid #e2e8f1;padding-top:12px;color:#666;font-size:12.5px}
 .footline a{color:#0033cc}
+
+/* ---- overview schematic (in-card illustrations + converging shared workflow) ---- */
+.ill{display:block;width:100%;height:auto;margin:0 0 10px;border:1px solid #e3e9f2;border-radius:7px;background:#f3f6fb}
+.ill-cap{font-size:11px;color:#566b85;margin:-4px 0 10px;letter-spacing:.01em}
+.converge{position:relative;height:34px;margin-top:16px}
+.conv-wide{display:block;width:100%;height:34px;color:#8fa4c0}
+.conv-tall{display:none}
+.shared{position:relative;margin-top:2px;border:1px solid #d5deea;border-radius:9px;background:#f5f8fc;padding:14px 16px 12px}
+.shared::before{content:"";position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #8fa4c0}
+.shared-h{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#566b85;font-weight:bold;margin:0 0 10px}
+.shared-body{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.shared-ill{flex:none;width:150px}
+.shared-ill .ill{margin:0 0 4px;background:#fff}
+.shared-ill .ill-cap{margin:0;text-align:center}
+.steps-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;min-width:220px}
+.pstep{font-size:12.5px;font-weight:bold;color:#1b4a86;background:#fff;border:1px solid #cfdcec;border-radius:6px;padding:6px 11px}
+.parrow{color:#8fa4c0;font-weight:bold;font-size:15px;line-height:1}
+.shared-more{display:inline-block;margin-top:11px;font-size:12.5px;color:#296DC0;font-weight:600;text-decoration:none}
+.shared-more:hover{text-decoration:underline}
+.schem-cap{font-size:11px;color:#777;margin:9px 0 0;font-style:italic}
+@media(max-width:680px){
+  .conv-wide{display:none}
+  .converge{height:24px}
+  .conv-tall{display:block;margin:0 auto;width:12px;height:24px;color:#8fa4c0}
+}
 </style>
 </head>
 <body>
@@ -74,13 +99,27 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <div class="card-t">Scaffold a selected epitope</div>
       </div>
       <div class="card-b">
+        <svg class="ill" viewBox="0 0 200 118" role="img"
+             aria-label="An antigen shown as one grey shape with a single selected epitope highlighted in red.">
+          <path d="M58 22 C92 8 146 12 172 38 C190 56 190 86 162 102 C132 118 76 118 46 100 C20 84 14 52 30 34 C39 24 48 26 58 22 Z"
+                fill="#9aa3ad" stroke="#7c858f" stroke-width="1.5"/>
+          <!-- selected epitope: a small cluster of residues in red -->
+          <g fill="#e5543f" stroke="#ffffff" stroke-width="1">
+            <circle cx="138" cy="44" r="5"/>
+            <circle cx="150" cy="38" r="5"/>
+            <circle cx="143" cy="54" r="5"/>
+            <circle cx="158" cy="49" r="5"/>
+          </g>
+        </svg>
+        <p class="ill-cap">Antigen (grey) with the selected epitope in red.</p>
         <p>Start from an antibody&ndash;antigen complex; episcaf takes the epitope from the antibody
         contact residues. Generate scaffold designs and compare their predicted structures with the
         original epitope. For an antigen with no bound antibody, the epitope can instead be read off
         the structure.</p>
         <div class="when"><b>Use this when:</b> you have a complex (for example a SAbDab entry) or a
         specific site you want displayed on a stable, synthesizable scaffold.</div>
-        <p class="steps">Selecting the epitope by typing a residue list is not yet available.</p>
+        <p class="steps">You can also mark the antibody chains or individual residues yourself; episcaf
+        derives the antigen contact epitope from the selection.</p>
         <a class="readmore" href="methods.html#generate">How scaffolding works</a>
       </div>
       <div class="card-f">
@@ -94,6 +133,25 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <div class="card-t">Find candidate regions to scaffold</div>
       </div>
       <div class="card-b">
+        <svg class="ill" viewBox="0 0 200 118" role="img"
+             aria-label="The same antigen shape with several candidate regions drawn as muted blue dashed outlines, and one selected region highlighted in red.">
+          <path d="M58 22 C92 8 146 12 172 38 C190 56 190 86 162 102 C132 118 76 118 46 100 C20 84 14 52 30 34 C39 24 48 26 58 22 Z"
+                fill="#9aa3ad" stroke="#7c858f" stroke-width="1.5"/>
+          <!-- candidate surface regions: muted blue dashed outlines (unvalidated) -->
+          <g fill="#2b47d6" fill-opacity="0.08" stroke="#2b47d6" stroke-width="2" stroke-dasharray="4 3">
+            <ellipse cx="66" cy="54" rx="15" ry="12"/>
+            <ellipse cx="88" cy="90" rx="14" ry="11"/>
+            <ellipse cx="150" cy="88" rx="14" ry="11"/>
+          </g>
+          <!-- the chosen region: same red epitope cluster as the left branch -->
+          <g fill="#e5543f" stroke="#ffffff" stroke-width="1">
+            <circle cx="138" cy="44" r="5"/>
+            <circle cx="150" cy="38" r="5"/>
+            <circle cx="143" cy="54" r="5"/>
+            <circle cx="158" cy="49" r="5"/>
+          </g>
+        </svg>
+        <p class="ill-cap">Candidate regions (blue outlines); one selected in red.</p>
         <p>Start from an antigen structure without a specified binding site. Sample patches across
         its surface, inspect the candidates, and choose regions for scaffold design.</p>
         <div class="when"><b>Use this when:</b> you have a target but no chosen site, or you are
@@ -106,6 +164,52 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     </div>
 
   </div>
+
+  <!-- ===== both branches converge on one shared workflow ===== -->
+  <div class="converge" aria-hidden="true">
+    <svg class="conv-wide" viewBox="0 0 400 34" preserveAspectRatio="none" fill="none"
+         stroke="currentColor" stroke-width="2">
+      <path d="M100 0 V16" vector-effect="non-scaling-stroke"/>
+      <path d="M300 0 V16" vector-effect="non-scaling-stroke"/>
+      <path d="M100 16 H300" vector-effect="non-scaling-stroke"/>
+      <path d="M200 16 V34" vector-effect="non-scaling-stroke"/>
+    </svg>
+    <svg class="conv-tall" viewBox="0 0 12 24" preserveAspectRatio="none" fill="none"
+         stroke="currentColor" stroke-width="2">
+      <path d="M6 0 V24" vector-effect="non-scaling-stroke"/>
+    </svg>
+  </div>
+
+  <div class="shared">
+    <div class="shared-h">Shared workflow</div>
+    <div class="shared-body">
+      <div class="shared-ill">
+        <svg class="ill" viewBox="0 0 150 112" role="img"
+             aria-label="A smaller designed scaffold carrying the same epitope residues, in the same arrangement, highlighted in red.">
+          <path d="M46 24 C68 12 96 16 108 36 C118 52 116 78 98 90 C78 102 52 100 38 84 C26 70 26 44 38 32 C42 27 42 27 46 24 Z"
+                fill="#9aa3ad" stroke="#7c858f" stroke-width="1.5"/>
+          <g fill="#e5543f" stroke="#ffffff" stroke-width="1">
+            <circle cx="84" cy="40" r="5"/>
+            <circle cx="96" cy="34" r="5"/>
+            <circle cx="89" cy="50" r="5"/>
+            <circle cx="104" cy="45" r="5"/>
+          </g>
+        </svg>
+        <p class="ill-cap">A smaller scaffold carries the same epitope (red).</p>
+      </div>
+      <div class="steps-row">
+        <span class="pstep">Generate scaffolds</span>
+        <span class="parrow" aria-hidden="true">&rarr;</span>
+        <span class="pstep">Predict structures</span>
+        <span class="parrow" aria-hidden="true">&rarr;</span>
+        <span class="pstep">Evaluate designs</span>
+      </div>
+    </div>
+    <a class="shared-more" href="pipeline.html">See the full pipeline and run order</a>
+  </div>
+
+  <p class="schem-cap">Conceptual schematic &mdash; an abstraction of the two starting points and the
+  shared workflow, not a rendered structure.</p>
 
   <p class="caps">Examples can be explored in the browser. Processing your own structure
   requires the local service; design jobs run separately on the cluster.</p>

@@ -143,7 +143,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   <a href="results.html">Results</a>
 </div></div>
 <div class="page">
-  <p class="lede">Given an antibody&ndash;antigen complex &mdash; or a lone antigen, from which the epitope is predicted off the structure &mdash; design protein scaffolds that present the epitope in its native, antibody-binding conformation. Pipeline: RFdiffusion3 &rarr; backbone pre-filter &rarr; ProteinMPNN &rarr; AlphaFold3 &rarr; scoring.</p>
+  <p class="lede">Start from an antibody&ndash;antigen complex, or specify the antibody chains or residues on an uploaded structure and episcaf derives the contact epitope. Then design protein scaffolds that present that epitope in its native, antibody-binding conformation. Pipeline: RFdiffusion3 &rarr; antibody-obstruction filter &rarr; ProteinMPNN &rarr; AlphaFold3 &rarr; scoring.</p>
   <p class="note"><b>This page is a planning simulation.</b> It does not run designs. It shows the cluster
   job that would be submitted and estimates throughput from the project's measured DP4 enrichment rates;
   the per-design rows below are illustrative, not completed predictions. The selected structure is a real
@@ -217,46 +217,57 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     <section class="step">
       <div class="steph"><span class="stepn">1</span> Generate backbones &mdash; RFdiffusion3</div>
       <div class="stepb">
-        <div class="field"><label for="rfd3n">Backbones per epitope contig</label>
-          <input type="number" id="rfd3n" value="8" min="1" max="64"></div>
-        <div class="field"><label for="helix">Helicity bias</label>
+        <p class="sub" style="margin:0 0 8px">RFdiffusion3 generates <i>de novo</i> backbones &mdash; the scaffold&rsquo;s 3D shape, before any amino-acid sequence is assigned &mdash; that hold the epitope in its native geometry.</p>
+        <div class="field"><label for="rfd3n">Backbones generated per epitope</label>
+          <input type="number" id="rfd3n" value="8" min="1" max="64">
+          <div class="sub">How many candidate backbones RFdiffusion3 generates for each epitope. More backbones explore more folds and cost more compute. These are the population the next step filters.</div></div>
+        <div class="field"><label for="helix">Helix bias</label>
           <input type="range" id="helix" min="-1" max="1" step="0.05" value="0" disabled style="vertical-align:middle;width:140px">
           <span id="helixv" style="color:#9aa3ad;font-variant-numeric:tabular-nums">0.00</span>
-          <div class="sub">&minus;1 &hellip; 0 (neutral) &hellip; +1, intended to bias away from or toward helical scaffolds. <b>Not yet wired into generation</b>, so the control is disabled; it is shown to mark a planned option.</div></div>
-        <label class="radio"><input type="checkbox" id="ipd"> Iterative loop &mdash; seed later rounds from the best designs (partial diffusion)</label>
-        <div class="field" id="ipdwrap" hidden><label for="ipdrounds">Max rounds</label>
+          <div class="sub">Intended to bias toward (+1) or away from (&minus;1) helical scaffolds. <b>Not yet wired into generation</b>, so the control is disabled; it marks a planned option and changing it would have no effect.</div></div>
+        <label class="radio"><input type="checkbox" id="ipd"> Iterative design loop &mdash; reuse the best backbones of each round to seed the next (partial diffusion)</label>
+        <div class="sub" style="margin:2px 0 0 22px">When on, after each round the best-scoring designs are re-diffused into nearby variants and mixed with fresh designs, instead of running a single pass. This raises the chance of improving on a good fold, at the cost of more rounds. <a href="methods.html#generate">How the loop works &rsaquo;</a></div>
+        <div class="field" id="ipdwrap" hidden><label for="ipdrounds">Maximum rounds</label>
           <input type="number" id="ipdrounds" value="4" min="1" max="10">
-          <div class="sub">Each epitope earns its exploitation budget by improving round over round (adaptive).</div></div>
+          <div class="sub">Caps how many times the loop repeats. Each epitope stops early once it stops improving (an adaptive per-epitope budget).</div></div>
+      </div>
+    </section>
+
+    <section class="step" id="step-filter">
+      <div class="steph"><span class="stepn">2</span> Filter backbones for potential antibody obstruction</div>
+      <div class="stepb">
+        <p class="sub" style="margin:0 0 8px">Before designing sequences, estimate whether each proposed backbone would obstruct antibody binding to the epitope. This is separate from whether the backbone holds the epitope&rsquo;s shape, and separate from any internal clash within the scaffold.</p>
+        <label class="radio"><input type="checkbox" id="prefilter" checked> Remove backbones predicted to obstruct antibody binding</label>
+        <div class="sub" style="margin:2px 0 0 22px">Uses AOMclash to estimate obstruction from an antibody-occupancy map, before sequence design (ProteinMPNN) and structure prediction (AlphaFold3). It is the pipeline&rsquo;s main compute saving. <a href="aomclash.html">How antibody obstruction is estimated &rsaquo;</a></div>
+        <div class="field" id="prefwrap">
+          <label for="keepfrac">Backbones to send to sequence design</label>
+          <div class="sub" style="margin:2px 0 5px">For each epitope, the generated backbones are ranked by their predicted obstruction of antibody binding (AOMclash <code>s_p1_free</code>; lower is less obstruction). Choose the percentage to keep; the rest are discarded before ProteinMPNN and AlphaFold3. Ranking is done separately for each epitope.</div>
+          <label for="keepfrac" style="font-weight:normal">Percentage to keep</label>
+          <input type="number" id="keepfrac" value="50" min="5" max="100" step="5"> %
+          <div class="sub" id="keepexample" style="margin-top:4px"></div></div>
       </div>
     </section>
 
     <section class="step">
-      <div class="steph"><span class="stepn">2</span> Backbone clash pre-filter &mdash; AOMclash</div>
+      <div class="steph"><span class="stepn">3</span> Design sequences &mdash; ProteinMPNN</div>
       <div class="stepb">
-        <label class="radio"><input type="checkbox" id="prefilter" checked> Drop clashy backbones before MPNN / AF3 (a cheap early gate &mdash; the biggest compute saving)</label>
-        <div class="field" id="prefwrap"><label for="keepfrac">Keep best fraction per epitope</label>
-          <input type="number" id="keepfrac" value="0.5" min="0.05" max="1" step="0.05"></div>
-      </div>
-    </section>
-
-    <section class="step">
-      <div class="steph"><span class="stepn">3</span> Sequence design &mdash; ProteinMPNN</div>
-      <div class="stepb">
+        <p class="sub" style="margin:0 0 8px">ProteinMPNN assigns an amino-acid sequence to each kept backbone, holding the epitope positions fixed so the epitope keeps its native identity while the rest of the scaffold is free.</p>
         <div class="field"><label for="mpnnn">Sequences per backbone</label>
-          <input type="number" id="mpnnn" value="8" min="1" max="32"></div>
-        <div class="sub">Epitope positions are held fixed, so the epitope keeps its native identity.</div>
+          <input type="number" id="mpnnn" value="8" min="1" max="32">
+          <div class="sub">How many sequences ProteinMPNN designs for each kept backbone. Each sequence becomes a separate design to fold and score.</div></div>
       </div>
     </section>
 
     <section class="step">
-      <div class="steph"><span class="stepn">4</span> Fold &mdash; AlphaFold3</div>
-      <div class="stepb"><p class="fixed-note">Single-sequence, seed 1, no MSA: tests whether the design folds with the epitope in native geometry without template or coevolution cues. No options.</p></div>
+      <div class="steph"><span class="stepn">4</span> Predict structure &mdash; AlphaFold3</div>
+      <div class="stepb"><p class="fixed-note">AlphaFold3 folds each designed sequence to check whether it adopts the intended structure with the epitope in native geometry. Single sequence, seed 1, no MSA, so the prediction uses no template or coevolution cues. No options.</p></div>
     </section>
 
     <section class="step">
-      <div class="steph"><span class="stepn">5</span> Score &amp; select</div>
+      <div class="steph"><span class="stepn">5</span> Score and select</div>
       <div class="stepb">
         <div class="field"><label for="strategy">Scoring model</label>
+          <div class="sub" style="margin:2px 0 4px">The model that ranks the folded designs. The interpretable binding model is recommended; the others are shown for comparison.</div>
           <select id="strategy">
             <option value="logistic">Interpretable binding model (logistic) &mdash; recommended</option>
             <option value="composite">Composite (hand-weighted geometry)</option>
@@ -264,14 +275,14 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
             <option value="dl">Deep net (overfits) &mdash; for comparison</option>
           </select>
           <div class="stratbox" id="stratbox"></div></div>
-        <div class="field"><label>Selection</label>
+        <div class="field"><label>Which designs to return</label>
           <div class="radios">
-            <label class="radio"><input type="radio" name="mode" value="threshold" checked> Designs that pass the four-filter</label>
-            <label class="radio"><input type="radio" name="mode" value="topn"> Top-N by score within the budget</label>
+            <label class="radio"><input type="radio" name="mode" value="threshold" checked> Every design that clears the four filters (epitope RMSD, overall RMSD, mean PAE, antibody clashes)</label>
+            <label class="radio"><input type="radio" name="mode" value="topn"> The top designs by the scoring model above, up to the number set below, within the time limit</label>
           </div></div>
-        <div class="field"><label for="ndes">Designs wanted</label>
+        <div class="field"><label for="ndes">Number of designs to return</label>
           <input type="number" id="ndes" value="20" min="1" max="500">
-          &nbsp;&nbsp;<label for="runtime">Max run time (min)</label>
+          &nbsp;&nbsp;<label for="runtime">Time limit (minutes)</label>
           <input type="number" id="runtime" value="60" min="1" max="1440"></div>
       </div>
     </section>
@@ -421,7 +432,7 @@ function geminiCmd(s){
     ""];
   let step=2;
   if(s.prefilter){
-    lines.push("# "+step+". AOMclash backbone pre-filter: keep best "+Math.round(s.keepfrac*100)+"% per epitope before MPNN/AF3",
+    lines.push("# "+step+". AOMclash antibody-obstruction filter: keep the "+Math.round(s.keepfrac*100)+"% least-obstructing per epitope before MPNN/AF3",
       'python scripts/aomclash_prefilter.py --backbones "$RUN_DIR/02_rfd3/outputs" \\',
       '    --contigs "$RUN_DIR/designs.csv" --antigen "'+inp+'" --keep-frac '+s.keepfrac+' \\',
       '    --out "$RUN_DIR/aomclash_prefilter.csv"', "");
@@ -450,7 +461,7 @@ function logLines(job){
   const pf=`${fmt(job.kept)} kept  (skipped AF3 on ${fmt(job.avoided)})`;
   return [
     `> generating backbones ......... ${fmt(job.generated)}`,
-    `> backbone pre-filter (D6) ..... ${pf}`,
+    `> antibody-obstruction filter .. ${pf}`,
     `> AlphaFold3 fold .............. ${fmt(job.folded)}`,
     `> score + four-filter ......... ${fmt(job.passers)} pass`,
     `> select (${job.strat.label}, ${state.mode}): ${fmt(job.returned)} designs`,
@@ -597,6 +608,13 @@ function updateRunBtn(){
   const b=$("#runbtn"); if(!b) return;
   b.textContent = (apiBase() && uploadText) ? "Prepare design inputs" : "Simulate a run";
 }
+function updateKeepExample(){
+  const el=$("#keepexample"); if(!el) return;
+  const n=state.rfd3n, keep=Math.max(1,Math.round(n*state.keepfrac)), pct=Math.round(state.keepfrac*100);
+  el.innerHTML="At "+pct+"%, if "+n+" backbone"+(n===1?"":"s")+" are generated for an epitope, the <b>"+keep+
+    "</b> with the lowest obstruction score"+(keep===1?"":"s")+" continue; the other "+(n-keep)+
+    " are discarded before ProteinMPNN and AlphaFold3.";
+}
 function syncHints(){
   $("#targethint").textContent = (state.target==="__upload" && !uploadDetected)
     ? "uploaded structure; the epitope was not detected (needs the local service). Showing the raw structure."
@@ -621,12 +639,12 @@ function rerun(){paint(computeJob(state),false);}
 const clamp=(v,lo,hi,d)=>Math.max(lo,Math.min(hi,+v||d));
 $("#ndes").addEventListener("input",e=>{state.n=clamp(e.target.value,1,500,1);syncHints();rerun();});
 $("#runtime").addEventListener("input",e=>{state.runtime=clamp(e.target.value,1,1440,1);syncHints();rerun();});
-$("#rfd3n").addEventListener("input",e=>{state.rfd3n=clamp(e.target.value,1,64,8);rerun();});
+$("#rfd3n").addEventListener("input",e=>{state.rfd3n=clamp(e.target.value,1,64,8);updateKeepExample();rerun();});
 $("#helix").addEventListener("input",e=>{state.helix=+e.target.value;$("#helixv").textContent=state.helix.toFixed(2);rerun();});
 $("#ipd").addEventListener("change",e=>{state.ipd=e.target.checked;$("#ipdwrap").hidden=!state.ipd;rerun();});
 $("#ipdrounds").addEventListener("input",e=>{state.ipdrounds=clamp(e.target.value,1,10,4);rerun();});
 $("#prefilter").addEventListener("change",e=>{state.prefilter=e.target.checked;$("#prefwrap").style.display=state.prefilter?"":"none";rerun();});
-$("#keepfrac").addEventListener("input",e=>{state.keepfrac=Math.max(0.05,Math.min(1,+e.target.value||0.5));rerun();});
+$("#keepfrac").addEventListener("input",e=>{state.keepfrac=Math.max(0.05,Math.min(1,(+e.target.value||50)/100));updateKeepExample();rerun();});
 $("#mpnnn").addEventListener("input",e=>{state.mpnnn=clamp(e.target.value,1,32,8);rerun();});
 $("#backend").addEventListener("input",updateRunBtn);
 
@@ -962,6 +980,7 @@ $("#zipbtn").addEventListener("click",async()=>{
 /* boot: show a completed example at rest */
 syncHints();
 setStratBox();
+updateKeepExample();
 updateCaption();
 paint(computeJob(state),false);
 if(document.readyState==="complete") initCViewer(); else window.addEventListener("load",initCViewer);

@@ -28,6 +28,8 @@
 .prow.on{background:#eef4fd;box-shadow:inset 3px 0 0 var(--blue)}
 .prow .ep{flex:1;min-width:0;font-variant-numeric:tabular-nums}
 .prow .meta{color:#666;font-size:11px}
+.disco{font-size:10.5px;font-weight:bold;padding:1px 6px;border-radius:3px;background:#eef3f0;color:#0a7a2f;border:1px solid #cfe3d6;font-variant-numeric:tabular-nums;white-space:nowrap}
+.disco.none{background:#f2f2f2;color:#888;border-color:#ddd}
 .mtag{font-size:9.5px;font-weight:bold;padding:1px 5px;border-radius:3px;color:#fff;letter-spacing:.02em}
 .m-growpatch{background:var(--blue)} .m-eyeview{background:var(--purple)} .m-both{background:var(--green)}
 .viewwrap{flex:2;min-width:300px}
@@ -111,7 +113,20 @@
       <button data-v="3d" class="on" aria-pressed="true">3D structure</button>
       <button data-v="flat" aria-pressed="false">Projection map</button>
     </span>
+    <span class="lbl" id="sortlbl" hidden>rank by</span>
+    <span class="seg" id="sortseg" role="group" aria-labelledby="sortlbl" hidden>
+      <button data-s="disco_mean" class="on" aria-pressed="true">DiscoTope mean</button>
+      <button data-s="disco_sum" aria-pressed="false">DiscoTope sum</button>
+      <button data-s="none" aria-pressed="false">Candidate order</button>
+    </span>
   </div>
+
+  <p class="discohdr" id="discohdr" hidden style="font-size:12px;color:#555;margin:-4px 0 10px">
+  Candidates can be ranked by <b>predicted epitope likelihood (DiscoTope-3.0)</b>: the per-residue
+  B-cell epitope likelihood DiscoTope-3.0 assigns to chain A, summarized per candidate as the mean
+  over its residues (size-independent; the sum is also offered). This is a structure-based
+  <b>prediction</b>, separate from the geometric surface sampling that generated the candidates, and
+  it is not a measurement of antibody binding. Scores are normalized 0&ndash;1 across the chain.</p>
 
   <div class="sel" id="sel">No patch selected &mdash; click one in the list.</div>
 
@@ -161,7 +176,8 @@
 "use strict";
 const D = window.GROWPATCH_DATA || {residues:[],patches:[]};
 const BLUE="#296DC0", RED="#c0392b", GREY="#c4c4c4";
-let state = {method:"all", view:"3d", sel:null};
+let state = {method:"all", view:"3d", sel:null, sort:"disco_mean"};
+const HAS_DISCO = !!D.has_disco;
 let viewer=null, loaded=false;
 
 // ---- stats ----
@@ -184,10 +200,30 @@ function mtag(methods){
 function shown(){
   return D.patches.filter(p=> state.method==="all" ? true : p.methods.includes(state.method));
 }
+function discoLabel(p){
+  // null = no DiscoTope score for any of this candidate's residues
+  if(p.disco_mean==null) return '<span class="disco none" title="No DiscoTope-3.0 score for this candidate">no score</span>';
+  const v = state.sort==="disco_sum" ? p.disco_sum.toFixed(1) : p.disco_mean.toFixed(2);
+  const which = state.sort==="disco_sum" ? "sum" : "mean";
+  return `<span class="disco" title="Predicted epitope likelihood (DiscoTope-3.0), ${which} over ${p.disco_n} residues; normalized 0-1">DiscoTope ${v}</span>`;
+}
+function sortedShown(){
+  const list=shown();
+  if(!HAS_DISCO || state.sort==="none") return list;  // candidate (index) order
+  const key = state.sort==="disco_sum" ? "disco_sum" : "disco_mean";
+  // highest predicted epitope likelihood first; nulls (no score) sink to the bottom
+  return list.slice().sort((a,b)=>{
+    const av=a[key], bv=b[key];
+    if(av==null && bv==null) return a.i-b.i;
+    if(av==null) return 1;
+    if(bv==null) return -1;
+    return bv-av || a.i-b.i;
+  });
+}
 
 // ---- patch list ----
 function buildList(){
-  const list=shown();
+  const list=sortedShown();
   document.getElementById("nshown").textContent=list.length;
   const el=document.getElementById("plist");
   el.innerHTML="";
@@ -202,6 +238,7 @@ function buildList(){
     row.setAttribute("aria-selected", state.sel===p.i ? "true" : "false");
     row.dataset.i=p.i;
     row.innerHTML=`<span class="ep">${p.epitope}</span>`+
+      (HAS_DISCO?discoLabel(p):"")+
       `<span class="rowmeta">${p.n_res} residues &middot; ${segText(p.n_isl)} &middot; ${mtag(p.methods)}</span>`;
     row.onclick=()=>select(p.i);
     row.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(p.i);}};
@@ -373,8 +410,22 @@ document.querySelectorAll("#methodseg button").forEach(b=>b.onclick=()=>{
   buildList();
 });
 document.querySelectorAll("#viewseg button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
+document.querySelectorAll("#sortseg button").forEach(b=>b.onclick=()=>{
+  state.sort=b.dataset.s;
+  document.querySelectorAll("#sortseg button").forEach(x=>{
+    const on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false");
+  });
+  buildList();  // re-sort and re-render the DOM list in place; selection is preserved
+});
 document.getElementById("btnreset").onclick=resetView;
 document.getElementById("btnfit").onclick=fitStructure;
+
+// ---- reveal DiscoTope ranking only when the target has a scored PDB ----
+if(HAS_DISCO){
+  document.getElementById("sortlbl").hidden=false;
+  document.getElementById("sortseg").hidden=false;
+  document.getElementById("discohdr").hidden=false;
+}
 
 // ---- go ----
 buildList();
