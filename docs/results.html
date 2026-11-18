@@ -57,40 +57,40 @@ td.good{color:var(--good)}td.bad{color:var(--bad)}
 </div></div>
 
 <div class="page">
-  <h1>Design results</h1>
-  <p class="lede">Load a run's metrics CSV (what the pipeline's stage&nbsp;5 produces) to rank and
-  filter designs by their AlphaFold3 metrics and composite score. Columns follow
-  <a href="RESULTS_SCHEMA.md">the results schema</a>; the viewer shows whatever metric columns are
-  present. Everything is in your browser &mdash; nothing is uploaded.</p>
+  <h1>Explore design results</h1>
+  <p class="lede">Load a metrics CSV to compare, filter, and rank designs. Available metrics depend on
+  the columns in the file. Files are processed in your browser. See
+  <a href="RESULTS_SCHEMA.md">the results-file format and metric definitions</a>.</p>
 
   <div class="bar">
     <input type="file" id="file" accept=".csv,.tsv,.txt">
-    <label class="ck">rank by <select id="rankby" disabled></select></label>
-    <label class="ck"><input type="checkbox" id="passonly"> passes only</label>
-    <button id="dl" class="btn-secondary" disabled>Download shown</button>
+    <label class="ck">Sort designs by <select id="rankby" disabled></select></label>
+    <label class="ck"><input type="checkbox" id="passonly"> Show designs that pass the structural filters</label>
+    <button id="dl" class="btn-secondary" disabled>Download filtered results</button>
   </div>
   <div class="msg" id="msg"></div>
   <div class="empty" id="empty">
-    <p><b>No results loaded.</b> Load a run's metrics CSV to rank and filter designs. The viewer shows
-    whichever metric columns are present; canonical column names and their meanings are in
-    <a href="RESULTS_SCHEMA.md">the results schema</a>.</p>
-    <p class="help" style="margin:6px 0 0">Expected columns include <code>design_id</code>,
-    <code>epitope_chunk_rmsd</code> (epitope backbone RMSD to native, &Aring;), <code>overall_rmsd</code>
-    (&Aring;), <code>mean_pae</code> (&Aring;), <code>af3_n_clash_res</code> (measured antibody clashes)
-    or <code>aomclash_pred</code> (model estimate), and a <code>composite</code> or binding score.
-    Everything is processed in your browser; nothing is uploaded.</p>
+    <p><b>No results loaded.</b></p>
+    <p>Load a metrics CSV to view design scores and structural metrics.</p>
+    <details class="help" style="margin:6px 0 0"><summary>Supported columns</summary>
+    <p style="margin:6px 0 0">Common columns identify the design and epitope, structural deviations,
+    prediction confidence, antibody clashes, and ranking scores. Metric columns can be omitted, but a
+    design cannot be evaluated against a filter whose required metric is missing. Canonical column names
+    and exact definitions are in <a href="RESULTS_SCHEMA.md">the results-file format and metric
+    definitions</a>.</p></details>
   </div>
   <div class="stats" id="stats"></div>
   <div class="tablewrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
 
-  <div class="note"><b>Reading it.</b> Each design is <b>pass</b>, <b>fail</b>, or <b>not evaluated</b>.
-  A green left-edge marks a <b>pass</b>: it clears all four filters &mdash; epitope RMSD &le; 1&nbsp;&Aring;,
-  overall RMSD &le; 2&nbsp;&Aring;, mean PAE &lt; 5, and no antibody clash. Clash uses the measured count
-  <code>af3_n_clash_res</code> (must be 0) when a reference antibody was present, otherwise the model
-  estimate <code>aomclash_pred</code> (must be &lt; 3); these are different quantities. A grey left-edge
-  marks <b>not evaluated</b> &mdash; a required metric, including any clash measurement, is missing, so the
-  design is not counted as a pass. Click a column header to sort; it defaults to <code>composite</code>
-  (then epitope fidelity). Passing these filters does not establish experimental binding. See
+  <div class="note"><b>Structural-filter status.</b>
+  <b>Pass:</b> the design meets every required threshold (green left edge).
+  <b>Fail:</b> the available metrics show that the design does not meet the configured criteria.
+  <b>Not evaluated:</b> at least one required metric is missing (grey left edge).
+  The thresholds are epitope RMSD &le;&nbsp;1&nbsp;&Aring;, overall RMSD &le;&nbsp;2&nbsp;&Aring;, and mean
+  PAE &lt;&nbsp;5&nbsp;&Aring;. For antibody obstruction, the viewer uses zero clashing residues against a
+  reference antibody (<code>af3_n_clash_res</code> = 0) or, when none is available, a calibrated AOMclash
+  estimate below&nbsp;3 (<code>aomclash_pred</code> &lt; 3). Filter status describes the structural screen;
+  experimental binding is evaluated separately. Select a column heading to sort by that metric. See
   <a href="RESULTS_SCHEMA.md">RESULTS_SCHEMA.md</a>.</div>
 </div>
 
@@ -109,28 +109,28 @@ const LABELS={design_id:"design",id:"design",target:"target",epitope:"epitope",s
   epitope_pae:"epitope PAE (Å)",scaffold_pae:"scaffold PAE (Å)",ptm:"pTM",plddt:"pLDDT",
   af3_n_clash_res:"antibody clashes",aomclash_pred:"est. antibody clashes",binding_pred:"binding score"};
 const DEFS={
-  epitope_chunk_rmsd:"Epitope backbone RMSD to the reference after alignment (Å). Lower is closer.",
-  overall_rmsd:"Whole-window backbone RMSD to the reference after alignment (Å). Lower is closer.",
-  mean_pae:"AlphaFold3 mean predicted aligned error (Å). Lower = more confident relative placement.",
-  epitope_pae:"Predicted aligned error within the epitope (Å). Lower is better.",
-  scaffold_pae:"Predicted aligned error within the scaffold (Å). Lower is better.",
-  af3_n_clash_res:"Measured: scaffold residues overlapping the reference antibody after alignment. The filter requires 0.",
-  aomclash_pred:"Model-based estimate of antibody clashes, used when no reference antibody is present. Lower is better.",
-  composite:"Hand-weighted geometry score. Higher is better.",
-  binding_pred:"Score from the model fit to the binding assay. Higher = greater predicted binding under the model.",
-  ptm:"AlphaFold3 predicted TM-score. Higher is better.",
-  plddt:"AlphaFold3 mean per-residue confidence. Higher is better.",
-  source:"Which method(s) produced this candidate."};
+  epitope_chunk_rmsd:"Backbone deviation from the reference epitope after alignment, in Å. Lower values indicate a closer match.",
+  overall_rmsd:"Backbone deviation from the intended design over the configured comparison region, in Å.",
+  mean_pae:"Mean predicted aligned error from AlphaFold 3, in Å.",
+  epitope_pae:"Predicted aligned error for the defined epitope residue pairs, in Å.",
+  scaffold_pae:"Predicted aligned error for the defined scaffold residue pairs, in Å.",
+  af3_n_clash_res:"Scaffold residues overlapping the reference antibody under the geometric clash criterion. The filter requires 0.",
+  aomclash_pred:"Calibrated AOMclash estimate used when a reference antibody is unavailable. Lower is better.",
+  composite:"Weighted combination of the metrics specified by the selected preset. Higher scores rank first.",
+  binding_pred:"Output of the fitted binding model. Higher scores rank first.",
+  ptm:"Predicted TM-score reported by AlphaFold 3.",
+  plddt:"Mean per-residue confidence reported by AlphaFold 3.",
+  source:"Method used to define the candidate region."};
 
 // ranking schemes offered in the dropdown, label -> column (or the passes+composite special)
 const RANKERS=[
-  ["four-filter, then composite", "__pc"],
-  ["composite score", "composite"],
-  ["binding model (DP4 logistic)", null],     // resolved to a /bind/i column if present
-  ["AOMclash (accessibility)", "aomclash_pred"],
-  ["AF3 clash (real)", "af3_n_clash_res"],
-  ["epitope RMSD", "epitope_chunk_rmsd"],
-  ["mean PAE", "mean_pae"],
+  ["Structural-filter status, then composite score", "__pc"],
+  ["Composite score", "composite"],
+  ["Binding-model score", null],              // resolved to a /bind/i column if present
+  ["Estimated antibody clashes", "aomclash_pred"],
+  ["Clashes with the reference antibody", "af3_n_clash_res"],
+  ["Epitope RMSD", "epitope_chunk_rmsd"],
+  ["Mean PAE", "mean_pae"],
   ["pTM", "ptm"],
   ["pLDDT", "plddt"],
 ];
@@ -228,9 +228,9 @@ function render(){
   const tgtKey=COLS.includes("id")?"id":(COLS.includes("target")?"target":null);
   const ntgt=tgtKey?new Set(ROWS.map(r=>r[tgtKey])).size:"—";
   $("empty").style.display = ROWS.length ? "none" : "block";
-  $("stats").innerHTML=[["designs",ROWS.length],["pass",npass],["fail",nfail],["not evaluated",nna],
-    ["pass rate",neval?(100*npass/neval).toFixed(1)+"%":"—"],["targets",ntgt],
-    ["showing",rs.length]].map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
+  $("stats").innerHTML=[["designs loaded",ROWS.length],["pass",npass],["fail",nfail],["not evaluated",nna],
+    ["pass rate (evaluated)",neval?(100*npass/neval).toFixed(1)+"%":"—"],["target groups",ntgt],
+    ["shown",rs.length]].map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
 }
 
 $("file").onchange=()=>{
@@ -238,16 +238,17 @@ $("file").onchange=()=>{
   const r=new FileReader();
   r.onload=()=>{
     try{
-      ROWS=parseCSV(r.result);
-      if(!ROWS.length) throw new Error("no data rows");
+      try{ ROWS=parseCSV(r.result); }
+      catch(pe){ const err=new Error("Could not read the results file. Check its format and column headings."); err.detail=pe.message; throw err; }
+      if(!ROWS.length) throw new Error("The file contains no design rows.");
       ROWS.forEach(x=>{x.__cls=classify(x);x.__pass=x.__cls==="pass";});
       COLS=orderCols(Object.keys(ROWS[0]).filter(k=>k!=="__pass"));
       populateRank();
-      pcMode = COLS.includes("composite");        // default scheme: four-filter passes, then composite
+      pcMode = COLS.includes("composite");        // default scheme: filter status first, then composite
       sortCol = pcMode ? null : (COLS.includes("is_pass")?"is_pass":COLS[0]); sortDir=-1;
       $("rankby").value = pcMode ? "__pc" : (sortCol||"");
-      $("msg").style.display="none"; $("dl").disabled=false; render();
-    }catch(e){ $("msg").textContent="Could not read CSV: "+e.message; $("msg").style.display="block"; }
+      $("msg").style.display="none"; $("msg").title=""; $("dl").disabled=false; render();
+    }catch(e){ $("msg").textContent=e.message; $("msg").title=e.detail||""; $("msg").style.display="block"; }
   };
   r.readAsText(f);
 };
@@ -259,7 +260,7 @@ $("dl").onclick=()=>{
   const csv=[COLS.join(",")].concat(rs.map(r=>COLS.map(c=>{
     const v=(r[c]??"")+""; return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(","))).join("\n");
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
-  a.download="episcaf_results_shown.csv"; a.click();
+  a.download="episcaf_results_filtered.csv"; a.click();
 };
 </script>
 </body>
