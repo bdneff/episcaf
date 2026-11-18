@@ -143,19 +143,17 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
 </div></div>
 
 <div class="page">
-  <p class="updated">BLUEPRINT · UPDATED 2026-11-18</p>
-  <h1>Pipeline blueprint</h1>
-  <p class="lede">The route from an antigen to a synthesizable, epitope-presenting scaffold &mdash; and
-  what is built versus still to come. The shipped DP4 backbone runs top to bottom; the shaded
-  <span class="ng-tag">NEXT-GEN</span> stages are the new methods being folded in.</p>
+  <p class="updated">WORKFLOW · UPDATED 2026-11-18</p>
+  <h1>Design workflow</h1>
+  <p class="lede">The workflow proceeds from epitope selection to backbone generation, sequence design,
+  structure prediction, scoring, and export. Select a stage to view its inputs, outputs, implementation,
+  and status.</p>
 
   <div class="legend">
-    <span class="chip done">shipped</span>
-    <span class="chip prog">in&nbsp;progress</span>
+    <span class="chip done">implemented</span>
+    <span class="chip prog">in&nbsp;development</span>
     <span class="chip plan">planned</span>
-    <span><span class="ng-tag">NEXT-GEN</span> &nbsp;a newer method being folded in</span>
   </div>
-  <p class="hint"><span class="cur">&#128073;</span> Click any component for how it works, its status, and where it lives in the code.</p>
 
   <!-- ===================== FLOW ===================== -->
   <div class="flow">
@@ -163,19 +161,19 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
     <div class="phase">
       <div class="phase-h">
         <div class="phase-n">1</div>
-        <div class="phase-t">Identify the epitope(s)<small>Choose the epitope &mdash; one of two modes</small></div>
+        <div class="phase-t">Identify the epitope(s)<small>Select the epitope &mdash; one of two modes</small></div>
         <a class="phase-doc" href="methods.html#epitope">In the Docs &rsaquo;</a>
       </div>
       <div class="branch">
         <div class="stage s-done" data-detail="known-ab" tabindex="0" role="button" aria-label="Known antibody — details">
-          <div class="st-top"><span class="st-name">Known antibody</span><span class="chip done">shipped</span></div>
-          <p class="st-desc">Take the contact epitope straight from the antibody&ndash;antigen complex.</p>
+          <div class="st-top"><span class="st-name">Contact epitope</span><span class="chip done">implemented</span></div>
+          <p class="st-desc">Select antigen residues that contact the reference antibody.</p>
           <span class="more">How it works &rarr;</span>
         </div>
         <div class="orbubble">OR</div>
         <div class="stage ng s-done" data-detail="growpatch" tabindex="0" role="button" aria-label="growPatch — details">
-          <div class="st-top"><span class="st-name">No antibody <span class="ng-tag">NEXT-GEN</span></span><span class="chip done">shipped</span></div>
-          <p class="st-desc"><b>growPatch</b> samples candidate surface patches across the antigen; downstream scoring ranks them.</p>
+          <div class="st-top"><span class="st-name">Candidate surface regions</span><span class="chip done">implemented</span></div>
+          <p class="st-desc">Generate surface patches with growPatch for inspection and selection.</p>
           <span class="more">How it works &rarr;</span>
         </div>
       </div>
@@ -186,36 +184,36 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
     <div class="phase">
       <div class="phase-h">
         <div class="phase-n">2</div>
-        <div class="phase-t">Generate scaffolds<small>The IPD loop &mdash; build backbones, sequences, structures</small></div>
+        <div class="phase-t">Generate scaffolds<small>Build backbones, design sequences, predict structures</small></div>
         <a class="phase-doc" href="methods.html#generate">In the Docs &rsaquo;</a>
       </div>
       <div class="stage s-done" data-detail="rfd3" tabindex="0" role="button" aria-label="RFdiffusion3 — details">
-        <div class="st-top"><span class="st-name">RFdiffusion3 backbones</span><span class="chip done">shipped</span></div>
-        <p class="st-desc">8 backbones per contig, epitope held in native geometry.</p>
+        <div class="st-top"><span class="st-name">Backbone generation</span><span class="chip done">implemented</span></div>
+        <p class="st-desc">Generate eight backbones per contig while preserving the epitope constraints.</p>
         <span class="more">How it works &rarr;</span>
       </div>
       <div class="arr"></div>
-      <div class="stage ng s-plan" data-detail="prefilter" tabindex="0" role="button" aria-label="Backbone clash pre-filter — details">
-        <div class="st-top"><span class="st-name">Backbone clash pre-filter <span class="ng-tag">NEXT-GEN</span></span><span class="chip plan">planned</span></div>
-        <p class="st-desc">Drop unreachable backbones before spending MPNN + AF3 on them.</p>
+      <div class="stage ng s-prog" data-detail="prefilter" tabindex="0" role="button" aria-label="Backbone obstruction filter — details">
+        <div class="st-top"><span class="st-name">Backbone obstruction filter</span><span class="chip prog">in&nbsp;development</span></div>
+        <p class="st-desc">Retain backbones with lower predicted antibody obstruction before sequence design.</p>
         <span class="more">How it works &rarr;</span>
       </div>
       <div class="arr"></div>
       <div class="stage s-done" data-detail="mpnn" tabindex="0" role="button" aria-label="ProteinMPNN — details">
-        <div class="st-top"><span class="st-name">ProteinMPNN</span><span class="chip done">shipped</span></div>
-        <p class="st-desc">Sequence design with the epitope fixed, 8 sequences per backbone.</p>
+        <div class="st-top"><span class="st-name">Sequence design</span><span class="chip done">implemented</span></div>
+        <p class="st-desc">Design sequences with ProteinMPNN while preserving the specified epitope residues.</p>
         <span class="more">How it works &rarr;</span>
       </div>
       <div class="arr"></div>
       <div class="stage s-done" data-detail="af3" tabindex="0" role="button" aria-label="AlphaFold3 — details">
-        <div class="st-top"><span class="st-name">AlphaFold3</span><span class="chip done">shipped</span></div>
-        <p class="st-desc">Single-sequence prediction, seed 1, no data pipeline.</p>
+        <div class="st-top"><span class="st-name">Structure prediction</span><span class="chip done">implemented</span></div>
+        <p class="st-desc">Predict each design with AlphaFold&nbsp;3 using the configured inputs.</p>
         <span class="more">How it works &rarr;</span>
       </div>
-      <div class="loop" data-detail="loop" tabindex="0" role="button" aria-label="Loop-back / partial diffusion — details">
+      <div class="loop" data-detail="loop" tabindex="0" role="button" aria-label="Iterative refinement — details">
         <span class="ic">&#x21bb;</span>
-        <span><b>Loop back:</b> promising designs re-seed the next round &mdash; partial-diffusion children and
-        randomized island order, under an escalating-scale stopping rule.
+        <span><b>Iterative refinement:</b> selected designs generate partial-diffusion variants for the next
+        round, alongside independently generated backbones.
         <span class="chip plan" style="vertical-align:1px">planned</span> &nbsp;<b style="color:var(--blue)">How it works &rarr;</b></span>
       </div>
     </div>
@@ -225,24 +223,24 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
     <div class="phase">
       <div class="phase-h">
         <div class="phase-n">3</div>
-        <div class="phase-t">Evaluate designs<small>Predict structures, then rank on epitope fidelity &amp; antibody accessibility</small></div>
+        <div class="phase-t">Evaluate designs<small>Predict structures, then score and rank designs</small></div>
         <a class="phase-doc" href="methods.html#score">In the Docs &rsaquo;</a>
       </div>
       <div class="stage s-done" data-detail="metrics" tabindex="0" role="button" aria-label="Metrics — details">
-        <div class="st-top"><span class="st-name">Metrics</span><span class="chip done">shipped</span></div>
-        <p class="st-desc">Epitope &amp; overall RMSD, epitope PAE, AF3 clash, native-aware cylinder.</p>
+        <div class="st-top"><span class="st-name">Structural metrics</span><span class="chip done">implemented</span></div>
+        <p class="st-desc">Calculate epitope RMSD, overall RMSD, prediction confidence, and antibody obstruction.</p>
         <span class="more">How it works &rarr;</span>
       </div>
       <div class="arr"></div>
       <div class="stage ng s-prog" data-detail="aomclash" tabindex="0" role="button" aria-label="AOMclash — details">
-        <div class="st-top"><span class="st-name">AOMclash predicted clash <span class="ng-tag">NEXT-GEN</span></span><span class="chip prog">in&nbsp;progress</span></div>
-        <p class="st-desc">A learned antibody-occupancy model replaces the geometric cylinder on the no-antibody arm.</p>
+        <div class="st-top"><span class="st-name">AOMclash</span><span class="chip prog">in&nbsp;development</span></div>
+        <p class="st-desc">Estimate obstruction when a reference antibody is unavailable.</p>
         <span class="more">How it works &rarr;</span>
       </div>
       <div class="arr"></div>
       <div class="stage s-done" data-detail="composite" tabindex="0" role="button" aria-label="Composite score and select — details">
-        <div class="st-top"><span class="st-name">Composite score + select</span><span class="chip done">shipped</span></div>
-        <p class="st-desc">Weighted, column-driven composite; rank (no hard gate); per-group top-k.</p>
+        <div class="st-top"><span class="st-name">Ranking and selection</span><span class="chip done">implemented</span></div>
+        <p class="st-desc">Rank designs using the selected score and choose designs within each epitope group.</p>
         <span class="more">How it works &rarr;</span>
       </div>
     </div>
@@ -252,35 +250,23 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
     <div class="phase">
       <div class="phase-h">
         <div class="phase-n">4</div>
-        <div class="phase-t">Provide output<small>Library on the bench</small></div>
+        <div class="phase-t">Export the library<small>Assemble, encode, and order</small></div>
         <a class="phase-doc" href="methods.html#tool">In the Docs &rsaquo;</a>
       </div>
-      <div class="stage s-done" data-detail="output" tabindex="0" role="button" aria-label="Assemble, encode, order — details">
-        <div class="st-top"><span class="st-name">Assemble &rarr; encode &rarr; order</span><span class="chip done">shipped</span></div>
-        <p class="st-desc">Concatenate, case-encode, peptide&rarr;DNA, Twist-ready order file. DP4 shipped at 36,000 constructs.</p>
+      <div class="stage s-done" data-detail="output" tabindex="0" role="button" aria-label="Library preparation — details">
+        <div class="st-top"><span class="st-name">Library preparation</span><span class="chip done">implemented</span></div>
+        <p class="st-desc">Assemble the selected sequences and generate the DNA order file.</p>
         <span class="more">How it works &rarr;</span>
       </div>
     </div>
 
   </div>
 
-  <div class="focus">
-    <span class="ic">&#9733;</span>
-    <span><b>Current focus:</b> AOMclash (<a href="aomclash.html">how antibody obstruction is
-    estimated</a>). The 39-feature regressor and the epitope-frame extractor are
-    ported, tested, and committed; the explainer is written up. Next is the cluster-side loader that
-    builds the feature matrix from our AF3 structures, then training the regressor on
-    <code>af3_n_clash_res</code> with leave-one-epitope-out folds and validating it against the cylinder
-    on identical folds.</span>
-  </div>
-
   <div class="foot">
-    <b>Sources.</b> Authoritative run order: <code>docs/PIPELINE.md</code> · DP4 deliverable reference:
-    <code>docs/DP4_LIBRARY.md</code> · scorer dials: <code>episcaf_analysis/presets.py</code> ·
-    AOMclash feature reference: <code>episcaf_analysis/aomclash/FEATURES.md</code>.
-    Reference implementations: <code>AltinLab/epitope-universe</code>.
-    This page is the project&rsquo;s living pipeline view; the <a href="home.html">GUI tool</a> tab is the
-    interactive prototype for running a scaffold job.
+    <b>Implementation references.</b> Run order: <code>docs/PIPELINE.md</code> · Metric presets:
+    <code>episcaf_analysis/presets.py</code> · AOMclash: <a href="aomclash.html">documentation</a>,
+    <code>episcaf_analysis/aomclash/FEATURES.md</code> · DP4 library reference:
+    <code>docs/DP4_LIBRARY.md</code> · Reference implementations: <code>AltinLab/epitope-universe</code>.
   </div>
 </div>
 
@@ -297,28 +283,26 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
 <!-- ===================== DETAIL CONTENT (hidden; cloned into the modal) ===================== -->
 <div hidden id="details">
 
-  <div data-id="known-ab" data-title="Known antibody input" data-chip="done">
-    <p class="how">When the antigen has a solved antibody&ndash;antigen complex, the epitope is already
-    known: it is the set of antigen residues the antibody contacts (4&nbsp;&Aring; cutoff). No prediction
-    needed &mdash; this is the ground-truth setting where we know exactly where &ldquo;good&rdquo; is.</p>
-    <p>Those contact residues are compiled into RFdiffusion3 <b>contigs</b>, which fix the epitope
-    residues&rsquo; identity and sequence order. One complex can yield more than one <b>patch</b>
-    (<code>0P</code>, <code>1P</code>, &hellip;); each patch is a separate target. A patch is in turn one
-    or more <b>islands</b> &mdash; spatially contiguous runs &mdash; and the contig constrains residues
-    within an island far more tightly than the geometry <i>between</i> islands, which is the known
-    multi-island failure mode.</p>
+  <div data-id="known-ab" data-title="Contact epitope" data-chip="done">
+    <p class="how">Antigen residues within the configured heavy-atom distance of the antibody define the
+    contact epitope. The default reference configuration uses a 4&nbsp;&Aring; cutoff.</p>
+    <p>The selected residues are compiled into contig specifications for RFdiffusion3. A target can contain
+    several sequence segments that are adjacent in the folded antigen; the specifications describe the
+    fixed segments and the regions to be generated.</p>
+    <p class="how">One complex can yield more than one target (labeled <code>0P</code>, <code>1P</code>, &hellip;),
+    each scaffolded separately. The contig constrains residues within a segment more tightly than the
+    geometry between segments.</p>
     <p class="io"><b>In:</b> antibody&ndash;antigen complex (PDB). <b>&rarr; Out:</b> the epitope &mdash; the antigen residues the antibody contacts.</p>
-    <h4>In the code</h4>
+    <h4>Implementation</h4>
     <span class="tool">stage01_compile_contigs · stage02_emit_rfd3_inputs</span>
   </div>
 
-  <div data-id="growpatch" data-title="growPatch — no-antibody surface sampling" data-chip="done">
-    <p class="how">With no antibody there is no known epitope. growPatch does not predict the single most
-    likely one; that is the task of epitope predictors such as DiscoTope and BepiPred, which rank how
-    antibody-like each surface residue is and return a predicted epitope. growPatch instead samples
-    candidate surface patches across the antigen, for coverage rather than a single call, so the
-    candidates can be scaffolded and ranked downstream. It replaces the old tiled 12-mer approach, which
-    (being sequence-linear) could not propose a conformational epitope.</p>
+  <div data-id="growpatch" data-title="Candidate surface regions" data-chip="done">
+    <p class="how">growPatch generates candidate surface patches using neighbor-based growth and
+    directional sampling. The candidate sets are combined, filtered by the configured size and
+    sequence-segment limits, and reduced to remove near-duplicates. Optional per-residue prediction scores
+    can prioritize the resulting candidates; candidate generation and ranking are separate steps. Selected
+    patches are converted into design specifications for scaffold generation.</p>
     <ul class="steps">
       <li><span class="mk o">1</span><span class="tx"><b>Surface.</b> Relative solvent accessibility per residue (freesasa, Tien-2013 normalization); residues exposing &ge; 20% of their type&rsquo;s area (relSASA &ge; 0.2) are &ldquo;surface.&rdquo;</span></li>
       <li><span class="mk o">2</span><span class="tx"><b>Two sampling methods.</b> <i>Neighbor-based patch growth</i> (seed &amp; grow) &mdash; from a surface residue, accrete the nearest connected surface residues to footprint size (~16). <i>Directional surface sampling</i> (antibody&rsquo;s-eye view) &mdash; sample approach directions and take the surface cap an antibody from each direction would contact. Both produce conformational (sequence-discontinuous) patches.</span></li>
@@ -329,65 +313,67 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
     <p style="margin-top:12px">Each surviving patch becomes a candidate epitope (an episcaf contig string)
     handed to the same contig machinery as the known-antibody arm.</p>
     <p class="io"><b>In:</b> antigen structure (one chain, PDB). <b>&rarr; Out:</b> a set of candidate surface patches, each a residue set that could be an antibody footprint.</p>
-    <div class="note"><b>Status.</b> The sampling method is implemented and parity-verified: on chain A of
-    8PWW it reproduces the reference implementation for that input and configuration (227 identical
-    candidate patches). Benchmarked on 117 conformational SAbDab epitopes, neighbor-based growth and
-    directional sampling perform comparably alone and are complementary, so the default combines them
-    (recall@0.8 = 0.92 versus ~0.80 for either alone). The surface cutoff is settled at
-    <code>SASA_CUT=0.2</code>, and the interactive patch viewer is live. Still being brought up: staging
-    a full no-antibody design run end-to-end through the tool.</div>
-    <h4>In the code</h4>
+    <h4>Validation</h4>
+    <p class="how">The sampling method is parity-verified: on chain A of 8PWW it reproduces the reference
+    implementation for the tested input and configuration. Benchmarked on 117 conformational SAbDab
+    epitopes &mdash; where a candidate counts as recovered at Jaccard overlap &ge; 0.8 with a reference
+    epitope &mdash; combining neighbor growth and directional sampling reaches recall@0.8 = 0.92, versus
+    about 0.80 for either method alone. The surface cutoff is <code>SASA_CUT = 0.2</code>. Staging a full
+    no-antibody design run end-to-end through the tool is in development.</p>
+    <h4>Implementation</h4>
     <span class="tool">episcaf_analysis/growpatch/{core,read,eyeview}.py · results/growpatch/ENUMERATOR_DECISION.md · ref: segmentation/growPatch.py</span>
   </div>
 
   <div data-id="rfd3" data-title="RFdiffusion3 backbones" data-chip="done">
-    <p class="how">Generate <i>de novo</i> protein backbones that hold the epitope in its native geometry,
-    8 per contig. This is the first point where a real 3-D scaffold exists.</p>
+    <p class="how">RFdiffusion3 generates backbone structures using the fixed epitope segments and the
+    contig specification. The default configuration requests eight backbones per contig.</p>
     <p>The contig fixes the epitope residues and their order but leaves the rest of the fold free, so each
-    backbone is a different way of presenting the same epitope. Runs as a SLURM array on the cluster.</p>
+    backbone is a different way of presenting the same epitope. The backbone coordinates are passed to
+    sequence design. Runs as a SLURM array on the cluster.</p>
     <p class="io"><b>In:</b> epitope residues held fixed (a contig spec on the antigen). <b>&rarr; Out:</b> de novo backbone(s) presenting that epitope &mdash; coordinates, no sequence yet.</p>
-    <h4>In the code</h4>
+    <h4>Implementation</h4>
     <span class="tool">hpc/sbatch/rfd3_array.sbatch</span>
   </div>
 
-  <div data-id="prefilter" data-title="Backbone clash pre-filter" data-chip="plan">
-    <p class="how">A cheap gate right after backbone generation: score each RFd3 backbone with AOMclash
-    and keep only the least-clashy per epitope &mdash; before spending MPNN and AF3 on a design whose
-    scaffold mass sits where the antibody has to bind. The biggest compute win in the pipeline.</p>
-    <p>It is the <i>same</i> AOMclash score used at the end, applied early (on the bare backbone instead
-    of the AF3 model). The epitope&rsquo;s place in each backbone is read from its contig; keep rule is a
-    best-fraction-per-epitope or a cutoff. Cluster-side (backbones live on the cluster).</p>
-    <p class="io"><b>In:</b> RFd3 backbones + the epitope frame. <b>&rarr; Out:</b> the subset of backbones kept &mdash; those whose epitope stays sterically accessible, by keep-frac.</p>
-    <h4>In the code</h4>
+  <div data-id="prefilter" data-title="Backbone obstruction filter" data-chip="prog">
+    <p class="how">Each generated backbone is scored with AOMclash before sequence design. Candidates are
+    ranked separately for each epitope, and the configured retention rule determines which backbones
+    continue to ProteinMPNN and AlphaFold&nbsp;3.</p>
+    <p>For example, retaining 50% of 20 backbones sends the 10 lowest-scoring candidates to the next stage.
+    Retention can be set as a percentage or as a score cutoff. The score is the same AOMclash score used at
+    final evaluation, applied here to the bare backbone. Runs cluster-side, where the backbones live.</p>
+    <p class="io"><b>In:</b> generated backbones and the reference epitope. <b>&rarr; Out:</b> the backbones retained for sequence design.</p>
+    <h4>Implementation</h4>
     <span class="tool">scripts/aomclash_prefilter.py · episcaf_analysis/aomclash/score.py</span>
   </div>
 
   <div data-id="mpnn" data-title="ProteinMPNN" data-chip="done">
-    <p class="how">Assign an amino-acid sequence to each backbone with the epitope positions held fixed,
-    8 sequences per backbone, so the epitope keeps its native identity while the scaffold is free to be
-    whatever folds.</p>
-    <p>The <code>*_fixed.pdb</code> naming contract carries the epitope-fix information to the next stage.</p>
+    <p class="how">ProteinMPNN generates amino-acid sequences for the retained backbones while preserving
+    the specified epitope residues. The default configuration requests eight sequences per backbone.</p>
+    <p>The epitope keeps its native identity while the rest of the scaffold is redesigned. The
+    <code>*_fixed.pdb</code> naming contract carries the epitope-fix information to the next stage.</p>
     <p class="io"><b>In:</b> a backbone. <b>&rarr; Out:</b> amino-acid sequence(s) for it.</p>
-    <h4>In the code</h4>
+    <h4>Implementation</h4>
     <span class="tool">stage03_mpnn_fixed_pdbs · stage03_mpnn_submit</span>
   </div>
 
-  <div data-id="af3" data-title="AlphaFold3" data-chip="done">
-    <p class="how">Fold each designed sequence to check whether it actually adopts the intended structure
-    with the epitope in native geometry. Single-sequence prediction, seed 1, no MSA / data pipeline.</p>
-    <p>AF3 produces the structures everything downstream scores. It tests whether a design folds as
-    intended; it does not measure stability or binding.</p>
+  <div data-id="af3" data-title="AlphaFold 3" data-chip="done">
+    <p class="how">AlphaFold&nbsp;3 predicts a structure for each designed sequence. The predicted structure
+    is compared with the design and reference epitope to calculate the structural metrics.</p>
+    <p>The documented configuration uses single-sequence input (a self-only MSA), templates disabled, and
+    seed&nbsp;1. AF3 produces the structures everything downstream scores; it does not measure stability or
+    experimental binding.</p>
     <p class="io"><b>In:</b> a designed sequence (with antigen/epitope context). <b>&rarr; Out:</b> predicted structure + confidence/metrics (pLDDT, PAE, RMSD, clash counts).</p>
-    <h4>In the code</h4>
+    <h4>Implementation</h4>
     <span class="tool">stage04_af3_emit_jsons · af3_array.sbatch</span>
   </div>
 
   <div data-id="loop" data-title="Loop-back / partial diffusion" data-chip="plan">
-    <p class="how">Rather than one pass, the best designs of a round seed the next: re-noise a good
-    backbone part-way and denoise it with the epitope fixed (a <b>partial-diffusion child</b>, a neighbor
-    of something that worked). A controller picks winners each round, splits the next round&rsquo;s budget
-    between fresh <i>de-novo</i> designs and children, and stops an epitope on success, a score plateau,
-    or a round cap.</p>
+    <p class="how">The controller selects designs from the current round and uses partial diffusion to
+    generate variants: a good backbone is re-noised part-way and denoised again with the epitope fixed.
+    Subsequent rounds include both these variants and independently generated backbones. The allocation
+    between the two sources changes according to score improvement, and a cap on the partial-diffusion
+    allocation preserves sampling from new backbones.</p>
     <figure class="dgm">
     <svg viewBox="0 0 320 312" role="img" aria-label="Compact flowchart of the iterative design loop: generate, predict and score, pick winners, re-seed; the loop repeats, and winners that meet a stop condition exit to the ranked output." style="max-width:300px">
     <title>Iterative design loop</title>
@@ -405,10 +391,10 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
     <g text-anchor="middle" fill="currentColor">
       <text class="dlbl" x="145" y="40">Generate backbones</text>
       <text class="dlbl" x="145" y="100">Predict + score</text>
-      <text class="dlbl" x="145" y="160">Pick winners</text>
-      <text class="dlbl" x="145" y="218">Re-seed next round</text>
-      <text class="dmut" x="145" y="234">children + fresh de-novo</text>
-      <text class="dlbl" x="160" y="285">Ranked designs out</text>
+      <text class="dlbl" x="145" y="160">Select designs</text>
+      <text class="dlbl" x="145" y="218">Generate variants</text>
+      <text class="dmut" x="145" y="234">variants + new backbones</text>
+      <text class="dlbl" x="160" y="285">Export designs</text>
     </g>
     <g color="currentColor" stroke="currentColor" stroke-width="1.5" fill="none">
       <line x1="145" y1="56" x2="145" y2="70" marker-end="url(#mkc)"/>
@@ -420,76 +406,71 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
     <text class="dmut" x="40" y="150" text-anchor="start">stop</text>
     <text class="dtxt" x="292" y="132" text-anchor="middle" fill="#2b47d6" transform="rotate(90,292,132)">next round</text>
     </svg>
-    <figcaption>Conceptual schematic. Scored winners re-seed the next round as partial-diffusion children
-    alongside fresh de-novo backbones; an epitope exits to the ranked output on success, a score plateau,
-    or a round cap.</figcaption>
+    <figcaption>Schematic. Selected designs contribute partial-diffusion variants to the next round;
+    independently generated backbones are also included. The controller stops according to the configured
+    target, improvement, or round limit.</figcaption>
     </figure>
-    <div class="note"><b>Design decision: adaptive budget.</b> The open question &mdash; are children
-    genuinely better or just best-of-N in a lucky basin? &mdash; is handled by letting each epitope
-    <i>earn</i> its children budget: start de-novo-only and raise the children share with a streak of
-    round-over-round improvement. The data decides per epitope instead of a fixed guess.</div>
-    <h4>In the code</h4>
+    <div class="note"><b>Diversity.</b> Repeated refinement can concentrate candidates within a narrow
+    structural family. Independently generated backbones are retained to support broader sampling.</div>
+    <h4>Implementation</h4>
     <span class="tool">episcaf_pipeline/ipd.py (controller) · ipd_driver.py · scripts/ipd_round.py</span>
   </div>
 
-  <div data-id="metrics" data-title="Metrics" data-chip="done">
-    <p class="how">From each AF3 structure, aligned to the native complex by an epitope Kabsch fit, extract
-    the numbers a design is judged on.</p>
-    <p>Epitope RMSD and overall RMSD (did the fold hold the epitope / hold together), epitope PAE
-    (confidence at the epitope), AF3 clashing-residue count (real accessibility where an antibody exists),
-    and <b>AOMclash</b> (<code>aomclash_pred</code>) as the no-antibody accessibility metric &mdash; the
-    learned successor that has replaced the native-aware cylinder (kept only for before/after).</p>
-    <p class="io"><b>In:</b> each AF3 structure, aligned to the native complex on the epitope. <b>&rarr; Out:</b> the per-design metrics &mdash; epitope &amp; overall RMSD, epitope PAE, AF3 clash, AOMclash.</p>
-    <h4>In the code</h4>
+  <div data-id="metrics" data-title="Structural metrics" data-chip="done">
+    <p class="how">The predicted structure is aligned to the reference using the specified epitope
+    alignment. Metrics include structural deviation, prediction confidence, and antibody obstruction.</p>
+    <p>Epitope RMSD measures backbone deviation from the reference epitope; overall RMSD measures deviation
+    from the intended (MPNN-designed) structure over the comparison region; epitope PAE reports confidence
+    at the epitope. Geometric clashes are calculated against the reference antibody when one is available;
+    otherwise the selected AOMclash estimate (<code>aomclash_pred</code>) supplies the obstruction metric.</p>
+    <p class="io"><b>In:</b> each AF3 structure, aligned to the reference on the epitope. <b>&rarr; Out:</b> the per-design metrics &mdash; epitope &amp; overall RMSD, epitope PAE, antibody clashes, AOMclash.</p>
+    <h4>Implementation</h4>
     <span class="tool">stage05_extract_metrics</span>
   </div>
 
-  <div data-id="aomclash" data-title="AOMclash — learned clash predictor" data-chip="prog">
-    <p class="how">Replaces the geometric native-aware cylinder as the no-antibody accessibility metric.
-    It reads an <b>antibody occupancy map</b> (built from ~1,029 SAbDab complexes, antibody geometry only,
-    so it is AlphaFold-version agnostic) at each scaffold atom. We ship a <b>single interpretable
-    number</b> &mdash; <code>s_p1_free</code>, the occupancy summed over the scaffold atoms that stick into
-    antibody territory beyond the native antigen &mdash; rather than a 111-feature gradient-boosted
-    bank.</p>
-    <p>Why one feature: the carved occupancy sum is ~0.87&ndash;0.89 on its own and the full model only
-    ~0.02 higher &mdash; not worth ~38 correlated features and the overfitting risk. It is used in
-    <b>both</b> places accessibility matters: the backbone pre-filter (cheap early gate) and the final
-    composite (the no-antibody accessibility term). The map is vendored in-repo, so the scorer runs
+  <div data-id="aomclash" data-title="AOMclash" data-chip="prog">
+    <p class="how">AOMclash reads an antibody-occupancy map at the scaffold atoms after alignment to an
+    epitope-centered frame. The raw occupancy sum (<code>s_p1_free</code>) includes atoms more than
+    4&nbsp;&Aring; from the reference antigen; higher values indicate more scaffold material in
+    antibody-occupied regions. See the <a href="aomclash.html">AOMclash documentation</a> for the map,
+    score, and calibration.</p>
+    <p>The deployed scorer uses the single occupancy-sum feature. A multi-feature model comparison is
+    documented separately. The score is used in the supported backbone-filtering and final-ranking stages,
+    with raw and calibrated outputs identified separately. The map is vendored in-repo, so the scorer runs
     offline.</p>
-    <p class="io"><b>In:</b> a design's scaffold atoms, framed on the epitope. <b>&rarr; Out:</b> <code>s_p1_free</code> &mdash; occupancy summed over the free atoms, an accessibility score in AF3-clash units.</p>
+    <p class="io"><b>In:</b> a design's scaffold atoms, framed on the epitope. <b>&rarr; Out:</b> the raw occupancy sum <code>s_p1_free</code>, and a calibrated clash-scale output where applied.</p>
     <ul class="steps">
-      <li><span class="mk d">&#10003;</span><span class="tx"><b>Map.</b> Vendored (<code>aom_map.pkl</code>), verified physical (occupancy peaks ~14&nbsp;&Aring; out on the antibody side).</span></li>
+      <li><span class="mk d">&#10003;</span><span class="tx"><b>Map.</b> Vendored (<code>aom_map.pkl</code>); occupancy peaks about 14&nbsp;&Aring; out along the outward normal (a measured map property).</span></li>
       <li><span class="mk d">&#10003;</span><span class="tx"><b>Scorer.</b> <code>score.py</code> frames a design (PDB or AF3 CIF) and returns <code>s_p1_free</code>; parity-checked against the reference extractor.</span></li>
-      <li><span class="mk d">&#10003;</span><span class="tx"><b>Scorer wired into the composite.</b> The <code>twelvemer</code> preset scores accessibility with <code>aomclash_pred</code>. Still in progress: the backbone pre-filter stage and cluster-side training/validation against the cylinder on matched folds.</span></li>
+      <li><span class="mk p">&bull;</span><span class="tx"><b>Final ranking wired.</b> The <code>twelvemer</code> preset uses <code>aomclash_pred</code> for accessibility. In development: the backbone-filtering stage and its cluster-side validation.</span></li>
     </ul>
-    <h4>In the code</h4>
+    <h4>Implementation</h4>
     <span class="tool">episcaf_analysis/aomclash/ (aom_map, score, features) · results/aomclash/feature_set_decision.md</span>
   </div>
 
-  <div data-id="composite" data-title="Composite score + select" data-chip="done">
-    <p class="how">Combine the metrics into one score and pick the designs to ship. The composite is
-    column-driven: it renormalizes its weights over whichever metric columns are present, so swapping the
-    cylinder for <code>aomclash_pred</code> on the no-antibody arm is a one-key change, no engine edit.</p>
-    <p>It ranks designs rather than applying a hard gate, then takes the per-epitope top-k. The weights and
-    transforms are dials in <code>presets.py</code>, with a preset per regime
-    (<code>antibody_softgate</code> keeps the real AF3 clash; <code>twelvemer</code> is the no-antibody
-    arm, now AOMclash-scored).</p>
-    <p>Beyond the geometric composite, an <b>interpretable binding model</b> (L2-logistic on a small,
-    inspectable feature set; grouped-by-epitope CV ROC-AUC ~0.81) gives a binding score used to rank
-    designs and is a selectable ranker &mdash; built on the DP4 assay data, with the bound-state dynamics
-    features dropped for cleaner static ones after a held-out check.</p>
-    <p class="io"><b>In:</b> per-design metrics (with <code>binding_pred</code> where features exist), plus a preset. <b>&rarr; Out:</b> designs ranked by composite score, then the per-epitope top-k selected.</p>
-    <h4>In the code</h4>
+  <div data-id="composite" data-title="Ranking and selection" data-chip="done">
+    <p class="how">The selected preset specifies the metrics, transformations, and weights used in the
+    composite score. Designs are ranked within each epitope group, and the requested number is selected.
+    The binding model can provide an alternative ranking where the required features are available.</p>
+    <p>Each preset targets an input mode: <code>antibody_softgate</code> uses the measured AF3 clash count
+    against the reference antibody; <code>twelvemer</code> is the no-antibody mode and uses the AOMclash
+    estimate. The composite renormalizes its weights over whichever metric columns are present.</p>
+    <p>The binding model is a separate ranker: L2-regularized logistic regression on structural and epitope
+    features, fit to the DP4 assay data (grouped-by-epitope cross-validated ROC-AUC 0.817). It provides a
+    binding score and is selectable in the results viewer; the composite score does not include it.</p>
+    <p class="io"><b>In:</b> per-design metrics and a preset. <b>&rarr; Out:</b> designs ranked by composite score, then the per-epitope top-k selected. The binding model provides an alternative ranking.</p>
+    <h4>Implementation</h4>
     <span class="tool">stage06_select · presets.py · episcaf_analysis/binding_model/</span>
   </div>
 
-  <div data-id="output" data-title="Assemble → encode → order" data-chip="done">
-    <p class="how">Turn the selected designs into an orderable DNA library.</p>
-    <p>Concatenate the design components, case-encode them, translate peptide&rarr;DNA with the LadnerLab
-    oligo encoder and the DP3 codon weights, and emit a Twist-ready order file. DP4 shipped at 36,000
-    constructs.</p>
-    <p class="io"><b>In:</b> the selected designs. <b>&rarr; Out:</b> a Twist-ready DNA order file (concatenated, case-encoded, peptide&rarr;DNA).</p>
-    <h4>In the code</h4>
+  <div data-id="output" data-title="Library preparation" data-chip="done">
+    <p class="how">Selected sequences are assembled and encoded as DNA using the configured oligo encoder
+    and codon weights. The output is a DNA order file for the selected vendor.</p>
+    <p>Case encoding, component concatenation, and vendor-specific formatting are in the implementation
+    (the LadnerLab oligo encoder with the DP3 codon weights). Dated example: the DP4 library (2026)
+    shipped at 36,000 constructs.</p>
+    <p class="io"><b>In:</b> the selected designs. <b>&rarr; Out:</b> a DNA order file for the selected vendor.</p>
+    <h4>Implementation</h4>
     <span class="tool">stage06_assemble · oligo_encoding · stage07_order_file</span>
   </div>
 
@@ -501,7 +482,7 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
   var titleEl = document.getElementById('modal-title');
   var chipEl = document.getElementById('modal-chip');
   var bodyEl = document.getElementById('modal-body');
-  var CHIP = {done:'shipped', prog:'in progress', plan:'planned'};
+  var CHIP = {done:'implemented', prog:'in development', plan:'planned'};
   var details = {};
   var nodes = document.querySelectorAll('#details > [data-id]');
   for (var i=0;i<nodes.length;i++){ details[nodes[i].getAttribute('data-id')] = nodes[i]; }
