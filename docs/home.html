@@ -59,6 +59,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 .shared-more{display:inline-block;margin-top:11px;font-size:12.5px;color:#296DC0;font-weight:600;text-decoration:none}
 .shared-more:hover{text-decoration:underline}
 .schem-cap{font-size:11px;color:#777;margin:9px 0 0;font-style:italic}
+.tagline{font-size:15px;color:#296DC0;font-weight:bold;margin:-2px 0 11px;letter-spacing:.005em}
 .apps{margin-top:22px;border-top:1px solid #e2e8f1;padding-top:14px}
 .apps h2{font-size:15px;color:#1b4a86;margin:0 0 6px;font-weight:bold}
 .apps>p{font-size:13px;color:#3a4654;margin:0 0 8px;line-height:1.55}
@@ -96,13 +97,17 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 </div></div>
 <div class="page">
   <h1>Design protein scaffolds that display a selected epitope</h1>
-  <p class="lede">episcaf builds small proteins around selected antigen residues. It evaluates how
-  closely the predicted structures preserve the epitope and whether the surrounding scaffold could
-  obstruct antibody binding.</p>
-  <p class="sub">Backbones are generated with <a href="methods.html#generate">RFdiffusion3</a>,
+  <p class="tagline">A tool for epitope mapping and characterization.</p>
+  <p class="lede">Antibodies bind a three-dimensional patch of an antigen&rsquo;s surface, so a
+  conformational epitope is lost the moment it is cut out as a linear peptide. episcaf designs a small,
+  synthesizable protein that holds that epitope in its native, antibody-binding shape. The result is a
+  defined probe for one site that you can put directly into a binding assay, to detect, map, and
+  characterize the antibodies that recognize it.</p>
+  <p class="sub">episcaf builds the scaffold around selected antigen residues and scores each design on
+  how closely the predicted structure preserves the epitope and whether the surrounding scaffold could
+  obstruct antibody binding. Backbones are generated with <a href="methods.html#generate">RFdiffusion3</a>,
   sequences are designed with <a href="methods.html#generate">ProteinMPNN</a>, and structures are
-  predicted with <a href="methods.html#generate">AlphaFold&nbsp;3</a>. The resulting designs are
-  scored and ranked.</p>
+  predicted with <a href="methods.html#generate">AlphaFold&nbsp;3</a>; the designs are scored and ranked.</p>
 
   <p class="q">Choose a starting point</p>
 
@@ -230,9 +235,10 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
       <li><b>Diagnostic reagents.</b> A scaffold displaying a single epitope can act as a capture or
       detection reagent &mdash; for example, measuring serum antibodies that bind one defined site instead
       of the whole antigen.</li>
-      <li><b>Epitope characterization.</b> Most directly, a scaffold tests what an epitope is sufficient
-      for. If an antibody binds a scaffold carrying only the contact residues, those residues account for
-      the epitope; a set of scaffolds across the antigen surface maps which sites a response targets.</li>
+      <li><b>Epitope characterization and specificity.</b> Most directly, a scaffold tests what an epitope
+      is sufficient for. If an antibody binds a scaffold carrying only the contact residues, those residues
+      account for the epitope; substituting residues probes which are essential to binding, and a set of
+      scaffolds across the antigen surface maps and compares where different antibodies are aimed.</li>
       <li><b>Monoclonal and polyclonal work.</b> One scaffold targets the epitope of a single monoclonal
       antibody. A library of scaffolds spanning the antigen surface, built from the surface scan,
       separates the sites a polyclonal serum recognizes.</li>
