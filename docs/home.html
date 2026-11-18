@@ -48,12 +48,13 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 .shared{position:relative;margin-top:2px;border:1px solid #d5deea;border-radius:9px;background:#f5f8fc;padding:14px 16px 12px}
 .shared::before{content:"";position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #8fa4c0}
 .shared-h{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#566b85;font-weight:bold;margin:0 0 10px}
-.shared-body{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-.shared-ill{flex:none;width:150px}
-.shared-ill .ill{margin:0 auto 4px;background:transparent;max-height:150px}
-.shared-ill .ill-cap{margin:0;text-align:center}
-.steps-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;min-width:220px}
-.pstep{font-size:12.5px;font-weight:bold;color:#1b4a86;background:#fff;border:1px solid #cfdcec;border-radius:6px;padding:6px 11px}
+.wsteps{display:flex;align-items:stretch;gap:6px;flex-wrap:nowrap;margin-top:4px}
+.wstep{flex:1 1 0;min-width:0;margin:0;display:flex;flex-direction:column;align-items:center;text-align:center;background:#fff;border:1px solid #dce5f1;border-radius:8px;padding:9px 6px 8px}
+.wstep .wthumb{display:block;width:100%;height:76px;object-fit:contain;margin-bottom:7px}
+.wstep figcaption{font-size:11.5px;font-weight:bold;color:#1b4a86;line-height:1.2}
+.wstep .wsub{font-size:10px;color:#6a7686;margin-top:2px;font-weight:normal}
+.warrow{align-self:center;color:#8fa4c0;font-weight:bold;font-size:17px;flex:0 0 auto}
+@media(max-width:620px){.wsteps{flex-direction:column}.warrow{transform:rotate(90deg)}}
 .parrow{color:#8fa4c0;font-weight:bold;font-size:15px;line-height:1}
 .shared-more{display:inline-block;margin-top:11px;font-size:12.5px;color:#296DC0;font-weight:600;text-decoration:none}
 .shared-more:hover{text-decoration:underline}
@@ -168,29 +169,61 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 
   <div class="shared">
     <div class="shared-h">Shared workflow</div>
-    <div class="shared-body">
-      <div class="shared-ill">
-        <img class="ill" src="img/fig/design_scaffold.png?v=2" loading="lazy"
-             alt="A real episcaf scaffold design, a smaller grey fold carrying the same epitope residues in red.">
-        <p class="ill-cap">A real <b style="color:#5c636b">designed scaffold</b> carrying the same
-        <b style="color:#c0392b">epitope</b> (red).</p>
-      </div>
-      <div class="steps-row">
-        <span class="pstep">Identify target epitope(s)</span>
-        <span class="parrow" aria-hidden="true">&rarr;</span>
-        <span class="pstep">Generate scaffolds</span>
-        <span class="parrow" aria-hidden="true">&rarr;</span>
-        <span class="pstep">Evaluate designs</span>
-        <span class="parrow" aria-hidden="true">&rarr;</span>
-        <span class="pstep">Provide output</span>
-      </div>
+    <div class="wsteps">
+      <figure class="wstep">
+        <img class="wthumb" src="img/fig/antigen_epitope.png?v=2" loading="lazy"
+             alt="The antigen with the selected epitope residues highlighted in red.">
+        <figcaption>Identify target epitope(s)<span class="wsub">antigen region to display</span></figcaption>
+      </figure>
+      <span class="warrow" aria-hidden="true">&rarr;</span>
+      <figure class="wstep">
+        <svg class="wthumb" viewBox="0 0 120 78" role="img" aria-label="Three different scaffold folds, each presenting the same epitope in red.">
+          <g fill="none" stroke="#9aa3ad" stroke-width="2.6" stroke-linecap="round">
+            <path d="M12 68 C 6 56 20 52 14 40 C 9 30 22 27 17 18"/><path d="M24 68 C 29 55 17 52 25 41"/>
+            <path d="M52 68 C 46 54 60 52 54 38 C 50 28 61 26 56 18"/><path d="M63 66 C 67 53 55 50 63 39"/>
+            <path d="M92 68 C 86 56 100 52 94 40 C 89 30 100 27 96 18"/><path d="M103 66 C 107 54 95 51 103 40"/>
+          </g>
+          <g fill="none" stroke="#e5543f" stroke-width="3.6" stroke-linecap="round">
+            <path d="M11 18 q6 -6 12 2"/><path d="M50 18 q6 -6 12 2"/><path d="M90 18 q6 -6 12 2"/>
+          </g>
+        </svg>
+        <figcaption>Generate scaffolds<span class="wsub">many folds, same epitope</span></figcaption>
+      </figure>
+      <span class="warrow" aria-hidden="true">&rarr;</span>
+      <figure class="wstep">
+        <svg class="wthumb" viewBox="0 0 120 78" role="img" aria-label="A logistic curve mapping design score to predicted binding, with low-scoring designs grey and high-scoring designs red.">
+          <line x1="16" y1="64" x2="112" y2="64" stroke="#999" stroke-width="1"/>
+          <line x1="16" y1="64" x2="16" y2="10" stroke="#999" stroke-width="1"/>
+          <path d="M18 60 C 48 58 56 18 108 15" fill="none" stroke="#296DC0" stroke-width="2.6"/>
+          <circle cx="30" cy="60" r="2.6" fill="#9aa3ad"/><circle cx="40" cy="58" r="2.6" fill="#9aa3ad"/><circle cx="50" cy="53" r="2.6" fill="#9aa3ad"/>
+          <circle cx="70" cy="30" r="2.6" fill="#e5543f"/><circle cx="84" cy="19" r="2.6" fill="#e5543f"/><circle cx="62" cy="40" r="2.6" fill="#e5543f"/>
+          <text x="66" y="76" text-anchor="middle" font-size="9" fill="#6a7686">score &#8594; P(bind)</text>
+        </svg>
+        <figcaption>Evaluate designs<span class="wsub">predict + rank by binding model</span></figcaption>
+      </figure>
+      <span class="warrow" aria-hidden="true">&rarr;</span>
+      <figure class="wstep">
+        <svg class="wthumb" viewBox="0 0 120 78" role="img" aria-label="A CSV of ranked designs with sequences and metrics, available to download.">
+          <rect x="26" y="6" width="68" height="44" rx="3" fill="#fff" stroke="#cfdcec"/>
+          <rect x="26" y="6" width="68" height="11" rx="3" fill="#eef3f9"/>
+          <line x1="50" y1="6" x2="50" y2="50" stroke="#e3e9f2"/><line x1="72" y1="6" x2="72" y2="50" stroke="#e3e9f2"/>
+          <line x1="26" y1="28" x2="94" y2="28" stroke="#e3e9f2"/><line x1="26" y1="39" x2="94" y2="39" stroke="#e3e9f2"/>
+          <g fill="#9aa3ad"><rect x="31" y="20" width="12" height="3"/><rect x="55" y="20" width="12" height="3"/><rect x="77" y="20" width="12" height="3"/>
+            <rect x="31" y="31" width="12" height="3"/><rect x="55" y="31" width="12" height="3"/><rect x="77" y="31" width="12" height="3"/>
+            <rect x="31" y="42" width="12" height="3"/><rect x="55" y="42" width="12" height="3"/><rect x="77" y="42" width="12" height="3"/></g>
+          <g stroke="#296DC0" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="60" y1="55" x2="60" y2="67"/><path d="M54 62 l6 6 l6 -6"/></g>
+          <text x="60" y="77" text-anchor="middle" font-size="9" fill="#6a7686">.csv</text>
+        </svg>
+        <figcaption>Provide output<span class="wsub">ranked designs + metrics</span></figcaption>
+      </figure>
     </div>
     <a class="shared-more" href="pipeline.html">See the full pipeline and run order</a>
   </div>
 
-  <p class="schem-cap">Rendered from real structures: the 8PWW antigen (PfRH5) with its contact epitope
-  and growPatch candidate regions, and a real episcaf scaffold design. Highlights follow the actual
-  residues.</p>
+  <p class="schem-cap">The branch illustrations are rendered from the 8PWW structure (PfRH5): the antigen
+  with its contact epitope and growPatch candidate regions. The workflow icons above are schematic;
+  &ldquo;Identify&rdquo; shows the real 8PWW epitope.</p>
 
   <p class="caps">Examples can be explored in the browser. Processing your own structure
   requires the local service; design jobs run separately on the cluster.</p>
