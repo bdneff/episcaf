@@ -22,12 +22,24 @@ mol color ColorID 2
 mol selection "chain $chain and protein"
 mol addrep top
 
+# island 1: colored ribbon + licorice
+mol representation NewCartoon 0.36 16 4.5
+mol material AOChalky
+mol color ColorID 1
+mol selection "chain $chain and protein and resid [join $isl1 { }]"
+mol addrep top
 mol representation Licorice 0.3 12 12
 mol material AOShiny
 mol color ColorID 1
 mol selection "chain $chain and protein and resid [join $isl1 { }]"
 mol addrep top
 
+# island 2: colored ribbon + licorice
+mol representation NewCartoon 0.36 16 4.5
+mol material AOChalky
+mol color ColorID 3
+mol selection "chain $chain and protein and resid [join $isl2 { }]"
+mol addrep top
 mol representation Licorice 0.3 12 12
 mol material AOShiny
 mol color ColorID 3

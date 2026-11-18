@@ -28,9 +28,15 @@ mol color ColorID 2
 mol selection "chain $chain and protein"
 mol addrep top
 
-# highlighted residues as a red surface region (VDW spheres read as a surface patch)
+# highlighted residues: colored ribbon drawn over the grey, plus licorice sidechains
 if {$hlcol >= 0 && [llength $resids] > 0} {
     set rl [join $resids " "]
+    mol representation NewCartoon 0.36 16 4.5
+    mol material AOChalky
+    mol color ColorID $hlcol
+    mol selection "chain $chain and protein and resid $rl"
+    mol addrep top
+
     mol representation Licorice 0.3 12 12
     mol material AOShiny
     mol color ColorID $hlcol
