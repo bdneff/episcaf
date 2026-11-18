@@ -91,12 +91,14 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 <div class="page">
   <h1>Design protein scaffolds that display a selected epitope</h1>
   <p class="lede">episcaf builds small proteins around selected antigen residues. It evaluates how
-  closely the predicted structures preserve the epitope and whether surrounding scaffold residues
-  could obstruct antibody binding.</p>
-  <p class="sub">Pipeline: <a href="pipeline.html">RFdiffusion3</a> &rarr; ProteinMPNN &rarr;
-  AlphaFold3, then scoring on epitope fidelity and antibody accessibility.</p>
+  closely the predicted structures preserve the epitope and whether the surrounding scaffold could
+  obstruct antibody binding.</p>
+  <p class="sub">Backbones are generated with <a href="methods.html#generate">RFdiffusion3</a>,
+  sequences are designed with <a href="methods.html#generate">ProteinMPNN</a>, and structures are
+  predicted with <a href="methods.html#generate">AlphaFold&nbsp;3</a>. The resulting designs are
+  scored and ranked.</p>
 
-  <p class="q">What would you like to design?</p>
+  <p class="q">Choose a starting point</p>
 
   <div class="fork">
 
@@ -108,20 +110,15 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
       <div class="card-b">
         <img class="ill" src="img/fig/antigen_epitope.png?v=2" loading="lazy"
              alt="The 8PWW antigen (PfRH5) as a grey ribbon with the selected epitope residues highlighted in red.">
-        <p class="ill-cap"><b style="color:#5c636b">Antigen</b> (grey ribbon) with the
-        <b style="color:#c0392b">selected epitope</b> in red. 8PWW chain A (PfRH5).</p>
-        <p>Start from an antibody&ndash;antigen complex; episcaf takes the epitope from the antibody
-        contact residues. Generate scaffold designs and compare their predicted structures with the
-        original epitope. For an antigen with no bound antibody, the epitope can instead be read off
-        the structure.</p>
-        <div class="when"><b>Use this when:</b> you have a complex (for example a SAbDab entry) or a
-        specific site you want displayed on a stable, synthesizable scaffold.</div>
-        <p class="steps">You can also mark the antibody chains or individual residues yourself; episcaf
-        derives the antigen contact epitope from the selection.</p>
-        <a class="readmore" href="methods.html#generate">How scaffolding works</a>
+        <p class="ill-cap">PfRH5 from 8PWW, with the selected antigen residues highlighted in red.</p>
+        <p>Start from an antibody&ndash;antigen complex or select antigen residues directly. episcaf
+        uses those residues as the epitope for scaffold design.</p>
+        <p>For a complex, select the antibody chains and define the antigen contact residues using the
+        distance cutoff. You can also select the antigen residues yourself.</p>
+        <a class="readmore" href="methods.html#generate">Epitope selection and scaffold generation</a>
       </div>
       <div class="card-f">
-        <a class="btn-primary" href="scaffold.html">Configure a scaffold design</a>
+        <a class="btn-primary" href="scaffold.html">Configure scaffold design</a>
       </div>
     </div>
 
@@ -132,18 +129,16 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
       </div>
       <div class="card-b">
         <div class="candrow">
-          <figure><img src="img/fig/cand_a.png?v=2" loading="lazy" alt="One candidate surface region highlighted in blue on the 8PWW antigen."><figcaption>candidate 1</figcaption></figure>
-          <figure><img src="img/fig/cand_b.png?v=2" loading="lazy" alt="A second candidate surface region highlighted in blue on the same antigen."><figcaption>candidate 2</figcaption></figure>
-          <figure class="sel"><img src="img/fig/cand_selected.png?v=2" loading="lazy" alt="A candidate region selected for design, highlighted in red on the same antigen."><figcaption>selected</figcaption></figure>
+          <figure><img src="img/fig/cand_a.png?v=2" loading="lazy" alt="One candidate surface region highlighted in blue on the 8PWW antigen."><figcaption>Candidate region 1</figcaption></figure>
+          <figure><img src="img/fig/cand_b.png?v=2" loading="lazy" alt="A second candidate surface region highlighted in blue on the same antigen."><figcaption>Candidate region 2</figcaption></figure>
+          <figure class="sel"><img src="img/fig/cand_selected.png?v=2" loading="lazy" alt="A candidate region selected for design, highlighted in red on the same antigen."><figcaption>Selected region</figcaption></figure>
         </div>
-        <p class="ill-cap">The same antigen and view; each panel highlights a different
-        <b style="color:#2b47d6">candidate region</b>. Inspect them and select one or more
-        (<b style="color:#c0392b">red</b>).</p>
-        <p>Start from an antigen structure without a specified binding site. Sample patches across
-        its surface, inspect the candidates, and choose regions for scaffold design.</p>
-        <div class="when"><b>Use this when:</b> you have a target but no chosen site, or you are
-        building a tiled library and do not want to commit to one region.</div>
-        <a class="readmore" href="methods.html#epitope">How the surface search works</a>
+        <p class="ill-cap">Different candidate regions are shown on the same antigen using a fixed view.
+        The region selected for design is red.</p>
+        <p>Start from an antigen structure without a selected binding site. growPatch samples surface
+        regions that can be inspected and selected for scaffold design. Multiple regions can be
+        selected to build a library spanning the antigen surface.</p>
+        <a class="readmore" href="methods.html#epitope">Surface-sampling methods</a>
       </div>
       <div class="card-f">
         <a class="btn-primary" href="growpatch.html">Explore candidate regions</a>
@@ -168,30 +163,30 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   </div>
 
   <div class="shared">
-    <div class="shared-h">Shared workflow</div>
+    <div class="shared-h">Scaffold design</div>
     <div class="wsteps">
       <figure class="wstep">
         <img class="wthumb" src="img/fig/antigen_epitope.png?v=2" loading="lazy"
              alt="The antigen with the selected epitope residues highlighted in red.">
-        <figcaption>Identify target epitope(s)<span class="wsub">antigen region to display</span></figcaption>
+        <figcaption>Identify target epitope(s)<span class="wsub">define the region to display</span></figcaption>
       </figure>
       <span class="warrow" aria-hidden="true">&rarr;</span>
       <figure class="wstep">
         <img class="wthumb" src="img/fig/scaffolds_trio.png?v=1" loading="lazy"
              alt="Three real episcaf designs with different folds, each presenting the same epitope (red), superposed on the epitope.">
-        <figcaption>Generate scaffolds<span class="wsub">many folds, same epitope</span></figcaption>
+        <figcaption>Generate scaffolds<span class="wsub">build backbones around the epitope</span></figcaption>
       </figure>
       <span class="warrow" aria-hidden="true">&rarr;</span>
       <figure class="wstep">
-        <svg class="wthumb" viewBox="0 0 120 78" role="img" aria-label="A logistic curve mapping design score to predicted binding, with low-scoring designs grey and high-scoring designs red.">
+        <svg class="wthumb" viewBox="0 0 120 78" role="img" aria-label="A logistic curve in which higher design scores give a higher binding score; low-scoring designs are grey and high-scoring designs red.">
           <line x1="16" y1="64" x2="112" y2="64" stroke="#999" stroke-width="1"/>
           <line x1="16" y1="64" x2="16" y2="10" stroke="#999" stroke-width="1"/>
           <path d="M18 60 C 48 58 56 18 108 15" fill="none" stroke="#296DC0" stroke-width="2.6"/>
           <circle cx="30" cy="60" r="2.6" fill="#9aa3ad"/><circle cx="40" cy="58" r="2.6" fill="#9aa3ad"/><circle cx="50" cy="53" r="2.6" fill="#9aa3ad"/>
           <circle cx="70" cy="30" r="2.6" fill="#e5543f"/><circle cx="84" cy="19" r="2.6" fill="#e5543f"/><circle cx="62" cy="40" r="2.6" fill="#e5543f"/>
-          <text x="66" y="76" text-anchor="middle" font-size="9" fill="#6a7686">score &#8594; P(bind)</text>
+          <text x="66" y="76" text-anchor="middle" font-size="9" fill="#6a7686">Binding score</text>
         </svg>
-        <figcaption>Evaluate designs<span class="wsub">predict + rank by binding model</span></figcaption>
+        <figcaption>Evaluate designs<span class="wsub">predict structures and rank</span></figcaption>
       </figure>
       <span class="warrow" aria-hidden="true">&rarr;</span>
       <figure class="wstep">
@@ -207,22 +202,22 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
             <line x1="60" y1="55" x2="60" y2="67"/><path d="M54 62 l6 6 l6 -6"/></g>
           <text x="60" y="77" text-anchor="middle" font-size="9" fill="#6a7686">.csv</text>
         </svg>
-        <figcaption>Provide output<span class="wsub">ranked designs + metrics</span></figcaption>
+        <figcaption>Export results<span class="wsub">sequences, structures, and metrics</span></figcaption>
       </figure>
     </div>
     <a class="shared-more" href="pipeline.html">See the full pipeline and run order</a>
   </div>
 
-  <p class="schem-cap">The branch illustrations are rendered from the 8PWW structure (PfRH5): the antigen
-  with its contact epitope and growPatch candidate regions. The workflow icons above are schematic;
-  &ldquo;Identify&rdquo; shows the real 8PWW epitope.</p>
+  <p class="schem-cap">The &ldquo;Identify&rdquo; and &ldquo;Generate scaffolds&rdquo; panels are rendered
+  from real structures (8PWW chain A for the antigen and epitope; episcaf designs for a 7a3t-derived
+  epitope). The &ldquo;Evaluate&rdquo; and &ldquo;Export&rdquo; panels are schematic.</p>
 
-  <p class="caps">Examples can be explored in the browser. Processing your own structure
-  requires the local service; design jobs run separately on the cluster.</p>
+  <p class="caps">Recorded examples can be explored in the browser. Processing a new structure requires
+  the local service. Scaffold generation and structure prediction run on the cluster.</p>
 
-  <p class="footline">New here? The <a href="methods.html">Docs</a> explain each step; the
-  <a href="pipeline.html">Pipeline</a> map shows the run order and what is implemented;
-  <a href="results.html">Results</a> ranks a finished run's designs.</p>
+  <p class="footline"><a href="methods.html">Methods</a> &middot;
+  <a href="pipeline.html">Design workflow</a> &middot;
+  <a href="results.html">Explore results</a></p>
 </div>
 </body>
 </html>
