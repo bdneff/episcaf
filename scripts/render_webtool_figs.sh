@@ -72,4 +72,18 @@ if [ -d "$RUN" ]; then
 else
   echo "  (skipping scaffolds_trio: $RUN not found)"
 fi
+
+# ---- homepage panel 3: the designed scaffold with the native antibody on its epitope ----
+# RFdiffusion3 holds the epitope motif in native coordinates, so 8pww_design and the 8PWW complex
+# share a frame at the epitope (verified: epitope-centroid distance 0.08 A). The 8PWW antibody
+# (chain B) that binds the native epitope therefore sits on the scaffold's epitope -- a real,
+# co-registered render in the same ribbon style as the antigen/scaffold panels.
+echo "  rendering scaffold_antibody ..."
+awk 'substr($0,1,6)=="ATOM  " && substr($0,22,1)=="B"' docs/pdb/8PWW.pdb > "$TMP/8pww_ab.pdb"
+"$VMD" -dispdev text -e scripts/render_scaffold_antibody.tcl -args docs/pdb/8pww_design.pdb \
+  "$TMP/8pww_ab.pdb" "$TMP/scaffold_antibody.dat" 20 -60 $DES_EPI > "$TMP/scaffold_antibody.vmd.log" 2>&1
+"$TACHYON" "$TMP/scaffold_antibody.dat" -res $RES $RES -aasamples 12 -format TARGA -o "$TMP/scaffold_antibody.tga" > /dev/null 2>&1
+sips -s format png "$TMP/scaffold_antibody.tga" --out "$OUT/scaffold_antibody.png" > /dev/null 2>&1
+/Users/bneff/micromamba/envs/bcell-repair/bin/python scripts/trim_transparent.py "$OUT/scaffold_antibody.png"
+
 echo "done -> $OUT"
