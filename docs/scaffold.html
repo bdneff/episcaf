@@ -60,6 +60,22 @@ td{font-variant-numeric:tabular-nums}
 .cpreview .cimg{width:100%;max-width:100%;margin-top:0}
 .cpreview .cap{font-size:11px;color:#666666;margin-top:6px;line-height:1.5}
 @media(max-width:560px){.cpreview{width:100%}.cviewer{height:280px}}
+.seqpanel{border-top:1px solid #e2e8f1;padding:11px 12px;font-size:12px}
+.seqhead{color:#555;line-height:1.5;margin-bottom:8px}
+.chainpills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px}
+.cpill{font:inherit;font-size:12px;padding:4px 10px;border:1.5px solid #cfd8e6;background:#fff;border-radius:14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;color:#1a1a1a}
+.cpill .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.cpill[aria-pressed="true"]{border-color:#1b4a86;background:#eef3f9;font-weight:bold;box-shadow:inset 0 0 0 1px #296DC0}
+.cpill .role{font-size:10px;letter-spacing:.03em;text-transform:uppercase;color:#1b4a86}
+.cpill .roleag{font-size:10px;letter-spacing:.03em;text-transform:uppercase;color:#777}
+.seqstatus{font-size:12px;color:#1b4a86;margin-bottom:7px;min-height:1em}
+.seqbody{max-height:168px;overflow:auto;border:1px solid #e4e4e4;border-radius:4px;padding:8px 10px;background:#fcfdfe}
+.seqrow{display:flex;gap:8px;margin:2px 0;align-items:flex-start}
+.seqrow .clab{font-family:"Courier New",monospace;font-weight:bold;flex:none;width:58px;font-size:11px}
+.seqres{font-family:"Courier New",Courier,monospace;font-size:12px;line-height:1.7;letter-spacing:1px;word-break:break-all}
+.seqres .epi{background:#fde3df;outline:1px solid #e5543f;border-radius:2px}
+.seqlegend{font-size:11px;color:#777;margin-top:7px}
+.epimark{background:#fde3df;outline:1px solid #e5543f;border-radius:2px;padding:0 3px}
 .tcard-top{padding:9px 12px;border-bottom:1px solid #e2e8f1;background:#ffffff;font-size:12.5px}
 .tcard-top .tlab{font-weight:bold;margin-right:8px}
 .tcard-top label.radio{display:inline-block;margin:2px 14px 2px 0}
@@ -148,7 +164,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <div class="help" id="targethint"></div>
         <div class="field" style="margin-top:7px"><label for="pdbfile">or upload your own structure</label>
           <input type="file" id="pdbfile" accept=".pdb,.ent,.cif"></div>
-        <div class="help" id="uploadnote">PDB or mmCIF. The viewer loads it; with the local server running it auto-detects antibody vs lone antigen and the contact epitope.</div>
+        <div class="help" id="uploadnote">PDB or mmCIF. The viewer loads it. With the local server it auto-detects the antibody and epitope; from anywhere, use the sequence below to pick the antibody chain yourself.</div>
       </div>
       <div class="cpreview">
         <div class="cvwrap">
@@ -160,6 +176,15 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
           <span id="clegend"></span><br>
           <span id="vnote"></span></div>
       </div>
+    </div>
+    <div id="seqpanel" class="seqpanel" hidden>
+      <div class="seqhead">Assign chains &mdash; click the <b>antibody</b> chain(s). The largest remaining chain is
+        treated as the antigen, and its residues within <b>4&nbsp;&Aring;</b> of the antibody (heavy atoms)
+        become the contact epitope. Computed in your browser; no server needed.</div>
+      <div id="chainpills" class="chainpills" role="group" aria-label="Chains — click to mark as antibody"></div>
+      <div id="seqstatus" class="seqstatus"></div>
+      <div id="seqbody" class="seqbody" aria-label="Sequence by chain"></div>
+      <div class="seqlegend">Letters are colored by chain. On the antigen chain, <span class="epimark">boxed</span> residues are the 4&nbsp;&Aring; epitope.</div>
     </div>
   </section>
 
@@ -557,6 +582,7 @@ function syncHints(){
       : "antigen only; residues shaded by DiscoTope-3.0 predicted epitope likelihood.");
   $("#predwrap").hidden = state.epi!=="predict";
   $("#recorded").hidden = state.target!=="8PWW";
+  if(state.target!=="__upload"){const sp=$("#seqpanel"); if(sp) sp.hidden=true;}
   updateRunBtn();
   $("#runnote").textContent = state.mode==="threshold"
     ? `will stop early if ${state.n} pass before ${state.runtime} min`
@@ -564,7 +590,8 @@ function syncHints(){
 }
 $$('input[name=epi]').forEach(r=>r.addEventListener("change",()=>{state.epi=document.querySelector('input[name=epi]:checked').value;uploadDetected=true;/* manual choice overrides a failed auto-detect */syncHints();if(cviewer)loadComplex();else updateCaption();}));
 $$('input[name=mode]').forEach(r=>r.addEventListener("change",()=>{state.mode=document.querySelector('input[name=mode]:checked').value;syncHints();}));
-$("#target").addEventListener("change",e=>{state.target=e.target.value;syncHints();loadComplex();});
+$("#target").addEventListener("change",e=>{state.target=e.target.value;syncHints();loadComplex();
+  if(state.target==="__upload"&&uploadText) buildSeqPanel((CFG["__upload"]&&CFG["__upload"].ab)||[]);});
 $("#predictor").addEventListener("change",e=>{state.predictor=e.target.value;updateCaption();});
 $("#strategy").addEventListener("change",e=>{state.strategy=e.target.value;setStratBox();});
 function rerun(){paint(computeJob(state),false);}
@@ -586,6 +613,117 @@ function epiResids(spec){const out=[];String(spec||"").split(";").forEach(tok=>{
   const m=tok.trim().match(/^[A-Za-z0-9]+:(-?\d+)(?:-(-?\d+))?$/);
   if(m){const a=+m[1],b=+(m[2]||m[1]);for(let r=a;r<=b;r++)out.push(r);}});return out;}
 function firstChain(txt){const m=txt.match(/^ATOM.{15}(.)/m);return (m&&m[1].trim())||"A";}
+
+/* ---- in-browser chain assignment: pick the antibody chain(s), compute the 4 A contact epitope ----
+   Mirrors episcaf_analysis.growpatch.read.detect_complex: heavy atoms, standard residues, 4.0 A.
+   Works with no server, so an uploaded complex can be annotated on the public page too. */
+const AA3={ALA:"A",ARG:"R",ASN:"N",ASP:"D",CYS:"C",GLN:"Q",GLU:"E",GLY:"G",HIS:"H",ILE:"I",LEU:"L",
+  LYS:"K",MET:"M",PHE:"F",PRO:"P",SER:"S",THR:"T",TRP:"W",TYR:"Y",VAL:"V",MSE:"M",SEC:"U",PYL:"O"};
+const CHAINCOL=["#2b47d6","#c0392b","#1b8a5a","#b8860b","#7d3c98","#17a2b8","#d35400","#555555"];
+let seqChains=null, abSet=new Set(), chainColor={};
+function one(resn){return AA3[resn]||"X";}
+function parsePDBResidues(txt){
+  const chains={};
+  for(const ln of txt.split("\n")){
+    if(ln.substr(0,6)!=="ATOM  ") continue;            // standard residues only (skip HETATM)
+    const alt=ln.charAt(16); if(alt!==" "&&alt!=="A") continue;
+    const elem=(ln.substr(76,2)||"").trim().toUpperCase(), name=ln.substr(12,4).trim();
+    if(elem ? (elem==="H"||elem==="D") : (name.charAt(0)==="H")) continue;   // heavy atoms only
+    const c=ln.charAt(21)||" ", resn=ln.substr(17,3).trim();
+    const ri=parseInt(ln.substr(22,4),10); if(isNaN(ri)) continue;
+    const ic=ln.charAt(26), key=ri+(ic.trim()?ic:"");
+    const x=parseFloat(ln.substr(30,8)),y=parseFloat(ln.substr(38,8)),z=parseFloat(ln.substr(46,8));
+    if(isNaN(x)||isNaN(y)||isNaN(z)) continue;
+    const ch=chains[c]||(chains[c]={order:[],res:{}});
+    let r=ch.res[key]; if(!r){r=ch.res[key]={resn:resn,resi:ri,atoms:[]};ch.order.push(key);}
+    r.atoms.push([x,y,z]);
+  }
+  return chains;
+}
+function parseModelResidues(){                          // fallback (e.g. mmCIF) via the 3Dmol model
+  if(!cviewer) return {};
+  let atoms=[]; try{atoms=cviewer.getModel().selectedAtoms({});}catch(e){return {};}
+  const chains={};
+  for(const a of atoms){
+    if(a.hetflag) continue; const el=(a.elem||"").toUpperCase(); if(el==="H"||el==="D") continue;
+    const c=a.chain||" ", key=a.resi+((a.icode&&a.icode.trim())?a.icode:"");
+    const ch=chains[c]||(chains[c]={order:[],res:{}});
+    let r=ch.res[key]; if(!r){r=ch.res[key]={resn:a.resn,resi:a.resi,atoms:[]};ch.order.push(key);}
+    r.atoms.push([a.x,a.y,a.z]);
+  }
+  return chains;
+}
+function getResidues(){
+  if(uploadFmt==="pdb"){const c=parsePDBResidues(uploadText); if(Object.keys(c).length) return c;}
+  return parseModelResidues();
+}
+function pickAntigen(chains){                            // the largest chain not marked antibody
+  const cand=Object.keys(chains).filter(c=>!abSet.has(c));
+  return cand.length ? cand.reduce((a,b)=>chains[a].order.length>=chains[b].order.length?a:b) : null;
+}
+function computeSeqEpitope(){
+  const ag=pickAntigen(seqChains);
+  if(!ag||!abSet.size) return {ag:ag,epi:[]};
+  const abPts=[]; for(const c of abSet) if(seqChains[c]) for(const k of seqChains[c].order) for(const p of seqChains[c].res[k].atoms) abPts.push(p);
+  const epi=[], cut2=16.0;                               // (4.0 A)^2
+  for(const k of seqChains[ag].order){
+    const ats=seqChains[ag].res[k].atoms; let hit=false;
+    for(let i=0;i<ats.length&&!hit;i++){const p=ats[i];
+      for(let j=0;j<abPts.length;j++){const q=abPts[j],dx=p[0]-q[0],dy=p[1]-q[1],dz=p[2]-q[2];
+        if(dx*dx+dy*dy+dz*dz<=cut2){hit=true;break;}}}
+    if(hit) epi.push(seqChains[ag].res[k].resi);
+  }
+  return {ag:ag,epi:epi};
+}
+function renderChainPills(){
+  const box=$("#chainpills"); box.innerHTML=""; const ag=pickAntigen(seqChains);
+  Object.keys(seqChains).forEach((c,i)=>{
+    chainColor[c]=CHAINCOL[i%CHAINCOL.length];
+    const n=seqChains[c].order.length, isAb=abSet.has(c);
+    const b=document.createElement("button");
+    b.type="button"; b.className="cpill"; b.setAttribute("aria-pressed",isAb?"true":"false");
+    b.setAttribute("aria-label","chain "+c+", "+n+" residues"+(isAb?", antibody":""));
+    b.innerHTML='<span class="dot" style="background:'+chainColor[c]+'"></span>chain '+c+' &middot; '+n+' aa'+
+      (isAb?' <span class="role">antibody</span>':(c===ag&&abSet.size?' <span class="roleag">antigen</span>':''));
+    b.addEventListener("click",()=>{ abSet.has(c)?abSet.delete(c):abSet.add(c); applySeqSelection(); });
+    box.appendChild(b);
+  });
+}
+function renderSeq(epiSet){
+  const body=$("#seqbody"); body.innerHTML=""; const ag=pickAntigen(seqChains);
+  Object.keys(seqChains).forEach(c=>{
+    const row=document.createElement("div"); row.className="seqrow";
+    const lab=document.createElement("span"); lab.className="clab"; lab.style.color=chainColor[c]||"#333"; lab.textContent=c;
+    const seq=document.createElement("span"); seq.className="seqres"; const isAg=(c===ag); let html="";
+    for(const k of seqChains[c].order){
+      const r=seqChains[c].res[k], L='<span style="color:'+(chainColor[c]||"#333")+'">'+one(r.resn)+'</span>';
+      html += (isAg && epiSet && epiSet.has(r.resi)) ? '<span class="epi">'+L+'</span>' : L;
+    }
+    seq.innerHTML=html; row.appendChild(lab); row.appendChild(seq); body.appendChild(row);
+  });
+}
+function applySeqSelection(){
+  const {ag,epi}=computeSeqEpitope(), epiSet=new Set(epi);
+  renderChainPills(); renderSeq(epiSet);
+  const st=$("#seqstatus");
+  if(!abSet.size) st.textContent="Click the antibody chain(s) above to compute the epitope.";
+  else if(!ag) st.textContent="All chains are marked antibody — leave at least one as the antigen.";
+  else st.innerHTML="Antigen: chain <b>"+ag+"</b> &middot; antibody: "+[...abSet].join(", ")+
+       " &middot; epitope = <b>"+epi.length+"</b> residue"+(epi.length===1?"":"s")+" within 4 &Aring; (red).";
+  if(abSet.size && ag){                                  // feed the run + the 3D view
+    CFG["__upload"]={ag:ag,ab:[...abSet],epi:epi};
+    state.epi="antibody"; uploadDetected=true;
+    const r=document.querySelector('input[name=epi][value="antibody"]'); if(r)r.checked=true;
+    if(cviewer) loadComplex(); else updateCaption();
+  }
+}
+function buildSeqPanel(seedAb){
+  const panel=$("#seqpanel"); if(!panel) return;
+  seqChains=getResidues();
+  if(!seqChains || !Object.keys(seqChains).length){ panel.hidden=true; return; }
+  abSet=new Set((seedAb||[]).filter(c=>seqChains[c]));
+  panel.hidden=false; applySeqSelection();
+}
 $("#pdbfile").addEventListener("change",e=>{
   const f=e.target.files[0]; if(!f) return;
   const rd=new FileReader();
@@ -614,7 +752,9 @@ $("#pdbfile").addEventListener("change",e=>{
       CFG["__upload"]={ag:firstChain(uploadText),ab:[],epi:[]};
       $("#uploadnote").innerHTML="loaded "+f.name+". <b>Could not detect the epitope.</b> Antibody-vs-antigen detection needs the local service: open this page from <code>http://127.0.0.1:8765/</code> (run <code>python scripts/growpatch_serve.py</code>), or set a Backend URL above. Showing the raw structure; choose the epitope source manually.";
     }
-    syncHints(); loadComplex(); rerun();
+    syncHints(); loadComplex();
+    buildSeqPanel((CFG["__upload"]&&CFG["__upload"].ab)||[]);   // sequence strip + manual chain assignment
+    rerun();
   };
   rd.readAsText(f);
 });
