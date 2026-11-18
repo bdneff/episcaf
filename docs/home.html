@@ -59,6 +59,12 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 .shared-more{display:inline-block;margin-top:11px;font-size:12.5px;color:#296DC0;font-weight:600;text-decoration:none}
 .shared-more:hover{text-decoration:underline}
 .schem-cap{font-size:11px;color:#777;margin:9px 0 0;font-style:italic}
+.apps{margin-top:22px;border-top:1px solid #e2e8f1;padding-top:14px}
+.apps h2{font-size:15px;color:#1b4a86;margin:0 0 6px;font-weight:bold}
+.apps>p{font-size:13px;color:#3a4654;margin:0 0 8px;line-height:1.55}
+.apps ul{margin:6px 0 0;padding-left:20px}
+.apps li{font-size:13px;color:#3a4654;margin:5px 0;line-height:1.5}
+.apps li b{color:#1a1a1a}
 @media(max-width:680px){
   .conv-wide{display:none}
   .converge{height:24px}
@@ -211,6 +217,27 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   <p class="schem-cap">The &ldquo;Identify&rdquo; and &ldquo;Generate scaffolds&rdquo; panels are rendered
   from real structures (8PWW chain A for the antigen and epitope; episcaf designs for a 7a3t-derived
   epitope). The &ldquo;Evaluate&rdquo; and &ldquo;Export&rdquo; panels are schematic.</p>
+
+  <section class="apps">
+    <h2>Applications</h2>
+    <p>A scaffold that holds an epitope in its native shape, with little else around it, is a defined
+    reagent for the antibodies that recognize that site.</p>
+    <ul>
+      <li><b>Epitope-focused immunogens.</b> Presenting an epitope on a small scaffold, without the rest
+      of the antigen, directs an immune response toward that one site. This is the aim of epitope-focused
+      vaccine design: raise antibodies against a conserved or neutralizing site rather than the
+      immunodominant, often variable, regions of a pathogen.</li>
+      <li><b>Diagnostic reagents.</b> A scaffold displaying a single epitope can act as a capture or
+      detection reagent &mdash; for example, measuring serum antibodies that bind one defined site instead
+      of the whole antigen.</li>
+      <li><b>Epitope characterization.</b> Most directly, a scaffold tests what an epitope is sufficient
+      for. If an antibody binds a scaffold carrying only the contact residues, those residues account for
+      the epitope; a set of scaffolds across the antigen surface maps which sites a response targets.</li>
+      <li><b>Monoclonal and polyclonal work.</b> One scaffold targets the epitope of a single monoclonal
+      antibody. A library of scaffolds spanning the antigen surface, built from the surface scan,
+      separates the sites a polyclonal serum recognizes.</li>
+    </ul>
+  </section>
 
   <p class="caps">Recorded examples can be explored in the browser. Processing a new structure requires
   the local service. Scaffold generation and structure prediction run on the cluster.</p>
