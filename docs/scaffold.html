@@ -156,13 +156,9 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     <div class="tcard-h">Target complex</div>
     <div class="tcard-top">
       <span class="tlab">Epitope source:</span>
-      <label class="radio"><input type="radio" name="epi" value="antibody" checked> known antibody (use the complex's contact epitope)</label>
-      <label class="radio"><input type="radio" name="epi" value="predict"> predict from the antigen (no antibody)</label>
-      <span id="predwrap" hidden>No binding site specified? The surface scan samples candidate surface patches (and can rank them with DiscoTope-3.0). <a href="growpatch.html" class="btn-primary">Go to the surface scan</a>
-        <select id="predictor" hidden style="display:none" aria-hidden="true" tabindex="-1">
-          <option value="discotope3">DiscoTope-3.0</option>
-        </select>
-      </span>
+      <label class="radio"><input type="radio" name="epi" value="antibody" checked> Antibody present &mdash; derive the contact epitope from the antibody (on an uploaded complex, tune the distance &amp; gap&#8209;fill)</label>
+      <label class="radio"><input type="radio" name="epi" value="manual"> Specify the epitope residues yourself (select them on the structure)</label>
+      <div class="help" style="margin-top:3px">No antibody and no known site? <a href="growpatch.html">Use the surface scan to find candidate regions &rsaquo;</a></div>
     </div>
     <div class="tcard-b">
       <div class="tcol">
@@ -403,7 +399,7 @@ function buildRows(s,returned,passers){
 }
 function jobSpec(s){return{
   target:s.target,
-  epitope_source:s.epi==="antibody"?"known_antibody":("growpatch:"+s.predictor),
+  epitope_source:s.epi==="antibody"?"known_antibody":"specified_residues",
   generate:{backbones_per_contig:s.rfd3n, helix_bias:s.helix,
             iterative_loop:(s.ipd?{enabled:true,max_rounds:s.ipdrounds,children_budget:"adaptive"}:false)},
   prefilter:(s.prefilter?{method:"aomclash",keep_fraction:s.keepfrac}:false),
@@ -520,13 +516,11 @@ function updateCaption(){
   if(state.epi==="antibody"){
     leg.innerHTML=sw(GREY)+" antigen &nbsp;"+sw(BLUE)+" antibody &nbsp;"+sw(RED)+" epitope";
     vn.textContent=name+" — epitope (red) is what gets scaffolded";
-  }else if(state.target==="__upload"){
-    leg.innerHTML=sw(GREY)+" antigen (no bound antibody)";
-    vn.textContent=name+" — lone antigen; the surface scan samples candidate surface patches";
-  }else{
-    leg.innerHTML='predicted epitope likelihood &nbsp;<span style="display:inline-block;width:62px;height:9px;vertical-align:middle;background:linear-gradient(90deg,#2b47d6,#f2f2f2,#c0392b);border:1px solid #999"></span>&nbsp; low &rarr; high';
-    const m=state.predictor==="bepipred3"?"BepiPred-3.0":"DiscoTope-3.0";
-    vn.innerHTML=name.split(" + ")[0]+' (antigen only) &middot; epitope likelihood (DiscoTope-3.0)';
+  }else{   // manual: specify the epitope residues
+    leg.innerHTML=sw(GREY)+" antigen &nbsp;"+sw(RED)+" selected epitope";
+    vn.textContent = (MANUAL.epi&&MANUAL.epi.length)
+      ? name+" — "+MANUAL.epi.length+" epitope residue"+(MANUAL.epi.length===1?"":"s")+" selected (red)"
+      : name+" — click the epitope residues to scaffold (red)";
   }
 }
 function useImgFallback(){
@@ -542,14 +536,10 @@ function renderPDB(txt,fmt){
     if(up && !uploadDetected){
       // uploaded, but detection could not run: show the raw structure, no epitope claim
       cviewer.setStyle({},{cartoon:{color:GREY,thickness:0.8,arrows:true}});
-    }else if(state.epi==="predict"){
-      if(up){
-        // uploaded lone antigen: grey cartoon (no baked-in propensity to shade by)
-        cviewer.setStyle({},{cartoon:{color:GREY,thickness:0.8,arrows:true}});
-      }else{
-        // example antigen: B-factor = epitope propensity (0-100); shade low(blue)->high(red)
-        cviewer.setStyle({},{cartoon:{colorscheme:{prop:'b',gradient:'rwb',min:100,max:0},thickness:0.8,arrows:true}});
-      }
+    }else if(state.epi==="manual"){
+      // specify-epitope mode: grey antigen + the manually selected epitope in red (no antibody)
+      cviewer.setStyle({},{cartoon:{color:GREY,thickness:0.8,arrows:true}});
+      if(MANUAL.ag && MANUAL.epi.length) cviewer.setStyle({chain:MANUAL.ag,resi:MANUAL.epi},{cartoon:{color:RED,thickness:0.95,arrows:true}});
     }else{
       cviewer.setStyle({},{cartoon:{color:GREY,thickness:0.75,arrows:true}});
       if(c.abres){ for(const ch in c.abres) cviewer.setStyle({chain:ch,resi:c.abres[ch]},{cartoon:{color:BLUE,thickness:0.8,arrows:true}}); }
@@ -558,13 +548,15 @@ function renderPDB(txt,fmt){
     }
     cviewer.zoomTo();cviewer.zoom(1.3);cviewer.render();
     hideLoading();updateCaption();
+    if(panelDirty && panelWanted()){ panelDirty=false; buildSeqPanel((CFG["__upload"]&&CFG["__upload"].ab)||[]); }
   }catch(e){ useImgFallback(); }
 }
+let panelDirty=false;
 let _pdbCache={};
 function loadComplex(){
   if(!cviewer){useImgFallback();return;}
   if(state.target==="__upload"){ if(uploadText){showLoading("Rendering structure…");renderPDB(uploadText, uploadFmt);} return; }
-  const file = state.epi==="predict" ? ("pdb/"+state.target+"_scored.pdb") : ("pdb/"+state.target+".pdb");
+  const file = "pdb/"+state.target+".pdb";
   if(_pdbCache[file]){showLoading("Rendering structure…");renderPDB(_pdbCache[file]);return;}
   showLoading("Loading structure…");
   fetch(file).then(r=>{if(!r.ok)throw 0;return r.text();}).then(txt=>{
@@ -615,25 +607,29 @@ function updateKeepExample(){
     "</b> with the lowest obstruction score"+(keep===1?"":"s")+" continue; the other "+(n-keep)+
     " are discarded before ProteinMPNN and AlphaFold3.";
 }
+function panelWanted(){ return state.target==="__upload" || state.epi==="manual"; }
 function syncHints(){
   $("#targethint").textContent = (state.target==="__upload" && !uploadDetected)
     ? "uploaded structure; the epitope was not detected (needs the local service). Showing the raw structure."
     : (state.epi==="antibody"
-      ? "antibody-antigen complex; the viewer shows antigen (grey), antibody (blue), contact epitope (red)."
-      : "antigen only; residues shaded by DiscoTope-3.0 predicted epitope likelihood.");
-  $("#predwrap").hidden = state.epi!=="predict";
+      ? "antibody present: antigen (grey), antibody (blue), contact epitope (red). Mark the antibody below, and tune the distance and gap-fill."
+      : "specify the epitope: click the residues to scaffold on the structure below (shift-click for a range).");
   $("#recorded").hidden = state.target!=="8PWW";
-  if(state.target!=="__upload"){const sp=$("#seqpanel"); if(sp) sp.hidden=true;}
+  if(!panelWanted()){const sp=$("#seqpanel"); if(sp) sp.hidden=true;}
   updateRunBtn();
   $("#runnote").textContent = state.mode==="threshold"
     ? `will stop early if ${state.n} pass before ${state.runtime} min`
     : `will return the best ${state.n} after up to ${state.runtime} min`;
 }
-$$('input[name=epi]').forEach(r=>r.addEventListener("change",()=>{state.epi=document.querySelector('input[name=epi]:checked').value;uploadDetected=true;/* manual choice overrides a failed auto-detect */syncHints();if(cviewer)loadComplex();else updateCaption();}));
+$$('input[name=epi]').forEach(r=>r.addEventListener("change",()=>{
+  state.epi=document.querySelector('input[name=epi]:checked').value; uploadDetected=true;
+  if(state.epi==="manual") selMode="residue";       // manual = click the epitope residues directly
+  panelDirty=true;                                   // (re)build the selector for the new mode
+  syncHints();
+  if(cviewer) loadComplex(); else updateCaption();
+}));
 $$('input[name=mode]').forEach(r=>r.addEventListener("change",()=>{state.mode=document.querySelector('input[name=mode]:checked').value;syncHints();}));
-$("#target").addEventListener("change",e=>{state.target=e.target.value;syncHints();loadComplex();
-  if(state.target==="__upload"&&uploadText) buildSeqPanel((CFG["__upload"]&&CFG["__upload"].ab)||[]);});
-$("#predictor").addEventListener("change",e=>{state.predictor=e.target.value;updateCaption();});
+$("#target").addEventListener("change",e=>{state.target=e.target.value;panelDirty=true;syncHints();loadComplex();});
 $("#strategy").addEventListener("change",e=>{state.strategy=e.target.value;setStratBox();});
 function rerun(){paint(computeJob(state),false);}
 const clamp=(v,lo,hi,d)=>Math.max(lo,Math.min(hi,+v||d));
@@ -654,6 +650,13 @@ function epiResids(spec){const out=[];String(spec||"").split(";").forEach(tok=>{
   const m=tok.trim().match(/^[A-Za-z0-9]+:(-?\d+)(?:-(-?\d+))?$/);
   if(m){const a=+m[1],b=+(m[2]||m[1]);for(let r=a;r<=b;r++)out.push(r);}});return out;}
 function firstChain(txt){const m=txt.match(/^ATOM.{15}(.)/m);return (m&&m[1].trim())||"A";}
+function epiSpec(chain, resids){                         // residue list -> "A:205-216;A:278-292"
+  const rs=(resids||[]).slice().sort((a,b)=>a-b); if(!rs.length) return "";
+  const parts=[]; let a=rs[0], p=rs[0];
+  for(let i=1;i<rs.length;i++){ if(rs[i]===p+1){ p=rs[i]; } else { parts.push(a===p?(""+a):(a+"-"+p)); a=p=rs[i]; } }
+  parts.push(a===p?(""+a):(a+"-"+p));
+  return parts.map(r=>chain+":"+r).join(";");
+}
 
 /* ---- in-browser chain assignment: pick the antibody chain(s), compute the 4 A contact epitope ----
    Mirrors episcaf_analysis.growpatch.read.detect_complex: heavy atoms, standard residues, 4.0 A.
@@ -662,6 +665,7 @@ const AA3={ALA:"A",ARG:"R",ASN:"N",ASP:"D",CYS:"C",GLN:"Q",GLU:"E",GLY:"G",HIS:"
   LYS:"K",MET:"M",PHE:"F",PRO:"P",SER:"S",THR:"T",TRP:"W",TYR:"Y",VAL:"V",MSE:"M",SEC:"U",PYL:"O"};
 const CHAINCOL=["#2b47d6","#c0392b","#1b8a5a","#b8860b","#7d3c98","#17a2b8","#d35400","#555555"];
 let seqChains=null, abSet=new Set(), abRes=new Set(), chainColor={}, selMode="chain", lastClick=null;
+let MANUAL={ag:null, epi:[]};   // in "specify epitope residues" mode: the chosen epitope + its antigen chain
 function one(resn){return AA3[resn]||"X";}
 function parsePDBResidues(txt){
   const chains={};
@@ -695,8 +699,11 @@ function parseModelResidues(){                          // fallback (e.g. mmCIF)
   return chains;
 }
 function getResidues(){
-  if(uploadFmt==="pdb"){const c=parsePDBResidues(uploadText); if(Object.keys(c).length) return c;}
-  return parseModelResidues();
+  if(uploadFmt==="pdb" && uploadText){const c=parsePDBResidues(uploadText); if(Object.keys(c).length) return c;}
+  return parseModelResidues();   // examples (and mmCIF uploads) come from the loaded 3Dmol model
+}
+function largestChain(chains){
+  let best=null,bn=-1; for(const c of Object.keys(chains)){ if(chains[c].order.length>bn){bn=chains[c].order.length;best=c;} } return best;
 }
 function readCut2(){const v=parseFloat(($("#cutoff")||{}).value); const c=(isNaN(v)||v<=0)?4.0:v; return c*c;}
 function readGap(){const v=parseInt(($("#gapfill")||{}).value,10); return (isNaN(v)||v<0)?0:v;}
@@ -715,6 +722,23 @@ function pickAntigen(chains){
   return cand.length ? cand.reduce((a,b)=>chains[a].order.length>=chains[b].order.length?a:b) : null;
 }
 function computeSeqEpitope(){
+  if(state.epi==="manual"){
+    // the selected residues ARE the epitope; antigen = the chain holding the most of them
+    if(!abRes.size) return {ag:largestChain(seqChains), epi:[]};
+    const byChain={};
+    for(const k of abRes){const i=k.indexOf(":"),c=k.slice(0,i),ri=+k.slice(i+1);(byChain[c]||(byChain[c]=[])).push(ri);}
+    let ag=null,bn=-1; for(const c in byChain){ if(byChain[c].length>bn){bn=byChain[c].length;ag=c;} }
+    let epi=byChain[ag].slice().sort((a,b)=>a-b);
+    const gap=readGap();                               // optional: bridge short gaps in the selection
+    if(gap>0 && seqChains[ag]){
+      const order=seqChains[ag].order.map(k=>seqChains[ag].res[k].resi), sel=new Set(epi);
+      const idx=[]; for(let i=0;i<order.length;i++) if(sel.has(order[i])) idx.push(i);
+      const filled=new Set(epi);
+      for(let a=0;a<idx.length-1;a++){ if(idx[a+1]-idx[a]-1<=gap) for(let j=idx[a]+1;j<idx[a+1];j++) filled.add(order[j]); }
+      epi=[...filled].sort((a,b)=>a-b);
+    }
+    return {ag:ag, epi:epi};
+  }
   const ag=pickAntigen(seqChains);
   if(!ag || !abSelected()) return {ag:ag,epi:[]};
   const abPts=[];
@@ -739,8 +763,8 @@ function computeSeqEpitope(){
   const epi=[]; for(let o=0;o<order.length;o++) if(contact[o]) epi.push(seqChains[ag].res[order[o]].resi);
   return {ag:ag,epi:epi};
 }
-function renderChainPills(){
-  const box=$("#chainpills"); box.innerHTML=""; const ag=pickAntigen(seqChains), byChain=(selMode==="chain");
+function renderChainPills(ag){
+  const box=$("#chainpills"); box.innerHTML=""; const byChain=(state.epi==="antibody" && selMode==="chain");
   Object.keys(seqChains).forEach((c,i)=>{
     chainColor[c]=CHAINCOL[i%CHAINCOL.length];
     const n=seqChains[c].order.length, isAb=byChain&&abSet.has(c);
@@ -753,16 +777,18 @@ function renderChainPills(){
     box.appendChild(b);
   });
 }
-function renderSeq(epiSet){
-  const body=$("#seqbody"); body.innerHTML=""; body.classList.toggle("pick",selMode==="residue");
-  const ag=pickAntigen(seqChains);
+function renderSeq(epiSet, ag){
+  const body=$("#seqbody"); body.innerHTML=""; body.classList.toggle("pick", state.epi==="manual" || selMode==="residue");
   Object.keys(seqChains).forEach(c=>{
     const row=document.createElement("div"); row.className="seqrow";
     const lab=document.createElement("span"); lab.className="clab"; lab.style.color=chainColor[c]||"#333"; lab.textContent=c;
     const seq=document.createElement("span"); seq.className="seqres"; const isAg=(c===ag); let html="";
     for(const k of seqChains[c].order){
       const r=seqChains[c].res[k], col=chainColor[c]||"#333", key=c+":"+r.resi;
-      let cls=""; if(selMode==="residue" && abRes.has(key)) cls="absel"; else if(isAg && epiSet && epiSet.has(key)) cls="epi";
+      let cls="";
+      if(state.epi==="manual"){ if((epiSet&&epiSet.has(key))||abRes.has(key)) cls="epi"; }
+      else if(selMode==="residue" && abRes.has(key)) cls="absel";
+      else if(isAg && epiSet && epiSet.has(key)) cls="epi";
       html+='<span class="'+cls+'" data-c="'+c+'" data-ri="'+r.resi+'" style="color:'+col+'">'+one(r.resn)+'</span>';
     }
     seq.innerHTML=html; row.appendChild(lab); row.appendChild(seq); body.appendChild(row);
@@ -771,8 +797,17 @@ function renderSeq(epiSet){
 function applySeqSelection(){
   if(!seqChains) return;
   const {ag,epi}=computeSeqEpitope(), epiSet=new Set(epi.map(ri=>ag+":"+ri));
-  renderChainPills(); renderSeq(epiSet);
+  renderChainPills(ag); renderSeq(epiSet, ag);
   const st=$("#seqstatus");
+  if(state.epi==="manual"){                               // selected residues ARE the epitope
+    MANUAL={ag:ag||null, epi:epi.slice()};
+    st.innerHTML = epi.length
+      ? "Epitope: chain <b>"+(ag||"?")+"</b> &middot; <b>"+epi.length+"</b> residue"+(epi.length===1?"":"s")+" selected (red)."
+      : "Click the epitope residues to scaffold on the structure below (shift-click for a range).";
+    uploadDetected=true;
+    if(cviewer) loadComplex(); else updateCaption();
+    return;
+  }
   if(!abSelected()) st.textContent = selMode==="residue"
     ? "Click residues in the sequence to mark the antibody; shift-click to extend a range."
     : "Click the antibody chain(s) above to compute the epitope.";
@@ -792,6 +827,15 @@ function applySeqSelection(){
     if(cviewer) loadComplex(); else updateCaption();
   }
 }
+function syncPanelMode(){                                  // show/hide controls that only apply to one mode
+  const manual=(state.epi==="manual");
+  const sm=$("#selmode"); if(sm) sm.style.display = manual ? "none" : "";
+  const cut=$("#cutoff"); if(cut){ const lab=cut.closest("label"); if(lab) lab.style.display = manual ? "none" : ""; }
+  const head=document.querySelector(".seqhead");
+  if(head) head.innerHTML = manual
+    ? "Click the <b>epitope</b> residues to scaffold on the structure. Where a contact epitope is known it is pre-filled; add or remove residues. Gap-fill can bridge short gaps."
+    : "Mark the <b>antibody</b>; the largest remaining chain is treated as the antigen, and its residues within the contact cutoff (heavy atoms) become the epitope. Computed in your browser.";
+}
 function setSelMode(m){
   selMode=m;
   const mc=$("#modechain"), mr=$("#moderes");
@@ -803,8 +847,18 @@ function buildSeqPanel(seedAb){
   const panel=$("#seqpanel"); if(!panel) return;
   seqChains=getResidues();
   if(!seqChains || !Object.keys(seqChains).length){ panel.hidden=true; return; }
-  abSet=new Set((seedAb||[]).filter(c=>seqChains[c])); abRes=new Set(); lastClick=null;
-  panel.hidden=false; applySeqSelection();
+  lastClick=null;
+  if(state.epi==="manual"){
+    selMode="residue"; abSet=new Set(); abRes=new Set();
+    const cfg=CFG[state.target]||{}, ag=cfg.ag||largestChain(seqChains);
+    if(seqChains[ag]){                                   // pre-fill the known contact epitope, if any
+      const present=new Set(); for(const k of seqChains[ag].order) present.add(seqChains[ag].res[k].resi);
+      (cfg.epi||[]).forEach(ri=>{ if(present.has(ri)) abRes.add(ag+":"+ri); });
+    }
+  }else{
+    abSet=new Set((seedAb||[]).filter(c=>seqChains[c])); abRes=new Set();
+  }
+  syncPanelMode(); panel.hidden=false; applySeqSelection();
 }
 (function wireSeqPanel(){
   const mc=$("#modechain"), mr=$("#moderes"), cut=$("#cutoff"), gap=$("#gapfill"), body=$("#seqbody");
@@ -842,11 +896,11 @@ $("#pdbfile").addEventListener("change",e=>{
       const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
       uploadDetected=true;
       CFG["__upload"]={ag:d.antigen_chain,ab:d.partner_chains||[],epi:epiResids(d.epitope)};
-      state.epi=d.is_complex?"antibody":"predict";
+      state.epi=d.is_complex?"antibody":"manual";
       const r=document.querySelector('input[name=epi][value="'+state.epi+'"]'); if(r)r.checked=true;
       $("#uploadnote").innerHTML=d.is_complex
         ? "detected an <b>antibody</b> (chain "+(d.partner_chains||[]).join(", ")+") bound to chain <b>"+d.antigen_chain+"</b>; epitope = "+d.n_epitope+" contact residues (red)."
-        : "no bound partner &mdash; <b>lone antigen</b> (chain "+d.antigen_chain+"); the surface scan samples candidate surface patches.";
+        : "no bound partner &mdash; <b>lone antigen</b> (chain "+d.antigen_chain+"); specify the epitope residues on the structure below, or use the <a href=\"growpatch.html\">surface scan</a> to find candidate regions.";
     }catch(err){
       // detection could not run (no local service / no Backend URL): do NOT assume "no antibody".
       uploadDetected=false;
@@ -876,20 +930,17 @@ let lastRunId=null;
 async function stageReal(){
   const base=apiBase();
   const name=(DESCS["__upload"]||"antigen").toLowerCase().replace(/[^a-z0-9_.-]/g,"_");
-  const mode=state.epi==="antibody"?"antibody":"growpatch";
-  const chain=(CFG["__upload"]&&CFG["__upload"].ag)||"A";
+  // this page stages a known or user-specified epitope; the surface scan is a separate tool
+  const mode="antibody";
+  const epiChain = state.epi==="manual" ? (MANUAL.ag || (CFG["__upload"]&&CFG["__upload"].ag) || "A")
+                                        : ((CFG["__upload"]&&CFG["__upload"].ag) || "A");
+  const chain = epiChain;
   $("#stagedwrap").hidden=false; const box=$("#staged"); box.textContent="staging on "+base+" …";
-  const PATCH_CAP=8; let capNote="";
+  let capNote="";
   try{
-    let epis="";
-    if(mode==="growpatch"){                          // lone antigen: sample candidate patches first
-      const er=await fetch(base+"/enumerate?fmt="+uploadFmt+"&chain="+chain+"&mode=growpatch",{method:"POST",body:uploadText});
-      const ed=await er.json(); if(!er.ok||ed.error) throw new Error(ed.error||("enumerate HTTP "+er.status));
-      const all=(ed.patches||[]);
-      epis=all.slice(0,PATCH_CAP).map(p=>p.epitope).join("|");
-      if(!epis) throw new Error("the surface scan found no candidate patches on chain "+chain);
-      if(all.length>PATCH_CAP) capNote="\nstaged the top "+PATCH_CAP+" of "+all.length+" candidate patches (by growPatch order)";
-    }
+    const epiList = state.epi==="manual" ? (MANUAL.epi||[]) : ((CFG["__upload"]&&CFG["__upload"].epi)||[]);
+    const epis = epiSpec(epiChain, epiList);
+    if(!epis) throw new Error("no epitope selected — pick the epitope residues (or an antibody) first");
     const q="/submit?fmt="+uploadFmt+"&chain="+chain+"&mode="+mode+"&name="+encodeURIComponent(name)
       +"&epitopes="+encodeURIComponent(epis)+"&rfd3="+state.rfd3n+"&mpnn="+state.mpnnn
       +"&helix_bias="+state.helix+"&ipd="+(state.ipd?"true":"false")+"&ipdrounds="+state.ipdrounds
