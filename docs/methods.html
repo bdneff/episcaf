@@ -116,7 +116,7 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   whether an antibody can actually reach it.</p>
 
   <!-- ============================================================ -->
-  <details class="sec"><summary><h2 id="epitope">1 &nbsp; Choosing the epitope</h2></summary>
+  <details class="sec"><summary><h2 id="epitope">1 &nbsp; Identify the epitope(s)</h2></summary>
   <div class="secbody">
   <p>There are two ways in, depending on whether the binding site is already known. The tool infers
   which case applies from the uploaded structure and lets you override that choice.</p>
@@ -244,7 +244,7 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   <!-- ============================================================ -->
   </div></details>
 
-  <details class="sec"><summary><h2 id="generate">2 &nbsp; Generation &mdash; the iterative design loop</h2></summary>
+  <details class="sec"><summary><h2 id="generate">2 &nbsp; Generate scaffolds &mdash; the iterative design loop</h2></summary>
   <div class="secbody">
   <p>Generation is a loop, not a single pass. Each round builds backbones around the fixed epitope,
   filters and folds them, scores the results, and lets the winners seed the next round. The expensive
@@ -362,7 +362,7 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   <!-- ============================================================ -->
   </div></details>
 
-  <details class="sec"><summary><h2 id="score">3 &nbsp; Scoring</h2></summary>
+  <details class="sec"><summary><h2 id="score">3 &nbsp; Evaluate designs</h2></summary>
   <div class="secbody">
   <p>Two models and one combiner. One asks whether an antibody can physically reach the epitope on the
   design; the other estimates whether the design will bind in the assay. The composite folds them
