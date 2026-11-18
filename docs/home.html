@@ -34,11 +34,11 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 .footline a{color:#0033cc}
 
 /* ---- overview schematic (in-card illustrations + converging shared workflow) ---- */
-.ill{display:block;width:100%;height:auto;margin:0 0 10px;border:1px solid #e3e9f2;border-radius:7px;background:#f3f6fb}
-.ill-cap{font-size:11px;color:#566b85;margin:-4px 0 10px;letter-spacing:.01em}
-.candrow{display:flex;gap:7px;margin:0 0 8px}
+.ill{display:block;width:auto;max-width:100%;max-height:230px;height:auto;margin:0 auto 6px;background:transparent}
+.ill-cap{font-size:11px;color:#566b85;margin:0 0 10px;letter-spacing:.01em;text-align:center}
+.candrow{display:flex;gap:6px;margin:0 0 6px;justify-content:center}
 .candrow figure{flex:1;margin:0;text-align:center}
-.candrow img{display:block;width:100%;height:auto;border:1px solid #e3e9f2;border-radius:6px;background:#f3f6fb}
+.candrow img{display:block;width:100%;height:auto;max-height:150px;object-fit:contain;background:transparent}
 .candrow figcaption{font-size:10px;color:#566b85;margin-top:3px}
 .candrow .sel img{border-color:#e5543f;box-shadow:0 0 0 1px #e5543f}
 .candrow .sel figcaption{color:#c0392b;font-weight:bold}
@@ -50,7 +50,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 .shared-h{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#566b85;font-weight:bold;margin:0 0 10px}
 .shared-body{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .shared-ill{flex:none;width:150px}
-.shared-ill .ill{margin:0 0 4px;background:#fff}
+.shared-ill .ill{margin:0 auto 4px;background:transparent;max-height:150px}
 .shared-ill .ill-cap{margin:0;text-align:center}
 .steps-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;min-width:220px}
 .pstep{font-size:12.5px;font-weight:bold;color:#1b4a86;background:#fff;border:1px solid #cfdcec;border-radius:6px;padding:6px 11px}

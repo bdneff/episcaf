@@ -12,7 +12,7 @@ else is kept. A small padding is added so marks are not flush to the edge.
 import sys
 from PIL import Image
 
-PAD = 16
+PAD = 6
 THRESH = 244   # pixels with min(r,g,b) >= THRESH are treated as background
 
 def process(path):

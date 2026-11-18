@@ -31,7 +31,7 @@ mol addrep top
 # highlighted residues as a red surface region (VDW spheres read as a surface patch)
 if {$hlcol >= 0 && [llength $resids] > 0} {
     set rl [join $resids " "]
-    mol representation VDW 1.0 20
+    mol representation Licorice 0.3 12 12
     mol material AOShiny
     mol color ColorID $hlcol
     mol selection "chain $chain and protein and resid $rl"
