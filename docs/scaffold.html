@@ -62,8 +62,18 @@ td{font-variant-numeric:tabular-nums}
 @media(max-width:560px){.cpreview{width:100%}.cviewer{height:280px}}
 .seqpanel{border-top:1px solid #e2e8f1;padding:11px 12px;font-size:12px}
 .seqhead{color:#555;line-height:1.5;margin-bottom:8px}
+.selmode{display:flex;margin-bottom:8px}
+.modebtn{font:inherit;font-size:11.5px;padding:4px 11px;border:1px solid #cfd8e6;background:#fff;color:#333;cursor:pointer}
+.modebtn:first-child{border-radius:5px 0 0 5px}
+.modebtn:last-child{border-radius:0 5px 5px 0;border-left:0}
+.modebtn.on{background:#296DC0;color:#fff;border-color:#1b4a86;font-weight:bold}
+.seqparams{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:9px;font-size:12px;color:#444}
+.seqparams label{font-weight:normal}
+.seqparams input[type=number]{width:52px}
+.seqparams .phelp{color:#777;font-size:11px}
 .chainpills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px}
 .cpill{font:inherit;font-size:12px;padding:4px 10px;border:1.5px solid #cfd8e6;background:#fff;border-radius:14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;color:#1a1a1a}
+.cpill:disabled{cursor:default;opacity:.9}
 .cpill .dot{width:10px;height:10px;border-radius:50%;flex:none}
 .cpill[aria-pressed="true"]{border-color:#1b4a86;background:#eef3f9;font-weight:bold;box-shadow:inset 0 0 0 1px #296DC0}
 .cpill .role{font-size:10px;letter-spacing:.03em;text-transform:uppercase;color:#1b4a86}
@@ -73,9 +83,12 @@ td{font-variant-numeric:tabular-nums}
 .seqrow{display:flex;gap:8px;margin:2px 0;align-items:flex-start}
 .seqrow .clab{font-family:"Courier New",monospace;font-weight:bold;flex:none;width:58px;font-size:11px}
 .seqres{font-family:"Courier New",Courier,monospace;font-size:12px;line-height:1.7;letter-spacing:1px;word-break:break-all}
+.seqbody.pick .seqres span{cursor:pointer}
 .seqres .epi{background:#fde3df;outline:1px solid #e5543f;border-radius:2px}
+.seqres .absel{background:#dfe7fb;outline:1px solid #2b47d6;border-radius:2px}
 .seqlegend{font-size:11px;color:#777;margin-top:7px}
 .epimark{background:#fde3df;outline:1px solid #e5543f;border-radius:2px;padding:0 3px}
+.absmark{background:#dfe7fb;outline:1px solid #2b47d6;border-radius:2px;padding:0 3px}
 .tcard-top{padding:9px 12px;border-bottom:1px solid #e2e8f1;background:#ffffff;font-size:12.5px}
 .tcard-top .tlab{font-weight:bold;margin-right:8px}
 .tcard-top label.radio{display:inline-block;margin:2px 14px 2px 0}
@@ -178,13 +191,22 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
       </div>
     </div>
     <div id="seqpanel" class="seqpanel" hidden>
-      <div class="seqhead">Assign chains &mdash; click the <b>antibody</b> chain(s). The largest remaining chain is
-        treated as the antigen, and its residues within <b>4&nbsp;&Aring;</b> of the antibody (heavy atoms)
-        become the contact epitope. Computed in your browser; no server needed.</div>
-      <div id="chainpills" class="chainpills" role="group" aria-label="Chains — click to mark as antibody"></div>
+      <div class="seqhead">Mark the <b>antibody</b>, and the largest remaining chain is treated as the antigen.
+        Its residues within the contact cutoff of the antibody (heavy atoms) become the epitope. Computed
+        in your browser; no server needed.</div>
+      <div id="selmode" class="selmode" role="group" aria-label="How to mark the antibody">
+        <button type="button" id="modechain" class="modebtn on" aria-pressed="true">Whole chain(s)</button>
+        <button type="button" id="moderes" class="modebtn" aria-pressed="false">Selected residues</button>
+      </div>
+      <div class="seqparams">
+        <label for="cutoff">contact cutoff <input type="number" id="cutoff" value="4.0" min="2" max="12" step="0.5"> &Aring;</label>
+        <label for="gapfill">gap fill <input type="number" id="gapfill" value="0" min="0" max="20" step="1"> residues</label>
+        <span class="phelp">gap fill bridges short sequence gaps between contact residues on the antigen (0 = off).</span>
+      </div>
+      <div id="chainpills" class="chainpills" role="group" aria-label="Chains"></div>
       <div id="seqstatus" class="seqstatus"></div>
       <div id="seqbody" class="seqbody" aria-label="Sequence by chain"></div>
-      <div class="seqlegend">Letters are colored by chain. On the antigen chain, <span class="epimark">boxed</span> residues are the 4&nbsp;&Aring; epitope.</div>
+      <div class="seqlegend">Letters are colored by chain. On the antigen chain, <span class="epimark">boxed</span> residues are the epitope; in residue mode, <span class="absmark">shaded</span> residues are the antibody you selected.</div>
     </div>
   </section>
 
@@ -519,7 +541,8 @@ function renderPDB(txt,fmt){
       }
     }else{
       cviewer.setStyle({},{cartoon:{color:GREY,thickness:0.75,arrows:true}});
-      if(c.ab&&c.ab.length) cviewer.setStyle({chain:c.ab},{cartoon:{color:BLUE,thickness:0.75,arrows:true}});
+      if(c.abres){ for(const ch in c.abres) cviewer.setStyle({chain:ch,resi:c.abres[ch]},{cartoon:{color:BLUE,thickness:0.8,arrows:true}}); }
+      else if(c.ab&&c.ab.length) cviewer.setStyle({chain:c.ab},{cartoon:{color:BLUE,thickness:0.75,arrows:true}});
       if(c.ag&&c.epi&&c.epi.length) cviewer.setStyle({chain:c.ag,resi:c.epi},{cartoon:{color:RED,thickness:0.95,arrows:true}});
     }
     cviewer.zoomTo();cviewer.zoom(1.3);cviewer.render();
@@ -620,7 +643,7 @@ function firstChain(txt){const m=txt.match(/^ATOM.{15}(.)/m);return (m&&m[1].tri
 const AA3={ALA:"A",ARG:"R",ASN:"N",ASP:"D",CYS:"C",GLN:"Q",GLU:"E",GLY:"G",HIS:"H",ILE:"I",LEU:"L",
   LYS:"K",MET:"M",PHE:"F",PRO:"P",SER:"S",THR:"T",TRP:"W",TYR:"Y",VAL:"V",MSE:"M",SEC:"U",PYL:"O"};
 const CHAINCOL=["#2b47d6","#c0392b","#1b8a5a","#b8860b","#7d3c98","#17a2b8","#d35400","#555555"];
-let seqChains=null, abSet=new Set(), chainColor={};
+let seqChains=null, abSet=new Set(), abRes=new Set(), chainColor={}, selMode="chain", lastClick=null;
 function one(resn){return AA3[resn]||"X";}
 function parsePDBResidues(txt){
   const chains={};
@@ -657,73 +680,133 @@ function getResidues(){
   if(uploadFmt==="pdb"){const c=parsePDBResidues(uploadText); if(Object.keys(c).length) return c;}
   return parseModelResidues();
 }
-function pickAntigen(chains){                            // the largest chain not marked antibody
+function readCut2(){const v=parseFloat(($("#cutoff")||{}).value); const c=(isNaN(v)||v<=0)?4.0:v; return c*c;}
+function readGap(){const v=parseInt(($("#gapfill")||{}).value,10); return (isNaN(v)||v<0)?0:v;}
+function abSelected(){ return selMode==="residue" ? abRes.size>0 : abSet.size>0; }
+function isAbResidue(c,resi){ return selMode==="residue" ? abRes.has(c+":"+resi) : abSet.has(c); }
+function pickAntigen(chains){
+  if(selMode==="residue"){                               // largest chain with residues left over
+    let best=null,bestn=-1;
+    for(const c of Object.keys(chains)){
+      let n=0; for(const k of chains[c].order) if(!abRes.has(c+":"+chains[c].res[k].resi)) n++;
+      if(n>bestn){bestn=n;best=c;}
+    }
+    return bestn>0?best:null;
+  }
   const cand=Object.keys(chains).filter(c=>!abSet.has(c));
   return cand.length ? cand.reduce((a,b)=>chains[a].order.length>=chains[b].order.length?a:b) : null;
 }
 function computeSeqEpitope(){
   const ag=pickAntigen(seqChains);
-  if(!ag||!abSet.size) return {ag:ag,epi:[]};
-  const abPts=[]; for(const c of abSet) if(seqChains[c]) for(const k of seqChains[c].order) for(const p of seqChains[c].res[k].atoms) abPts.push(p);
-  const epi=[], cut2=16.0;                               // (4.0 A)^2
-  for(const k of seqChains[ag].order){
-    const ats=seqChains[ag].res[k].atoms; let hit=false;
+  if(!ag || !abSelected()) return {ag:ag,epi:[]};
+  const abPts=[];
+  for(const c of Object.keys(seqChains)) for(const k of seqChains[c].order){
+    const r=seqChains[c].res[k]; if(isAbResidue(c,r.resi)) for(const p of r.atoms) abPts.push(p);
+  }
+  if(!abPts.length) return {ag:ag,epi:[]};
+  const cut2=readCut2(), order=seqChains[ag].order, contact=new Array(order.length).fill(false);
+  for(let o=0;o<order.length;o++){
+    const r=seqChains[ag].res[order[o]];
+    if(selMode==="residue" && abRes.has(ag+":"+r.resi)) continue;   // antibody residues aren't epitope
+    const ats=r.atoms; let hit=false;
     for(let i=0;i<ats.length&&!hit;i++){const p=ats[i];
       for(let j=0;j<abPts.length;j++){const q=abPts[j],dx=p[0]-q[0],dy=p[1]-q[1],dz=p[2]-q[2];
         if(dx*dx+dy*dy+dz*dz<=cut2){hit=true;break;}}}
-    if(hit) epi.push(seqChains[ag].res[k].resi);
+    contact[o]=hit;
   }
+  const gap=readGap();                                   // bridge short sequence gaps between contacts
+  if(gap>0){ let last=-1;
+    for(let o=0;o<order.length;o++){ if(contact[o]){ if(last>=0 && o-last-1<=gap) for(let j=last+1;j<o;j++) contact[j]=true; last=o; } }
+  }
+  const epi=[]; for(let o=0;o<order.length;o++) if(contact[o]) epi.push(seqChains[ag].res[order[o]].resi);
   return {ag:ag,epi:epi};
 }
 function renderChainPills(){
-  const box=$("#chainpills"); box.innerHTML=""; const ag=pickAntigen(seqChains);
+  const box=$("#chainpills"); box.innerHTML=""; const ag=pickAntigen(seqChains), byChain=(selMode==="chain");
   Object.keys(seqChains).forEach((c,i)=>{
     chainColor[c]=CHAINCOL[i%CHAINCOL.length];
-    const n=seqChains[c].order.length, isAb=abSet.has(c);
+    const n=seqChains[c].order.length, isAb=byChain&&abSet.has(c);
     const b=document.createElement("button");
-    b.type="button"; b.className="cpill"; b.setAttribute("aria-pressed",isAb?"true":"false");
+    b.type="button"; b.className="cpill"; b.disabled=!byChain; b.setAttribute("aria-pressed",isAb?"true":"false");
     b.setAttribute("aria-label","chain "+c+", "+n+" residues"+(isAb?", antibody":""));
     b.innerHTML='<span class="dot" style="background:'+chainColor[c]+'"></span>chain '+c+' &middot; '+n+' aa'+
-      (isAb?' <span class="role">antibody</span>':(c===ag&&abSet.size?' <span class="roleag">antigen</span>':''));
-    b.addEventListener("click",()=>{ abSet.has(c)?abSet.delete(c):abSet.add(c); applySeqSelection(); });
+      (isAb?' <span class="role">antibody</span>':(c===ag?' <span class="roleag">antigen</span>':''));
+    if(byChain) b.addEventListener("click",()=>{ abSet.has(c)?abSet.delete(c):abSet.add(c); applySeqSelection(); });
     box.appendChild(b);
   });
 }
 function renderSeq(epiSet){
-  const body=$("#seqbody"); body.innerHTML=""; const ag=pickAntigen(seqChains);
+  const body=$("#seqbody"); body.innerHTML=""; body.classList.toggle("pick",selMode==="residue");
+  const ag=pickAntigen(seqChains);
   Object.keys(seqChains).forEach(c=>{
     const row=document.createElement("div"); row.className="seqrow";
     const lab=document.createElement("span"); lab.className="clab"; lab.style.color=chainColor[c]||"#333"; lab.textContent=c;
     const seq=document.createElement("span"); seq.className="seqres"; const isAg=(c===ag); let html="";
     for(const k of seqChains[c].order){
-      const r=seqChains[c].res[k], L='<span style="color:'+(chainColor[c]||"#333")+'">'+one(r.resn)+'</span>';
-      html += (isAg && epiSet && epiSet.has(r.resi)) ? '<span class="epi">'+L+'</span>' : L;
+      const r=seqChains[c].res[k], col=chainColor[c]||"#333", key=c+":"+r.resi;
+      let cls=""; if(selMode==="residue" && abRes.has(key)) cls="absel"; else if(isAg && epiSet && epiSet.has(key)) cls="epi";
+      html+='<span class="'+cls+'" data-c="'+c+'" data-ri="'+r.resi+'" style="color:'+col+'">'+one(r.resn)+'</span>';
     }
     seq.innerHTML=html; row.appendChild(lab); row.appendChild(seq); body.appendChild(row);
   });
 }
 function applySeqSelection(){
-  const {ag,epi}=computeSeqEpitope(), epiSet=new Set(epi);
+  if(!seqChains) return;
+  const {ag,epi}=computeSeqEpitope(), epiSet=new Set(epi.map(ri=>ag+":"+ri));
   renderChainPills(); renderSeq(epiSet);
   const st=$("#seqstatus");
-  if(!abSet.size) st.textContent="Click the antibody chain(s) above to compute the epitope.";
-  else if(!ag) st.textContent="All chains are marked antibody — leave at least one as the antigen.";
-  else st.innerHTML="Antigen: chain <b>"+ag+"</b> &middot; antibody: "+[...abSet].join(", ")+
-       " &middot; epitope = <b>"+epi.length+"</b> residue"+(epi.length===1?"":"s")+" within 4 &Aring; (red).";
-  if(abSet.size && ag){                                  // feed the run + the 3D view
-    CFG["__upload"]={ag:ag,ab:[...abSet],epi:epi};
+  if(!abSelected()) st.textContent = selMode==="residue"
+    ? "Click residues in the sequence to mark the antibody; shift-click to extend a range."
+    : "Click the antibody chain(s) above to compute the epitope.";
+  else if(!ag) st.textContent="Leave at least one residue or chain as the antigen.";
+  else{
+    const abDesc = selMode==="residue" ? (abRes.size+" residues") : ("chain "+[...abSet].join(", "));
+    st.innerHTML="Antigen: chain <b>"+ag+"</b> &middot; antibody: "+abDesc+
+      " &middot; epitope = <b>"+epi.length+"</b> residue"+(epi.length===1?"":"s")+" (red).";
+  }
+  if(abSelected() && ag){                                // feed the run + the 3D view
+    const abChains = selMode==="chain" ? [...abSet] : [...new Set([...abRes].map(k=>k.slice(0,k.indexOf(":"))))];
+    let abres=null;
+    if(selMode==="residue"){ abres={}; for(const k of abRes){const i=k.indexOf(":"),c=k.slice(0,i),ri=+k.slice(i+1); (abres[c]||(abres[c]=[])).push(ri);} }
+    CFG["__upload"]={ag:ag,ab:abChains,epi:epi,abres:abres};
     state.epi="antibody"; uploadDetected=true;
     const r=document.querySelector('input[name=epi][value="antibody"]'); if(r)r.checked=true;
     if(cviewer) loadComplex(); else updateCaption();
   }
 }
+function setSelMode(m){
+  selMode=m;
+  const mc=$("#modechain"), mr=$("#moderes");
+  if(mc){mc.classList.toggle("on",m==="chain");mc.setAttribute("aria-pressed",m==="chain"?"true":"false");}
+  if(mr){mr.classList.toggle("on",m==="residue");mr.setAttribute("aria-pressed",m==="residue"?"true":"false");}
+  if(seqChains) applySeqSelection();
+}
 function buildSeqPanel(seedAb){
   const panel=$("#seqpanel"); if(!panel) return;
   seqChains=getResidues();
   if(!seqChains || !Object.keys(seqChains).length){ panel.hidden=true; return; }
-  abSet=new Set((seedAb||[]).filter(c=>seqChains[c]));
+  abSet=new Set((seedAb||[]).filter(c=>seqChains[c])); abRes=new Set(); lastClick=null;
   panel.hidden=false; applySeqSelection();
 }
+(function wireSeqPanel(){
+  const mc=$("#modechain"), mr=$("#moderes"), cut=$("#cutoff"), gap=$("#gapfill"), body=$("#seqbody");
+  if(mc) mc.addEventListener("click",()=>setSelMode("chain"));
+  if(mr) mr.addEventListener("click",()=>setSelMode("residue"));
+  if(cut) cut.addEventListener("input",()=>{ if(seqChains) applySeqSelection(); });
+  if(gap) gap.addEventListener("input",()=>{ if(seqChains) applySeqSelection(); });
+  if(body) body.addEventListener("click",e=>{
+    if(selMode!=="residue") return;
+    const t=e.target.closest("span[data-ri]"); if(!t) return;
+    const c=t.getAttribute("data-c"), ri=+t.getAttribute("data-ri"), key=c+":"+ri;
+    if(e.shiftKey && lastClick && lastClick.c===c){            // extend a range within the chain
+      const order=seqChains[c].order.map(k=>seqChains[c].res[k].resi);
+      let i1=order.indexOf(lastClick.ri), i2=order.indexOf(ri); if(i1>i2){const t2=i1;i1=i2;i2=t2;}
+      const add=!abRes.has(key);
+      for(let i=i1;i<=i2;i++){const k2=c+":"+order[i]; add?abRes.add(k2):abRes.delete(k2);}
+    }else{ abRes.has(key)?abRes.delete(key):abRes.add(key); }
+    lastClick={c:c,ri:ri}; applySeqSelection();
+  });
+})();
 $("#pdbfile").addEventListener("change",e=>{
   const f=e.target.files[0]; if(!f) return;
   const rd=new FileReader();
