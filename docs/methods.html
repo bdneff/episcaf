@@ -89,11 +89,12 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
 </div></div>
 
 <div class="page">
-  <p class="updated">Methods reference &middot; updated 2026-11-16</p>
-  <h1>How it works</h1>
-  <p class="lede">What each part of the pipeline does, how it does it, and why it is built the way it
-  is. The <a href="pipeline.html">Pipeline</a> page is the map; this is the manual. Equations sit
-  behind the expanders, so you can read the reasoning first and open the math where you want it.</p>
+  <p class="updated">Methods reference &middot; updated 2026-11-18</p>
+  <h1>Methods</h1>
+  <p class="lede">episcaf selects antigen residues, generates scaffold backbones, designs sequences, and
+  evaluates predicted structures. This page describes each stage, its parameters, and the scores used to
+  rank designs. Equations sit behind the expanders, so you can read the reasoning first and open the math
+  where you want it.</p>
 
   <div class="flow">antigen in
   &rarr; choose epitope (known antibody │ growPatch)
@@ -101,35 +102,32 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   &rarr; score (accessibility + binding) &rarr; ranked designs out</div>
 
   <div class="toc"><b>On this page</b>
-    <a href="#epitope">Choosing the epitope</a>
-    <a href="#generate">Generation loop</a>
-    <a href="#score">Scoring</a>
-    <a href="#tool">How the tool runs</a>
+    <a href="#epitope">Epitope selection</a>
+    <a href="#generate">Scaffold generation</a>
+    <a href="#score">Design evaluation</a>
+    <a href="#tool">Running the tools</a>
     <a href="#repro">Reproducibility</a>
   </div>
 
-  <p>The goal is narrow and specific: present a target epitope on a small de novo protein in the same
-  shape it has on the native antigen, so an antibody that binds the antigen also binds the scaffold.
-  The generative backbone (RFdiffusion3 &rarr; ProteinMPNN &rarr; AlphaFold3) proposes candidates;
-  everything episcaf adds is a way to <em>choose the epitope well</em> and <em>rank the candidates</em>
-  by two things that matter for a real binder &mdash; whether the epitope kept its native geometry and
-  whether an antibody can actually reach it.</p>
+  <p>The design objective is to preserve the selected epitope&rsquo;s geometry while leaving space for
+  antibody binding. The generative backbone (RFdiffusion3 &rarr; ProteinMPNN &rarr; AlphaFold&nbsp;3)
+  proposes candidates; predicted structures are then evaluated against the reference antigen and, when
+  available, a reference antibody.</p>
 
   <!-- ============================================================ -->
-  <details class="sec"><summary><h2 id="epitope">1 &nbsp; Identify the epitope(s)</h2></summary>
+  <details class="sec"><summary><h2 id="epitope">1 &nbsp; Epitope selection</h2></summary>
   <div class="secbody">
-  <p>There are two ways in, depending on whether the binding site is already known. The tool infers
-  which case applies from the uploaded structure and lets you override that choice.</p>
+  <p>An epitope can be defined from an antibody&ndash;antigen complex or selected directly. When no region
+  has been selected, growPatch generates candidate surface patches. The tool infers which case applies
+  from the uploaded structure and lets you override that choice.</p>
 
   <div class="card">
-    <h3>Known antibody <span class="mode ab">epitope given</span></h3>
-    <p>When the upload is an antibody&ndash;antigen complex, the epitope is not something to predict &mdash;
-    it is observed. We take every antigen residue with a heavy atom within 4&nbsp;&Aring; of the
-    antibody as the contact epitope, group the residues into sequence segments (stretches of the
-    amino-acid sequence; one epitope can draw from several that sit next to each other in the folded
-    structure, called islands elsewhere on this page), and hand that to generation. On the 8PWW
-    benchmark this 4&nbsp;&Aring; contact rule returns the same epitope residues reported for that
-    complex.</p>
+    <h3>Contact residues from an antibody&ndash;antigen complex <span class="mode ab">epitope given</span></h3>
+    <p>For an uploaded complex, antigen residues are included when at least one heavy atom is within
+    4&nbsp;&Aring; of an antibody heavy atom. The selected residues are grouped into continuous stretches
+    of the antigen sequence for scaffold generation. Residues that are separated in sequence can be
+    adjacent in the folded antigen, so an epitope can contain several sequence segments; the design must
+    preserve the geometry of those segments and their arrangement relative to one another.</p>
     <figure class="dgm">
     <div class="seqfig">
       <div class="strip">
@@ -150,27 +148,25 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
         <figcaption style="font-size:10.5px;color:#6a7686;margin-top:4px">the two stretches meet in the fold</figcaption>
       </figure>
     </div>
-    <figcaption>Two stretches of the 8PWW sequence, far apart along the chain
-    (<b style="color:#c0392b">186&ndash;208</b> and <b style="color:#b35e13">286&ndash;313</b>), sit next to
-    one another once the antigen folds. One epitope is often several such segments (&ldquo;islands&rdquo;),
-    and generation must reproduce each and the geometry between them. Rendered from 8PWW chain A.</figcaption>
+    <figcaption>Residues <b style="color:#c0392b">186&ndash;208</b> and <b style="color:#b35e13">286&ndash;313</b>
+    of 8PWW chain A are separated in sequence but adjacent in the folded structure. The colors identify
+    the same sequence segments in both views. The figure illustrates sequence discontinuity; one epitope
+    is often several such segments, and the design must reproduce each and the geometry between them.</figcaption>
     </figure>
-    <p class="io"><b>In:</b> antibody&ndash;antigen complex (PDB). <b>&rarr; Out:</b> the epitope &mdash; the antigen residues the antibody contacts.</p>
+    <p class="io"><b>Input:</b> antibody&ndash;antigen structure and contact cutoff. <b>&rarr; Output:</b> the selected antigen residues and their sequence segments.</p>
     <p class="loc">episcaf_analysis/growpatch/read.py &middot; detect_complex()</p>
   </div>
 
   <div class="card">
-    <h3>No antibody &mdash; growPatch <span class="mode noab">candidate regions sampled</span></h3>
-    <p>With a lone antigen the epitope is not known in advance. growPatch <span class="k">samples
-    candidate surface patches</span> across the antigen, so that a range of plausible antibody
-    footprints is available to scaffold and screen. The sampling is bounded: a surface-exposure cut, a
-    fixed patch size, a cap on the number of sequence segments per patch, and deduplication (parameters
-    below) all limit it, so it covers many surface patches rather than every possible one.</p>
-    <p>This is a different task from epitope predictors such as DiscoTope and BepiPred. Those rank how
-    antibody-like each surface residue is and return a predicted epitope. growPatch does not rank
-    surfaces by binding likelihood; it generates candidate regions as input to downstream design and
-    scoring. A patch here is a candidate for design, not a claim that an antibody binds it.</p>
-    <p class="io"><b>In:</b> antigen structure (one chain, PDB). <b>&rarr; Out:</b> a set of candidate epitope patches, each a residue set that could be an antibody footprint.</p>
+    <h3>Candidate surface regions <span class="mode noab">candidate regions sampled</span></h3>
+    <p>growPatch generates surface patches for scaffold design when no binding site has been selected.
+    Candidates are produced by neighbor-based growth and directional sampling, then combined and filtered
+    to remove near-duplicates. Candidate coverage depends on the surface-exposure threshold, patch size,
+    number of sequence segments, and duplicate-removal settings.</p>
+    <p>The viewer can also rank candidates using DiscoTope scores. Surface sampling defines the candidate
+    regions; DiscoTope supplies an additional score for prioritizing them. A patch is a candidate for
+    design, not a claim that an antibody binds it.</p>
+    <p class="io"><b>Input:</b> antigen structure (one chain, PDB). <b>&rarr; Output:</b> a set of candidate surface patches, each a residue set that could be an antibody footprint.</p>
     <p>Two sampling methods run, and the tool combines them into one candidate set (labelled
     <span class="k">All candidates</span> in the viewer) because each finds patches the other misses:</p>
     <ul>
@@ -224,13 +220,14 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
     <p>Each candidate records which method or methods produced it. Agreement between the two methods is
     <span class="k">provenance</span> (the same patch was reached two ways); it is not on its own
     evidence that the patch is a real epitope.</p>
-    <div class="why"><b>Port check:</b> on chain A of 8PWW, the neighbor-growth port reproduces its
-    reference implementation for that input and configuration &mdash; 227 identical candidate patches.
-    This checks that the port matches the reference, not that the candidates are true epitopes. The
-    browser demo on the <a href="growpatch.html">growPatch</a> page reports different counts (137
-    combined, 106 from neighbor growth) under its own structure-processing configuration; the two
-    settings are not directly comparable.</div>
-    <details><summary>the math &mdash; relative SASA and patch overlap</summary>
+    <div class="why"><b>Reference-implementation check:</b> on chain A of 8PWW, the neighbor-growth
+    implementation reproduces the 227 reference candidates for the tested input and configuration &mdash;
+    run with no surface-accessibility pre-filter, so every residue is treated as surface. This verifies
+    agreement with the reference implementation, not that the candidates are true epitopes. The browser
+    example on the <a href="growpatch.html">growPatch</a> page applies the 0.2 relSASA surface filter and
+    combines growth with directional sampling, reporting 137 candidates (106 from neighbor growth). These
+    counts match only after the input processing and settings are matched.</div>
+    <details><summary>Surface exposure and patch overlap</summary>
       <p class="mnote">A residue counts as surface by its <b>relative</b> solvent-accessible area: its SASA
       in the structure divided by the maximum that residue type can expose (Tien 2013 theoretical MAXASA).
       Relative, so a buried large residue and a buried small one read the same.</p>
@@ -244,12 +241,12 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   <!-- ============================================================ -->
   </div></details>
 
-  <details class="sec"><summary><h2 id="generate">2 &nbsp; Generate scaffolds &mdash; the iterative design loop</h2></summary>
+  <details class="sec"><summary><h2 id="generate">2 &nbsp; Generate scaffolds</h2></summary>
   <div class="secbody">
-  <p>Generation is a loop, not a single pass. Each round builds backbones around the fixed epitope,
-  filters and folds them, scores the results, and lets the winners seed the next round. The expensive
-  steps (diffusion and folding) run on the cluster GPU; the cheap filter in the middle is what makes
-  the budget go further.</p>
+  <p>The pipeline generates backbones around the selected epitope, filters them, designs sequences, and
+  predicts structures. When iterative design is enabled, selected designs from one round are used to
+  generate variants in the next round alongside independently generated backbones. The expensive steps,
+  diffusion and folding, run on the cluster GPU.</p>
 
   <figure class="dgm">
   <svg viewBox="0 0 720 252" role="img" aria-label="Flowchart of the iterative design loop: generate backbones, predict and score, pick winners, re-seed the next round with partial-diffusion children and fresh de-novo backbones, looping until a stop condition sends designs to the ranked output." style="max-width:720px">
@@ -270,11 +267,11 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
     <text class="dmut" x="108" y="82">epitope held fixed</text>
     <text class="dlbl" x="366" y="64">Predict + score</text>
     <text class="dmut" x="366" y="82">MPNN &#8594; AF3 &#8594; metrics</text>
-    <text class="dlbl" x="618" y="74">Pick winners</text>
-    <text class="dlbl" x="366" y="174">Re-seed next round</text>
-    <text class="dmut" x="366" y="190">partial-diffusion children</text>
-    <text class="dmut" x="366" y="205">+ fresh de-novo</text>
-    <text class="dlbl" x="618" y="186">Ranked designs out</text>
+    <text class="dlbl" x="618" y="74">Select designs</text>
+    <text class="dlbl" x="366" y="174">Generate variants</text>
+    <text class="dmut" x="366" y="190">partial-diffusion variants</text>
+    <text class="dmut" x="366" y="205">+ new backbones</text>
+    <text class="dlbl" x="618" y="186">Export designs</text>
   </g>
   <g color="currentColor" stroke="currentColor" stroke-width="1.6" fill="none">
     <line x1="192" y1="69" x2="270" y2="69" marker-end="url(#mkf)"/>
@@ -283,74 +280,67 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
     <line x1="640" y1="98" x2="640" y2="147" marker-end="url(#mkf)"/>
   </g>
   <path d="M276,182 L110,182 L110,102" fill="none" stroke="#2b47d6" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#mkfb)"/>
-  <text class="dmut" x="24" y="30" text-anchor="start">round 0: all de-novo</text>
+  <text class="dmut" x="24" y="30" text-anchor="start">round 0: all new backbones</text>
   <text class="dtxt" x="118" y="150" text-anchor="start" fill="#2b47d6">next round</text>
-  <text class="dmut" x="470" y="122" text-anchor="start">winners</text>
+  <text class="dmut" x="470" y="122" text-anchor="start">selected</text>
   <text class="dmut" x="582" y="116" text-anchor="start">stop when:</text>
-  <text class="dmut" x="582" y="129" text-anchor="start">success &middot; plateau &middot; cap</text>
-  <text class="dmut" x="366" y="238" text-anchor="middle">children share grows with a streak of improving rounds (capped; a de-novo floor keeps exploring)</text>
+  <text class="dmut" x="582" y="129" text-anchor="start">target &middot; improvement &middot; round limit</text>
+  <text class="dmut" x="366" y="238" text-anchor="middle">variant share grows with a streak of improving rounds (capped; a floor keeps sampling new backbones)</text>
   </svg>
-  <figcaption>Conceptual schematic. Generation runs as a loop: scored winners re-seed the next round as
-  partial-diffusion children alongside fresh de-novo backbones, and the loop stops on success, a score
-  plateau, or a round cap.</figcaption>
+  <figcaption>Schematic. Selected designs contribute partial-diffusion variants to the next round;
+  independently generated backbones are also included. The controller stops according to the configured
+  target, improvement, or round limit.</figcaption>
   </figure>
 
   <div class="card">
-    <h3>RFdiffusion3 &mdash; backbones</h3>
-    <p>RFdiffusion3 diffuses a protein backbone around the epitope, which is held fixed as a
-    <span class="k">contig</span> (a span of residues whose coordinates stay fixed during diffusion) so
-    its geometry is preserved while the scaffold is built around it. The default is 8 backbones per
-    contig; more backbones means more raw diversity at linear cost. An optional <span class="k">helix
-    bias</span> pushes the scaffold toward helical secondary structure.</p>
-    <p class="io"><b>In:</b> epitope residues held fixed (a contig spec on the antigen). <b>&rarr; Out:</b> de novo backbone(s) presenting that epitope &mdash; coordinates, no sequence yet.</p>
-    <div class="why"><b>Helix bias:</b> helical scaffolds often score as stronger binders. That signal
-    may be real, or it may be a confound, since helical designs tend to be better-behaved in the
-    cryo-EM experiments the training data comes from. The two explanations have not been separated, so
-    helicity is exposed as an adjustable bias rather than fixed in the protocol.</div>
-    <p class="mnote">We stay on RFdiffusion3. RFD4 / Proteina is tracked as a possible future switch, not
-    an adopted one &mdash; it is not unambiguously better for this fixed-epitope task yet.</p>
+    <h3>Backbone generation with RFdiffusion3</h3>
+    <p>RFdiffusion3 generates backbone structures around the selected epitope. A contig specification
+    describes the fixed epitope segments and the regions to be generated, so the epitope geometry is
+    preserved while the scaffold is built around it. The default configuration requests eight backbones
+    per contig. Increasing the number of backbones increases the number of candidate structures and the
+    required computation.</p>
+    <p class="io"><b>Input:</b> epitope residues held fixed (a contig spec on the antigen). <b>&rarr; Output:</b> de novo backbone(s) presenting that epitope &mdash; coordinates, no sequence yet.</p>
+    <div class="why"><b>Helix bias:</b> an experimental setting that is not connected to the current
+    generation workflow.</div>
   </div>
 
   <div class="card">
-    <h3>AOMclash backbone pre-filter</h3>
-    <p>Before spending MPNN and AlphaFold3 on a backbone, score it for antibody accessibility and drop
-    the ones that bury the epitope. This runs on the bare backbone, needs no sequence or fold, and is
-    the single biggest compute saving in the loop: clashy backbones are removed before the two
-    expensive steps touch them. The score is AOMclash (<a href="aomclash.html">how antibody obstruction
-    is estimated</a>; defined below); the pre-filter keeps the best fraction
-    per epitope (default half).</p>
-    <p class="io"><b>In:</b> RFd3 backbones + the epitope frame. <b>&rarr; Out:</b> the subset of backbones kept &mdash; those whose epitope stays sterically accessible, by keep-frac.</p>
+    <h3>Backbone filtering with AOMclash</h3>
+    <p>AOMclash estimates how much a generated backbone could obstruct antibody binding to the epitope
+    (<a href="aomclash.html">how antibody obstruction is estimated</a>; defined below). Backbones are
+    ranked separately for each epitope, and the configured percentage with the lowest obstruction scores
+    continues to sequence design. With a retention setting of 50%, 10 of 20 generated backbones would
+    continue. Filtering reduces the number of candidates processed by ProteinMPNN and AlphaFold&nbsp;3.</p>
+    <p class="io"><b>Input:</b> generated backbones and the reference epitope. <b>&rarr; Output:</b> backbones retained for sequence design.</p>
     <p class="loc">scripts/aomclash_prefilter.py</p>
   </div>
 
   <div class="card">
-    <h3>ProteinMPNN &rarr; AlphaFold3</h3>
-    <p>ProteinMPNN designs sequences for each surviving backbone with the epitope positions held fixed
-    (8 sequences per backbone by default), so the epitope keeps its identity while the scaffold sequence
-    is optimised for the fold. AlphaFold3 then predicts the structure of each sequence (single-sequence,
-    fixed seed). Every downstream metric is computed on that predicted structure: epitope RMSD to the
-    native, antibody clashes, PAE. These are quantities read off a prediction; AlphaFold3 does not
-    measure whether a design folds, stays stable, or binds.</p>
-    <p class="io"><b>ProteinMPNN &mdash; In:</b> a backbone. <b>&rarr; Out:</b> amino-acid sequence(s) for it.</p>
-    <p class="io"><b>AlphaFold3 &mdash; In:</b> a designed sequence (with antigen/epitope context). <b>&rarr; Out:</b> predicted structure + confidence/metrics (pLDDT, PAE, RMSD, clash counts).</p>
+    <h3>Sequence design with ProteinMPNN, then structure prediction with AlphaFold&nbsp;3</h3>
+    <p>ProteinMPNN designs amino-acid sequences for each retained backbone while preserving the specified
+    epitope residue identities. The default configuration requests eight sequences per backbone, and each
+    sequence becomes a separate candidate for structure prediction.</p>
+    <p>AlphaFold&nbsp;3 predicts a structure for each designed sequence. The documented configuration uses
+    single-sequence input (a self-only MSA), templates disabled, and a fixed seed. Predicted structures
+    are used to calculate the structural metrics and rank the designs.</p>
+    <p class="io"><b>ProteinMPNN &mdash; Input:</b> a backbone. <b>&rarr; Output:</b> amino-acid sequence(s) for it.</p>
+    <p class="io"><b>AlphaFold&nbsp;3 &mdash; Input:</b> a designed sequence (with antigen/epitope context). <b>&rarr; Output:</b> predicted structure + confidence/metrics (pLDDT, PAE, RMSD, clash counts).</p>
     <p class="loc">scripts/stage03_mpnn_*.py &middot; stage04_af3_*</p>
   </div>
 
   <div class="card">
-    <h3>Partial-diffusion children &amp; the adaptive budget</h3>
-    <p>When a design scores well, the backbones near it in shape space are worth exploring. A
-    <span class="k">partial-diffusion child</span> takes a winning backbone, adds a little noise back,
-    and denoises again with the epitope fixed &mdash; a controlled step to a neighbour of something that
-    already worked. The loop also randomises island order between rounds so a multi-island epitope is
-    not always built in the same sequence layout.</p>
-    <p>How much of each round&rsquo;s budget goes to children rather than fresh de-novo backbones is
-    <span class="k">adaptive</span>. Round 0 is all de-novo (there are no winners yet). After that the
-    child share grows with a streak of improving rounds and is capped, so a run that keeps finding
-    better designs leans into exploitation, while a stalled run keeps exploring.</p>
-    <div class="why"><b>Caveat:</b> branching off winners risks turning the search into best-of-N inside
-    one lucky neighbourhood rather than finding genuinely better designs (a false-discovery risk). The
-    cap and the de-novo floor keep the loop from collapsing onto a single family.</div>
-    <details><summary>the math &mdash; the children fraction</summary>
+    <h3>Partial diffusion and allocation between rounds</h3>
+    <p>Partial diffusion generates variants of a selected backbone by adding noise and repeating denoising
+    while preserving the specified epitope constraints. Each round can contain both partial-diffusion
+    variants and independently generated backbones. The controller adjusts their relative allocation using
+    improvements in the best score across consecutive rounds, and the allocation is capped so that
+    independently generated backbones continue to be sampled. Randomizing the order of epitope sequence
+    segments provides additional scaffold configurations.</p>
+    <div class="why"><b>Limitation:</b> repeated refinement can concentrate sampling on a narrow set of
+    similar structures. Retaining independently generated backbones helps maintain structural diversity.</div>
+    <p class="mnote">A run stops at the first of: the target criterion is reached; the score improvement
+    falls below the configured stopping criterion; or the maximum number of rounds is reached.</p>
+    <details><summary>Allocation of partial-diffusion variants</summary>
       <div class="eq" data-tex="f_{\text{child}}(r)=\min\!\big(f_{\max},\; s_{\text{step}}\cdot \text{streak}(r)\big),\qquad f_{\text{child}}(0)=0"></div>
       <p class="mnote">with per-streak step <span class="k">s<sub>step</sub></span> = 0.25 and cap
       <span class="k">f<sub>max</sub></span> = 0.6. <code>streak(r)</code> is the number of consecutive
@@ -364,59 +354,50 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
 
   <details class="sec"><summary><h2 id="score">3 &nbsp; Evaluate designs</h2></summary>
   <div class="secbody">
-  <p>Two models and one combiner. One asks whether an antibody can physically reach the epitope on the
-  design; the other estimates whether the design will bind in the assay. The composite folds them
-  together with epitope-fidelity metrics into a single rank.</p>
+  <p>Designs are evaluated using structural metrics and the available ranking scores. Structural metrics
+  describe epitope geometry, prediction confidence, and antibody obstruction. A model fitted to
+  binding-assay data provides an additional ranking score.</p>
 
   <div class="card">
-    <h3>The metrics, defined</h3>
-    <p>Every metric below is computed on the AlphaFold3-predicted structure unless stated otherwise.</p>
+    <h3>Structural metrics</h3>
+    <p>The metrics below are calculated from the predicted structure and its reference, unless otherwise
+    stated.</p>
     <ul>
-      <li><span class="k">Epitope RMSD</span> &mdash; root-mean-square deviation of the epitope backbone
-      from the native reference after alignment, in &Aring;. Lower is a closer match to the native
-      geometry.</li>
-      <li><span class="k">PAE</span> (predicted aligned error) &mdash; AlphaFold3&rsquo;s own estimate of
-      the error in the relative position of two residues, in &Aring;. Lower means AlphaFold3 is more
-      confident about where parts of the structure sit relative to each other.</li>
-      <li><span class="k">Antibody clashes (measured against a known antibody)</span> &mdash; the count
-      of scaffold residues that overlap the reference antibody after the design is aligned onto the
-      complex. Available only when an antibody structure is in hand.</li>
-      <li><span class="k">Estimated antibody clashes (AOMclash)</span> &mdash; a model-based estimate of
-      the same quantity, used when no reference antibody is available (below). It is an estimate from
-      antibody geometry, not a measurement on a real complex.</li>
-      <li><span class="k">Four-filter pass</span> &mdash; the design clears the four DP3 filters
-      (epitope RMSD &le; 1&nbsp;&Aring;, overall RMSD &le; 2&nbsp;&Aring;, mean PAE &lt; 5, and zero
-      AlphaFold3 antibody clashes). Passing is a computational screen on predicted structures; it does
-      not establish experimental binding.</li>
+      <li><span class="k">Epitope RMSD</span> &mdash; backbone deviation from the reference epitope after
+      alignment, in &Aring;. Lower values indicate a closer match.</li>
+      <li><span class="k">Overall RMSD</span> &mdash; backbone deviation from the intended (MPNN-designed)
+      structure over the configured comparison region, in &Aring;.</li>
+      <li><span class="k">PAE</span> (predicted aligned error) &mdash; AlphaFold&nbsp;3&rsquo;s estimate of
+      the uncertainty in the relative placement of residues, in &Aring;. Lower is more confident.</li>
+      <li><span class="k">Clashes with the reference antibody</span> &mdash; the number of scaffold
+      residues satisfying the geometric overlap criterion after alignment to the reference complex.
+      Available only when an antibody structure is in hand.</li>
+      <li><span class="k">Estimated antibody clashes (AOMclash)</span> &mdash; the AOMclash output
+      calibrated to the reference clash-count scale, used when no reference antibody is available (below).</li>
     </ul>
-    <p class="mnote">Where a required metric is missing, a design is not evaluated on that criterion
-    rather than treated as a pass.</p>
+    <p>The standard antibody-reference filters require epitope RMSD &le; 1&nbsp;&Aring;, overall RMSD &le;
+    2&nbsp;&Aring;, mean PAE &lt; 5&nbsp;&Aring;, and zero clashing residues. A design with a missing
+    required metric is marked &ldquo;Not evaluated.&rdquo; These criteria evaluate predicted structures;
+    experimental binding is assessed separately.</p>
   </div>
 
   <div class="card">
     <h3>AOMclash &mdash; antibody accessibility</h3>
-    <p>A scaffold can present the epitope perfectly and still be useless if its own bulk sits where the
-    antibody needs to be. AOMclash measures that. From roughly a thousand real antibody&ndash;antigen
-    complexes it builds an <span class="k">occupancy map</span>: in a frame centred on the epitope, a
-    boolean 33&times;33&times;33 grid at 2&nbsp;&Aring; marks where antibody atoms tend to sit, averaged
-    over all the complexes. The map is antibody geometry only &mdash; it never sees the design &mdash; so
-    it transfers to a new antigen by construction. For a design, we read the map at each scaffold atom
-    and sum it over the atoms that fall <em>outside</em> the native antigen&rsquo;s own volume (the
-    &ldquo;free&rdquo; atoms, more than 4&nbsp;&Aring; from any native-antigen atom). That sum,
-    <code>s_p1_free</code>, is high when the scaffold intrudes into antibody space.</p>
-    <p class="io"><b>In:</b> a design's scaffold atoms, framed on the epitope. <b>&rarr; Out:</b> <code>s_p1_free</code> &mdash; the occupancy summed over the free atoms, an accessibility score in AF3-clash units.</p>
+    <p>AOMclash uses an occupancy map derived from antibody&ndash;antigen complexes aligned in an
+    epitope-centered coordinate frame; the map records where antibody atoms occur relative to the epitope
+    (a boolean 33&times;33&times;33 grid at 2&nbsp;&Aring;, averaged over the complexes). To score a
+    scaffold, the reference epitope is aligned to this frame and the map is sampled at the scaffold atoms.
+    The raw score sums the occupancy values for atoms more than 4&nbsp;&Aring; from any reference-antigen
+    atom. Higher scores indicate more scaffold material in regions occupied by antibodies. See the
+    <a href="aomclash.html">AOMclash documentation</a> for map construction, calibration, and validation.</p>
+    <p class="io"><b>Input:</b> a design's scaffold atoms, framed on the epitope. <b>&rarr; Output:</b> the raw score <code>s_p1_free</code>; where calibration is applied, a separate output on the AlphaFold&nbsp;3 clashing-residue scale.</p>
     <p class="mnote">AOMclash is a model-based estimate of accessibility, not a measurement on a real
-    antibody&ndash;antigen complex. The isotonic step below reports it in AlphaFold3 clash-count units,
-    which are themselves counts on a predicted structure, so this is an estimate calibrated to another
-    model&rsquo;s output.</p>
-    <div class="why"><b>One feature, not forty:</b> a 39-feature gradient-boosted version was built and
-    tested. It added about 0.02 AUROC over the single feature, a small gain from 38 mostly-correlated
-    inputs with real overfitting risk. The shipped score is the one interpretable, monotone feature
-    (<code>s_p1_free</code>), calibrated onto the AlphaFold3 clash count; the 39-feature model is kept
-    as the recorded, rejected baseline. AOMclash replaces the earlier geometric accessibility surrogate
-    (a native-aware cylinder fitted over the epitope) throughout, as a continuous, finer-grained
-    estimate.</div>
-    <details><summary>the math &mdash; occupancy map and the free-atom sum</summary>
+    antibody&ndash;antigen complex. The raw sum is unitless; only the calibrated output is on the
+    clash-count scale.</p>
+    <div class="why"><b>Model comparison:</b> a multi-feature gradient-boosted model was also evaluated.
+    The current implementation uses the single occupancy-sum feature, <code>s_p1_free</code>. The model
+    comparison and selection criteria are documented in the linked analysis.</div>
+    <details><summary>Occupancy map and score calculation</summary>
       <p class="mnote">Each complex contributes a boolean occupancy grid in the epitope frame; the map is
       their mean (an empirical probability that antibody mass occupies a voxel):</p>
       <div class="eq" data-tex="P_1(v)=\frac{1}{N}\sum_{c=1}^{N}\mathbb{1}\big[\text{antibody atom of }c\text{ in voxel }v\big]"></div>
@@ -429,53 +410,50 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   </div>
 
   <div class="card">
-    <h3>Interpretable binding model</h3>
-    <p>Beyond geometry, a small logistic model produces a binding score for each design. It is a
-    scorecard, not a black box: L2-regularised logistic regression over an inspectable feature set, the
-    design metrics, secondary-structure content, and three native-context terms (an intra-epitope
-    electrostatic sum, a scaffold-to-epitope size ratio, and local antigen crowding). Performance is
-    measured by repeated cross-validation grouped by epitope (56 epitopes, 2,720 assayed designs, 217
-    binders, base rate 8%), so every design is scored by a model that never trained on its antibody. On
-    that held-out evaluation it reaches ROC-AUC 0.812.</p>
-    <p class="io"><b>In:</b> a design's features (design metrics, secondary-structure content, static native-context terms). <b>&rarr; Out:</b> a binding score, <code>binding_pred</code>, used to rank designs; higher is a stronger predicted binder under the model.</p>
-    <div class="why"><b>Why this feature set:</b> an earlier version leaned on structure-dynamics features
-    (B-factor, elastic-network flexibility). Those are read off the bound complex and are confounded by
-    it &mdash; rigid-when-bound is a consequence of binding, not a cause. A clean, static feature set
-    beat that dynamics block out of sample by +0.013 AUROC (95% CI [+0.008, +0.018]) in a paired,
-    held-out test, and it is causally cleaner because nothing in it sits downstream of binding. So we
-    adopted it.</div>
-    <p>Read as a re-ranking layer, the model enriches for binders: a random design in this setting binds
-    about 8% of the time; designs that pass the four DP3 filters (defined above) bind about 24%; ranking
-    those passers by the binding score lifts the top band to roughly a third, and the very top few
-    percent higher still.</p>
-    <details><summary>the math &mdash; the logistic score</summary>
+    <h3>Binding model</h3>
+    <p>The binding model uses L2-regularized logistic regression to rank designs from their structural and
+    epitope features. The documented feature set includes design metrics, epitope secondary structure, and
+    static descriptors of the antigen environment (an intra-epitope electrostatic sum, a scaffold-to-epitope
+    size ratio, and local antigen crowding). Evaluation used repeated cross-validation grouped by epitope,
+    with all designs from an epitope held out together. The reported dataset contains 2,720 assayed designs
+    across 56 epitopes, including 217 binders, and the reported ROC-AUC is 0.817.</p>
+    <p class="io"><b>Input:</b> a design's features (design metrics, epitope secondary structure, static antigen-context terms). <b>&rarr; Output:</b> a binding score, <code>binding_pred</code>, used to rank designs.</p>
+    <p>Higher binding scores indicate stronger predicted binding under the model. The class-balanced model
+    is used for ranking; its output is not presented as a calibrated binding probability.</p>
+    <div class="why"><b>Feature selection:</b> the current feature set uses static descriptors in place of
+    the earlier bound-state dynamics descriptors. The paired, held-out evaluation reported a ROC-AUC
+    increase of 0.013, with a 95% confidence interval of 0.008&ndash;0.018.</div>
+    <p>Applied as a re-ranking layer, the model enriches for binders. About 8% of designs in the assay
+    dataset bound the target. Among the roughly 13% of designs that pass the structural filters, about 24%
+    bind. Ranking by the binding score, the top 10% of designs bind at about 33%. Further enrichment
+    depends on the ranking score and the number of designs selected.</p>
+    <details><summary>Binding-model equation and preprocessing</summary>
       <div class="eq" data-tex="P(\text{bind})=\sigma\!\Big(\beta_0+\textstyle\sum_j \beta_j\,\tilde{x}_j\Big),\qquad \sigma(z)=\frac{1}{1+e^{-z}}"></div>
-      <p class="mnote">Features <span class="k">x̃</span> are median-imputed and standardised; the weights
-      <span class="k">&beta;</span> are L2-regularised and class-balanced for the 8% base rate. Class
-      balancing makes the output order designs reliably but shifts its level, so <code>binding_pred</code>
-      is used as a ranking score rather than a calibrated binding probability. Because the score is
-      additive in interpretable features, each weight reads directly as that feature&rsquo;s pull.</p>
+      <p class="mnote">Missing features are median-imputed and numeric features are standardized before
+      fitting; the weights <span class="k">&beta;</span> are L2-regularized and class-balanced for the 8%
+      base rate. The class-balanced output orders designs for ranking rather than giving a calibrated
+      binding probability.</p>
     </details>
     <p class="loc">episcaf_analysis/binding_model/ &middot; results/feature_model/model_v1_findings.md</p>
   </div>
 
   <div class="card">
-    <h3>Composite &amp; selection</h3>
-    <p>The final rank is a weighted sum of a few transformed metrics, set by a named preset rather than
-    hard-coded, so the dials live in one readable file. Each metric is first put on a common scale
-    (a percentile or a saturating sigmoid), then combined. The accessibility term is where the two input
-    modes differ, and it is the only place they differ:</p>
+    <h3>Composite score and design selection</h3>
+    <p>The composite score combines transformed structural metrics using the weights in the selected
+    preset. The preset defines the included metrics, their transformations (a percentile or a saturating
+    sigmoid), and the handling of missing values. The accessibility term is where the two input modes
+    differ:</p>
     <ul>
-      <li><span class="k">Known antibody</span> &mdash; use the real AlphaFold3 clash against the actual
-      antibody (it is ground truth). Preset <code>antibody_softgate</code>.</li>
-      <li><span class="k">No antibody</span> &mdash; use AOMclash in its place, at the same weight. Preset
-      <code>twelvemer</code>.</li>
+      <li><span class="k">With a reference antibody</span> &mdash; accessibility is evaluated using the
+      geometric clash count against that antibody. Preset <code>antibody_softgate</code>.</li>
+      <li><span class="k">Without a reference antibody</span> &mdash; the configured AOMclash estimate
+      supplies the accessibility term. Preset <code>twelvemer</code>.</li>
     </ul>
-    <p>Selection ranks by composite score and takes the top <em>k</em> designs per epitope (the
-    <span class="k">top-k</span>, with <em>k</em> set per run). It does not apply a hard pass/fail gate,
-    so a strong design is not thrown out for narrowly missing one threshold.</p>
-    <p class="io"><b>In:</b> AF3 per-design metrics (with <code>binding_pred</code> where features exist), plus a preset. <b>&rarr; Out:</b> designs ranked by composite score, then the top <em>k</em> per epitope selected.</p>
-    <details><summary>the math &mdash; the composite</summary>
+    <p>Designs are ranked within each epitope group, and the requested number (the top <em>k</em> per
+    epitope) is selected. This selection mode ranks all eligible designs without requiring them to pass
+    the structural filters.</p>
+    <p class="io"><b>Input:</b> per-design structural metrics and a preset. <b>&rarr; Output:</b> designs ranked by the composite score, then the top <em>k</em> per epitope selected. (The binding model is a separate ranker; the composite does not include it.)</p>
+    <details><summary>Composite-score calculation</summary>
       <div class="eq" data-tex="\text{composite}=\sum_{m} w_m\, T_m(x_m),\qquad \sum_m w_m = 1"></div>
       <p class="mnote">T<sub>m</sub> is the per-metric transform (percentile or sigmoid). Weights
       renormalise over whichever metrics are present, so a missing column rescales the rest rather than
@@ -487,30 +465,28 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   <!-- ============================================================ -->
   </div></details>
 
-  <details class="sec"><summary><h2 id="tool">4 &nbsp; How the tool runs</h2></summary>
+  <details class="sec"><summary><h2 id="tool">4 &nbsp; Running the tools</h2></summary>
   <div class="secbody">
-  <p>The site you are reading is static &mdash; GitHub Pages cannot run Python. The real work happens in
-  two backends, and the page talks to whichever one is available.</p>
+  <p>The browser displays structures, accepts selections, and explores results. Processing a new structure
+  may also require the local service. RFdiffusion3 generation and AlphaFold&nbsp;3 prediction run on the
+  cluster.</p>
   <div class="card">
-    <h3>Three layers</h3>
+    <h3>Browser tools, local processing, and cluster jobs</h3>
     <ul>
-      <li><span class="k">Static pages.</span> The 3D viewer, the pipeline blueprint, and the results
-      table are plain HTML and run anywhere, including straight from Pages. No compute.</li>
-      <li><span class="k">Local server</span> (<code>scripts/growpatch_serve.py</code>). A small
-      standard-library server you run on your own machine. It does the CPU work (detect the antibody,
-      run growPatch, build the RFd3 contigs), so processing your own antigen runs the actual steps
-      rather than a canned response. No extra dependencies.</li>
-      <li><span class="k">Cluster service</span> (<code>episcaf_service/</code>, FastAPI). The backend
-      that reaches the GPU pipeline. You run it on a cluster-access host and reach it over a private SSH
-      tunnel. Set its URL in the GUI tool and a run stages for real.</li>
+      <li><span class="k">Browser.</span> Displays structures, supports the implemented residue
+      selections, and reads results files. Served as plain HTML, including from GitHub Pages.</li>
+      <li><span class="k">Local service</span> (<code>scripts/growpatch_serve.py</code>). Processes
+      uploaded structures, generates candidate regions, and prepares design specifications on your own
+      machine.</li>
+      <li><span class="k">Cluster service</span> (<code>episcaf_service/</code>, FastAPI). Prepares cluster
+      inputs and provides access to completed results through the configured connection, over a private
+      SSH tunnel.</li>
     </ul>
-    <div class="why"><b>Stage, don&rsquo;t auto-launch:</b> the service does every CPU step for real and
-    then <em>stops at the GPU boundary</em>. A run writes its job folder and an exact submit script under
-    the durable workspace; you launch the diffusion and folding jobs yourself. Nothing the web tool does
-    spends GPU time on its own &mdash; that is deliberate, both so a run is never triggered by accident and
-    because job submission stays in your hands. Making the service public (an API key, rate limits) is a
-    later step; for now it is private over the tunnel.</div>
-    <p class="loc">episcaf_service/README.md &middot; /submit stages, /results scores</p>
+    <div class="why"><b>Job preparation and submission:</b> preparing a job writes the input files and
+    submission script to the configured workspace. It does not start RFdiffusion3 or AlphaFold&nbsp;3.
+    Submit the generated script on the cluster to begin those calculations. Setup commands, host details,
+    and the SSH tunnel are in the service setup notes.</div>
+    <p class="loc">episcaf_service/README.md</p>
   </div>
 
   <!-- ============================================================ -->
@@ -518,19 +494,15 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
 
   <details class="sec"><summary><h2 id="repro">5 &nbsp; Reproducibility</h2></summary>
   <div class="secbody">
-  <p>Every number on this page comes from code run on real structures, and each method points at the file
-  that implements it (the grey paths above). The scorer weights and transforms are dials in a preset
-  file, not constants buried in code; the occupancy map is a vendored, regenerable artifact; and the
-  binding model&rsquo;s cross-validation is reproducible from one script. The manuscript is the full
-  written record, and the <a href="pipeline.html">Pipeline</a> page shows what is shipped versus still in
-  progress.</p>
+  <p>Method sections link to their implementation files (the grey paths above). Score transformations and
+  weights are defined in presets (<code>episcaf_analysis/presets.py</code>); the occupancy map has a
+  documented generation procedure (<code>episcaf_analysis/aomclash/aom_map.py</code>); and the model
+  evaluations have associated analysis scripts (<code>scripts/webtool_enrichment.py</code>,
+  <code>results/feature_model/model_v1_findings.md</code>). The manuscript and project records provide the
+  scientific background and analysis details, and the <a href="pipeline.html">Design workflow</a> page
+  shows what is implemented versus in development.</p>
 
   </div></details>
-
-  <p class="foot"><b>In short:</b> fix the epitope (observed on a complex, or sampled as candidate
-  patches on a lone antigen), build scaffolds around it in a filtered loop, and rank them by whether the
-  epitope kept its shape and whether an antibody can reach it, with the reasoning and the math open to
-  inspection.</p>
 </div>
 
 <script>
