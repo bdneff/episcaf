@@ -36,6 +36,12 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 /* ---- overview schematic (in-card illustrations + converging shared workflow) ---- */
 .ill{display:block;width:100%;height:auto;margin:0 0 10px;border:1px solid #e3e9f2;border-radius:7px;background:#f3f6fb}
 .ill-cap{font-size:11px;color:#566b85;margin:-4px 0 10px;letter-spacing:.01em}
+.candrow{display:flex;gap:7px;margin:0 0 8px}
+.candrow figure{flex:1;margin:0;text-align:center}
+.candrow img{display:block;width:100%;height:auto;border:1px solid #e3e9f2;border-radius:6px;background:#f3f6fb}
+.candrow figcaption{font-size:10px;color:#566b85;margin-top:3px}
+.candrow .sel img{border-color:#e5543f;box-shadow:0 0 0 1px #e5543f}
+.candrow .sel figcaption{color:#c0392b;font-weight:bold}
 .converge{position:relative;height:34px;margin-top:16px}
 .conv-wide{display:block;width:100%;height:34px;color:#8fa4c0}
 .conv-tall{display:none}
@@ -99,19 +105,10 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <div class="card-t">Scaffold a selected epitope</div>
       </div>
       <div class="card-b">
-        <svg class="ill" viewBox="0 0 200 118" role="img"
-             aria-label="An antigen shown as one grey shape with a single selected epitope highlighted in red.">
-          <path d="M58 22 C92 8 146 12 172 38 C190 56 190 86 162 102 C132 118 76 118 46 100 C20 84 14 52 30 34 C39 24 48 26 58 22 Z"
-                fill="#9aa3ad" stroke="#7c858f" stroke-width="1.5"/>
-          <!-- selected epitope: a small cluster of residues in red -->
-          <g fill="#e5543f" stroke="#ffffff" stroke-width="1">
-            <circle cx="138" cy="44" r="5"/>
-            <circle cx="150" cy="38" r="5"/>
-            <circle cx="143" cy="54" r="5"/>
-            <circle cx="158" cy="49" r="5"/>
-          </g>
-        </svg>
-        <p class="ill-cap">Antigen (grey) with the selected epitope in red.</p>
+        <img class="ill" src="img/fig/antigen_epitope.png" loading="lazy"
+             alt="The 8PWW antigen (PfRH5) as a grey ribbon with the selected epitope residues highlighted in red.">
+        <p class="ill-cap"><b style="color:#5c636b">Antigen</b> (grey ribbon) with the
+        <b style="color:#c0392b">selected epitope</b> in red. 8PWW chain A (PfRH5).</p>
         <p>Start from an antibody&ndash;antigen complex; episcaf takes the epitope from the antibody
         contact residues. Generate scaffold designs and compare their predicted structures with the
         original epitope. For an antigen with no bound antibody, the epitope can instead be read off
@@ -133,25 +130,14 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <div class="card-t">Find candidate regions to scaffold</div>
       </div>
       <div class="card-b">
-        <svg class="ill" viewBox="0 0 200 118" role="img"
-             aria-label="The same antigen shape with several candidate regions drawn as muted blue dashed outlines, and one selected region highlighted in red.">
-          <path d="M58 22 C92 8 146 12 172 38 C190 56 190 86 162 102 C132 118 76 118 46 100 C20 84 14 52 30 34 C39 24 48 26 58 22 Z"
-                fill="#9aa3ad" stroke="#7c858f" stroke-width="1.5"/>
-          <!-- candidate surface regions: muted blue dashed outlines (unvalidated) -->
-          <g fill="#2b47d6" fill-opacity="0.08" stroke="#2b47d6" stroke-width="2" stroke-dasharray="4 3">
-            <ellipse cx="66" cy="54" rx="15" ry="12"/>
-            <ellipse cx="88" cy="90" rx="14" ry="11"/>
-            <ellipse cx="150" cy="88" rx="14" ry="11"/>
-          </g>
-          <!-- the chosen region: same red epitope cluster as the left branch -->
-          <g fill="#e5543f" stroke="#ffffff" stroke-width="1">
-            <circle cx="138" cy="44" r="5"/>
-            <circle cx="150" cy="38" r="5"/>
-            <circle cx="143" cy="54" r="5"/>
-            <circle cx="158" cy="49" r="5"/>
-          </g>
-        </svg>
-        <p class="ill-cap">Candidate regions (blue outlines); one selected in red.</p>
+        <div class="candrow">
+          <figure><img src="img/fig/cand_a.png" loading="lazy" alt="One candidate surface region highlighted in blue on the 8PWW antigen."><figcaption>candidate 1</figcaption></figure>
+          <figure><img src="img/fig/cand_b.png" loading="lazy" alt="A second candidate surface region highlighted in blue on the same antigen."><figcaption>candidate 2</figcaption></figure>
+          <figure class="sel"><img src="img/fig/cand_selected.png" loading="lazy" alt="A candidate region selected for design, highlighted in red on the same antigen."><figcaption>selected</figcaption></figure>
+        </div>
+        <p class="ill-cap">The same antigen and view; each panel highlights a different
+        <b style="color:#2b47d6">candidate region</b>. Inspect them and select one or more
+        (<b style="color:#c0392b">red</b>).</p>
         <p>Start from an antigen structure without a specified binding site. Sample patches across
         its surface, inspect the candidates, and choose regions for scaffold design.</p>
         <div class="when"><b>Use this when:</b> you have a target but no chosen site, or you are
@@ -184,18 +170,10 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     <div class="shared-h">Shared workflow</div>
     <div class="shared-body">
       <div class="shared-ill">
-        <svg class="ill" viewBox="0 0 150 112" role="img"
-             aria-label="A smaller designed scaffold carrying the same epitope residues, in the same arrangement, highlighted in red.">
-          <path d="M46 24 C68 12 96 16 108 36 C118 52 116 78 98 90 C78 102 52 100 38 84 C26 70 26 44 38 32 C42 27 42 27 46 24 Z"
-                fill="#9aa3ad" stroke="#7c858f" stroke-width="1.5"/>
-          <g fill="#e5543f" stroke="#ffffff" stroke-width="1">
-            <circle cx="84" cy="40" r="5"/>
-            <circle cx="96" cy="34" r="5"/>
-            <circle cx="89" cy="50" r="5"/>
-            <circle cx="104" cy="45" r="5"/>
-          </g>
-        </svg>
-        <p class="ill-cap">A smaller scaffold carries the same epitope (red).</p>
+        <img class="ill" src="img/fig/design_scaffold.png" loading="lazy"
+             alt="A real episcaf scaffold design, a smaller grey fold carrying the same epitope residues in red.">
+        <p class="ill-cap">A real <b style="color:#5c636b">designed scaffold</b> carrying the same
+        <b style="color:#c0392b">epitope</b> (red).</p>
       </div>
       <div class="steps-row">
         <span class="pstep">Generate scaffolds</span>
@@ -208,8 +186,9 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     <a class="shared-more" href="pipeline.html">See the full pipeline and run order</a>
   </div>
 
-  <p class="schem-cap">Conceptual schematic &mdash; an abstraction of the two starting points and the
-  shared workflow, not a rendered structure.</p>
+  <p class="schem-cap">Rendered from real structures: the 8PWW antigen (PfRH5) with its contact epitope
+  and growPatch candidate regions, and a real episcaf scaffold design. Highlights follow the actual
+  residues.</p>
 
   <p class="caps">Examples can be explored in the browser. Processing your own structure
   requires the local service; design jobs run separately on the cluster.</p>
