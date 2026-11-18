@@ -57,19 +57,17 @@ ul.tight li{margin:4px 0}
 
 <div class="page">
   <p class="crumb"><a href="methods.html">Docs</a> &rsaquo; AOMclash</p>
-  <h1>AOMclash: estimating antibody obstruction</h1>
-  <p class="lede">A designed scaffold can hold the epitope in the right shape and still place its own
-  bulk where an antibody needs to be. AOMclash estimates how much a scaffold would obstruct antibody
-  binding, by reading a map of where antibodies sit across many known antibody&ndash;antigen complexes.</p>
+  <h1>AOMclash: predicted antibody obstruction</h1>
+  <p class="lede">AOMclash estimates whether scaffold material occupies space that an antibody would need
+  to bind the epitope. It uses an occupancy map derived from aligned antibody&ndash;antigen structures.</p>
 
-  <h2>A. The problem</h2>
-  <p>Scaffolding fixes the geometry of the epitope, but the rest of the scaffold is free to be any fold.
-  If that scaffold mass sits in the space an antibody approaches through, the epitope is presented
-  correctly and still unreachable. This is a different question from whether the fold is right: epitope
-  RMSD and AlphaFold3 confidence can both look good while the surrounding scaffold blocks the
-  approach. AOMclash is the term that scores this obstruction.</p>
+  <h2>A. Antibody access to the epitope</h2>
+  <p>Preserving epitope geometry does not ensure that an antibody can reach the site. Residues elsewhere
+  in the scaffold may overlap the antibody&rsquo;s binding region, so a design can present the epitope
+  correctly and still be unreachable. Epitope RMSD and AlphaFold&nbsp;3 confidence describe the fold;
+  they do not describe this obstruction. AOMclash scores it.</p>
 
-  <h2>B. The idea, in one picture</h2>
+  <h2>B. Scaffold geometry and antibody obstruction</h2>
   <div class="fig">
     <svg viewBox="0 0 680 320" role="img" aria-label="Two scaffolds presenting the same epitope. The left scaffold stays clear of the antibody-occupancy cloud and leaves the antibody room; the right scaffold bulges into the cloud and would obstruct binding.">
       <defs>
@@ -91,8 +89,8 @@ ul.tight li{margin:4px 0}
         <text x="58" y="292" font-size="11" fill="#39414b">antigen</text>
         <path d="M120 300 Q118 274 150 264 Q170 258 190 264 Q222 274 220 300 Z" fill="#ffffff" stroke="#1b4a86" stroke-width="2"/>
         <path d="M150 260 Q170 252 190 260" fill="none" stroke="#e5543f" stroke-width="7" stroke-linecap="round"/>
-        <text x="170" y="24" font-size="13" font-weight="bold" fill="#0a7a2f" text-anchor="middle">accessible</text>
-        <text x="170" y="42" font-size="11" fill="#555" text-anchor="middle">scaffold stays below the cloud</text>
+        <text x="170" y="24" font-size="12.5" font-weight="bold" fill="#0a7a2f" text-anchor="middle">lower predicted obstruction</text>
+        <text x="170" y="42" font-size="11" fill="#555" text-anchor="middle">scaffold clears the occupancy field</text>
         <text x="170" y="56" font-size="11" fill="#1b4a86" text-anchor="middle">low s_p1_free</text>
       </g>
       <!-- divider -->
@@ -111,108 +109,105 @@ ul.tight li{margin:4px 0}
         <!-- scaffold base + epitope, identical to the left panel -->
         <path d="M120 300 Q118 274 150 264 Q170 258 190 264 Q222 274 220 300 Z" fill="#ffffff" stroke="#1b4a86" stroke-width="2"/>
         <path d="M150 260 Q170 252 190 260" fill="none" stroke="#e5543f" stroke-width="7" stroke-linecap="round"/>
-        <text x="170" y="24" font-size="13" font-weight="bold" fill="#a00000" text-anchor="middle">obstructed</text>
-        <text x="170" y="42" font-size="11" fill="#555" text-anchor="middle">added bulk sits in antibody space</text>
+        <text x="170" y="24" font-size="12.5" font-weight="bold" fill="#a00000" text-anchor="middle">higher predicted obstruction</text>
+        <text x="170" y="42" font-size="11" fill="#555" text-anchor="middle">scaffold extends into the occupancy field</text>
         <text x="170" y="56" font-size="11" fill="#1b4a86" text-anchor="middle">high s_p1_free</text>
       </g>
     </svg>
     <div class="keyrow">
-      <span><span class="sw" style="background:#9aa3ad"></span>antigen</span>
-      <span><span class="sw" style="background:#e5543f"></span>epitope (same on both)</span>
+      <span><span class="sw" style="background:#9aa3ad"></span>reference antigen</span>
+      <span><span class="sw" style="background:#e5543f"></span>selected epitope</span>
       <span><span class="sw" style="background:#ffffff;border-color:#1b4a86"></span>designed scaffold</span>
-      <span><span class="sw" style="background:#2b47d6;opacity:.32"></span>antibody-occupancy (darker = more likely)</span>
+      <span><span class="sw" style="background:#2b47d6;opacity:.32"></span>antibody occupancy (darker = more likely)</span>
     </div>
-    <div class="figcap"><b>Conceptual schematic.</b> The antigen, the epitope (red), and the occupancy
-    field are drawn identically in both panels; only the surrounding scaffold changes. The blue cloud is
-    the <b>estimated</b> region antibodies occupy, averaged over many complexes, not a single docked
-    antibody. The right panel adds scaffold material that reaches past the free boundary into that region
-    (outlined in red), which AOMclash scores as higher obstruction.</div>
+    <div class="figcap"><b>Schematic comparison.</b> The epitope and occupancy field are fixed across the
+    two panels; only the surrounding scaffold changes. The right-hand scaffold extends into a region with
+    higher antibody occupancy. The shaded field represents an average over complexes, not a single docked
+    antibody.</div>
   </div>
 
-  <h2>C. How it works</h2>
-  <p>AOMclash does not dock a specific antibody. It reads an <b>antibody-occupancy map</b>: about 1,029
-  antibody&ndash;antigen complexes from SAbDab, each placed in a common <b>epitope frame</b> &mdash; the
-  origin at the epitope, with one axis pointing outward, away from the antigen body, into the space an
-  antibody approaches through. In each complex the antibody&rsquo;s volume is marked on a 33&times;33&times;33
-  grid; averaging over all complexes gives, at every grid point, the probability that an antibody sits
-  there.</p>
+  <h2>C. Occupancy-map construction</h2>
+  <p>Reference antibody&ndash;antigen complexes are aligned in an epitope-centered coordinate frame, with
+  the outward axis pointing away from the antigen body, into the space an antibody approaches through.
+  Each antibody is represented as an occupancy grid on a 33&times;33&times;33 grid (2&nbsp;&Aring; voxels),
+  and the grids are averaged to give, at every grid point, the occupancy &mdash; the probability that an
+  antibody sits there. The documented map uses 1,029 SAbDab complexes. The mean map is lightly smoothed
+  with a Gaussian kernel. Where an evaluation requires it, the relevant reference complex is excluded
+  from the average.</p>
 
   <div class="fig">
     <img src="img/fig/aom_slice.png?v=2" style="display:block;width:100%;max-width:580px;height:auto;margin:0 auto" loading="lazy"
-         alt="A slice of the real antibody-occupancy map in the epitope frame: probability of antibody occupancy versus outward distance and in-plane position, peaking about 14 angstroms out. A free scaffold atom beyond the 4-angstrom boundary is counted; an atom within 4 angstroms of the antigen is excluded.">
-    <div class="figcap"><b>A slice of the actual stored occupancy map</b> (mean over 1,029 SAbDab
-    complexes), in the epitope frame. Occupancy is near zero at the epitope, peaks about 14&nbsp;&Aring;
-    out along the outward normal, and fades beyond. To score a design, the scaffold is aligned onto the
-    native epitope so it lands in this frame; each atom reads the probability at its location. Generated
-    by <code>scripts/render_aom_slice.py</code>. The 4&nbsp;&Aring; free boundary and the two atom markers
-    are illustrative overlays.</div>
+         alt="A cross-section of the antibody-occupancy map in the epitope-centered frame: occupancy versus outward distance and in-plane position, peaking about 14 angstroms out. The 4-angstrom boundary and two atom markers are illustrative overlays.">
+    <div class="figcap"><b>Cross-section of the stored antibody-occupancy map</b> (mean over 1,029 SAbDab
+    complexes), in the epitope-centered frame. The color scale gives occupancy at each location; it is
+    near zero at the epitope and peaks about 14&nbsp;&Aring; out along the outward normal. Generated by
+    <code>scripts/render_aom_slice.py</code>. The 4&nbsp;&Aring; boundary and the two atom markers are
+    illustrative overlays.</div>
   </div>
 
-  <p>The score sums those probabilities over the scaffold atoms that stick out beyond the native antigen
-  &mdash; the parts that are not just mimicking the real antigen&rsquo;s shape:</p>
-  <div class="formula"><span class="v">s_p1_free</span> = &Sigma;<sub>atoms</sub> &nbsp;p1(atom) &middot; [ atom is more than 4 &Aring; from the native antigen ]</div>
-  <p><code>p1(atom)</code> is the occupancy probability read at the atom; the bracket is 1 for atoms
-  farther than 4&nbsp;&Aring; from any native-antigen atom (<code>free</code>) and 0 otherwise.</p>
-  <div class="io"><b>In:</b> the antigen structure, the epitope, and the design structure. &nbsp;<b>&rarr; Out:</b> one number, <code>s_p1_free</code>.</div>
   <div class="note"><b>How the map was built.</b> One boolean 33&sup3; occupancy grid per SAbDab complex
-  (antibody geometry only, so it does not depend on the AlphaFold version), bit-packed; the shipped map
-  is their mean, then lightly smoothed (a ~2&nbsp;&Aring; Gaussian for <code>p1</code>). When a design&rsquo;s
-  own antigen is one of those complexes, that complex is left out of the average (leave-one-antigen-out).
-  Artifact: <code>episcaf_analysis/aomclash/aom_map.pkl</code>, built by <code>aom_map.py</code>.</div>
+  (antibody geometry only), bit-packed; the shipped map is their mean, lightly smoothed with a Gaussian
+  kernel. When a design&rsquo;s own complex is one of the references, that complex can be left out of the
+  average. Artifact: <code>episcaf_analysis/aomclash/aom_map.pkl</code>, built by <code>aom_map.py</code>.</div>
 
-  <h2>D. What the score means</h2>
-  <ul class="tight">
-    <li><b>Direction:</b> higher <code>s_p1_free</code> = more scaffold bulk in high-occupancy space = more
-      predicted obstruction. <b>Lower is better.</b></li>
-    <li><b>Kind of number:</b> a continuous, occupancy-weighted sum &mdash; not a count of overlapping
-      atoms. It is the learned successor to the earlier <i>native-aware cylinder</i>, which counted atoms
-      inside a fixed cone; AOMclash replaces that head-count with a graded probability sum.</li>
-    <li><b>Scale:</b> the raw sum is isotonic-calibrated onto the AlphaFold3 clashing-residue count, so its
-      scale is comparable to a clash count. For ranking designs against the same epitope the calibration
-      does not change the order, so raw and calibrated rank identically.</li>
-    <li><b>What it is not:</b> an estimate from an occupancy map, not a measurement against a real
-      antibody, and not a probability that a particular antibody binds.</li>
-  </ul>
-  <p>Three related quantities are kept distinct in episcaf: a <b>geometric count</b> (the legacy cylinder,
-  atoms inside a cone), this <b>occupancy-weighted sum</b> (<code>s_p1_free</code>), and a <b>learned
-  multi-feature prediction</b> (a 39-feature model, tested and not adopted &mdash; see F).</p>
+  <h2>D. Score calculation</h2>
+  <p>The scaffold is aligned to the reference epitope so it lands in the map&rsquo;s frame. The occupancy
+  map is sampled at each scaffold atom, and the values are summed over the atoms more than 4&nbsp;&Aring;
+  from any reference-antigen atom. The resulting raw score is <code>s_p1_free</code>:</p>
+  <div class="formula"><span class="v">s_p1_free</span> = &Sigma;<sub>atoms</sub> &nbsp;p1(atom) &middot; [ atom is more than 4 &Aring; from the reference antigen ]</div>
+  <p><code>p1(atom)</code> is the occupancy read at the atom. The distance condition selects atoms outside
+  the specified reference-antigen boundary; atoms within that boundary do not contribute to the sum.</p>
+  <div class="io"><b>Input:</b> reference antigen, epitope definition, and scaffold structure. &nbsp;<b>&rarr; Output:</b> the raw occupancy score <code>s_p1_free</code> and the calibrated score, where available.</div>
 
-  <h2>E. Where it is used</h2>
-  <p>The same score is read at two stages, on different inputs:</p>
-  <ul class="tight">
-    <li><b>Backbone filtering, before sequence design</b> &mdash; each RFdiffusion3 backbone is scored on
-      the bare backbone. For each epitope, the backbones with the lowest <code>s_p1_free</code> are kept and
-      the rest are dropped before ProteinMPNN and AlphaFold3. This is the pipeline&rsquo;s main compute
-      saving. <a href="scaffold.html#step-filter">See the protocol control &rsaquo;</a></li>
-    <li><b>Final design score, after AlphaFold3</b> &mdash; the completed design is scored as the
-      no-antibody accessibility term in the composite (the <code>twelvemer</code> preset). When a reference
-      antibody is present (the known-antibody arm), the measured AF3 clash count against that antibody is
-      used instead of the estimate.</li>
-  </ul>
-  <p>The inputs differ (a bare backbone vs. a predicted design), so the two uses are related but not
-  identical; the interpretation above is per stage.</p>
+  <h2>E. Score interpretation</h2>
+  <h3>Raw score</h3>
+  <p>Higher <code>s_p1_free</code> values indicate more scaffold material in regions with higher antibody
+  occupancy. Lower values indicate less predicted obstruction. The raw score is a continuous,
+  occupancy-weighted sum, not a count of overlapping atoms.</p>
+  <h3>Calibration</h3>
+  <p>An isotonic calibration maps the raw score to the AlphaFold&nbsp;3 clashing-residue scale. The raw
+  and calibrated quantities are reported separately. The calibration is monotone, so it ranks designs
+  against one epitope in the same order; because isotonic calibration can introduce ties, raw and
+  calibrated rankings are not guaranteed to be strictly identical.</p>
+  <h3>Limitations</h3>
+  <p>The score represents obstruction relative to the reference occupancy distribution. It does not
+  specify the pose of a particular antibody or provide a probability of experimental binding.</p>
 
-  <h2>F. Validation and technical details</h2>
-  <p>What has been checked, and what it does and does not establish:</p>
-  <ul class="tight">
-    <li><b>The map is physically sensible:</b> occupancy peaks about 14&nbsp;&Aring; out along the
-      epitope&rsquo;s outward normal, on the antibody side &mdash; where an antibody&rsquo;s contact region
-      sits relative to the epitope.</li>
-    <li><b>Parity check:</b> the scorer reproduces the reference implementation&rsquo;s values on the same
-      inputs.</li>
-    <li><b>Feature-set decision:</b> a richer 39-feature gradient-boosted model was tested and not adopted
-      &mdash; it improved on the single feature by about 0.02, not enough to justify roughly 38 correlated
-      features and the overfitting risk on this dataset.</li>
-  </ul>
-  <p>These are implementation and port checks: they establish that the score is computed as intended, not
-  that it predicts experimental antibody binding. Treat <code>s_p1_free</code> as a ranking signal for
-  accessibility, to be confirmed downstream.</p>
-  <p class="src"><b>In the code.</b> <code>episcaf_analysis/aomclash/</code> &mdash;
+  <h2>F. Use in the design pipeline</h2>
+  <h3>Backbone filtering</h3>
+  <p>Each RFdiffusion3 backbone is scored before sequence design. For each epitope, the backbones with the
+  lowest <code>s_p1_free</code> continue to ProteinMPNN and AlphaFold&nbsp;3, and the rest are dropped.
+  <a href="scaffold.html#step-filter">See the protocol control &rsaquo;</a></p>
+  <h3>Design evaluation</h3>
+  <p>After structure prediction, AOMclash can provide the obstruction term for designs without a reference
+  antibody (the <code>twelvemer</code> preset). When a reference antibody is available, the pipeline
+  calculates the geometric clash count against that structure instead.</p>
+  <p>Backbone filtering scores bare RFdiffusion3 backbones; final evaluation scores predicted designs. The
+  two stages operate on different structures, so their score distributions should be interpreted for the
+  corresponding stage.</p>
+
+  <h2>G. Validation and implementation</h2>
+  <h3>Reference agreement</h3>
+  <p>The scorer reproduces the reference implementation&rsquo;s values on the same inputs and settings.
+  This checks that the score is computed as intended, not that it predicts experimental binding.</p>
+  <h3>Occupancy distribution</h3>
+  <p>In the stored map, occupancy peaks about 14&nbsp;&Aring; out along the epitope&rsquo;s outward normal.
+  This is a measured property of the map (see the cross-section above), not a proof of physical validity.</p>
+  <h3>Model comparison</h3>
+  <p>A 39-feature gradient-boosted model was evaluated against the single occupancy-sum feature. The
+  improvement was small, and the single feature (<code>s_p1_free</code>) was adopted. The comparison and
+  the selection criteria, including the metric and validation split, are in the decision record. An
+  earlier native-aware cylinder, which counted atoms inside a fixed cone, is the predecessor of this
+  occupancy-weighted sum.</p>
+  <h3>Experimental interpretation</h3>
+  <p>Reference agreement checks the implementation. Experimental binding requires a separate evaluation.
+  Treat <code>s_p1_free</code> as a ranking signal for accessibility, to be confirmed downstream.</p>
+  <h3>Implementation</h3>
+  <p class="src"><code>episcaf_analysis/aomclash/</code> &mdash;
   <code>aom_map.py</code> (builds the occupancy map), <code>features.py</code> (reads it at each atom),
-  <code>score.py</code> (the deployable scorer), <code>model.py</code> (the calibration).
-  Map artifact: <code>aom_map.pkl</code>. Feature reference:
-  <code>episcaf_analysis/aomclash/FEATURES.md</code>. Decision record:
-  <code>results/aomclash/feature_set_decision.md</code>.</p>
+  <code>score.py</code> (the scorer), <code>model.py</code> (the calibration).
+  <b>Map artifact:</b> <code>aom_map.pkl</code>. <b>Analysis record:</b>
+  <code>episcaf_analysis/aomclash/FEATURES.md</code>, <code>results/aomclash/feature_set_decision.md</code>.</p>
 
   <hr style="border:0;border-top:1px solid #d5deea;margin:22px 0">
   <p class="back">&larr; Back to <a href="scaffold.html">the design protocol</a> &middot;
