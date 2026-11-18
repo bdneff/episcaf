@@ -7,70 +7,78 @@
 <link rel="stylesheet" href="site.css">
 <style>
 .page{max-width:900px;margin:0 auto}
-p{margin:9px 0}
-.sub{color:#666666;font-size:12.5px;margin:0 0 6px;max-width:72ch}
+p{margin:0}
 code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0f0;padding:0 3px}
 
-.q{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:#296DC0;font-weight:bold;margin:20px 0 2px}
-.fork{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px}
-@media(max-width:680px){.fork{grid-template-columns:1fr}}
-.card{border:1px solid #d5deea;border-radius:9px;background:#fbfcfe;display:flex;flex-direction:column;overflow:hidden;transition:box-shadow .12s,border-color .12s}
-.card:hover{border-color:#8fb0db;box-shadow:0 6px 20px rgba(23,60,110,.12)}
-.card-h{padding:14px 16px 10px;border-bottom:1px solid #e8edf4}
-.card-eyebrow{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#566b85;font-weight:bold}
-.card-t{font-size:18px;font-weight:bold;color:#1b4a86;margin:3px 0 0;display:flex;align-items:center;gap:9px}
-.card-ico{width:30px;height:30px;flex:none}
-.card-b{padding:12px 16px 4px;flex:1}
-.card-b p{margin:0 0 9px;color:#333333}
-.when{font-size:12.5px;color:#555;background:#eef3f9;border:1px solid #dce5f1;border-radius:5px;padding:6px 10px;margin:4px 0 10px}
-.when b{color:#1b4a86}
-.readmore{font-size:12.5px;color:#296DC0;font-weight:600;text-decoration:none}
-.readmore:hover{text-decoration:underline}
-.card-f{padding:10px 16px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.steps{color:#555;font-size:12.5px;margin-top:4px}
-.steps code{background:#eef3f9}
-.caps{margin:20px 0 0;color:#555;font-size:12.5px;line-height:1.5}
-.footline{margin-top:18px;border-top:1px solid #e2e8f1;padding-top:12px;color:#666;font-size:12.5px}
-.footline a{color:#0033cc}
+/* ---- platform intro ---- */
+.hero{margin:8px 0 6px}
+.eyebrow{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:#6a7b90;font-weight:bold;margin:0 0 8px}
+.hero h1{font-size:28px;line-height:1.18;color:#15233a;margin:0 0 14px;max-width:17em;font-weight:bold;text-wrap:balance}
+.intro{color:#36414f;font-size:14.5px;line-height:1.6;max-width:64ch;margin:0 0 11px}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0 4px}
+.btn{display:inline-block;font-size:14px;font-weight:bold;padding:10px 18px;border-radius:7px;text-decoration:none;border:1px solid transparent;line-height:1.2}
+.btn-primary{background:#296DC0;color:#fff;border-color:#1b4a86}
+.btn-primary:hover{background:#21568f}
+.btn-secondary{background:#fff;color:#1b4a86;border-color:#c3d3e8}
+.btn-secondary:hover{background:#f2f6fc}
+@media(min-width:720px){.hero h1{font-size:33px}}
 
-/* ---- overview schematic (in-card illustrations + converging shared workflow) ---- */
-.ill{display:block;width:auto;max-width:100%;max-height:230px;height:auto;margin:0 auto 6px;background:transparent}
-.ill-cap{font-size:11px;color:#566b85;margin:0 0 10px;letter-spacing:.01em;text-align:center}
-.candrow{display:flex;gap:6px;margin:0 0 6px;justify-content:center}
+/* ---- main scientific illustration ---- */
+.flowfig{margin:28px 0 8px;padding:0}
+.flowrow{display:flex;align-items:stretch;justify-content:center;gap:10px;flex-wrap:nowrap}
+.fpanel{flex:1 1 0;min-width:0;margin:0;text-align:center;background:#f7f9fc;border:1px solid #e2e8f1;border-radius:10px;padding:12px 10px 10px;display:flex;flex-direction:column}
+.fpanel .art{flex:1;display:flex;align-items:center;justify-content:center}
+.fpanel img,.fpanel svg{display:block;width:100%;height:auto;max-height:188px;object-fit:contain;margin:0 auto}
+.fpanel figcaption{font-size:12px;font-weight:bold;color:#1b4a86;line-height:1.25;margin-top:9px}
+.fpanel figcaption span{display:block;font-size:10.5px;font-weight:normal;color:#6a7686;margin-top:2px}
+.flowarrow{flex:0 0 auto;align-self:center;color:#9fb0c6;font-size:22px;font-weight:bold}
+.flowcap{font-size:11.5px;color:#6a7686;line-height:1.55;margin:13px auto 0;max-width:72ch;text-align:center}
+.flowcap .epi{color:#c0392b;font-weight:bold}
+@media(max-width:680px){.flowrow{flex-direction:column;align-items:center}.flowarrow{transform:rotate(90deg)}.fpanel{width:100%;max-width:330px}.fpanel img,.fpanel svg{max-height:240px}}
+
+/* ---- section headings ---- */
+.apps h2,.paths h2,.workflow h2{font-size:19px;color:#15233a;margin:0 0 4px;font-weight:bold}
+.sub2{color:#6a7686;font-size:13px;margin:0 0 15px}
+
+/* ---- applications ---- */
+.apps{margin:36px 0 0}
+.applist{display:grid;grid-template-columns:1fr 1fr;gap:20px 34px}
+@media(max-width:620px){.applist{grid-template-columns:1fr;gap:17px}}
+.app h3{font-size:14.5px;color:#1b4a86;margin:0 0 4px;font-weight:bold}
+.app p{font-size:13px;color:#3a4654;line-height:1.55}
+
+/* ---- two starting paths ---- */
+.paths{margin:42px 0 0}
+.fork{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:13px}
+@media(max-width:680px){.fork{grid-template-columns:1fr}}
+.card{border:1px solid #d5deea;border-radius:10px;background:#fff;display:flex;flex-direction:column;overflow:hidden;transition:box-shadow .12s,border-color .12s}
+.card:hover{border-color:#8fb0db;box-shadow:0 6px 20px rgba(23,60,110,.1)}
+.card-b{padding:14px 16px 6px;flex:1}
+.card-t{font-size:16px;font-weight:bold;color:#1b4a86;margin:0 0 9px}
+.card-b p{margin:0;color:#3a4654;font-size:13px;line-height:1.55}
+.card-ill{display:block;width:auto;max-width:100%;max-height:150px;height:auto;margin:0 auto 4px;background:transparent}
+.candrow{display:flex;gap:6px;margin:0 0 4px;justify-content:center}
 .candrow figure{flex:1;margin:0;text-align:center}
-.candrow img{display:block;width:100%;height:auto;max-height:150px;object-fit:contain;background:transparent}
-.candrow figcaption{font-size:10px;color:#566b85;margin-top:3px}
-.candrow .sel img{border-color:#e5543f;box-shadow:0 0 0 1px #e5543f}
-.candrow .sel figcaption{color:#c0392b;font-weight:bold}
-.converge{position:relative;height:34px;margin-top:16px}
-.conv-wide{display:block;width:100%;height:34px;color:#8fa4c0}
-.conv-tall{display:none}
-.shared{position:relative;margin-top:2px;border:1px solid #d5deea;border-radius:9px;background:#f5f8fc;padding:14px 16px 12px}
-.shared::before{content:"";position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #8fa4c0}
-.shared-h{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#566b85;font-weight:bold;margin:0 0 10px}
-.wsteps{display:flex;align-items:stretch;gap:6px;flex-wrap:nowrap;margin-top:4px}
-.wstep{flex:1 1 0;min-width:0;margin:0;display:flex;flex-direction:column;align-items:center;text-align:center;background:#fff;border:1px solid #dce5f1;border-radius:8px;padding:9px 6px 8px}
-.wstep .wthumb{display:block;width:100%;height:76px;object-fit:contain;margin-bottom:7px}
-.wstep figcaption{font-size:11.5px;font-weight:bold;color:#1b4a86;line-height:1.2}
-.wstep .wsub{font-size:10px;color:#6a7686;margin-top:2px;font-weight:normal}
-.warrow{align-self:center;color:#8fa4c0;font-weight:bold;font-size:17px;flex:0 0 auto}
-@media(max-width:620px){.wsteps{flex-direction:column}.warrow{transform:rotate(90deg)}}
-.parrow{color:#8fa4c0;font-weight:bold;font-size:15px;line-height:1}
-.shared-more{display:inline-block;margin-top:11px;font-size:12.5px;color:#296DC0;font-weight:600;text-decoration:none}
-.shared-more:hover{text-decoration:underline}
-.schem-cap{font-size:11px;color:#777;margin:9px 0 0;font-style:italic}
-.tagline{font-size:15px;color:#296DC0;font-weight:bold;margin:-2px 0 11px;letter-spacing:.005em}
-.apps{margin-top:22px;border-top:1px solid #e2e8f1;padding-top:14px}
-.apps h2{font-size:15px;color:#1b4a86;margin:0 0 6px;font-weight:bold}
-.apps>p{font-size:13px;color:#3a4654;margin:0 0 8px;line-height:1.55}
-.apps ul{margin:6px 0 0;padding-left:20px}
-.apps li{font-size:13px;color:#3a4654;margin:5px 0;line-height:1.5}
-.apps li b{color:#1a1a1a}
-@media(max-width:680px){
-  .conv-wide{display:none}
-  .converge{height:24px}
-  .conv-tall{display:block;margin:0 auto;width:12px;height:24px;color:#8fa4c0}
-}
+.candrow img{display:block;width:100%;height:auto;max-height:108px;object-fit:contain;background:transparent}
+.candrow figcaption{font-size:9.5px;color:#566b85;margin-top:3px}
+.candrow .sel img{box-shadow:0 0 0 1.5px #e5543f;border-radius:4px}
+.ill-cap{font-size:10.5px;color:#566b85;margin:0 0 9px;text-align:center}
+.card-f{padding:10px 16px 16px}
+
+/* ---- short workflow ---- */
+.workflow{margin:42px 0 0}
+.wseq{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin:14px 0 13px;border:1px solid #e2e8f1;border-radius:10px;overflow:hidden}
+.wstep{flex:1 1 0;min-width:130px;padding:12px 15px;background:#f7f9fc;border-right:1px solid #e2e8f1;display:flex;flex-direction:column;gap:4px}
+.wstep:last-child{border-right:0}
+.wstep .wn{font-size:11px;font-weight:bold;color:#9fb0c6}
+.wstep .wt{font-size:13px;font-weight:bold;color:#1b4a86;line-height:1.3}
+@media(max-width:620px){.wstep{flex:1 1 100%;border-right:0;border-bottom:1px solid #e2e8f1}.wstep:last-child{border-bottom:0}}
+.wnote{font-size:13.5px;color:#36414f;line-height:1.6;max-width:72ch;margin:0 0 9px}
+.wlinks{font-size:12.5px}
+.wlinks a{color:#0033cc;font-weight:600;text-decoration:none}
+.wlinks a:hover{text-decoration:underline}
+
+.caps{margin:36px 0 0;border-top:1px solid #e2e8f1;padding-top:15px;color:#66707c;font-size:12px;line-height:1.55}
 </style>
 </head>
 <body>
@@ -96,161 +104,135 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   <a href="results.html">Results</a>
 </div></div>
 <div class="page">
-  <h1>Design protein scaffolds that display a selected epitope</h1>
-  <p class="tagline">A tool for epitope mapping and characterization.</p>
-  <p class="lede">Antibodies bind a three-dimensional patch of an antigen&rsquo;s surface, so a
-  conformational epitope is lost the moment it is cut out as a linear peptide. episcaf designs a small,
-  synthesizable protein that holds that epitope in its native, antibody-binding shape. The result is a
-  defined probe for one site that you can put directly into a binding assay, to detect, map, and
-  characterize the antibodies that recognize it.</p>
-  <p class="sub">episcaf builds the scaffold around selected antigen residues and scores each design on
-  how closely the predicted structure preserves the epitope and whether the surrounding scaffold could
-  obstruct antibody binding. Backbones are generated with <a href="methods.html#generate">RFdiffusion3</a>,
-  sequences are designed with <a href="methods.html#generate">ProteinMPNN</a>, and structures are
-  predicted with <a href="methods.html#generate">AlphaFold&nbsp;3</a>; the designs are scored and ranked.</p>
 
-  <p class="q">Choose a starting point</p>
-
-  <div class="fork">
-
-    <!-- ===== Task 1: scaffold a selected epitope ===== -->
-    <div class="card">
-      <div class="card-h">
-        <div class="card-t">Scaffold a selected epitope</div>
-      </div>
-      <div class="card-b">
-        <img class="ill" src="img/fig/antigen_epitope.png?v=2" loading="lazy"
-             alt="The 8PWW antigen (PfRH5) as a grey ribbon with the selected epitope residues highlighted in red.">
-        <p class="ill-cap">PfRH5 from 8PWW, with the selected antigen residues highlighted in red.</p>
-        <p>Start from an antibody&ndash;antigen complex or select antigen residues directly. episcaf
-        uses those residues as the epitope for scaffold design.</p>
-        <p>For a complex, select the antibody chains and define the antigen contact residues using the
-        distance cutoff. You can also select the antigen residues yourself.</p>
-        <a class="readmore" href="methods.html#generate">Epitope selection and scaffold generation</a>
-      </div>
-      <div class="card-f">
-        <a class="btn-primary" href="scaffold.html">Configure scaffold design</a>
-      </div>
+  <header class="hero">
+    <p class="eyebrow">Computational epitope-scaffold design</p>
+    <h1>Epitope scaffolds for antibody mapping and characterization</h1>
+    <p class="intro">episcaf designs small proteins that display selected antigen residues in their native
+    three-dimensional arrangement. These scaffolds are designed for experiments that identify
+    antibody-binding sites, compare epitope variants, and characterize antibody specificity.</p>
+    <p class="intro">Start with a known epitope or explore candidate regions across an antigen surface.
+    Generate scaffold designs, evaluate their predicted structures, and export candidates for experimental
+    screening.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="scaffold.html#recorded">Explore a scaffold example</a>
+      <a class="btn btn-secondary" href="scaffold.html">Configure a design</a>
     </div>
+  </header>
 
-    <!-- ===== Task 2: find candidate regions ===== -->
-    <div class="card">
-      <div class="card-h">
-        <div class="card-t">Find candidate regions to scaffold</div>
-      </div>
-      <div class="card-b">
-        <div class="candrow">
-          <figure><img src="img/fig/cand_a.png?v=2" loading="lazy" alt="One candidate surface region highlighted in blue on the 8PWW antigen."><figcaption>Candidate region 1</figcaption></figure>
-          <figure><img src="img/fig/cand_b.png?v=2" loading="lazy" alt="A second candidate surface region highlighted in blue on the same antigen."><figcaption>Candidate region 2</figcaption></figure>
-          <figure class="sel"><img src="img/fig/cand_selected.png?v=2" loading="lazy" alt="A candidate region selected for design, highlighted in red on the same antigen."><figcaption>Selected region</figcaption></figure>
+  <figure class="flowfig">
+    <div class="flowrow">
+      <figure class="fpanel">
+        <div class="art"><img src="img/fig/antigen_epitope.png?v=3" loading="lazy"
+             alt="PfRH5 antigen (8PWW chain A) as a grey ribbon with the selected epitope highlighted in red."></div>
+        <figcaption>Antigen with a selected epitope<span>PfRH5 &middot; 8PWW chain A</span></figcaption>
+      </figure>
+      <span class="flowarrow" aria-hidden="true">&rarr;</span>
+      <figure class="fpanel">
+        <div class="art"><img src="img/fig/design_scaffold.png?v=3" loading="lazy"
+             alt="A smaller episcaf-designed protein as a grey ribbon, presenting the same epitope in red."></div>
+        <figcaption>A designed scaffold displaying it<span>episcaf design</span></figcaption>
+      </figure>
+      <span class="flowarrow" aria-hidden="true">&rarr;</span>
+      <figure class="fpanel">
+        <div class="art">
+          <svg viewBox="0 0 160 184" role="img" aria-label="Schematic of an antibody binding the epitope displayed on the designed scaffold.">
+            <ellipse cx="80" cy="143" rx="41" ry="31" fill="#9aa3ad" stroke="#7d848d" stroke-width="1.4"/>
+            <path d="M51 117 Q80 100 109 117" fill="none" stroke="#c0392b" stroke-width="8" stroke-linecap="round"/>
+            <g stroke="#4a5a74" stroke-width="8" stroke-linecap="round" fill="none">
+              <line x1="80" y1="15" x2="80" y2="58"/>
+              <line x1="80" y1="58" x2="55" y2="105"/>
+              <line x1="80" y1="58" x2="105" y2="105"/>
+            </g>
+            <circle cx="80" cy="58" r="4.6" fill="#4a5a74"/>
+            <circle cx="55" cy="106" r="3.6" fill="#c0392b"/>
+            <circle cx="105" cy="106" r="3.6" fill="#c0392b"/>
+          </svg>
         </div>
-        <p class="ill-cap">Different candidate regions are shown on the same antigen using a fixed view.
-        The region selected for design is red.</p>
-        <p>Start from an antigen structure without a selected binding site. growPatch samples surface
-        regions that can be inspected and selected for scaffold design. Multiple regions can be
-        selected to build a library spanning the antigen surface.</p>
-        <a class="readmore" href="methods.html#epitope">Surface-sampling methods</a>
-      </div>
-      <div class="card-f">
-        <a class="btn-primary" href="growpatch.html">Explore candidate regions</a>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- ===== both branches converge on one shared workflow ===== -->
-  <div class="converge" aria-hidden="true">
-    <svg class="conv-wide" viewBox="0 0 400 34" preserveAspectRatio="none" fill="none"
-         stroke="currentColor" stroke-width="2">
-      <path d="M100 0 V16" vector-effect="non-scaling-stroke"/>
-      <path d="M300 0 V16" vector-effect="non-scaling-stroke"/>
-      <path d="M100 16 H300" vector-effect="non-scaling-stroke"/>
-      <path d="M200 16 V34" vector-effect="non-scaling-stroke"/>
-    </svg>
-    <svg class="conv-tall" viewBox="0 0 12 24" preserveAspectRatio="none" fill="none"
-         stroke="currentColor" stroke-width="2">
-      <path d="M6 0 V24" vector-effect="non-scaling-stroke"/>
-    </svg>
-  </div>
-
-  <div class="shared">
-    <div class="shared-h">Scaffold design</div>
-    <div class="wsteps">
-      <figure class="wstep">
-        <img class="wthumb" src="img/fig/antigen_epitope.png?v=2" loading="lazy"
-             alt="The antigen with the selected epitope residues highlighted in red.">
-        <figcaption>Identify target epitope(s)<span class="wsub">define the region to display</span></figcaption>
-      </figure>
-      <span class="warrow" aria-hidden="true">&rarr;</span>
-      <figure class="wstep">
-        <img class="wthumb" src="img/fig/scaffolds_trio.png?v=1" loading="lazy"
-             alt="Three real episcaf designs with different folds, each presenting the same epitope (red), superposed on the epitope.">
-        <figcaption>Generate scaffolds<span class="wsub">build backbones around the epitope</span></figcaption>
-      </figure>
-      <span class="warrow" aria-hidden="true">&rarr;</span>
-      <figure class="wstep">
-        <svg class="wthumb" viewBox="0 0 120 78" role="img" aria-label="A logistic curve in which higher design scores give a higher binding score; low-scoring designs are grey and high-scoring designs red.">
-          <line x1="16" y1="64" x2="112" y2="64" stroke="#999" stroke-width="1"/>
-          <line x1="16" y1="64" x2="16" y2="10" stroke="#999" stroke-width="1"/>
-          <path d="M18 60 C 48 58 56 18 108 15" fill="none" stroke="#296DC0" stroke-width="2.6"/>
-          <circle cx="30" cy="60" r="2.6" fill="#9aa3ad"/><circle cx="40" cy="58" r="2.6" fill="#9aa3ad"/><circle cx="50" cy="53" r="2.6" fill="#9aa3ad"/>
-          <circle cx="70" cy="30" r="2.6" fill="#e5543f"/><circle cx="84" cy="19" r="2.6" fill="#e5543f"/><circle cx="62" cy="40" r="2.6" fill="#e5543f"/>
-          <text x="66" y="76" text-anchor="middle" font-size="9" fill="#6a7686">Binding score</text>
-        </svg>
-        <figcaption>Evaluate designs<span class="wsub">predict structures and rank</span></figcaption>
-      </figure>
-      <span class="warrow" aria-hidden="true">&rarr;</span>
-      <figure class="wstep">
-        <svg class="wthumb" viewBox="0 0 120 78" role="img" aria-label="A CSV of ranked designs with sequences and metrics, available to download.">
-          <rect x="26" y="6" width="68" height="44" rx="3" fill="#fff" stroke="#cfdcec"/>
-          <rect x="26" y="6" width="68" height="11" rx="3" fill="#eef3f9"/>
-          <line x1="50" y1="6" x2="50" y2="50" stroke="#e3e9f2"/><line x1="72" y1="6" x2="72" y2="50" stroke="#e3e9f2"/>
-          <line x1="26" y1="28" x2="94" y2="28" stroke="#e3e9f2"/><line x1="26" y1="39" x2="94" y2="39" stroke="#e3e9f2"/>
-          <g fill="#9aa3ad"><rect x="31" y="20" width="12" height="3"/><rect x="55" y="20" width="12" height="3"/><rect x="77" y="20" width="12" height="3"/>
-            <rect x="31" y="31" width="12" height="3"/><rect x="55" y="31" width="12" height="3"/><rect x="77" y="31" width="12" height="3"/>
-            <rect x="31" y="42" width="12" height="3"/><rect x="55" y="42" width="12" height="3"/><rect x="77" y="42" width="12" height="3"/></g>
-          <g stroke="#296DC0" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="60" y1="55" x2="60" y2="67"/><path d="M54 62 l6 6 l6 -6"/></g>
-          <text x="60" y="77" text-anchor="middle" font-size="9" fill="#6a7686">.csv</text>
-        </svg>
-        <figcaption>Export results<span class="wsub">sequences, structures, and metrics</span></figcaption>
+        <figcaption>Tested for antibody binding<span>schematic</span></figcaption>
       </figure>
     </div>
-    <a class="shared-more" href="pipeline.html">See the full pipeline and run order</a>
-  </div>
-
-  <p class="schem-cap">The &ldquo;Identify&rdquo; and &ldquo;Generate scaffolds&rdquo; panels are rendered
-  from real structures (8PWW chain A for the antigen and epitope; episcaf designs for a 7a3t-derived
-  epitope). The &ldquo;Evaluate&rdquo; and &ldquo;Export&rdquo; panels are schematic.</p>
+    <figcaption class="flowcap">The <span class="epi">epitope</span> is carried from the native antigen onto
+    a smaller designed protein, which can then be screened for antibody recognition. The molecular panels
+    are rendered from 8PWW (antigen) and an episcaf design for that epitope; the binding panel is
+    schematic.</figcaption>
+  </figure>
 
   <section class="apps">
     <h2>Applications</h2>
-    <p>A scaffold that holds an epitope in its native shape, with little else around it, is a defined
-    reagent for the antibodies that recognize that site.</p>
-    <ul>
-      <li><b>Epitope-focused immunogens.</b> Presenting an epitope on a small scaffold, without the rest
-      of the antigen, directs an immune response toward that one site. This is the aim of epitope-focused
-      vaccine design: raise antibodies against a conserved or neutralizing site rather than the
-      immunodominant, often variable, regions of a pathogen.</li>
-      <li><b>Diagnostic reagents.</b> A scaffold displaying a single epitope can act as a capture or
-      detection reagent &mdash; for example, measuring serum antibodies that bind one defined site instead
-      of the whole antigen.</li>
-      <li><b>Epitope characterization and specificity.</b> Most directly, a scaffold tests what an epitope
-      is sufficient for. If an antibody binds a scaffold carrying only the contact residues, those residues
-      account for the epitope; substituting residues probes which are essential to binding, and a set of
-      scaffolds across the antigen surface maps and compares where different antibodies are aimed.</li>
-      <li><b>Monoclonal and polyclonal work.</b> One scaffold targets the epitope of a single monoclonal
-      antibody. A library of scaffolds spanning the antigen surface, built from the surface scan,
-      separates the sites a polyclonal serum recognizes.</li>
-    </ul>
+    <p class="sub2">Intended research uses of the exported scaffold designs.</p>
+    <div class="applist">
+      <div class="app">
+        <h3>Map antibody recognition</h3>
+        <p>Design scaffold libraries representing different antigen regions to investigate which sites
+        monoclonal antibodies or serum antibodies recognize.</p>
+      </div>
+      <div class="app">
+        <h3>Compare epitope variants</h3>
+        <p>Use scaffold variants to investigate how changes at selected residues affect antibody
+        binding.</p>
+      </div>
+      <div class="app">
+        <h3>Develop defined assay reagents</h3>
+        <p>Design scaffolds displaying individual antigen sites for evaluation as capture, detection, or
+        competition reagents.</p>
+      </div>
+      <div class="app">
+        <h3>Explore epitope-focused immunogens</h3>
+        <p>Develop scaffold candidates that present selected antigen sites for experimental evaluation in
+        immunogen design.</p>
+      </div>
+    </div>
   </section>
 
-  <p class="caps">Recorded examples can be explored in the browser. Processing a new structure requires
-  the local service. Scaffold generation and structure prediction run on the cluster.</p>
+  <section class="paths">
+    <h2>Choose a starting point</h2>
+    <p class="sub2">Both paths feed into the same scaffold generation and evaluation.</p>
+    <div class="fork">
+      <div class="card">
+        <div class="card-b">
+          <div class="card-t">Scaffold a selected epitope</div>
+          <img class="card-ill" src="img/fig/antigen_epitope.png?v=3" loading="lazy"
+               alt="The 8PWW antigen as a grey ribbon with the selected epitope in red.">
+          <p class="ill-cap">Antigen (grey) with the selected epitope (red). 8PWW chain A.</p>
+          <p>Start from an antibody&ndash;antigen complex or select antigen residues directly.</p>
+        </div>
+        <div class="card-f"><a class="btn btn-primary" href="scaffold.html">Configure scaffold design</a></div>
+      </div>
+      <div class="card">
+        <div class="card-b">
+          <div class="card-t">Find candidate regions to scaffold</div>
+          <div class="candrow">
+            <figure><img src="img/fig/cand_a.png?v=3" loading="lazy" alt="One candidate surface region highlighted on the antigen."><figcaption>candidate 1</figcaption></figure>
+            <figure><img src="img/fig/cand_b.png?v=3" loading="lazy" alt="A second candidate surface region on the same antigen."><figcaption>candidate 2</figcaption></figure>
+            <figure class="sel"><img src="img/fig/cand_selected.png?v=3" loading="lazy" alt="A candidate region selected for design, highlighted in red."><figcaption>selected</figcaption></figure>
+          </div>
+          <p class="ill-cap">Candidate surface regions on the same antigen; the selected one is red.</p>
+          <p>Explore candidate surface regions and select sites for scaffold design.</p>
+        </div>
+        <div class="card-f"><a class="btn btn-primary" href="growpatch.html">Explore candidate regions</a></div>
+      </div>
+    </div>
+  </section>
 
-  <p class="footline"><a href="methods.html">Methods</a> &middot;
-  <a href="pipeline.html">Design workflow</a> &middot;
-  <a href="results.html">Explore results</a></p>
+  <section class="workflow">
+    <h2>From epitope to candidates</h2>
+    <div class="wseq">
+      <div class="wstep"><span class="wn">Step 1</span><span class="wt">Select antigen residues</span></div>
+      <div class="wstep"><span class="wn">Step 2</span><span class="wt">Generate scaffold designs</span></div>
+      <div class="wstep"><span class="wn">Step 3</span><span class="wt">Evaluate predicted structures</span></div>
+      <div class="wstep"><span class="wn">Step 4</span><span class="wt">Export experimental candidates</span></div>
+    </div>
+    <p class="wnote">episcaf combines backbone generation, sequence design, and structure prediction to rank
+    candidates by epitope geometry and predicted antibody obstruction.</p>
+    <p class="wlinks"><a href="methods.html">Methods</a> &middot;
+    <a href="pipeline.html">Design workflow</a> &middot;
+    <a href="results.html">Explore results</a></p>
+  </section>
+
+  <p class="caps">Recorded examples can be explored in the browser. Processing a new structure requires the
+  local service; scaffold generation and structure prediction run on the cluster.</p>
+
 </div>
 </body>
 </html>
