@@ -79,41 +79,41 @@ ul.tight li{margin:4px 0}
           <stop offset="100%" stop-color="#2b47d6" stop-opacity="0"/>
         </radialGradient>
       </defs>
+      <!-- Both panels draw identical antigen + epitope + occupancy field; only the right adds bulk. -->
       <!-- LEFT PANEL: accessible -->
       <g transform="translate(0,0)">
-        <!-- probability cloud -->
-        <ellipse cx="170" cy="250" rx="150" ry="150" fill="url(#cloud)"/>
-        <path d="M70 250 A100 100 0 0 1 270 250" fill="none" stroke="#2b47d6" stroke-opacity="0.35" stroke-width="1.2" stroke-dasharray="3 4"/>
-        <path d="M105 250 A65 65 0 0 1 235 250" fill="none" stroke="#2b47d6" stroke-opacity="0.45" stroke-width="1.2" stroke-dasharray="3 4"/>
-        <!-- antigen -->
-        <path d="M40 300 Q40 258 90 258 L250 258 Q300 258 300 300 Z" fill="#9aa3ad" stroke="#7d848d" stroke-width="1.5"/>
-        <text x="60" y="292" font-size="11" fill="#39414b">antigen</text>
-        <!-- epitope -->
-        <path d="M135 258 Q170 244 205 258" fill="none" stroke="#e5543f" stroke-width="7" stroke-linecap="round"/>
-        <!-- scaffold: stays below the cloud -->
-        <path d="M120 300 Q120 272 150 270 Q170 262 190 270 Q220 272 220 300 Z" fill="#ffffff" stroke="#1b4a86" stroke-width="2"/>
-        <path d="M150 272 Q170 266 190 272" fill="none" stroke="#e5543f" stroke-width="5" stroke-linecap="round"/>
-        <text x="170" y="22" font-size="13" font-weight="bold" fill="#0a7a2f" text-anchor="middle">accessible</text>
-        <text x="170" y="40" font-size="11" fill="#555" text-anchor="middle">scaffold stays clear of antibody space</text>
-        <text x="170" y="54" font-size="11" fill="#1b4a86" text-anchor="middle">low s_p1_free</text>
+        <ellipse cx="170" cy="248" rx="140" ry="124" fill="url(#cloud)"/>
+        <path d="M58 248 A112 112 0 0 1 282 248" fill="none" stroke="#2b47d6" stroke-opacity="0.35" stroke-width="1.2" stroke-dasharray="3 4"/>
+        <path d="M95 248 A75 75 0 0 1 245 248" fill="none" stroke="#2b47d6" stroke-opacity="0.45" stroke-width="1.2" stroke-dasharray="3 4"/>
+        <line x1="38" y1="240" x2="302" y2="240" stroke="#c0392b" stroke-width="1" stroke-dasharray="4 3" opacity="0.45"/>
+        <text x="300" y="235" font-size="9.5" fill="#c0392b" text-anchor="end">outward / antibody side &uarr;</text>
+        <path d="M40 300 Q40 268 95 266 L245 266 Q300 268 300 300 Z" fill="#9aa3ad" stroke="#7d848d" stroke-width="1.5"/>
+        <text x="58" y="292" font-size="11" fill="#39414b">antigen</text>
+        <path d="M120 300 Q118 274 150 264 Q170 258 190 264 Q222 274 220 300 Z" fill="#ffffff" stroke="#1b4a86" stroke-width="2"/>
+        <path d="M150 260 Q170 252 190 260" fill="none" stroke="#e5543f" stroke-width="7" stroke-linecap="round"/>
+        <text x="170" y="24" font-size="13" font-weight="bold" fill="#0a7a2f" text-anchor="middle">accessible</text>
+        <text x="170" y="42" font-size="11" fill="#555" text-anchor="middle">scaffold stays below the cloud</text>
+        <text x="170" y="56" font-size="11" fill="#1b4a86" text-anchor="middle">low s_p1_free</text>
       </g>
       <!-- divider -->
       <line x1="340" y1="18" x2="340" y2="300" stroke="#e2e8f1" stroke-width="1.5"/>
-      <!-- RIGHT PANEL: obstructed -->
+      <!-- RIGHT PANEL: obstructed = left panel + one added lobe -->
       <g transform="translate(340,0)">
-        <ellipse cx="170" cy="250" rx="150" ry="150" fill="url(#cloud)"/>
-        <path d="M70 250 A100 100 0 0 1 270 250" fill="none" stroke="#2b47d6" stroke-opacity="0.35" stroke-width="1.2" stroke-dasharray="3 4"/>
-        <path d="M105 250 A65 65 0 0 1 235 250" fill="none" stroke="#2b47d6" stroke-opacity="0.45" stroke-width="1.2" stroke-dasharray="3 4"/>
-        <path d="M40 300 Q40 258 90 258 L250 258 Q300 258 300 300 Z" fill="#9aa3ad" stroke="#7d848d" stroke-width="1.5"/>
-        <path d="M135 258 Q170 244 205 258" fill="none" stroke="#e5543f" stroke-width="7" stroke-linecap="round"/>
-        <!-- scaffold: bulges up into the cloud -->
-        <path d="M120 300 Q118 232 150 200 Q170 184 190 200 Q222 232 220 300 Z" fill="#ffffff" stroke="#1b4a86" stroke-width="2"/>
-        <path d="M150 202 Q170 196 190 202" fill="none" stroke="#e5543f" stroke-width="5" stroke-linecap="round"/>
-        <!-- mark the overlapping bulk -->
-        <path d="M150 200 Q170 184 190 200 L188 236 Q170 230 152 236 Z" fill="#e5543f" fill-opacity="0.14" stroke="#c0392b" stroke-width="1" stroke-dasharray="2 2"/>
-        <text x="170" y="22" font-size="13" font-weight="bold" fill="#a00000" text-anchor="middle">obstructed</text>
-        <text x="170" y="40" font-size="11" fill="#555" text-anchor="middle">scaffold bulk sits in antibody space</text>
-        <text x="170" y="54" font-size="11" fill="#1b4a86" text-anchor="middle">high s_p1_free</text>
+        <ellipse cx="170" cy="248" rx="140" ry="124" fill="url(#cloud)"/>
+        <path d="M58 248 A112 112 0 0 1 282 248" fill="none" stroke="#2b47d6" stroke-opacity="0.35" stroke-width="1.2" stroke-dasharray="3 4"/>
+        <path d="M95 248 A75 75 0 0 1 245 248" fill="none" stroke="#2b47d6" stroke-opacity="0.45" stroke-width="1.2" stroke-dasharray="3 4"/>
+        <line x1="38" y1="240" x2="302" y2="240" stroke="#c0392b" stroke-width="1" stroke-dasharray="4 3" opacity="0.45"/>
+        <path d="M40 300 Q40 268 95 266 L245 266 Q300 268 300 300 Z" fill="#9aa3ad" stroke="#7d848d" stroke-width="1.5"/>
+        <!-- the ONLY difference: added scaffold material reaching up into the cloud -->
+        <path d="M158 266 Q150 206 176 192 Q202 206 198 266 Z" fill="#ffffff" stroke="#1b4a86" stroke-width="2"/>
+        <path d="M153 240 Q150 206 176 192 Q202 206 201 240 Z" fill="#e5543f" fill-opacity="0.18" stroke="#c0392b" stroke-width="1.3" stroke-dasharray="3 2"/>
+        <text x="228" y="206" font-size="9.5" fill="#c0392b">overlapping<tspan x="228" dy="11">material</tspan></text>
+        <!-- scaffold base + epitope, identical to the left panel -->
+        <path d="M120 300 Q118 274 150 264 Q170 258 190 264 Q222 274 220 300 Z" fill="#ffffff" stroke="#1b4a86" stroke-width="2"/>
+        <path d="M150 260 Q170 252 190 260" fill="none" stroke="#e5543f" stroke-width="7" stroke-linecap="round"/>
+        <text x="170" y="24" font-size="13" font-weight="bold" fill="#a00000" text-anchor="middle">obstructed</text>
+        <text x="170" y="42" font-size="11" fill="#555" text-anchor="middle">added bulk sits in antibody space</text>
+        <text x="170" y="56" font-size="11" fill="#1b4a86" text-anchor="middle">high s_p1_free</text>
       </g>
     </svg>
     <div class="keyrow">
@@ -122,10 +122,11 @@ ul.tight li{margin:4px 0}
       <span><span class="sw" style="background:#ffffff;border-color:#1b4a86"></span>designed scaffold</span>
       <span><span class="sw" style="background:#2b47d6;opacity:.32"></span>antibody-occupancy (darker = more likely)</span>
     </div>
-    <div class="figcap"><b>Conceptual schematic.</b> Both scaffolds present the same epitope (red). The blue
-    cloud is the <b>estimated</b> region antibodies occupy, averaged over many complexes &mdash; not a
-    single docked antibody. The left scaffold keeps its bulk out of that region; the right one bulges
-    into it and would block the approach, which AOMclash scores as higher obstruction.</div>
+    <div class="figcap"><b>Conceptual schematic.</b> The antigen, the epitope (red), and the occupancy
+    field are drawn identically in both panels; only the surrounding scaffold changes. The blue cloud is
+    the <b>estimated</b> region antibodies occupy, averaged over many complexes, not a single docked
+    antibody. The right panel adds scaffold material that reaches past the free boundary into that region
+    (outlined in red), which AOMclash scores as higher obstruction.</div>
   </div>
 
   <h2>C. How it works</h2>
@@ -137,58 +138,14 @@ ul.tight li{margin:4px 0}
   there.</p>
 
   <div class="fig">
-    <svg viewBox="0 0 680 300" role="img" aria-label="A cross-section of the antibody-occupancy probability field in the epitope frame. Probability is highest just outside the epitope along the outward normal and falls off with distance. A scaffold atom beyond 4 angstroms from the native antigen reads the probability at its location.">
-      <!-- axes -->
-      <line x1="70" y1="265" x2="610" y2="265" stroke="#999" stroke-width="1.2"/>
-      <line x1="70" y1="265" x2="70" y2="40" stroke="#999" stroke-width="1.2"/>
-      <text x="340" y="289" font-size="11" fill="#555" text-anchor="middle">in-plane position across the epitope</text>
-      <text x="22" y="150" font-size="11" fill="#555" transform="rotate(-90 22 150)" text-anchor="middle">outward from epitope (&Aring;)</text>
-      <!-- probability heatmap cells: higher (darker blue) a little above the epitope, center-weighted -->
-      <g>
-        <!-- row y-bands from bottom(near antigen) to top(far); col x-bands center-weighted -->
-        <!-- generated manually: opacity ~ gaussian peaking ~row2 (≈14A) and center cols -->
-        <!-- bottom row (0-5A): inside/near antigen, low free weight -->
-        <g>
-        <rect x="190" y="225" width="60" height="40" fill="#2b47d6" opacity="0.10"/>
-        <rect x="250" y="225" width="60" height="40" fill="#2b47d6" opacity="0.16"/>
-        <rect x="310" y="225" width="60" height="40" fill="#2b47d6" opacity="0.20"/>
-        <rect x="370" y="225" width="60" height="40" fill="#2b47d6" opacity="0.16"/>
-        <rect x="430" y="225" width="60" height="40" fill="#2b47d6" opacity="0.10"/>
-        </g>
-        <!-- row ~14A: peak -->
-        <g>
-        <rect x="190" y="150" width="60" height="75" fill="#2b47d6" opacity="0.22"/>
-        <rect x="250" y="150" width="60" height="75" fill="#2b47d6" opacity="0.40"/>
-        <rect x="310" y="150" width="60" height="75" fill="#2b47d6" opacity="0.52"/>
-        <rect x="370" y="150" width="60" height="75" fill="#2b47d6" opacity="0.40"/>
-        <rect x="430" y="150" width="60" height="75" fill="#2b47d6" opacity="0.22"/>
-        </g>
-        <!-- top row (far): fading -->
-        <g>
-        <rect x="190" y="95" width="60" height="55" fill="#2b47d6" opacity="0.08"/>
-        <rect x="250" y="95" width="60" height="55" fill="#2b47d6" opacity="0.16"/>
-        <rect x="310" y="95" width="60" height="55" fill="#2b47d6" opacity="0.22"/>
-        <rect x="370" y="95" width="60" height="55" fill="#2b47d6" opacity="0.16"/>
-        <rect x="430" y="95" width="60" height="55" fill="#2b47d6" opacity="0.08"/>
-        </g>
-      </g>
-      <!-- native antigen surface + epitope -->
-      <path d="M70 265 L190 265 Q310 248 340 248 Q370 248 490 265 L610 265" fill="none" stroke="#7d848d" stroke-width="2"/>
-      <path d="M300 250 Q340 240 380 250" fill="none" stroke="#e5543f" stroke-width="6" stroke-linecap="round"/>
-      <text x="520" y="258" font-size="10.5" fill="#39414b">native antigen</text>
-      <!-- 4A free boundary -->
-      <path d="M70 250 L190 250 Q340 232 340 232 Q340 232 490 250 L610 250" fill="none" stroke="#c0392b" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"/>
-      <text x="96" y="243" font-size="10" fill="#c0392b">4 &Aring; from antigen (free boundary)</text>
-      <!-- a scaffold atom reading the map -->
-      <circle cx="340" cy="178" r="6" fill="#1b4a86"/>
-      <line x1="340" y1="178" x2="470" y2="120" stroke="#1b4a86" stroke-width="1"/>
-      <text x="474" y="118" font-size="11" fill="#1b4a86">scaffold atom, free: reads p1 &asymp; 0.5 here</text>
-      <text x="474" y="134" font-size="10.5" fill="#555">(atoms within 4 &Aring; of the antigen are not counted)</text>
-    </svg>
-    <div class="figcap"><b>Conceptual schematic</b> of the occupancy field (a slice through the epitope
-    frame). Occupancy is near zero at the antigen surface, peaks roughly 14&nbsp;&Aring; out along the
-    outward normal, and fades beyond. To score a design, the scaffold is aligned onto the native epitope
-    so it lands in this frame; each scaffold atom reads the probability at its location.</div>
+    <img src="img/fig/aom_slice.png" style="display:block;width:100%;max-width:580px;height:auto;margin:0 auto" loading="lazy"
+         alt="A slice of the real antibody-occupancy map in the epitope frame: probability of antibody occupancy versus outward distance and in-plane position, peaking about 14 angstroms out. A free scaffold atom beyond the 4-angstrom boundary is counted; an atom within 4 angstroms of the antigen is excluded.">
+    <div class="figcap"><b>A slice of the actual stored occupancy map</b> (mean over 1,029 SAbDab
+    complexes), in the epitope frame. Occupancy is near zero at the epitope, peaks about 14&nbsp;&Aring;
+    out along the outward normal, and fades beyond. To score a design, the scaffold is aligned onto the
+    native epitope so it lands in this frame; each atom reads the probability at its location. Generated
+    by <code>scripts/render_aom_slice.py</code>. The 4&nbsp;&Aring; free boundary and the two atom markers
+    are illustrative overlays.</div>
   </div>
 
   <p>The score sums those probabilities over the scaffold atoms that stick out beyond the native antigen
