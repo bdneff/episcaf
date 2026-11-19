@@ -6,100 +6,6 @@
 <title>Pipeline · episcaf</title>
 <link rel="stylesheet" href="site.css">
 <style>
-:root{
-  --ink:#1a1a1a; --mut:#4e5a67; --faint:#808b97;
-  --blue:#296DC0; --blued:#1b4a86; --line:#d5deea;
-  --done:#2e9e57; --prog:#d8a93a; --plan:#9aa7b4;
-  --ng-bg:#fffaf0; --ng-line:#ead9a8; --ng-ink:#8a6413;
-}
-body.locked{overflow:hidden}
-.page{max-width:720px;margin:0 auto}
-h1{font-size:22px;margin:18px 0 4px;font-weight:bold}
-h2{font-size:16px;margin:34px 0 4px;font-weight:bold}
-p{margin:9px 0}
-.updated{font-size:12px;color:var(--faint);margin:0 0 4px;letter-spacing:.02em}
-.lede{color:var(--mut);margin:0 0 14px;max-width:62ch}
-.sub{color:var(--mut);margin:4px 0 14px;max-width:62ch;font-size:13px}
-
-/* ---- status chips + legend ---- */
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:bold;letter-spacing:.03em;text-transform:uppercase;padding:2px 9px;border-radius:20px;white-space:nowrap}
-.chip::before{content:"";width:7px;height:7px;border-radius:50%}
-.chip.done{color:#1d6e3c;background:#e8f5ec}.chip.done::before{background:var(--done)}
-.chip.prog{color:#8a6413;background:#fcf2db}.chip.prog::before{background:var(--prog)}
-.chip.plan{color:#4f5b68;background:#eef1f5}.chip.plan::before{background:var(--plan)}
-.legend{display:flex;flex-wrap:wrap;gap:9px 18px;align-items:center;font-size:12px;color:var(--mut);background:#f7f9fc;border:1px solid var(--line);border-radius:8px;padding:11px 14px;margin:2px 0 6px}
-.legend .ng-tag{font-size:9.5px}
-.hint{font-size:12px;color:var(--faint);margin:10px 0 0;display:flex;align-items:center;gap:7px}
-.hint .cur{font-size:14px}
-
-.ng-tag{display:inline-block;font-size:9.5px;font-weight:bold;letter-spacing:.06em;color:var(--ng-ink);background:#fcf2db;border:1px solid var(--ng-line);border-radius:3px;padding:1px 5px;vertical-align:1px}
-
-/* ---- flow ---- */
-.flow{margin:10px 0 0}
-.phase{background:#f7f9fc;border:1px solid var(--line);border-radius:12px;padding:8px 16px 16px;margin:0}
-.phase-h{display:flex;align-items:center;gap:11px;padding:7px 0 10px}
-.phase-doc{margin-left:auto;font-size:12px;color:#0033cc;font-weight:600;white-space:nowrap}
-.phase-doc:hover{text-decoration:underline}
-@media(max-width:520px){.phase-doc{font-size:11px}}
-.phase-n{flex:none;width:27px;height:27px;border-radius:50%;background:var(--blue);color:#fff;font-size:14px;font-weight:bold;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(27,74,134,.3)}
-.phase-t{font-size:15px;font-weight:bold;color:var(--blued)}
-.phase-t small{display:block;font-size:11.5px;font-weight:normal;color:var(--mut);letter-spacing:.01em;margin-top:1px}
-
-/* a clickable component */
-.stage{background:#fff;border:1px solid var(--line);border-left:5px solid var(--plan);border-radius:7px;padding:11px 14px;box-shadow:0 1px 1px rgba(30,50,80,.04);cursor:pointer;transition:box-shadow .12s,transform .12s,border-color .12s;position:relative}
-.stage:hover{box-shadow:0 3px 10px rgba(30,50,80,.12);transform:translateY(-1px)}
-.stage:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
-.stage.s-done{border-left-color:var(--done)}
-.stage.s-prog{border-left-color:var(--prog)}
-.stage.s-plan{border-left-color:var(--plan)}
-.stage.ng{background:var(--ng-bg)}
-.stage .st-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.stage .st-name{font-weight:bold;font-size:14px}
-.stage .st-desc{font-size:12.5px;color:var(--mut);margin:5px 0 0}
-.stage .st-tool{font-family:"Courier New",Courier,monospace;font-size:11px;color:#6b7684;margin-top:6px;display:block;word-break:break-word}
-.stage .more{font-size:11px;font-weight:bold;color:var(--blue);margin-top:8px;display:inline-flex;align-items:center;gap:4px;letter-spacing:.02em}
-.stage:hover .more{text-decoration:underline}
-
-/* down-arrow connector */
-.arr{position:relative;width:2px;height:22px;background:var(--line);margin:6px auto}
-.arr::after{content:"";position:absolute;left:50%;bottom:-1px;width:8px;height:8px;border-right:2px solid var(--line);border-bottom:2px solid var(--line);transform:translate(-50%,0) rotate(45deg)}
-.arr.big{height:30px}
-
-/* two-mode input branch */
-.branch{display:flex;gap:12px;align-items:stretch;position:relative}
-.branch .stage{flex:1;min-width:0}
-.orbubble{flex:none;align-self:center;font-size:10.5px;font-weight:bold;color:var(--faint);background:#fff;border:1px solid var(--line);border-radius:20px;padding:3px 9px;letter-spacing:.05em}
-@media(max-width:540px){.branch{flex-direction:column;gap:9px}.orbubble{align-self:flex-start}}
-
-/* loop-back (also clickable) */
-.loop{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ng-ink);background:var(--ng-bg);border:1px solid var(--ng-line);border-radius:7px;padding:9px 13px;margin:10px 0 0;cursor:pointer;transition:box-shadow .12s}
-.loop:hover{box-shadow:0 2px 8px rgba(138,100,19,.14)}
-.loop:focus-visible{outline:2px solid var(--prog);outline-offset:2px}
-.loop .ic{flex:none;font-size:18px;line-height:1;color:var(--prog)}
-.loop b{color:#6f5410}
-
-.focus{display:flex;gap:11px;background:#fef8ec;border:1px solid var(--ng-line);border-left:5px solid var(--prog);border-radius:8px;padding:12px 15px;margin:22px 0 0}
-.focus .ic{flex:none;font-size:17px;line-height:1.3}
-.focus b{color:#6f5410}
-.foot{font-size:12px;color:#5c6672;line-height:1.75;margin-top:30px;border-top:1px solid var(--line);padding-top:13px}
-
-/* ---- modal ---- */
-.modal[hidden]{display:none}
-.modal{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
-@media(min-width:560px){.modal{align-items:center}}
-.modal-back{position:absolute;inset:0;background:rgba(18,32,52,.5)}
-.modal-card{position:relative;background:#fff;width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:14px 14px 0 0;box-shadow:0 12px 40px rgba(16,30,55,.35);-webkit-overflow-scrolling:touch}
-@media(min-width:560px){.modal-card{border-radius:14px}}
-.modal-head{position:sticky;top:0;background:#f0f5fb;border-bottom:1px solid #dde7f2;padding:15px 48px 14px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.modal-t{font-weight:bold;font-size:17px;color:var(--blued)}
-.modal-x{position:absolute;top:10px;right:12px;width:30px;height:30px;border:none;background:#fff;border:1px solid var(--line);border-radius:50%;font-size:19px;line-height:1;color:var(--mut);cursor:pointer}
-.modal-x:hover{color:var(--ink);background:#eef1f5}
-.modal-body{padding:16px 18px 22px}
-.modal-body p{margin:0 0 11px;font-size:13px;color:#33404d}
-.modal-body p.how{color:var(--mut);font-size:12.5px}
-.modal-body h4{margin:16px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}
-.modal-body code{font-family:"Courier New",Courier,monospace;font-size:11.5px;background:#eef1f5;padding:0 4px;border-radius:3px;word-break:break-word}
-.modal-body .tool{display:block;font-family:"Courier New",Courier,monospace;font-size:11.5px;color:#4e5a67;background:#f4f7fb;border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin:4px 0 0;word-break:break-word}
 .steps{list-style:none;margin:8px 0 0;padding:0;font-size:12.5px}
 .steps li{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-top:1px solid #eef1f5}
 .steps li:first-child{border-top:none}
@@ -113,11 +19,12 @@ p{margin:9px 0}
 .note b{color:#5c450d}
 figure.dgm{margin:4px 0 2px;padding:0;text-align:center}
 figure.dgm svg{display:block;width:100%;height:auto;margin:0 auto}
-figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line-height:1.5;text-align:left}
+figure.dgm figcaption{font-size:11.5px;color:#536477;margin:7px auto 0;line-height:1.5;text-align:left}
 .dgm .dlbl{font-size:11px;font-weight:bold;fill:currentColor}
 .dgm .dtxt{font-size:10.5px;fill:currentColor}
 .dgm .dmut{font-size:10px;fill:currentColor;opacity:.62}
 </style>
+<link rel="stylesheet" href="chapters.css">
 </head>
 <body>
 <div class="banner"><div class="banner-inner">
@@ -143,147 +50,44 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
 </div></div>
 
 <div class="page">
-  <p class="updated">WORKFLOW · UPDATED 2026-11-18</p>
-  <h1>Design workflow</h1>
-  <p class="lede">The workflow proceeds from epitope selection to backbone generation, sequence design,
-  structure prediction, scoring, and export. Select a stage to view its inputs, outputs, implementation,
-  and status.</p>
-
-  <div class="legend">
-    <span class="chip done">implemented</span>
-    <span class="chip prog">in&nbsp;development</span>
-    <span class="chip plan">planned</span>
-  </div>
-
-  <!-- ===================== FLOW ===================== -->
-  <div class="flow">
-
-    <div class="phase">
-      <div class="phase-h">
-        <div class="phase-n">1</div>
-        <div class="phase-t">Identify the epitope(s)<small>Select the epitope &mdash; one of two modes</small></div>
-        <a class="phase-doc" href="methods.html#epitope">In the Docs &rsaquo;</a>
-      </div>
-      <div class="branch">
-        <div class="stage s-done" data-detail="known-ab" tabindex="0" role="button" aria-label="Known antibody — details">
-          <div class="st-top"><span class="st-name">Contact epitope</span><span class="chip done">implemented</span></div>
-          <p class="st-desc">Select antigen residues that contact the reference antibody.</p>
-          <span class="more">How it works &rarr;</span>
-        </div>
-        <div class="orbubble">OR</div>
-        <div class="stage ng s-done" data-detail="growpatch" tabindex="0" role="button" aria-label="growPatch — details">
-          <div class="st-top"><span class="st-name">Candidate surface regions</span><span class="chip done">implemented</span></div>
-          <p class="st-desc">Generate surface patches with growPatch for inspection and selection.</p>
-          <span class="more">How it works &rarr;</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="arr big"></div>
-
-    <div class="phase">
-      <div class="phase-h">
-        <div class="phase-n">2</div>
-        <div class="phase-t">Generate scaffolds<small>Build backbones, design sequences, predict structures</small></div>
-        <a class="phase-doc" href="methods.html#generate">In the Docs &rsaquo;</a>
-      </div>
-      <div class="stage s-done" data-detail="rfd3" tabindex="0" role="button" aria-label="RFdiffusion3 — details">
-        <div class="st-top"><span class="st-name">Backbone generation</span><span class="chip done">implemented</span></div>
-        <p class="st-desc">Generate eight backbones per contig while preserving the epitope constraints.</p>
-        <span class="more">How it works &rarr;</span>
-      </div>
-      <div class="arr"></div>
-      <div class="stage ng s-prog" data-detail="prefilter" tabindex="0" role="button" aria-label="Backbone obstruction filter — details">
-        <div class="st-top"><span class="st-name">Backbone obstruction filter</span><span class="chip prog">in&nbsp;development</span></div>
-        <p class="st-desc">Retain backbones with lower predicted antibody obstruction before sequence design.</p>
-        <span class="more">How it works &rarr;</span>
-      </div>
-      <div class="arr"></div>
-      <div class="stage s-done" data-detail="mpnn" tabindex="0" role="button" aria-label="ProteinMPNN — details">
-        <div class="st-top"><span class="st-name">Sequence design</span><span class="chip done">implemented</span></div>
-        <p class="st-desc">Design sequences with ProteinMPNN while preserving the specified epitope residues.</p>
-        <span class="more">How it works &rarr;</span>
-      </div>
-      <div class="arr"></div>
-      <div class="stage s-done" data-detail="af3" tabindex="0" role="button" aria-label="AlphaFold3 — details">
-        <div class="st-top"><span class="st-name">Structure prediction</span><span class="chip done">implemented</span></div>
-        <p class="st-desc">Predict each design with AlphaFold&nbsp;3 using the configured inputs.</p>
-        <span class="more">How it works &rarr;</span>
-      </div>
-      <div class="loop" data-detail="loop" tabindex="0" role="button" aria-label="Iterative refinement — details">
-        <span class="ic">&#x21bb;</span>
-        <span><b>Iterative refinement:</b> selected designs generate partial-diffusion variants for the next
-        round, alongside independently generated backbones.
-        <span class="chip plan" style="vertical-align:1px">planned</span> &nbsp;<b style="color:var(--blue)">How it works &rarr;</b></span>
-      </div>
-    </div>
-
-    <div class="arr big"></div>
-
-    <div class="phase">
-      <div class="phase-h">
-        <div class="phase-n">3</div>
-        <div class="phase-t">Evaluate designs<small>Predict structures, then score and rank designs</small></div>
-        <a class="phase-doc" href="methods.html#score">In the Docs &rsaquo;</a>
-      </div>
-      <div class="stage s-done" data-detail="metrics" tabindex="0" role="button" aria-label="Metrics — details">
-        <div class="st-top"><span class="st-name">Structural metrics</span><span class="chip done">implemented</span></div>
-        <p class="st-desc">Calculate epitope RMSD, overall RMSD, prediction confidence, and antibody obstruction.</p>
-        <span class="more">How it works &rarr;</span>
-      </div>
-      <div class="arr"></div>
-      <div class="stage ng s-prog" data-detail="aomclash" tabindex="0" role="button" aria-label="AOMclash — details">
-        <div class="st-top"><span class="st-name">AOMclash</span><span class="chip prog">in&nbsp;development</span></div>
-        <p class="st-desc">Estimate obstruction when a reference antibody is unavailable.</p>
-        <span class="more">How it works &rarr;</span>
-      </div>
-      <div class="arr"></div>
-      <div class="stage s-done" data-detail="composite" tabindex="0" role="button" aria-label="Composite score and select — details">
-        <div class="st-top"><span class="st-name">Ranking and selection</span><span class="chip done">implemented</span></div>
-        <p class="st-desc">Rank designs using the selected score and choose designs within each epitope group.</p>
-        <span class="more">How it works &rarr;</span>
-      </div>
-    </div>
-
-    <div class="arr big"></div>
-
-    <div class="phase">
-      <div class="phase-h">
-        <div class="phase-n">4</div>
-        <div class="phase-t">Export the library<small>Assemble, encode, and order</small></div>
-        <a class="phase-doc" href="methods.html#tool">In the Docs &rsaquo;</a>
-      </div>
-      <div class="stage s-done" data-detail="output" tabindex="0" role="button" aria-label="Library preparation — details">
-        <div class="st-top"><span class="st-name">Library preparation</span><span class="chip done">implemented</span></div>
-        <p class="st-desc">Assemble the selected sequences and generate the DNA order file.</p>
-        <span class="more">How it works &rarr;</span>
-      </div>
-    </div>
-
-  </div>
-
-  <div class="foot">
-    <b>Implementation references.</b> Run order: <code>docs/PIPELINE.md</code> · Metric presets:
-    <code>episcaf_analysis/presets.py</code> · AOMclash: <a href="aomclash.html">documentation</a>,
-    <code>episcaf_analysis/aomclash/FEATURES.md</code> · DP4 library reference:
-    <code>docs/DP4_LIBRARY.md</code> · Reference implementations: <code>AltinLab/epitope-universe</code>.
-  </div>
-</div>
-
-<!-- ===================== MODAL ===================== -->
-<div class="modal" id="modal" hidden>
-  <div class="modal-back" data-close></div>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div class="modal-head"><span class="modal-t" id="modal-title"></span><span id="modal-chip"></span></div>
-    <button class="modal-x" data-close aria-label="Close">&times;</button>
-    <div class="modal-body" id="modal-body"></div>
-  </div>
-</div>
-
-<!-- ===================== DETAIL CONTENT (hidden; cloned into the modal) ===================== -->
-<div hidden id="details">
-
-  <div data-id="known-ab" data-title="Contact epitope" data-chip="done">
+<main>
+  <header class="reference-heading">
+    <h1>Design workflow</h1>
+    <p class="lede">Select a phase to see its steps, then expand a step for details.</p>
+  </header>
+  <nav aria-label="Workflow phases">
+    <ol class="phase-map" data-section-nav>
+      <li><a href="#select">
+        <span class="phase-index">1</span>
+        <strong>Select epitopes</strong>
+        <span class="phase-output">Selected residues</span>
+      </a></li>
+      <li><a href="#design">
+        <span class="phase-index">2</span>
+        <strong>Generate scaffolds</strong>
+        <span class="phase-output">Predicted structures</span>
+      </a></li>
+      <li><a href="#evaluate">
+        <span class="phase-index">3</span>
+        <strong>Evaluate designs</strong>
+        <span class="phase-output">Ranked designs</span>
+      </a></li>
+      <li><a href="#export">
+        <span class="phase-index">4</span>
+        <strong>Export the library</strong>
+        <span class="phase-output">Library files</span>
+      </a></li>
+    </ol>
+  </nav>
+  <section class="phase-panel" data-section aria-labelledby="select">
+    <header class="phase-heading">
+      <h2 id="select" tabindex="-1">Select epitopes</h2>
+      <a href="methods.html#epitope">Read the methods</a>
+    </header>
+    <p class="phase-note">Choose one of two routes based on your starting structure.</p>
+    <details name="select-steps" id="known-ab" class="workflow-step">
+      <summary><span>Contact epitope</span><span class="step-status done">Implemented</span></summary>
+      <div class="step-content">
     <p class="how">Antigen residues within the configured heavy-atom distance of the antibody define the
     contact epitope. The default reference configuration uses a 4&nbsp;&Aring; cutoff.</p>
     <p>The selected residues are compiled into contig specifications for RFdiffusion3. A target can contain
@@ -293,11 +97,13 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
     each scaffolded separately. The contig constrains residues within a segment more tightly than the
     geometry between segments.</p>
     <p class="io"><b>In:</b> antibody&ndash;antigen complex (PDB). <b>&rarr; Out:</b> the epitope &mdash; the antigen residues the antibody contacts.</p>
-    <h4>Implementation</h4>
+    <h3>Implementation</h3>
     <span class="tool">stage01_compile_contigs · stage02_emit_rfd3_inputs</span>
-  </div>
-
-  <div data-id="growpatch" data-title="Candidate surface regions" data-chip="done">
+      </div>
+    </details>
+    <details name="select-steps" id="growpatch" class="workflow-step">
+      <summary><span>Candidate surface regions</span><span class="step-status done">Implemented</span></summary>
+      <div class="step-content">
     <p class="how">growPatch generates candidate surface patches using neighbor-based growth and
     directional sampling. The candidate sets are combined, filtered by the configured size and
     sequence-segment limits, and reduced to remove near-duplicates. Optional per-residue prediction scores
@@ -313,29 +119,40 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
     <p style="margin-top:12px">Each surviving patch becomes a candidate epitope (an episcaf contig string)
     handed to the same contig machinery as the known-antibody arm.</p>
     <p class="io"><b>In:</b> antigen structure (one chain, PDB). <b>&rarr; Out:</b> a set of candidate surface patches, each a residue set that could be an antibody footprint.</p>
-    <h4>Validation</h4>
+    <h3>Validation</h3>
     <p class="how">The sampling method is parity-verified: on chain A of 8PWW it reproduces the reference
     implementation for the tested input and configuration. Benchmarked on 117 conformational SAbDab
     epitopes &mdash; where a candidate counts as recovered at Jaccard overlap &ge; 0.8 with a reference
     epitope &mdash; combining neighbor growth and directional sampling reaches recall@0.8 = 0.92, versus
     about 0.80 for either method alone. The surface cutoff is <code>SASA_CUT = 0.2</code>. Staging a full
     no-antibody design run end-to-end through the tool is in development.</p>
-    <h4>Implementation</h4>
+    <h3>Implementation</h3>
     <span class="tool">episcaf_analysis/growpatch/{core,read,eyeview}.py · results/growpatch/ENUMERATOR_DECISION.md · ref: segmentation/growPatch.py</span>
-  </div>
-
-  <div data-id="rfd3" data-title="RFdiffusion3 backbones" data-chip="done">
+      </div>
+    </details>
+  </section>
+  <section class="phase-panel" data-section aria-labelledby="design">
+    <header class="phase-heading">
+      <h2 id="design" tabindex="-1">Generate scaffolds</h2>
+      <a href="methods.html#generate">Read the methods</a>
+    </header>
+    <p class="phase-note">Steps run in order. Iterative refinement loops selected designs back into backbone generation.</p>
+    <details name="design-steps" id="rfd3" class="workflow-step">
+      <summary><span>Backbone generation</span><span class="step-status done">Implemented</span></summary>
+      <div class="step-content">
     <p class="how">RFdiffusion3 generates backbone structures using the fixed epitope segments and the
     contig specification. The default configuration requests eight backbones per contig.</p>
     <p>The contig fixes the epitope residues and their order but leaves the rest of the fold free, so each
     backbone is a different way of presenting the same epitope. The backbone coordinates are passed to
     sequence design. Runs as a SLURM array on the cluster.</p>
     <p class="io"><b>In:</b> epitope residues held fixed (a contig spec on the antigen). <b>&rarr; Out:</b> de novo backbone(s) presenting that epitope &mdash; coordinates, no sequence yet.</p>
-    <h4>Implementation</h4>
+    <h3>Implementation</h3>
     <span class="tool">hpc/sbatch/rfd3_array.sbatch</span>
-  </div>
-
-  <div data-id="prefilter" data-title="Backbone obstruction filter" data-chip="prog">
+      </div>
+    </details>
+    <details name="design-steps" id="prefilter" class="workflow-step">
+      <summary><span>Backbone obstruction filter</span><span class="step-status prog">In development</span></summary>
+      <div class="step-content">
     <p class="how">Each generated backbone is scored with AOMclash before sequence design. Candidates are
     ranked separately for each epitope, and the configured retention rule determines which backbones
     continue to ProteinMPNN and AlphaFold&nbsp;3.</p>
@@ -343,32 +160,38 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
     Retention can be set as a percentage or as a score cutoff. The score is the same AOMclash score used at
     final evaluation, applied here to the bare backbone. Runs cluster-side, where the backbones live.</p>
     <p class="io"><b>In:</b> generated backbones and the reference epitope. <b>&rarr; Out:</b> the backbones retained for sequence design.</p>
-    <h4>Implementation</h4>
+    <h3>Implementation</h3>
     <span class="tool">scripts/aomclash_prefilter.py · episcaf_analysis/aomclash/score.py</span>
-  </div>
-
-  <div data-id="mpnn" data-title="ProteinMPNN" data-chip="done">
+      </div>
+    </details>
+    <details name="design-steps" id="mpnn" class="workflow-step">
+      <summary><span>Sequence design</span><span class="step-status done">Implemented</span></summary>
+      <div class="step-content">
     <p class="how">ProteinMPNN generates amino-acid sequences for the retained backbones while preserving
     the specified epitope residues. The default configuration requests eight sequences per backbone.</p>
     <p>The epitope keeps its native identity while the rest of the scaffold is redesigned. The
     <code>*_fixed.pdb</code> naming contract carries the epitope-fix information to the next stage.</p>
     <p class="io"><b>In:</b> a backbone. <b>&rarr; Out:</b> amino-acid sequence(s) for it.</p>
-    <h4>Implementation</h4>
+    <h3>Implementation</h3>
     <span class="tool">stage03_mpnn_fixed_pdbs · stage03_mpnn_submit</span>
-  </div>
-
-  <div data-id="af3" data-title="AlphaFold 3" data-chip="done">
+      </div>
+    </details>
+    <details name="design-steps" id="af3" class="workflow-step">
+      <summary><span>Structure prediction</span><span class="step-status done">Implemented</span></summary>
+      <div class="step-content">
     <p class="how">AlphaFold&nbsp;3 predicts a structure for each designed sequence. The predicted structure
     is compared with the design and reference epitope to calculate the structural metrics.</p>
     <p>The documented configuration uses single-sequence input (a self-only MSA), templates disabled, and
     seed&nbsp;1. AF3 produces the structures everything downstream scores; it does not measure stability or
     experimental binding.</p>
     <p class="io"><b>In:</b> a designed sequence (with antigen/epitope context). <b>&rarr; Out:</b> predicted structure + confidence/metrics (pLDDT, PAE, RMSD, clash counts).</p>
-    <h4>Implementation</h4>
+    <h3>Implementation</h3>
     <span class="tool">stage04_af3_emit_jsons · af3_array.sbatch</span>
-  </div>
-
-  <div data-id="loop" data-title="Loop-back / partial diffusion" data-chip="plan">
+      </div>
+    </details>
+    <details name="design-steps" id="loop" class="workflow-step">
+      <summary><span>Iterative refinement</span><span class="step-status plan">Planned</span></summary>
+      <div class="step-content">
     <p class="how">The controller selects designs from the current round and uses partial diffusion to
     generate variants: a good backbone is re-noised part-way and denoised again with the epitope fixed.
     Subsequent rounds include both these variants and independently generated backbones. The allocation
@@ -412,11 +235,19 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
     </figure>
     <div class="note"><b>Diversity.</b> Repeated refinement can concentrate candidates within a narrow
     structural family. Independently generated backbones are retained to support broader sampling.</div>
-    <h4>Implementation</h4>
+    <h3>Implementation</h3>
     <span class="tool">episcaf_pipeline/ipd.py (controller) · ipd_driver.py · scripts/ipd_round.py</span>
-  </div>
-
-  <div data-id="metrics" data-title="Structural metrics" data-chip="done">
+      </div>
+    </details>
+  </section>
+  <section class="phase-panel" data-section aria-labelledby="evaluate">
+    <header class="phase-heading">
+      <h2 id="evaluate" tabindex="-1">Evaluate designs</h2>
+      <a href="methods.html#score">Read the methods</a>
+    </header>
+    <details name="evaluate-steps" id="metrics" class="workflow-step">
+      <summary><span>Structural metrics</span><span class="step-status done">Implemented</span></summary>
+      <div class="step-content">
     <p class="how">The predicted structure is aligned to the reference using the specified epitope
     alignment. Metrics include structural deviation, prediction confidence, and antibody obstruction.</p>
     <p>Epitope RMSD measures backbone deviation from the reference epitope; overall RMSD measures deviation
@@ -424,11 +255,13 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
     at the epitope. Geometric clashes are calculated against the reference antibody when one is available;
     otherwise the selected AOMclash estimate (<code>aomclash_pred</code>) supplies the obstruction metric.</p>
     <p class="io"><b>In:</b> each AF3 structure, aligned to the reference on the epitope. <b>&rarr; Out:</b> the per-design metrics &mdash; epitope &amp; overall RMSD, epitope PAE, antibody clashes, AOMclash.</p>
-    <h4>Implementation</h4>
+    <h3>Implementation</h3>
     <span class="tool">stage05_extract_metrics</span>
-  </div>
-
-  <div data-id="aomclash" data-title="AOMclash" data-chip="prog">
+      </div>
+    </details>
+    <details name="evaluate-steps" id="aomclash" class="workflow-step">
+      <summary><span>AOMclash</span><span class="step-status prog">In development</span></summary>
+      <div class="step-content">
     <p class="how">AOMclash reads an antibody-occupancy map at the scaffold atoms after alignment to an
     epitope-centered frame. The raw occupancy sum (<code>s_p1_free</code>) includes atoms more than
     4&nbsp;&Aring; from the reference antigen; higher values indicate more scaffold material in
@@ -444,11 +277,13 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
       <li><span class="mk d">&#10003;</span><span class="tx"><b>Scorer.</b> <code>score.py</code> frames a design (PDB or AF3 CIF) and returns <code>s_p1_free</code>; parity-checked against the reference extractor.</span></li>
       <li><span class="mk p">&bull;</span><span class="tx"><b>Final ranking wired.</b> The <code>twelvemer</code> preset uses <code>aomclash_pred</code> for accessibility. In development: the backbone-filtering stage and its cluster-side validation.</span></li>
     </ul>
-    <h4>Implementation</h4>
+    <h3>Implementation</h3>
     <span class="tool">episcaf_analysis/aomclash/ (aom_map, score, features) · results/aomclash/feature_set_decision.md</span>
-  </div>
-
-  <div data-id="composite" data-title="Ranking and selection" data-chip="done">
+      </div>
+    </details>
+    <details name="evaluate-steps" id="composite" class="workflow-step">
+      <summary><span>Ranking and selection</span><span class="step-status done">Implemented</span></summary>
+      <div class="step-content">
     <p class="how">The selected preset specifies the metrics, transformations, and weights used in the
     composite score. Designs are ranked within each epitope group, and the requested number is selected.
     The binding model can provide an alternative ranking where the required features are available.</p>
@@ -459,63 +294,40 @@ figure.dgm figcaption{font-size:11.5px;color:var(--faint);margin:7px auto 0;line
     features, fit to the DP4 assay data (grouped-by-epitope cross-validated ROC-AUC 0.817). It provides a
     binding score and is selectable in the results viewer; the composite score does not include it.</p>
     <p class="io"><b>In:</b> per-design metrics and a preset. <b>&rarr; Out:</b> designs ranked by composite score, then the per-epitope top-k selected. The binding model provides an alternative ranking.</p>
-    <h4>Implementation</h4>
+    <h3>Implementation</h3>
     <span class="tool">stage06_select · presets.py · episcaf_analysis/binding_model/</span>
-  </div>
-
-  <div data-id="output" data-title="Library preparation" data-chip="done">
+      </div>
+    </details>
+  </section>
+  <section class="phase-panel" data-section aria-labelledby="export">
+    <header class="phase-heading">
+      <h2 id="export" tabindex="-1">Export the library</h2>
+      <a href="methods.html#tool">Read the methods</a>
+    </header>
+    <details name="export-steps" id="output" class="workflow-step">
+      <summary><span>Library preparation</span><span class="step-status done">Implemented</span></summary>
+      <div class="step-content">
     <p class="how">Selected sequences are assembled and encoded as DNA using the configured oligo encoder
     and codon weights. The output is a DNA order file for the selected vendor.</p>
     <p>Case encoding, component concatenation, and vendor-specific formatting are in the implementation
     (the LadnerLab oligo encoder with the DP3 codon weights). Dated example: the DP4 library (2026)
     shipped at 36,000 constructs.</p>
     <p class="io"><b>In:</b> the selected designs. <b>&rarr; Out:</b> a DNA order file for the selected vendor.</p>
-    <h4>Implementation</h4>
+    <h3>Implementation</h3>
     <span class="tool">stage06_assemble · oligo_encoding · stage07_order_file</span>
+      </div>
+    </details>
+  </section>
+  <details class="references"><summary>Implementation references</summary>
+  <div class="foot">
+    Run order: <code>docs/PIPELINE.md</code> · Metric presets:
+    <code>episcaf_analysis/presets.py</code> · AOMclash: <a href="aomclash.html">documentation</a>,
+    <code>episcaf_analysis/aomclash/FEATURES.md</code> · DP4 library reference:
+    <code>docs/DP4_LIBRARY.md</code> · Reference implementations: <code>AltinLab/epitope-universe</code>.
   </div>
-
+  </details>
+</main>
 </div>
-
-<script>
-(function(){
-  var modal = document.getElementById('modal');
-  var titleEl = document.getElementById('modal-title');
-  var chipEl = document.getElementById('modal-chip');
-  var bodyEl = document.getElementById('modal-body');
-  var CHIP = {done:'implemented', prog:'in development', plan:'planned'};
-  var details = {};
-  var nodes = document.querySelectorAll('#details > [data-id]');
-  for (var i=0;i<nodes.length;i++){ details[nodes[i].getAttribute('data-id')] = nodes[i]; }
-  var lastFocus = null;
-
-  function open(id){
-    var d = details[id];
-    if(!d) return;
-    titleEl.textContent = d.getAttribute('data-title');
-    var ch = d.getAttribute('data-chip');
-    chipEl.className = 'chip ' + ch;
-    chipEl.textContent = CHIP[ch] || ch;
-    bodyEl.innerHTML = d.innerHTML;
-    modal.hidden = false;
-    document.body.classList.add('locked');
-    lastFocus = document.activeElement;
-    modal.querySelector('.modal-x').focus();
-  }
-  function close(){
-    modal.hidden = true;
-    document.body.classList.remove('locked');
-    if(lastFocus && lastFocus.focus) lastFocus.focus();
-  }
-
-  document.querySelectorAll('[data-detail]').forEach(function(el){
-    el.addEventListener('click', function(){ open(el.getAttribute('data-detail')); });
-    el.addEventListener('keydown', function(e){
-      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); open(el.getAttribute('data-detail')); }
-    });
-  });
-  modal.querySelectorAll('[data-close]').forEach(function(el){ el.addEventListener('click', close); });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape' && !modal.hidden) close(); });
-})();
-</script>
+<script defer src="reference.js"></script>
 </body>
 </html>

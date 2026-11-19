@@ -1,0 +1,86 @@
+/* chapters.css — chapter-reader (Docs) and phase-map (Pipeline) layouts.
+   Linked AFTER site.css and each page's inline <style>, on methods.html and
+   pipeline.html only. Uses the episcaf site palette (Arial, blue #296DC0 /
+   #1b4a86) — no new fonts. The structural layout is from the browser-UI redesign;
+   the skin is the existing site chrome. Section switching is in reference.js. */
+:root{
+  --ink:#1a1a1a; --muted:#4e5a67; --faint:#808b97;
+  --accent:#296DC0; --navy:#1b4a86; --line:#d5deea; --wash:#eef3f9;
+  --done:#2e9e57; --prog:#d8a93a; --plan:#9aa7b4;
+  --ng-bg:#fffaf0; --ng-line:#ead9a8; --ng-ink:#8a6413;
+}
+
+/* wider canvas for the two-column reader / four-up phase map */
+.page{max-width:1080px;margin:0 auto;padding:18px 20px 52px}
+.reference-heading{margin-bottom:22px}
+.reference-heading h1{margin:0 0 5px}
+.reference-heading .lede{margin:0}
+
+/* ---------- Docs: chapter reader ---------- */
+.reader{display:grid;grid-template-columns:200px minmax(0,760px);gap:46px;align-items:start}
+.chapters{display:grid;gap:3px;position:sticky;top:16px;padding-right:14px;border-right:1px solid var(--line)}
+.chapters a{padding:8px 11px;border-radius:5px;text-decoration:none;color:var(--muted);font-size:13px;font-weight:bold;line-height:1.3}
+.chapters a:hover,.chapters a[aria-current]{background:var(--wash);color:var(--navy)}
+.method-chapter[hidden]{display:none}
+.method-chapter>h2:first-child{margin-top:0}
+.method-chapter [id],.phase-panel [id]{scroll-margin-top:16px}
+.secbody{overflow-wrap:anywhere}
+
+/* ---------- Pipeline: phase map ---------- */
+.phase-map{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;list-style:none;margin:14px 0 22px;padding:0}
+.phase-map li{position:relative}
+.phase-map a{display:grid;align-content:start;gap:3px;box-sizing:border-box;height:100%;min-height:92px;padding:11px 14px;border:1px solid var(--line);border-radius:8px;text-decoration:none;color:var(--ink)}
+.phase-map a:hover{background:var(--wash)}
+.phase-map a[aria-current]{background:var(--wash);border-color:var(--accent)}
+.phase-map a strong{color:var(--navy);font-size:14px;line-height:1.25}
+.phase-index{color:var(--accent);font-size:12px;font-weight:bold}
+.phase-output{color:var(--muted);font-size:12px}
+.phase-map li:not(:last-child)::after{content:"";position:absolute;top:calc(50% - 5px);right:-15px;width:8px;height:8px;border-right:2px solid var(--accent);border-top:2px solid var(--accent);transform:rotate(45deg);pointer-events:none}
+
+.phase-panel{padding:20px 22px;border:1px solid var(--line);border-radius:10px;margin-bottom:14px}
+.phase-panel[hidden]{display:none}
+.phase-heading{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:baseline;gap:6px 20px;margin-bottom:12px}
+.phase-heading h2{margin:0;border:none;padding:0}
+.phase-heading a{font-size:12.5px;color:#0033cc;font-weight:600;text-decoration:none;white-space:nowrap}
+.phase-heading a:hover{text-decoration:underline}
+.phase-note{color:var(--muted);font-size:13px;margin:0 0 8px}
+
+.workflow-step{border-top:1px solid var(--line)}
+.workflow-step summary{display:grid;grid-template-columns:10px minmax(0,1fr) auto;align-items:center;gap:8px 14px;padding:11px 6px;min-height:24px;cursor:pointer;font-weight:bold;font-size:13.5px;color:var(--ink);list-style:none}
+.workflow-step summary::-webkit-details-marker{display:none}
+.workflow-step summary::before{content:"";flex:none;width:7px;height:7px;border:solid var(--accent);border-width:0 2px 2px 0;transform:rotate(-45deg)}
+.workflow-step[open] summary::before{transform:rotate(45deg)}
+.workflow-step summary:hover,.workflow-step[open] summary{background:var(--wash)}
+.step-status{font-size:11px;font-weight:bold;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
+.step-status.done{color:#1d6e3c}
+.step-status.prog{color:#8a6413}
+.step-status.plan{color:#4f5b68}
+.step-content{max-width:72ch;padding:4px 0 14px 22px;overflow-wrap:anywhere}
+.step-content>p:first-child{margin-top:4px}
+.step-content .how{color:var(--muted)}
+.step-content h3{margin:15px 0 4px}
+.step-content .tool{display:block;font-family:"Courier New",Courier,monospace;font-size:11.5px;color:#4e5a67;background:#f4f7fb;border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin:5px 0 0;word-break:break-word}
+
+.references{margin-top:16px;color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+.references summary{cursor:pointer;color:#0033cc;font-weight:600;padding-block:7px;list-style:none}
+.references summary::-webkit-details-marker{display:none}
+.references summary::before{content:"\25B8  "}
+.references[open] summary::before{content:"\25BE  "}
+
+/* ---------- responsive ---------- */
+@media(max-width:760px){
+  .reader{display:block}
+  .chapters{position:static;border:0;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:2px 4px;margin-bottom:20px;padding:0 0 10px}
+  .phase-map{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+  .phase-map li:not(:last-child)::after{right:-11px}
+  .phase-map li:nth-child(2)::after{display:none}
+}
+@media(max-width:540px){
+  .phase-map{grid-template-columns:minmax(0,1fr);gap:9px}
+  .phase-map a{grid-template-columns:1.3em minmax(0,1fr);column-gap:8px;min-height:auto;padding:7px 12px}
+  .phase-index{grid-row:1;grid-column:1}
+  .phase-map a strong{grid-column:2}
+  .phase-output{grid-column:2}
+  .phase-map li:not(:last-child)::after{top:auto;bottom:-7px;left:14px;right:auto;transform:rotate(135deg)}
+  .phase-map li:nth-child(2)::after{display:block}
+}
