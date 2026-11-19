@@ -166,18 +166,17 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
     <figure class="dgm">
       <img src="img/fig/growpatch_candidate.png?v=2" loading="lazy" style="max-width:360px"
            alt="8PWW chain A as a grey ribbon with the residues of one finished growPatch candidate highlighted in red.">
-      <figcaption>A finished growPatch candidate on the recorded antigen: candidate&nbsp;82 on 8PWW chain A,
-      the top-ranked candidate in the <a href="growpatch.html">growPatch example</a>. Its gap-filled
-      segments <b style="color:#c0392b">A:197&ndash;200; A:301&ndash;316; A:390&ndash;409</b> (red) are the
-      segments sent to scaffold design; its total DiscoTope score is 18.1 over 40 of 40 residues. Open the
-      example to find candidate&nbsp;82 and see the same values.</figcaption>
+      <figcaption>A finished growPatch candidate on 8PWW chain A: candidate&nbsp;82, the top-ranked
+      candidate for this input. Its gap-filled segments
+      <b style="color:#c0392b">A:197&ndash;200; A:301&ndash;316; A:390&ndash;409</b> (red) are the
+      segments sent to scaffold design; its total DiscoTope score is 18.1 over 40 of 40 residues.</figcaption>
     </figure>
     <div class="why"><b>Reference-implementation check:</b> on chain A of 8PWW, the neighbor-growth
     implementation reproduces the 227 reference candidates for the tested input and configuration &mdash;
     run with no surface-accessibility pre-filter, so every residue is treated as surface. This verifies
-    agreement with the reference implementation, not that the candidates are true epitopes. The browser
-    example on the <a href="growpatch.html">growPatch</a> page applies the 0.2 relSASA surface filter,
-    reporting 108 candidates. These counts match only after the input processing and settings are matched.</div>
+    agreement with the reference implementation, not that the candidates are true epitopes. The
+    <a href="growpatch_tool.html">candidate tool</a> applies the 0.2 relSASA surface filter, reporting
+    108 candidates on the same input. These counts match only after the input processing and settings are matched.</div>
     <details><summary>Surface exposure and patch overlap</summary>
       <p class="mnote">A residue counts as surface by its <b>relative</b> solvent-accessible area: its SASA
       in the structure divided by the maximum that residue type can expose (Tien 2013 theoretical MAXASA).

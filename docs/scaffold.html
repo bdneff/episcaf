@@ -159,7 +159,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
       <span class="tlab">Epitope selection:</span>
       <label class="radio"><input type="radio" name="epi" value="antibody" checked> Use antibody contact residues &mdash; derive the contact epitope from the antibody (on an uploaded complex, tune the cutoff &amp; gap&#8209;fill)</label>
       <label class="radio"><input type="radio" name="epi" value="manual"> Select antigen residues &mdash; specify the epitope residues on the structure</label>
-      <div class="help" style="margin-top:3px">No antibody and no known site? <a href="growpatch.html">Generate candidate surface regions &rsaquo;</a></div>
+      <div class="help" style="margin-top:3px">No antibody and no known site? <a href="growpatch_tool.html">Generate candidate surface regions &rsaquo;</a></div>
     </div>
     <div class="tcard-b">
       <div class="tcol">
@@ -903,7 +903,7 @@ $("#pdbfile").addEventListener("change",e=>{
       const r=document.querySelector('input[name=epi][value="'+state.epi+'"]'); if(r)r.checked=true;
       $("#uploadnote").innerHTML=d.is_complex
         ? "detected an <b>antibody</b> (chain "+(d.partner_chains||[]).join(", ")+") bound to chain <b>"+d.antigen_chain+"</b>; epitope = "+d.n_epitope+" contact residues (red)."
-        : "no bound partner &mdash; <b>lone antigen</b> (chain "+d.antigen_chain+"); specify the epitope residues on the structure below, or use the <a href=\"growpatch.html\">surface scan</a> to find candidate regions.";
+        : "no bound partner &mdash; <b>lone antigen</b> (chain "+d.antigen_chain+"); specify the epitope residues on the structure below, or use the <a href=\"growpatch_tool.html\">surface scan</a> to find candidate regions.";
     }catch(err){
       // detection could not run (no local service / no service URL): do NOT assume "no antibody".
       uploadDetected=false;
