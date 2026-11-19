@@ -1,0 +1,18 @@
+# What `gcloud run deploy --source .` uploads to Cloud Build. WITHOUT this file, gcloud falls back to
+# .gitignore -- which ignores *.png and only re-includes docs/img/*.png, so the docs/img/fig/*.png
+# figures (force-added to git) never got uploaded and 404'd in the deployed app. This file replaces
+# that fallback: exclude the big/irrelevant dirs, but keep docs/ (UI + all figures) intact.
+.git
+.gitignore
+.gitattributes
+.claude
+data/
+results/
+manuscript/
+dp4_8vdl/
+**/__pycache__/
+*.pyc
+*.pyo
+*.ipynb
+*.log
+.DS_Store
