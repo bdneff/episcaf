@@ -42,6 +42,14 @@ CAND_B="329 330 331 332 333 334 335 336 337 338 339 340 341 342 343 344 345 346 
 CAND_SEL="312 313 314 315 316 317 318 319 320 321 322 323 387 388 389 390 391 392 393 394 395 396 397 398 399 400 401 402 403 404 405 406 407 408 409 410 411 412"
 DES_EPI="21 25 28 29 32 69 70 72 73 75 76 77 79 80 83"
 GPC="$CAND_SEL"
+# growPatch growth steps, grown INTO candidate 9's footprint so the three-panel growth figure and the
+# finished-candidate ribbon figure show the SAME patch (same antigen + camera; it then gap-fills to
+# CAND_SEL). Growth order = greedy nearest-neighbour over candidate 9's growth-selected residues
+# (resis_rank in growpatch_8pww.js: 312 316 320 323 387 388 390 391 392 394 395 398 399 400 409 412),
+# seed = residue nearest the footprint centroid (392); prefixes of 1 / 8 / 16 residues.
+GROW1="392"
+GROW2="387 388 390 391 392 394 395 399"
+GROW3="312 316 320 323 387 388 390 391 392 394 395 398 399 400 409 412"
 
 # homepage: same antigen + camera, epitope and three candidate patches; plus the real design scaffold
 render antigen_epitope   docs/pdb/8PWW.pdb        A 1 -75 20 $EPI
@@ -49,11 +57,15 @@ render cand_a            docs/pdb/8PWW.pdb        A 0 -75 20 $CAND_A
 render cand_b            docs/pdb/8PWW.pdb        A 0 -75 20 $CAND_B
 render cand_selected     docs/pdb/8PWW.pdb        A 1 -75 20 $CAND_SEL
 render design_scaffold   docs/pdb/8pww_design.pdb A 1 -75 20 $DES_EPI
-# methods: one finished growPatch candidate (candidate 9, same as the "selected" demo), same antigen + camera
+# methods: growPatch growth steps (seed -> neighbours -> 16-residue footprint) INTO candidate 9, then
+# the finished candidate 9 after gap-fill. Same antigen + camera, so the patch is in one place throughout.
+render grow_g1             docs/pdb/8PWW.pdb      A 1 -75 20 $GROW1
+render grow_g2             docs/pdb/8PWW.pdb      A 1 -75 20 $GROW2
+render grow_g3             docs/pdb/8PWW.pdb      A 1 -75 20 $GROW3
 render growpatch_candidate docs/pdb/8PWW.pdb      A 1 -75 20 $GPC
 
 echo "post-processing (trim + transparent background) ..."
-/Users/bneff/micromamba/envs/bcell-repair/bin/python scripts/trim_transparent.py "$OUT"/antigen_epitope.png "$OUT"/cand_a.png "$OUT"/cand_b.png "$OUT"/cand_selected.png "$OUT"/design_scaffold.png "$OUT"/growpatch_candidate.png
+/Users/bneff/micromamba/envs/bcell-repair/bin/python scripts/trim_transparent.py "$OUT"/antigen_epitope.png "$OUT"/cand_a.png "$OUT"/cand_b.png "$OUT"/cand_selected.png "$OUT"/design_scaffold.png "$OUT"/grow_g1.png "$OUT"/grow_g2.png "$OUT"/grow_g3.png "$OUT"/growpatch_candidate.png
 
 # ---- "Generate scaffolds" trio: three real episcaf designs, one shared epitope ----
 # Eight distinct RFdiffusion3 backbones for the same grafted motif (7a3t-derived epitope4_case1;
