@@ -187,7 +187,7 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 <script>
 "use strict";
 const RED="#c0392b", GREY="#c4c4c4";
-let state={mode:"growpatch", sel:null, D:null, pdbText:null, picked:new Set(), budgetMode:"n_designs"};
+let state={mode:"growpatch", sel:null, D:null, pdbText:null, picked:new Set(), budgetMode:"n_designs", ranking:false};
 let viewer=null, viewerDead=false;
 
 const $=id=>document.getElementById(id);
@@ -257,22 +257,56 @@ $("file").onchange=()=>{
 
 document.querySelectorAll("#modeseg button").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
 
+// Two phases for the lone-antigen path: (1) growPatch candidates are fast, so show them immediately,
+// unranked; (2) DiscoTope ranking is the slow BioLib step -- it runs in the background and the list
+// auto-re-ranks when it lands. Antibody mode has no ranking phase. The run button and mode/file inputs
+// stay locked until BOTH phases settle, so the request can't be corrupted mid-flight.
+async function enumerateReq(disco){
+  const qs=new URLSearchParams({chain:$("chain").value, sasa_cut:$("sasa").value,
+    top_k: (disco || state.mode==="antibody") ? $("topk").value : 0,   // phase 1 keeps all; ranking truncates
+    mode:state.mode, fmt:fileFmt(), disco:disco?1:0});
+  const res=await fetch(api("/enumerate?"+qs.toString()),{method:"POST",body:state.pdbText});
+  const data=await res.json();
+  if(!res.ok||data.error) throw new Error(data.error||("HTTP "+res.status));
+  return data;
+}
 $("run").onclick=async()=>{
   if(!state.pdbText){msg("Choose a PDB file first.","err");return;}
-  const qs=new URLSearchParams({chain:$("chain").value, sasa_cut:$("sasa").value,
-    top_k:$("topk").value, mode:state.mode, fmt:fileFmt()});
-  $("run").disabled=true; setRunning(true);
-  busy(state.mode==="antibody" ? "Identifying contact residues…" : "Generating candidate regions…",
-       state.mode==="antibody" ? "" : "This can take up to 5 minutes. Keep this tab open.");
+  const antibody=state.mode==="antibody";
+  $("run").disabled=true; setRunning(true); state.ranking=false;
+  // Phase 1: candidates (or, in antibody mode, the contact epitope) -- fast.
+  busy(antibody ? "Identifying contact residues…" : "Generating candidate regions…",
+       antibody ? "" : "Finding candidate regions…");
   try{
-    const res=await fetch(api("/enumerate?"+qs.toString()),{method:"POST",body:state.pdbText});
-    const data=await res.json();
-    if(!res.ok||data.error) throw new Error(data.error||("HTTP "+res.status));
+    const data=await enumerateReq(false);
     state.D=data; state.sel=null; state.picked=new Set();
-    $("results").style.display="block"; msg("");
+    $("results").style.display="block";
     buildStats(); buildList(); loadStructure();
-    if(state.mode==="antibody" && data.patches.length) select(data.patches[0].i);   // show the epitope
-  }catch(e){ console.warn("enumerate:",e); msg((state.mode==="antibody"?"Could not identify contact residues.":"Could not generate candidates.")+" Check the service connection.","err"); }
+    if(antibody && data.patches.length) select(data.patches[0].i);   // show the epitope
+  }catch(e){
+    console.warn("enumerate:",e);
+    msg((antibody?"Could not identify contact residues.":"Could not generate candidates.")+" Check the service connection.","err");
+    $("run").disabled=false; setRunning(false); return;
+  }
+  if(antibody){ busyDone(); msg(""); $("run").disabled=false; setRunning(false); return; }
+  // Phase 2: DiscoTope ranking in the background; candidates already visible and marked "not ranked yet".
+  state.ranking=true; rankHdr();
+  busy("Ranking candidates by DiscoTope-3.0…",
+       "This can take up to 5 minutes. The candidates below are not ranked yet. Keep this tab open.");
+  try{
+    const data=await enumerateReq(true);
+    const keepSel=state.sel, present=new Set(data.patches.map(p=>p.i));
+    state.D=data; state.ranking=false;
+    state.picked=new Set([...state.picked].filter(i=>present.has(i)));   // drop picks truncated out by top_k
+    state.sel=present.has(keepSel)?keepSel:null;
+    busyDone(); msg("");
+    buildStats(); buildList();
+    if(state.sel!=null) select(state.sel);
+  }catch(e){
+    console.warn("rank:",e);
+    state.ranking=false; busyDone(); rankHdr();
+    msg("DiscoTope ranking did not complete; showing unranked candidates. You can still select and stage candidates.","err");
+  }
   finally{ $("run").disabled=false; setRunning(false); }
 };
 
@@ -300,6 +334,13 @@ function rankHdr(){
   const el=$("rankhdr"); const D=state.D;
   if(!D || D.mode==="antibody"){ el.hidden=true; return; }
   el.hidden=false;
+  if(state.ranking){
+    el.className="rankhdr unavail";
+    el.innerHTML="<b>Ranking in progress.</b> DiscoTope-3.0 is scoring this antigen (this can take up to "+
+      "~5 minutes). The candidates below are in generation order and are <b>not ranked yet</b> &mdash; "+
+      "they reorder by score automatically when it finishes. You can already inspect and select them.";
+    return;
+  }
   if(hasDisco()){
     el.className="rankhdr";
     el.innerHTML="Candidates are ranked by their total DiscoTope-3.0 score (the sum over the candidate's "+

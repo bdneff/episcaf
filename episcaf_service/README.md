@@ -21,7 +21,7 @@ Structure = raw request body; everything else = query params.
 |---|---|---|
 | GET  | `/health` | liveness + resolved `$WS` + whether SLURM is on PATH |
 | POST | `/inspect?fmt=&chain=` | antibody-present vs lone-antigen + the contact epitope |
-| POST | `/enumerate?fmt=&chain=&top_k=&…` | growPatch candidate epitopes, ranked by mean DiscoTope when a scorer is configured |
+| POST | `/enumerate?fmt=&chain=&top_k=&disco=&…` | growPatch candidate epitopes. `disco=0` returns them fast in generation order (unranked); `disco=1` (default) ranks by **total** DiscoTope when a scorer is configured. The GUI calls it twice — unranked first for instant display, then ranked in the background |
 | POST | `/stage?fmt=&chain=&epitopes=a\|b&…` | build RFd3 contigs for the chosen epitopes → `{run_spec, contigs_csv, n_contigs}` (download; no `$WS` write) |
 | POST | `/submit?fmt=&chain=&mode=&name=&epitopes=a\|b&…` | stage a run under `$WS` → `{run_id, run_dir, submit_sh, …}` |
 | GET  | `/status/{run_id}` | staged spec, whether metrics exist, live `squeue` (on a SLURM host) |

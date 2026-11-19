@@ -102,13 +102,13 @@ async def inspect(request: Request, fmt: str = Query("pdb"), chain: str = Query(
 async def enumerate_patches(request: Request, fmt: str = Query("pdb"), chain: str = Query("A"),
                             sasa_cut: float = Query(0.2), footprint_radius: float = Query(14.0),
                             methods: str = Query("growpatch"), top_k: int = Query(0),
-                            mode: str = Query("growpatch")):
+                            mode: str = Query("growpatch"), disco: int = Query(1)):
     body = await request.body()
     path = _tmp_structure(body, fmt)
     try:
         ms = tuple(m for m in methods.split(",") if m)
         return await run_in_threadpool(staging.viewer_data, path, chain or "A",
-                                       sasa_cut, footprint_radius, ms, top_k, mode)
+                                       sasa_cut, footprint_radius, ms, top_k, mode, bool(disco))
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": f"{type(e).__name__}: {e}"})
     finally:

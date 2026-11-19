@@ -33,7 +33,8 @@ def _resi(label):
     return int(m.group()) if m else None
 
 
-def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k, mode="growpatch"):
+def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k, mode="growpatch",
+                with_disco=True):
     """Residues + candidate patches for the viewer (like docs/data/growpatch_*.js).
 
     mode 'growpatch' -> enumerate candidate epitopes with growPatch (lone antigen), ranked by mean
@@ -71,7 +72,10 @@ def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k, mod
                     resis_rank=sorted({_resi(ag.label(c, s)) for (c, s) in p["keys_raw"]}))
                for p in cands]
 
-    scores = _disco.score_cif(cif_path, chain)
+    # Two-phase viewer: phase 1 (with_disco=False) returns candidates fast in generation order so the
+    # UI can show them immediately; phase 2 (with_disco=True) runs the slow DiscoTope step and the UI
+    # re-ranks. The candidate set/ids are identical across phases (growPatch is deterministic).
+    scores = _disco.score_cif(cif_path, chain) if with_disco else None
     has_disco = scores is not None
     if has_disco:
         for p in patches:
