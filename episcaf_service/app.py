@@ -24,6 +24,7 @@ import tempfile
 from fastapi import FastAPI, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from episcaf_analysis.growpatch import read as R
 from episcaf_service import scoring, staging
@@ -85,6 +86,35 @@ async def enumerate_patches(request: Request, fmt: str = Query("pdb"), chain: st
     try:
         ms = tuple(m for m in methods.split(",") if m)
         return staging.viewer_data(path, chain or "A", sasa_cut, footprint_radius, ms, top_k, mode)
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": f"{type(e).__name__}: {e}"})
+    finally:
+        os.unlink(path)
+
+
+@app.post("/stage")
+async def stage(request: Request, fmt: str = Query("pdb"), chain: str = Query("A"),
+                mode: str = Query("growpatch"), name: str = Query("antigen"),
+                epitopes: str = Query(""), variants: int = Query(4), total_len: int = Query(103),
+                rfd3: int = Query(8), mpnn: int = Query(8), seed: int = Query(0),
+                helix_bias: float = Query(0.0), budget_mode: str = Query("n_designs"),
+                budget_value: float = Query(200.0)):
+    """Build RFd3 contigs for the chosen epitopes and return a downloadable run spec (no $WS write).
+
+    Wire-compatible with the local stdlib server's /stage, so the GUI's "Prepare design inputs" button
+    works against either backend. Use /submit instead to persist the run under $WS and get submit.sh.
+    """
+    epis = [e for e in epitopes.split("|") if e]
+    if not epis:
+        return JSONResponse(status_code=400, content={"error": "no epitopes selected"})
+    body = await request.body()
+    path = _tmp_structure(body, fmt)
+    try:
+        cfg = dict(name=name or "antigen", variants=variants, total_len=total_len, rfd3=rfd3,
+                   mpnn=mpnn, seed=seed, mode=mode, helix_bias=helix_bias,
+                   budget={"mode": budget_mode, "value": budget_value})
+        spec, csv_text, n, skipped = staging.stage_run(path, chain or "A", epis, cfg)
+        return dict(run_spec=spec, contigs_csv=csv_text, n_contigs=n, skipped=len(skipped))
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": f"{type(e).__name__}: {e}"})
     finally:
@@ -169,3 +199,11 @@ def results(run_id: str, preset: str = Query("twelvemer"), topk: int = Query(0),
         return Response(content=df.to_csv(index=False), media_type="text/csv")
     return {"info": info, "columns": list(df.columns),
             "rows": df.head(topk or 50).to_dict(orient="records")}
+
+
+# Serve the GUI itself so the whole tool runs same-origin on one host: reach it over the SSH tunnel
+# and open http://localhost:<port>/growpatch_tool.html (same-origin => the page's /inspect, /enumerate
+# and /stage calls just work, and its localhost connection-check passes). Mounted LAST so the explicit
+# API routes above take precedence; StaticFiles only answers GET/HEAD for files under docs/.
+_DOCS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs")
+app.mount("/", StaticFiles(directory=_DOCS, html=True), name="site")
