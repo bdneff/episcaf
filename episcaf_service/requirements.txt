@@ -5,3 +5,5 @@ uvicorn>=0.29
 python-multipart>=0.0.9   # only needed if a future endpoint takes multipart uploads
 # pybiolib            # OPTIONAL: enables EPISCAF_DISCOTOPE=biolib (DiscoTope-3.0 ranking of uploads
 #                     # on BioLib's cloud). Not required; without it, uploads show scores unavailable.
+# slowapi>=0.1.9      # OPTIONAL: per-client rate limiting (EPISCAF_RATE_LIMIT, default 30/minute).
+#                     # Not required; without it, the endpoints are unlimited.

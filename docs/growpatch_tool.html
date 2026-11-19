@@ -433,8 +433,8 @@ function renderConn(ok){
     c.innerHTML='<b>Local service connected.</b> Structure processing runs on your machine.';
   }else{
     c.className="conn bad";
-    c.innerHTML='<b>Local service unavailable.</b> Start the service and open this page from its local '+
-      'address, or <a href="growpatch.html">explore the recorded example</a>. '+
+    c.innerHTML='<b>Backend service unavailable.</b> Open this page from the running service '+
+      '(local or hosted), or <a href="growpatch.html">explore the recorded example</a>. '+
       '<details style="margin-top:5px"><summary>Setup</summary>Run '+
       '<code>python scripts/growpatch_serve.py</code>, then open '+
       '<code>http://127.0.0.1:8765/growpatch_tool.html</code>.</details>';
@@ -442,13 +442,13 @@ function renderConn(ok){
   setFormEnabled(ok);
 }
 async function checkService(){
-  const host=location.hostname;
-  const isLocal=(location.protocol==="http:"||location.protocol==="https:") &&
-                (host==="localhost"||host==="127.0.0.1"||host==="::1"||host==="[::1]");
-  if(!isLocal){ renderConn(false); return; }
+  // Enable the form only when a real backend answers /health. Works at any origin -- localhost over an
+  // SSH tunnel, or a hosted URL -- and a static host (e.g. GitHub Pages) with no backend 404s, so the
+  // form stays disabled and points at the recorded example.
   try{
-    const r=await fetch(location.pathname,{method:"HEAD",cache:"no-store"});
-    renderConn(!!r.ok);
+    const r=await fetch("health",{cache:"no-store"});
+    const d=r.ok ? await r.json().catch(()=>({})) : {};
+    renderConn(!!(r.ok && d && d.service==="episcaf"));
   }catch(e){ renderConn(false); }
 }
 checkService();

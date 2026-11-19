@@ -43,6 +43,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
+        if self.path == "/health":                        # backend-presence probe (matches the FastAPI app)
+            self._send(200, json.dumps({"ok": True, "service": "episcaf"}).encode(), "application/json")
+            return
         if self.path == "/" or self.path.startswith("/?"):
             try:
                 with open(os.path.join(DOCS, "index.html"), "rb") as fh:  # redirects to home.html

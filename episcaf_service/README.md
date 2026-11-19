@@ -95,5 +95,28 @@ Home is NFS-mounted everywhere, so the service writes the record there and the G
 `designs.csv` / writes `05_analysis` back to the same durable spot. Only the big `02/03/04` outputs go
 to scratch. Copy records/metrics to tgen_labs later, from a node that can see it, if you want.
 
+## Public hosting, locked to your group
+GitHub Pages can't run the backend, and the backend already serves the UI, so you don't need Pages.
+To put the whole tool on the internet for your group:
+
+1. **Expose it with a Cloudflare Tunnel** — outbound from the host, so no cluster inbound-firewall
+   change. `cloudflared tunnel --url http://127.0.0.1:8808` gives a public HTTPS URL for a quick test;
+   a named tunnel on your own domain (e.g. `episcaf.yourdomain.com`) is the durable form. Confirm your
+   cluster permits running `cloudflared`.
+2. **Require login with Cloudflare Access** in front of the tunnel: a Zero-Trust application that
+   allows only your group's emails/domain. Login happens at Cloudflare's edge before any request
+   reaches the backend — real identity auth, no app code, no API key to leak.
+3. **Rate limiting, two layers.** Cloudflare's own rate-limit rules at the edge, plus the app's
+   `EPISCAF_RATE_LIMIT` (slowapi — `pip install slowapi`; default `30/minute` per client IP) on the
+   expensive endpoints. Use both: behind a proxy the app sees Cloudflare's IP, so the *edge* rule is
+   what throttles individual users; the app limit is a backstop.
+
+The frontend enables itself whenever the backend answers `/health`, at any origin (localhost tunnel or
+a hosted URL); a static host with no backend stays disabled and points at the recorded example.
+
+**Simpler interim (no public exposure):** keep the SSH-tunnel model — group members `ssh -L 8808:...`
+(cluster SSH access is itself the auth) and open `http://localhost:8808`. One shared uvicorn serves
+everyone; each person runs their own tunnel. No domain, no Cloudflare, nothing public.
+
 ## Not in v1 (deferred)
-Public endpoint, TLS/CORS policy, private API key + rate-limiting, auto-submitting GPU jobs.
+Auto-submitting GPU jobs; an in-app login/token (Cloudflare Access covers group auth at the edge).

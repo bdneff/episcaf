@@ -48,6 +48,25 @@ app = FastAPI(title="episcaf scaffolding service", version="0.1.0")
 # is part of the deferred public-exposure hardening (private key + rate limit).
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
+# Optional per-client rate limiting (slowapi). If the package isn't installed the app runs unlimited,
+# so this never breaks a deployment. EPISCAF_RATE_LIMIT (default "30/minute") caps the expensive
+# endpoints per client IP. Behind a proxy (Cloudflare), the seen IP is the proxy's unless the real IP
+# is forwarded -- pair this with the proxy's own rate limiting for real public protection.
+_RATE = os.environ.get("EPISCAF_RATE_LIMIT", "30/minute")
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.util import get_remote_address
+    _limiter = Limiter(key_func=get_remote_address)
+    app.state.limiter = _limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+    def limit(spec):
+        return _limiter.limit(spec)
+except Exception:                                    # slowapi not installed -> no limiting
+    def limit(spec):
+        return lambda fn: fn
+
 
 def _tmp_structure(body: bytes, fmt: str):
     tmp = tempfile.NamedTemporaryFile(suffix="." + ("cif" if fmt == "cif" else "pdb"),
@@ -65,6 +84,7 @@ def health():
 
 
 @app.post("/inspect")
+@limit(_RATE)
 async def inspect(request: Request, fmt: str = Query("pdb"), chain: str = Query("")):
     body = await request.body()
     path = _tmp_structure(body, fmt)
@@ -77,6 +97,7 @@ async def inspect(request: Request, fmt: str = Query("pdb"), chain: str = Query(
 
 
 @app.post("/enumerate")
+@limit(_RATE)
 async def enumerate_patches(request: Request, fmt: str = Query("pdb"), chain: str = Query("A"),
                             sasa_cut: float = Query(0.2), footprint_radius: float = Query(14.0),
                             methods: str = Query("growpatch"), top_k: int = Query(0),
@@ -93,6 +114,7 @@ async def enumerate_patches(request: Request, fmt: str = Query("pdb"), chain: st
 
 
 @app.post("/stage")
+@limit(_RATE)
 async def stage(request: Request, fmt: str = Query("pdb"), chain: str = Query("A"),
                 mode: str = Query("growpatch"), name: str = Query("antigen"),
                 epitopes: str = Query(""), variants: int = Query(4), total_len: int = Query(103),
@@ -122,6 +144,7 @@ async def stage(request: Request, fmt: str = Query("pdb"), chain: str = Query("A
 
 
 @app.post("/submit")
+@limit(_RATE)
 async def submit(request: Request, fmt: str = Query("pdb"), chain: str = Query("A"),
                  mode: str = Query("growpatch"), name: str = Query("antigen"),
                  epitopes: str = Query(""), preset: str = Query(""),
