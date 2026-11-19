@@ -38,9 +38,11 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
    antibodies tend to sit, which episcaf also uses to place scaffolds when no antibody is present --
    so this one panel reads for both the antibody and the no-antibody path. */
 .abocc .art{position:relative}
-.abocc .occ{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:66%;aspect-ratio:1;
+.abocc .occ{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);width:50%;aspect-ratio:1;
   border-radius:50%;pointer-events:none;z-index:1;
   background:radial-gradient(circle,rgba(74,108,214,.30),rgba(74,108,214,.15) 44%,rgba(74,108,214,.05) 64%,rgba(74,108,214,0) 76%)}
+.abocc .occmesh{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);width:50%;aspect-ratio:1;
+  pointer-events:none;z-index:2;overflow:visible;color:#4a6cd6}
 @media(max-width:680px){.flowrow{flex-direction:column;align-items:center;gap:8px}.flowarrow{transform:rotate(90deg)}.fpanel{width:100%;max-width:330px}.fpanel img,.fpanel svg{max-height:260px}}
 
 /* ---- section headings ---- */
@@ -166,7 +168,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <span class="flowarrow" aria-hidden="true">&rarr;</span>
         <figure class="fpanel abocc">
           <div class="art"><img src="img/fig/scaffold_antibody.png?v=4" loading="lazy"
-               alt="A ribbon render of the 8PWW reference antibody (steel blue) in its complex position, aligned on the epitope (red) displayed on the episcaf scaffold (grey), with a translucent blue sphere marking the space antibodies typically occupy."><span class="occ" aria-hidden="true"></span></div>
+               alt="A ribbon render of the 8PWW reference antibody (steel blue) in its complex position, aligned on the epitope (red) displayed on the episcaf scaffold (grey), with a translucent blue sphere marking the space antibodies typically occupy."><span class="occ" aria-hidden="true"></span><svg class="occmesh" viewBox="0 0 100 100" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.42"><circle cx="50" cy="50" r="46"/><ellipse cx="50" cy="50" rx="36" ry="46"/><ellipse cx="50" cy="50" rx="23" ry="46"/><ellipse cx="50" cy="50" rx="10" ry="46"/><line x1="50" y1="4" x2="50" y2="96"/><ellipse cx="50" cy="50" rx="46" ry="36"/><ellipse cx="50" cy="50" rx="46" ry="23"/><ellipse cx="50" cy="50" rx="46" ry="10"/><line x1="4" y1="50" x2="96" y2="50"/></g></svg></div>
           <figcaption>Reference antibody aligned to the scaffold</figcaption>
         </figure>
       </div>
