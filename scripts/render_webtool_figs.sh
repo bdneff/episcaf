@@ -38,6 +38,9 @@ CAND_A="196 197 198 199 200 295 296 297 298 299 300 301 302 303 400 401 402 403"
 CAND_B="329 330 331 332 333 334 335 336 337 338 339 340 341 342 343 344 345 346 347 348 349 350"
 CAND_SEL="205 206 207 208 209 210 211 212 213 214 215 216 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 290 291 292"
 DES_EPI="21 25 28 29 32 69 70 72 73 75 76 77 79 80 83"
+# growPatch candidate 34 on 8PWW:A (the top-ranked candidate in the recorded growPatch example;
+# gap-filled segments A:197-207;A:305-321). Must match candidate i=34 in docs/data/growpatch_8pww.js.
+GPC="197 198 199 200 201 202 203 204 205 206 207 305 306 307 308 309 310 311 312 313 314 315 316 317 318 319 320 321"
 
 # homepage: same antigen + camera, epitope and three candidate patches; plus the real design scaffold
 render antigen_epitope   docs/pdb/8PWW.pdb        A 1 -75 20 $EPI
@@ -45,9 +48,11 @@ render cand_a            docs/pdb/8PWW.pdb        A 0 -75 20 $CAND_A
 render cand_b            docs/pdb/8PWW.pdb        A 0 -75 20 $CAND_B
 render cand_selected     docs/pdb/8PWW.pdb        A 1 -75 20 $CAND_SEL
 render design_scaffold   docs/pdb/8pww_design.pdb A 1 -75 20 $DES_EPI
+# methods: one finished growPatch candidate (candidate 34), same antigen + camera
+render growpatch_candidate docs/pdb/8PWW.pdb      A 1 -75 20 $GPC
 
 echo "post-processing (trim + transparent background) ..."
-/Users/bneff/micromamba/envs/bcell-repair/bin/python scripts/trim_transparent.py "$OUT"/antigen_epitope.png "$OUT"/cand_a.png "$OUT"/cand_b.png "$OUT"/cand_selected.png "$OUT"/design_scaffold.png
+/Users/bneff/micromamba/envs/bcell-repair/bin/python scripts/trim_transparent.py "$OUT"/antigen_epitope.png "$OUT"/cand_a.png "$OUT"/cand_b.png "$OUT"/cand_selected.png "$OUT"/design_scaffold.png "$OUT"/growpatch_candidate.png
 
 # ---- "Generate scaffolds" trio: three real episcaf designs, one shared epitope ----
 # Eight distinct RFdiffusion3 backbones for the same grafted motif (7a3t-derived epitope4_case1;

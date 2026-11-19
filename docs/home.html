@@ -127,14 +127,15 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
       </div>
       <div class="card">
         <div class="card-b">
-          <div class="card-t">Find candidate regions to scaffold</div>
+          <div class="card-t">Find candidate regions on an antigen</div>
           <div class="candrow">
             <figure><img src="img/fig/cand_a.png?v=3" loading="lazy" alt="One candidate surface region highlighted on the antigen."><figcaption>candidate 1</figcaption></figure>
             <figure><img src="img/fig/cand_b.png?v=3" loading="lazy" alt="A second candidate surface region on the same antigen."><figcaption>candidate 2</figcaption></figure>
             <figure class="sel"><img src="img/fig/cand_selected.png?v=3" loading="lazy" alt="A candidate region selected for design, highlighted in red."><figcaption>selected</figcaption></figure>
           </div>
           <p class="ill-cap">Candidate surface regions on the same antigen; the selected one is red.</p>
-          <p>Explore candidate surface regions and select sites for scaffold design.</p>
+          <p>growPatch groups nearby exposed residues into candidate sites. Rank the sites by their
+          DiscoTope scores, inspect them on the structure, and choose which ones to scaffold.</p>
         </div>
         <div class="card-f"><a class="btn btn-primary" href="growpatch.html">Explore candidate regions</a></div>
       </div>
@@ -157,15 +158,14 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
       <span class="flowarrow" aria-hidden="true">&rarr;</span>
       <figure class="fpanel">
         <div class="art"><img src="img/fig/scaffold_antibody.png?v=4" loading="lazy"
-             alt="A ribbon render of the 8PWW antibody (steel blue) engaging the epitope (red) displayed on the episcaf scaffold (grey)."></div>
-        <figcaption>Antibody engaging the epitope<span>8PWW antibody &middot; episcaf design</span></figcaption>
+             alt="A ribbon render of the 8PWW reference antibody (steel blue) in its complex position, aligned on the epitope (red) displayed on the episcaf scaffold (grey)."></div>
+        <figcaption>Reference antibody aligned to the designed scaffold<span>8PWW antibody &middot; episcaf design</span></figcaption>
       </figure>
     </div>
     <figcaption class="flowcap">The <span class="epi">epitope</span> is carried from the native antigen onto
     a smaller designed protein that preserves its three-dimensional arrangement. All three panels are
     rendered from real structures: the 8PWW antigen and its antibody, and an episcaf design for that
-    epitope. Because the design holds the epitope in place, the native antibody is shown engaging it on the
-    scaffold.</figcaption>
+    epitope. The antibody is shown in its position from the 8PWW complex after alignment on the epitope.</figcaption>
   </figure>
 
   <section class="apps">

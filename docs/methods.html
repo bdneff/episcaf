@@ -131,28 +131,24 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   </div>
 
   <div class="card">
-    <h3>Candidate surface regions <span class="mode noab">candidate regions sampled</span></h3>
-    <p>growPatch generates surface patches for scaffold design when no binding site has been selected.
-    Candidates are produced by neighbor-based growth and directional sampling, then combined and filtered
-    to remove near-duplicates. Candidate coverage depends on the surface-exposure threshold, patch size,
-    number of sequence segments, and duplicate-removal settings.</p>
-    <p>The viewer can also rank candidates using DiscoTope scores. Surface sampling defines the candidate
-    regions; DiscoTope supplies an additional score for prioritizing them. A patch is a candidate for
-    design, not a claim that an antibody binds it.</p>
-    <p class="io"><b>Input:</b> antigen structure (one chain, PDB). <b>&rarr; Output:</b> a set of candidate surface patches, each a residue set that could be an antibody footprint.</p>
-    <p>Two sampling methods run, and the tool combines them into one candidate set (labelled
-    <span class="k">All candidates</span> in the viewer) because each finds patches the other misses:</p>
+    <h3>How growPatch generates candidates <span class="mode noab">candidate regions sampled</span></h3>
+    <p>When no binding site has been selected, growPatch generates candidate surface regions on the
+    antigen. Each candidate is a set of surface residues that could form an antibody footprint. A
+    candidate is a region for design and screening, not a claim that an antibody binds it.</p>
+    <p class="io"><b>Input:</b> antigen structure (one chain, PDB). <b>&rarr; Output:</b> a set of candidate surface regions, each a residue set with gap-filled sequence segments.</p>
     <ul>
-      <li id="seedgrow"><span class="k">Neighbor-based patch growth</span> (seed and grow). Start from
-      each exposed surface residue (relative solvent accessibility &ge; 0.2, i.e. a residue exposing at
-      least 20% of the area its residue type can expose), grow outward to a patch of 16 residues by
-      adding the nearest surface neighbours, bridge sequence gaps of up to 10, and cap a candidate at 3
-      sequence segments. Near-duplicate patches are removed by Jaccard overlap (&ge; 0.8), preferring
-      fewer segments and then larger patches.</li>
-      <li id="eyeview"><span class="k">Directional surface sampling</span> (antibody&rsquo;s-eye view).
-      Sample viewing directions evenly over a sphere (a Fibonacci lattice) and, from each direction,
-      take the cap of residues an approaching antibody would see first. This catches compact,
-      geometrically-defined patches that the growth pass can split across sequence segments.</li>
+      <li id="seedgrow"><span class="k">What starts a patch.</span> Every exposed surface residue is a
+      seed. A residue is &ldquo;surface&rdquo; when its relative solvent accessibility is at least 0.2 (it
+      exposes at least 20% of the area its residue type can expose).</li>
+      <li><span class="k">How neighbours join.</span> From the seed, the patch grows by adding the nearest
+      surface residues within bonding range, one at a time, until it reaches footprint size (about 16
+      residues).</li>
+      <li><span class="k">What gap filling changes.</span> Short sequence gaps (up to 10 residues) between
+      the selected residues are filled in, so the scaffold includes the backbone connecting nearby surface
+      residues. The gap-filled ranges, capped at 3 sequence segments, are the segments sent to scaffold
+      design. Gap-fill residues are part of the design but are not used for ranking.</li>
+      <li><span class="k">Removing duplicates.</span> Near-duplicate candidates are removed by Jaccard
+      overlap (&ge; 0.8), keeping the one with fewer segments, then the larger.</li>
     </ul>
     <figure class="dgm">
     <div class="frow">
@@ -168,113 +164,20 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
     three stages; the run repeats from many seeds.</figcaption>
     </figure>
     <figure class="dgm">
-    <div class="frow">
-      <figure style="margin:0">
-        <svg viewBox="0 0 200 206" role="img" aria-label="A schematic sphere of sampling directions around the antigen: evenly spaced points on a sphere (a Fibonacci lattice), drawn more opaque toward the center where they face the viewer. The antigen sits at the center; two directions point inward to it." style="display:block;width:100%;height:auto;border:1px solid #e3e9f2;border-radius:7px;background:#f3f6fb">
-          <defs><marker id="dmc" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#1b4a86"/></marker></defs>
-          <circle cx="100" cy="100" r="80" fill="none" stroke="#2b47d6" stroke-opacity="0.22" stroke-width="1"/>
-          <circle cx="100" cy="100" r="86" fill="#2b47d6" fill-opacity="0.05"/>
-          <circle cx="100" cy="100" r="66" fill="#2b47d6" fill-opacity="0.06"/>
-          <circle cx="100" cy="100" r="48" fill="#2b47d6" fill-opacity="0.07"/>
-          <circle cx="100" cy="100" r="34" fill="#2b47d6" fill-opacity="0.09"/>
-      <circle cx="100.4" cy="121.1" r="1.33" fill="#2b47d6" fill-opacity="0.19"/>
-      <circle cx="117.2" cy="84.6" r="1.33" fill="#2b47d6" fill-opacity="0.20"/>
-      <circle cx="72.9" cy="98.6" r="1.34" fill="#2b47d6" fill-opacity="0.20"/>
-      <circle cx="90.9" cy="62.1" r="1.39" fill="#2b47d6" fill-opacity="0.23"/>
-      <circle cx="143.1" cy="107" r="1.42" fill="#2b47d6" fill-opacity="0.24"/>
-      <circle cx="123.3" cy="143.5" r="1.46" fill="#2b47d6" fill-opacity="0.26"/>
-      <circle cx="61.7" cy="135.1" r="1.48" fill="#2b47d6" fill-opacity="0.27"/>
-      <circle cx="51.1" cy="76.1" r="1.50" fill="#2b47d6" fill-opacity="0.28"/>
-      <circle cx="125.8" cy="48.1" r="1.53" fill="#2b47d6" fill-opacity="0.30"/>
-      <circle cx="88.3" cy="157.5" r="1.54" fill="#2b47d6" fill-opacity="0.30"/>
-      <circle cx="152.7" cy="70.5" r="1.56" fill="#2b47d6" fill-opacity="0.31"/>
-      <circle cx="37.5" cy="112.6" r="1.60" fill="#2b47d6" fill-opacity="0.33"/>
-      <circle cx="75.8" cy="39.6" r="1.61" fill="#2b47d6" fill-opacity="0.33"/>
-      <circle cx="159.2" cy="129.5" r="1.63" fill="#2b47d6" fill-opacity="0.34"/>
-      <circle cx="129.3" cy="166" r="1.73" fill="#2b47d6" fill-opacity="0.39"/>
-      <circle cx="172.3" cy="93" r="1.74" fill="#2b47d6" fill-opacity="0.40"/>
-      <circle cx="43.6" cy="53.7" r="1.74" fill="#2b47d6" fill-opacity="0.40"/>
-      <circle cx="102.6" cy="25.6" r="1.78" fill="#2b47d6" fill-opacity="0.41"/>
-      <circle cx="42.9" cy="149.1" r="1.80" fill="#2b47d6" fill-opacity="0.42"/>
-      <circle cx="74.9" cy="171.6" r="1.81" fill="#2b47d6" fill-opacity="0.43"/>
-      <circle cx="138.2" cy="34" r="1.82" fill="#2b47d6" fill-opacity="0.44"/>
-      <circle cx="24.4" cy="90.2" r="1.82" fill="#2b47d6" fill-opacity="0.44"/>
-      <circle cx="158.2" cy="151.9" r="1.88" fill="#2b47d6" fill-opacity="0.47"/>
-      <circle cx="165.6" cy="56.5" r="1.91" fill="#2b47d6" fill-opacity="0.48"/>
-      <circle cx="59.8" cy="31.2" r="1.98" fill="#2b47d6" fill-opacity="0.52"/>
-      <circle cx="24.9" cy="126.7" r="1.98" fill="#2b47d6" fill-opacity="0.52"/>
-      <circle cx="178.2" cy="115.4" r="1.99" fill="#2b47d6" fill-opacity="0.52"/>
-      <circle cx="100" cy="20" r="2.05" fill="#2b47d6" fill-opacity="0.55"/>
-      <circle cx="100" cy="180" r="2.05" fill="#2b47d6" fill-opacity="0.55"/>
-      <circle cx="129.4" cy="174.4" r="2.06" fill="#2b47d6" fill-opacity="0.56"/>
-      <circle cx="26.9" cy="67.7" r="2.08" fill="#2b47d6" fill-opacity="0.56"/>
-      <circle cx="51.3" cy="163.2" r="2.11" fill="#2b47d6" fill-opacity="0.58"/>
-      <circle cx="176.5" cy="78.9" r="2.15" fill="#2b47d6" fill-opacity="0.60"/>
-      <circle cx="83.8" cy="177.2" r="2.18" fill="#2b47d6" fill-opacity="0.61"/>
-      <circle cx="84.5" cy="22.8" r="2.18" fill="#2b47d6" fill-opacity="0.62"/>
-      <circle cx="167.9" cy="137.9" r="2.22" fill="#2b47d6" fill-opacity="0.64"/>
-      <circle cx="152.2" cy="42.5" r="2.23" fill="#2b47d6" fill-opacity="0.64"/>
-      <circle cx="22.7" cy="104.2" r="2.24" fill="#2b47d6" fill-opacity="0.64"/>
-      <circle cx="46.1" cy="45.3" r="2.26" fill="#2b47d6" fill-opacity="0.65"/>
-      <circle cx="121.7" cy="28.4" r="2.32" fill="#2b47d6" fill-opacity="0.68"/>
-      <circle cx="142.8" cy="160.4" r="2.34" fill="#2b47d6" fill-opacity="0.69"/>
-      <circle cx="38.7" cy="140.7" r="2.34" fill="#2b47d6" fill-opacity="0.70"/>
-      <circle cx="170.8" cy="101.4" r="2.40" fill="#2b47d6" fill-opacity="0.72"/>
-      <circle cx="101.5" cy="168.8" r="2.43" fill="#2b47d6" fill-opacity="0.74"/>
-      <circle cx="36.1" cy="81.8" r="2.47" fill="#2b47d6" fill-opacity="0.76"/>
-      <circle cx="155" cy="64.9" r="2.48" fill="#2b47d6" fill-opacity="0.76"/>
-      <circle cx="87.3" cy="36.8" r="2.49" fill="#2b47d6" fill-opacity="0.77"/>
-      <circle cx="70.5" cy="154.7" r="2.52" fill="#2b47d6" fill-opacity="0.78"/>
-      <circle cx="60.4" cy="59.3" r="2.58" fill="#2b47d6" fill-opacity="0.81"/>
-      <circle cx="151.3" cy="123.9" r="2.58" fill="#2b47d6" fill-opacity="0.81"/>
-      <circle cx="47.1" cy="118.2" r="2.59" fill="#2b47d6" fill-opacity="0.81"/>
-      <circle cx="118.9" cy="50.9" r="2.61" fill="#2b47d6" fill-opacity="0.83"/>
-      <circle cx="124.6" cy="146.3" r="2.62" fill="#2b47d6" fill-opacity="0.83"/>
-      <circle cx="139.3" cy="87.4" r="2.69" fill="#2b47d6" fill-opacity="0.87"/>
-      <circle cx="86.9" cy="132.3" r="2.73" fill="#2b47d6" fill-opacity="0.88"/>
-      <circle cx="69.2" cy="95.8" r="2.74" fill="#2b47d6" fill-opacity="0.89"/>
-      <circle cx="96.5" cy="73.3" r="2.76" fill="#2b47d6" fill-opacity="0.90"/>
-      <circle cx="113.4" cy="109.8" r="2.78" fill="#2b47d6" fill-opacity="0.91"/>
-          <ellipse cx="100" cy="101" rx="24" ry="27" fill="#9aa3ad" stroke="#7d848d" stroke-width="1.3"/>
-          <path d="M84 90 Q100 80 116 90" fill="none" stroke="#e5543f" stroke-width="5.5" stroke-linecap="round"/>
-          <line x1="156" y1="43" x2="118" y2="83" stroke="#1b4a86" stroke-width="2" marker-end="url(#dmc)"/>
-          <line x1="40" y1="150" x2="82" y2="118" stroke="#1b4a86" stroke-width="2" marker-end="url(#dmc)"/>
-          <text x="100" y="203" text-anchor="middle" font-size="10" fill="#6a7686">sampling directions on a sphere</text>
-        </svg>
-        <figcaption>directions sampled on a sphere</figcaption>
-      </figure>
-      <figure class="dirwrap">
-        <img src="img/fig/dir_da.png?v=2" loading="lazy" alt="The 8PWW surface with one surface cap highlighted in blue near the top; an arrow shows the viewing direction that would contact it.">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" aria-hidden="true">
-          <defs><marker id="dm1" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#1b4a86"/></marker></defs>
-          <line x1="3" y1="2" x2="30" y2="20" stroke="#1b4a86" stroke-width="2.4" vector-effect="non-scaling-stroke" marker-end="url(#dm1)"/>
-        </svg>
-        <figcaption>direction 1 &rarr; cap 1</figcaption>
-      </figure>
-      <figure class="dirwrap">
-        <img src="img/fig/dir_db.png?v=2" loading="lazy" alt="The same 8PWW surface and view with a different surface cap highlighted in blue near the bottom; a second arrow shows the viewing direction that would contact it.">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" aria-hidden="true">
-          <defs><marker id="dm2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#1b4a86"/></marker></defs>
-          <line x1="2" y1="58" x2="40" y2="82" stroke="#1b4a86" stroke-width="2.4" vector-effect="non-scaling-stroke" marker-end="url(#dm2)"/>
-        </svg>
-        <figcaption>direction 2 &rarr; cap 2</figcaption>
-      </figure>
-    </div>
-    <figcaption>Viewing directions are sampled evenly over a sphere around the antigen (a Fibonacci lattice);
-    the points are drawn more opaque toward the center, where they face the viewer. From each direction the
-    cap of residues an approaching antibody would see first is taken (blue, rendered from the 8PWW surface).
-    The sphere and arrows are schematic, not predicted antibody poses.</figcaption>
+      <img src="img/fig/growpatch_candidate.png?v=1" loading="lazy" style="max-width:360px"
+           alt="8PWW chain A as a grey ribbon with the residues of one finished growPatch candidate highlighted in red near the top of the fold.">
+      <figcaption>A finished growPatch candidate on the recorded antigen: candidate&nbsp;34 on 8PWW chain A,
+      the top-ranked candidate in the <a href="growpatch.html">growPatch example</a>. Its gap-filled
+      segments <b style="color:#c0392b">A:197&ndash;207; A:305&ndash;321</b> (red) are the segments sent to
+      scaffold design; its mean DiscoTope score is 0.69 over 16 of 16 growth-selected residues. Open the
+      example to find candidate&nbsp;34 and see the same values.</figcaption>
     </figure>
-    <p>Each candidate records which method or methods produced it. Agreement between the two methods is
-    <span class="k">provenance</span> (the same patch was reached two ways); it is not on its own
-    evidence that the patch is a real epitope.</p>
     <div class="why"><b>Reference-implementation check:</b> on chain A of 8PWW, the neighbor-growth
     implementation reproduces the 227 reference candidates for the tested input and configuration &mdash;
     run with no surface-accessibility pre-filter, so every residue is treated as surface. This verifies
     agreement with the reference implementation, not that the candidates are true epitopes. The browser
-    example on the <a href="growpatch.html">growPatch</a> page applies the 0.2 relSASA surface filter and
-    combines growth with directional sampling, reporting 137 candidates (106 from neighbor growth). These
-    counts match only after the input processing and settings are matched.</div>
+    example on the <a href="growpatch.html">growPatch</a> page applies the 0.2 relSASA surface filter,
+    reporting 108 candidates. These counts match only after the input processing and settings are matched.</div>
     <details><summary>Surface exposure and patch overlap</summary>
       <p class="mnote">A residue counts as surface by its <b>relative</b> solvent-accessible area: its SASA
       in the structure divided by the maximum that residue type can expose (Tien 2013 theoretical MAXASA).
@@ -283,7 +186,24 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
       <p class="mnote">Two candidate patches <span class="k">A</span> and <span class="k">B</span> are near-duplicates when their residue sets overlap enough:</p>
       <div class="eq" data-tex="J(A,B)=\dfrac{|A\cap B|}{|A\cup B|}\;\ge\;0.8\;\Rightarrow\;\text{drop the weaker}"></div>
     </details>
-    <p class="loc">episcaf_analysis/growpatch/{core,read,eyeview}.py</p>
+    <p class="loc">episcaf_analysis/growpatch/{core,read}.py</p>
+  </div>
+
+  <div class="card">
+    <h3>How candidates are ranked</h3>
+    <p>Candidates are ranked within one antigen by their mean DiscoTope-3.0 score. DiscoTope-3.0 predicts a
+    per-residue B-cell epitope likelihood; a candidate&rsquo;s score is the mean over its growth-selected
+    surface residues &mdash; the residues growPatch grew the patch from, before gap filling. Gap-fill
+    residues are excluded from the mean. Residues without a score are skipped (not counted as zero), and
+    the viewer shows how many of a candidate&rsquo;s ranking residues were scored (for example, 16 of 16).</p>
+    <p>The scores are min-max normalized within the antigen, so they give a relative ranking of regions on
+    that antigen, not a calibrated binding probability. A candidate with no scored ranking residue is shown
+    as <span class="k">No score</span> and sorts after the scored candidates.</p>
+    <p class="io"><b>Input:</b> candidate surface regions + per-residue DiscoTope-3.0 scores. <b>&rarr; Output:</b> candidates ranked by mean DiscoTope score over their growth-selected residues.</p>
+    <p class="mnote">Scoring a newly uploaded structure requires a DiscoTope-3.0 run, which is an external
+    step; when scores are unavailable the full candidate set is shown unranked. DiscoTope scores are never
+    inferred from an uploaded structure&rsquo;s B-factor column.</p>
+    <p class="loc">scripts/growpatch_viz_data.py &middot; episcaf_service/disco.py</p>
   </div>
 
   <!-- ============================================================ -->
@@ -435,6 +355,9 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
 
   <div class="card">
     <h3>AOMclash &mdash; antibody accessibility</h3>
+    <p>DiscoTope ranks candidate regions on the input antigen; AOMclash works at a later stage and on a
+    different object &mdash; it evaluates a generated scaffold for material that could obstruct antibody
+    access to the selected epitope.</p>
     <p>AOMclash uses an occupancy map derived from antibody&ndash;antigen complexes aligned in an
     epitope-centered coordinate frame; the map records where antibody atoms occur relative to the epitope
     (a boolean 33&times;33&times;33 grid at 2&nbsp;&Aring;, averaged over the complexes). To score a

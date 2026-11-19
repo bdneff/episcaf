@@ -104,30 +104,29 @@ figure.dgm figcaption{font-size:11.5px;color:#536477;margin:7px auto 0;line-heig
     <details name="select-steps" id="growpatch" class="workflow-step">
       <summary><span>Candidate surface regions</span><span class="step-status done">Implemented</span></summary>
       <div class="step-content">
-    <p class="how">growPatch generates candidate surface patches using neighbor-based growth and
-    directional sampling. The candidate sets are combined, filtered by the configured size and
-    sequence-segment limits, and reduced to remove near-duplicates. Optional per-residue prediction scores
-    can prioritize the resulting candidates; candidate generation and ranking are separate steps. Selected
-    patches are converted into design specifications for scaffold generation.</p>
+    <p class="how">growPatch generates candidate surface regions by neighbor-based growth, fills short
+    sequence gaps, filters by the configured size and sequence-segment limits, and removes near-duplicates.
+    The candidates are then ranked by mean DiscoTope score (generation and ranking are separate steps).
+    Selected candidates are converted into design specifications for scaffold generation.</p>
     <ul class="steps">
       <li><span class="mk o">1</span><span class="tx"><b>Surface.</b> Relative solvent accessibility per residue (freesasa, Tien-2013 normalization); residues exposing &ge; 20% of their type&rsquo;s area (relSASA &ge; 0.2) are &ldquo;surface.&rdquo;</span></li>
-      <li><span class="mk o">2</span><span class="tx"><b>Two sampling methods.</b> <i>Neighbor-based patch growth</i> (seed &amp; grow) &mdash; from a surface residue, accrete the nearest connected surface residues to footprint size (~16). <i>Directional surface sampling</i> (antibody&rsquo;s-eye view) &mdash; sample approach directions and take the surface cap an antibody from each direction would contact. Both produce conformational (sequence-discontinuous) patches.</span></li>
-      <li><span class="mk o">3</span><span class="tx"><b>Clean up.</b> Gap-fill, keep patches large enough (&ge;12 residues) and not too fragmented (&le;3 sequence segments, or &ldquo;islands&rdquo;).</span></li>
-      <li><span class="mk o">4</span><span class="tx"><b>Combine &amp; dedupe.</b> Merge both methods and apply Jaccard non-max suppression; a patch found by both methods is tagged as such (provenance, not on its own a confidence claim). How much overlap is kept is set by the dedup threshold and an optional cap.</span></li>
-      <li><span class="mk o">5</span><span class="tx"><b>Optional ranking layer.</b> A DiscoTope-style per-residue score can prioritize the list when compute is limited; it sits on top of the sampled set.</span></li>
+      <li><span class="mk o">2</span><span class="tx"><b>Grow.</b> From each surface residue, accrete the nearest connected surface residues to footprint size (~16). This produces conformational (sequence-discontinuous) patches.</span></li>
+      <li><span class="mk o">3</span><span class="tx"><b>Clean up.</b> Gap-fill short sequence gaps, keep patches large enough (&ge;12 residues) and not too fragmented (&le;3 sequence segments, or &ldquo;islands&rdquo;). The gap-filled ranges are the segments sent to scaffold design.</span></li>
+      <li><span class="mk o">4</span><span class="tx"><b>Dedupe.</b> Jaccard non-max suppression removes near-duplicates (overlap &ge; 0.8), keeping the one with fewer segments, then the larger.</span></li>
+      <li><span class="mk o">5</span><span class="tx"><b>Rank.</b> Candidates are ranked by their mean DiscoTope-3.0 score over the growth-selected surface residues, normalized within the antigen. When scores are unavailable the full candidate set is shown unranked.</span></li>
     </ul>
-    <p style="margin-top:12px">Each surviving patch becomes a candidate epitope (an episcaf contig string)
-    handed to the same contig machinery as the known-antibody arm.</p>
-    <p class="io"><b>In:</b> antigen structure (one chain, PDB). <b>&rarr; Out:</b> a set of candidate surface patches, each a residue set that could be an antibody footprint.</p>
+    <p style="margin-top:12px">Each surviving candidate becomes an episcaf contig string handed to the same
+    contig machinery as the known-antibody arm.</p>
+    <p class="io"><b>In:</b> antigen structure (one chain, PDB). <b>&rarr; Out:</b> a set of candidate surface regions, each a residue set that could be an antibody footprint.</p>
     <h3>Validation</h3>
     <p class="how">The sampling method is parity-verified: on chain A of 8PWW it reproduces the reference
     implementation for the tested input and configuration. Benchmarked on 117 conformational SAbDab
-    epitopes &mdash; where a candidate counts as recovered at Jaccard overlap &ge; 0.8 with a reference
-    epitope &mdash; combining neighbor growth and directional sampling reaches recall@0.8 = 0.92, versus
-    about 0.80 for either method alone. The surface cutoff is <code>SASA_CUT = 0.2</code>. Staging a full
-    no-antibody design run end-to-end through the tool is in development.</p>
+    epitopes (a candidate counts as recovered at Jaccard overlap &ge; 0.8 with a reference epitope),
+    neighbor-based growth reaches recall@0.8 &asymp; 0.80. The surface cutoff is <code>SASA_CUT = 0.2</code>.
+    A directional-sampling method and its higher union recall are recorded in ENUMERATOR_DECISION.md but are
+    off by default. Staging a full no-antibody design run end-to-end through the tool is in development.</p>
     <h3>Implementation</h3>
-    <span class="tool">episcaf_analysis/growpatch/{core,read,eyeview}.py · results/growpatch/ENUMERATOR_DECISION.md · ref: segmentation/growPatch.py</span>
+    <span class="tool">episcaf_analysis/growpatch/{core,read}.py · scripts/growpatch_viz_data.py · episcaf_service/disco.py · results/growpatch/ENUMERATOR_DECISION.md</span>
       </div>
     </details>
   </section>
