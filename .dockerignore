@@ -1,0 +1,18 @@
+# Keep the container build context small and runtime-only. The web service needs episcaf_service/,
+# episcaf_analysis/, episcaf_pipeline/, configs/, and docs/ (served UI + recorded examples). Everything
+# below is big or offline-only and must not go into the image.
+.git
+.gitignore
+.gitattributes
+.claude
+data
+results
+manuscript
+dp4_8vdl
+render.yaml
+**/__pycache__
+*.pyc
+*.pyo
+*.ipynb
+*.log
+.DS_Store

@@ -137,5 +137,27 @@ has internet + `pybiolib`), so uploads come back ranked. Notes: the free plan sl
 `submit.sh` references cluster paths, so run real GPU jobs on Gemini, not here. The link is public — lock
 it to your group later with Cloudflare Access or a password if needed.
 
+### Google Cloud Run (recommended if you have GCP credits)
+Cloud Run scales to zero (idle = $0, so the $300 free trial lasts a long time) and allows long requests
+(up to 60 min), so the ~1-minute growPatch enumeration fits. The repo ships a `Dockerfile` and
+`.dockerignore`; deploy entirely from **Cloud Shell** (a browser terminal — nothing to install locally):
+
+```bash
+# in the GCP console: create/select a project and enable the $300 free-trial billing, then open Cloud Shell:
+gcloud config set project <PROJECT_ID>
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
+git clone https://github.com/bdneff/episcaf.git && cd episcaf
+gcloud run deploy episcaf \
+    --source . \
+    --region us-central1 \
+    --allow-unauthenticated \
+    --memory 2Gi --cpu 2 --timeout 300
+```
+Cloud Build reads the `Dockerfile`, builds the image, and deploys. It prints a URL like
+`https://episcaf-xxxxx.us-central1.run.app`. Check `/health`, then share `…/growpatch_tool.html`.
+`--allow-unauthenticated` makes it public for testing; lock it to your group later with Cloud Run IAM or
+Identity-Aware Proxy. Set env vars with `--set-env-vars` (the Dockerfile already defaults
+`EPISCAF_DISCOTOPE=biolib`, `EPISCAF_RATE_LIMIT=20/minute`).
+
 ## Not in v1 (deferred)
 Auto-submitting GPU jobs; an in-app login/token (Cloudflare Access covers group auth at the edge).
