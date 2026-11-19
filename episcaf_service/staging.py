@@ -148,6 +148,15 @@ def build_submit_sh(run_dir, input_name, preset, settings):
          "conda activate ~/rfd3/env/rfd3_py312",
          f'export RUN_DIR="{rd}"',
          "# input.pdb, designs.csv, run_spec.json are already staged in $RUN_DIR by the service.",
+         "",
+         "# Storage split: the large GPU outputs (RFd3/MPNN/AF3) live on scratch and self-delete when",
+         "# scratch is swept; the run record and 05_analysis (the scored metrics you keep) stay durable",
+         "# under $RUN_DIR. Override the scratch root with EPISCAF_SCRATCH. Extract what you need from",
+         "# 05_analysis before scratch is purged -- only 02/03/04 are disposable.",
+         'SCRATCH_OUT="${EPISCAF_SCRATCH:-/scratch/$USER/episcaf}/$(basename "$RUN_DIR")"',
+         'mkdir -p "$SCRATCH_OUT"/02_rfd3 "$SCRATCH_OUT"/03_mpnn "$SCRATCH_OUT"/04_af3 "$RUN_DIR/05_analysis"',
+         'for d in 02_rfd3 03_mpnn 04_af3; do ln -sfn "$SCRATCH_OUT/$d" "$RUN_DIR/$d"; done',
+         'echo "GPU outputs -> $SCRATCH_OUT (scratch, ephemeral); records + 05_analysis stay in $RUN_DIR"',
          ""]
 
     # 1. RFd3 generation, driven by the staged designs table (the one entry that consumes designs.csv).

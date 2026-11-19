@@ -72,5 +72,17 @@ B-factors. The recorded examples (`docs/data/growpatch_*.js`) carry their scores
 (the verified command sequence: `ipd_round.py init` → RFd3 array → optional AOMclash prefilter →
 MPNN/AF3 → `aomclash_score_designs.py` → `stage06_select.py`).
 
+### Storage split (durable records, disposable GPU outputs)
+`submit.sh` begins by sending the large GPU outputs to scratch, which self-deletes when swept, while
+the run record and the scored metrics stay durable:
+- **Durable** (under `$RUN_DIR` on `$WS`): `input.pdb`, `designs.csv`, `run_spec.json`, `submit.sh`,
+  and `05_analysis/` (`metrics.csv`, `ranked.csv`) — the things you keep.
+- **Scratch** (`$EPISCAF_SCRATCH/<run_id>/`, default `/scratch/$USER/episcaf/<run_id>/`): `02_rfd3`,
+  `03_mpnn`, `04_af3`, symlinked in from `$RUN_DIR` so paths still resolve.
+
+So keep code + env in your home dir, let the service write records to `$WS`, and the bulky
+RFd3/MPNN/AF3 outputs land on scratch. **Extract what you need from `05_analysis` before scratch is
+purged** — only `02/03/04` are disposable (this is why the old runs needed `AF3_REMAP`).
+
 ## Not in v1 (deferred)
 Public endpoint, TLS/CORS policy, private API key + rate-limiting, auto-submitting GPU jobs.
