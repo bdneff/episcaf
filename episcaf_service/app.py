@@ -25,6 +25,7 @@ from fastapi import FastAPI, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 
 from episcaf_analysis.growpatch import read as R
 from episcaf_service import scoring, staging
@@ -89,7 +90,7 @@ async def inspect(request: Request, fmt: str = Query("pdb"), chain: str = Query(
     body = await request.body()
     path = _tmp_structure(body, fmt)
     try:
-        return R.detect_complex(path, chain or None)
+        return await run_in_threadpool(R.detect_complex, path, chain or None)
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": f"{type(e).__name__}: {e}"})
     finally:
@@ -106,7 +107,8 @@ async def enumerate_patches(request: Request, fmt: str = Query("pdb"), chain: st
     path = _tmp_structure(body, fmt)
     try:
         ms = tuple(m for m in methods.split(",") if m)
-        return staging.viewer_data(path, chain or "A", sasa_cut, footprint_radius, ms, top_k, mode)
+        return await run_in_threadpool(staging.viewer_data, path, chain or "A",
+                                       sasa_cut, footprint_radius, ms, top_k, mode)
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": f"{type(e).__name__}: {e}"})
     finally:
@@ -135,7 +137,7 @@ async def stage(request: Request, fmt: str = Query("pdb"), chain: str = Query("A
         cfg = dict(name=name or "antigen", variants=variants, total_len=total_len, rfd3=rfd3,
                    mpnn=mpnn, seed=seed, mode=mode, helix_bias=helix_bias,
                    budget={"mode": budget_mode, "value": budget_value})
-        spec, csv_text, n, skipped = staging.stage_run(path, chain or "A", epis, cfg)
+        spec, csv_text, n, skipped = await run_in_threadpool(staging.stage_run, path, chain or "A", epis, cfg)
         return dict(run_spec=spec, contigs_csv=csv_text, n_contigs=n, skipped=len(skipped))
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": f"{type(e).__name__}: {e}"})
@@ -167,8 +169,8 @@ async def submit(request: Request, fmt: str = Query("pdb"), chain: str = Query("
     settings = dict(ipd=ipd, ipdrounds=ipdrounds, ipd_mode=ipd_mode, prefilter=prefilter,
                     keepfrac=keepfrac, topn=topn, group=group)
     try:
-        return staging.persist_run(ws_root(), structure_text, fmt, chain or "A", mode, epis, cfg,
-                                   preset, settings)
+        return await run_in_threadpool(staging.persist_run, ws_root(), structure_text, fmt,
+                                       chain or "A", mode, epis, cfg, preset, settings)
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": f"{type(e).__name__}: {e}"})
 
