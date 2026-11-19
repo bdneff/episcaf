@@ -9,7 +9,7 @@
 #
 # Structures: docs/pdb/8PWW.pdb (antigen+complex), docs/pdb/8pww_design.pdb (a real scaffold design).
 # Selections: 8PWW:A contact epitope (scripts/webtool_prep.py); candidate patches from the growPatch
-# demo data (docs/data/growpatch_8pww.js, patches #136/#8/#31); design epitope = design residues whose
+# demo data (docs/data/growpatch_8pww.js; the red "selected" patch is candidate i=9); design epitope = design residues whose
 # CA sits within 1.5 A of a native-epitope CA (RFdiffusion keeps the motif fixed in native coordinates).
 set -e
 cd "$(dirname "$0")/.."
@@ -36,11 +36,12 @@ render () {
 EPI="205 209 212 213 216 278 279 281 282 284 285 286 288 289 292"
 CAND_A="196 197 198 199 200 295 296 297 298 299 300 301 302 303 400 401 402 403"
 CAND_B="329 330 331 332 333 334 335 336 337 338 339 340 341 342 343 344 345 346 347 348 349 350"
-CAND_SEL="205 206 207 208 209 210 211 212 213 214 215 216 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 290 291 292"
+# "selected" demo patch and the methods worked example are the SAME candidate for a coherent story
+# across pages: growPatch candidate i=9 on 8PWW:A -- a compact two-segment candidate ranked 2nd by
+# total DiscoTope (Sum 17.8 over 38 residues; segments A:312-323;A:387-412). Match i=9 in growpatch_8pww.js.
+CAND_SEL="312 313 314 315 316 317 318 319 320 321 322 323 387 388 389 390 391 392 393 394 395 396 397 398 399 400 401 402 403 404 405 406 407 408 409 410 411 412"
 DES_EPI="21 25 28 29 32 69 70 72 73 75 76 77 79 80 83"
-# growPatch candidate 82 on 8PWW:A (the top-ranked candidate by total DiscoTope in the recorded
-# example; gap-filled segments A:197-200;A:301-316;A:390-409). Match candidate i=82 in growpatch_8pww.js.
-GPC="197 198 199 200 301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316 390 391 392 393 394 395 396 397 398 399 400 401 402 403 404 405 406 407 408 409"
+GPC="$CAND_SEL"
 
 # homepage: same antigen + camera, epitope and three candidate patches; plus the real design scaffold
 render antigen_epitope   docs/pdb/8PWW.pdb        A 1 -75 20 $EPI
@@ -48,7 +49,7 @@ render cand_a            docs/pdb/8PWW.pdb        A 0 -75 20 $CAND_A
 render cand_b            docs/pdb/8PWW.pdb        A 0 -75 20 $CAND_B
 render cand_selected     docs/pdb/8PWW.pdb        A 1 -75 20 $CAND_SEL
 render design_scaffold   docs/pdb/8pww_design.pdb A 1 -75 20 $DES_EPI
-# methods: one finished growPatch candidate (candidate 34), same antigen + camera
+# methods: one finished growPatch candidate (candidate 9, same as the "selected" demo), same antigen + camera
 render growpatch_candidate docs/pdb/8PWW.pdb      A 1 -75 20 $GPC
 
 echo "post-processing (trim + transparent background) ..."
