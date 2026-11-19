@@ -159,5 +159,12 @@ Cloud Build reads the `Dockerfile`, builds the image, and deploys. It prints a U
 Identity-Aware Proxy. Set env vars with `--set-env-vars` (the Dockerfile already defaults
 `EPISCAF_DISCOTOPE=biolib`, `EPISCAF_RATE_LIMIT=20/minute`).
 
+`EPISCAF_RATE_LIMIT` is per **real** client IP: the limiter keys on the right-most `X-Forwarded-For`
+entry (the IP Cloud Run's frontend observed), not the socket peer (Google's frontend) and not the
+spoofable left-most entry — so one abuser can't share-bucket everyone or rotate fake IPs to bypass it.
+This is an interim abuse throttle; per-user access control is the auth step (Cloud Run IAM / IAP),
+still deferred. If you ever put a sanitizing load balancer in front, revisit which XFF entry to trust
+(a GCLB appends `client, lb`, making the client the second-from-right).
+
 ## Not in v1 (deferred)
 Auto-submitting GPU jobs; an in-app login/token (Cloudflare Access covers group auth at the edge).

@@ -51,14 +51,39 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 # Optional per-client rate limiting (slowapi). If the package isn't installed the app runs unlimited,
 # so this never breaks a deployment. EPISCAF_RATE_LIMIT (default "30/minute") caps the expensive
-# endpoints per client IP. Behind a proxy (Cloudflare), the seen IP is the proxy's unless the real IP
-# is forwarded -- pair this with the proxy's own rate limiting for real public protection.
+# endpoints per client IP.
 _RATE = os.environ.get("EPISCAF_RATE_LIMIT", "30/minute")
+
+
+def _client_ip(request: Request) -> str:
+    """The real client IP to key the rate limit on, read from X-Forwarded-For behind Cloud Run.
+
+    The socket peer (request.client.host) is Google's frontend, so without this every user shares one
+    bucket and the limit is effectively global. For a direct *.run.app request the Cloud Run frontend
+    appends the connecting client's IP to the RIGHT of X-Forwarded-For; a client can only prepend
+    spoofed entries to the LEFT of that. So the right-most entry is the one the platform observed and
+    the only non-spoofable choice for an abuse throttle (the common `split(",")[0]` left-most pattern
+    is attacker-controllable and would let anyone rotate fake IPs to bypass the limit). Falls back to
+    the socket peer when the header is absent (local runs). This is an interim throttle; real per-user
+    protection is the auth step. If a sanitizing load balancer is put in front, revisit which entry to
+    trust (a GCLB appends `client, lb`, making the client the second-from-right).
+    """
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        parts = [p.strip() for p in xff.split(",") if p.strip()]
+        if parts:
+            return parts[-1]
+    try:
+        return get_remote_address(request)
+    except Exception:
+        return request.client.host if request.client else "anon"
+
+
 try:
     from slowapi import Limiter, _rate_limit_exceeded_handler
     from slowapi.errors import RateLimitExceeded
     from slowapi.util import get_remote_address
-    _limiter = Limiter(key_func=get_remote_address)
+    _limiter = Limiter(key_func=_client_ip)
     app.state.limiter = _limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
