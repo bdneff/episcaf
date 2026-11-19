@@ -51,6 +51,7 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .msg.err{background:#fdecea;border:1px solid #f5c6c0;color:#a0241a}
 .msg.busy{background:#eef4fd;border:1px solid #bcd3f0;color:#1b4a86}
 .pbar{display:block;height:6px;background:#d7e3f3;border-radius:3px;overflow:hidden;margin-top:7px}
+.phint{display:block;font-size:11px;color:#6a7686;margin-top:6px}
 .pbar>i{display:block;height:100%;width:38%;background:var(--blue);border-radius:3px;animation:pslide 1.15s ease-in-out infinite}
 @keyframes pslide{0%{margin-left:-38%}100%{margin-left:100%}}
 @media(prefers-reduced-motion:reduce){.pbar>i{animation:none;width:100%;opacity:.55}}
@@ -153,7 +154,7 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
       specifications and a run configuration for the cluster.</div>
       <div class="row">
         <div class="fld"><label for="runname">Run name</label><input id="runname" value="antigen" style="width:100px"></div>
-        <div class="fld"><label for="variants">Flanking-sequence variants</label><input type="number" id="variants" value="4" min="1" max="30"></div>
+        <div class="fld" title="How many positions of the epitope within the scaffold to generate, by varying the flanking residues on each side."><label for="variants">Epitope positions to try</label><input type="number" id="variants" value="4" min="1" max="30"></div>
         <div class="fld"><label for="rfd3">Backbones per design specification</label><input type="number" id="rfd3" value="8" min="1"></div>
         <div class="fld"><label for="mpnn">Sequences per backbone</label><input type="number" id="mpnn" value="8" min="1"></div>
         <div class="fld"><label id="budgetlbl">Design limit</label>
@@ -202,11 +203,12 @@ function msg(t,cls){busyDone();const m=$("msg");m.className=t?("msg "+(cls||""))
 // antigen): an animated bar + an elapsed-seconds counter. We don't know a true percentage, so this
 // is honestly indeterminate rather than a faked fraction.
 let _busyTimer=null,_busyStart=0;
-function busy(label){
+function busy(label,hint){
   _busyStart=Date.now();
   const render=()=>{const s=Math.round((Date.now()-_busyStart)/1000);
     const m=$("msg"); m.className="msg busy";
-    m.innerHTML=`${label} <span style="opacity:.65">${s}s</span><span class="pbar"><i></i></span>`;};
+    m.innerHTML=`${label} <span style="opacity:.65">${s}s</span><span class="pbar"><i></i></span>`
+      + (hint?`<span class="phint">${hint}</span>`:"");};
   render(); clearInterval(_busyTimer); _busyTimer=setInterval(render,1000);
 }
 function busyDone(){ if(_busyTimer){clearInterval(_busyTimer);_busyTimer=null;} }
@@ -251,7 +253,8 @@ $("run").onclick=async()=>{
   const qs=new URLSearchParams({chain:$("chain").value, sasa_cut:$("sasa").value,
     top_k:$("topk").value, mode:state.mode, fmt:fileFmt()});
   $("run").disabled=true;
-  busy(state.mode==="antibody" ? "Identifying contact residues…" : "Generating candidate regions…");
+  busy(state.mode==="antibody" ? "Identifying contact residues…" : "Generating candidate regions…",
+       state.mode==="antibody" ? "" : "This usually takes about 1&ndash;2 minutes. Keep this tab open.");
   try{
     const res=await fetch(api("/enumerate?"+qs.toString()),{method:"POST",body:state.pdbText});
     const data=await res.json();
