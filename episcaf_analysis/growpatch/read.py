@@ -445,16 +445,20 @@ def enumerate_patches(cif_path, chains, sasa_cut=core.SASA_CUT, patch_size=core.
 
     out = []
     for k, (raw_r, gf_r, nisl) in enumerate(kept):
+        # keys_raw: the growth-selected (exposed, pre-gap-fill) residues that remain in the final
+        # candidate -- the residues used for DiscoTope ranking. Excludes gap-fill residues
+        # (gf_r - raw_r) and any raw residue trimmed out of a short island (raw_r - gf_r).
         out.append(dict(
             patch=k, n_raw=len(raw_r), n_res=len(gf_r), n_islands=nisl,
             epitope=ag.fmt_epitope(gf_r), islands=ag.fmt_islands(gf_r),
-            keys=sorted(gf_r), vmd_selection=ag.vmd_selection(gf_r)))
+            keys=sorted(gf_r), keys_raw=sorted(raw_r & gf_r),
+            vmd_selection=ag.vmd_selection(gf_r)))
     return out, ag
 
 
 # ------------------------------------------------------------------ combined entry (both strategies)
 
-def enumerate_candidates(cif_path, chains, methods=("growpatch", "eyeview"),
+def enumerate_candidates(cif_path, chains, methods=("growpatch",),
                          sasa_cut=core.SASA_CUT, sasa_scope="antigen", context=(),
                          gap=core.GAP, min_res=core.MIN_RES, max_islands=core.MAX_ISLANDS,
                          min_island_len=core.MIN_ISLAND_LEN,
@@ -462,13 +466,13 @@ def enumerate_candidates(cif_path, chains, methods=("growpatch", "eyeview"),
                          footprint_radius=14.0, depth=None, n_dirs=150,
                          nms_jaccard=core.NMS_JACCARD, top_k=None,
                          protect_epitope=None, antigen=None, verbose=False):
-    """Combined no-antibody epitope enumerator -- the production entry.
+    """No-antibody epitope enumerator -- the production entry.
 
     Runs the chosen `methods` and unions their candidates, then a final Jaccard NMS collapses patches
-    both strategies found (tagged as found by both -- a confidence signal). growPatch (seed-and-grow)
-    and eyeview (antibody's-eye-view direction caps) are complementary: on the conformational
-    benchmark the union reaches recall@0.8 ~0.92 vs ~0.80 for either alone (see
-    `results/growpatch/ENUMERATOR_DECISION.md`).
+    more than one strategy found (tagged in `methods`). The default is growpatch-only
+    (neighbor-based seed-and-grow); eyeview (antibody's-eye-view direction caps) remains available by
+    passing methods=("growpatch","eyeview") and its benchmark is recorded in
+    `results/growpatch/ENUMERATOR_DECISION.md`, but it is off by default.
 
     All the dials are user knobs:
       surface        : sasa_cut, sasa_scope, context
@@ -523,6 +527,7 @@ def enumerate_candidates(cif_path, chains, methods=("growpatch", "eyeview"),
 
     out = [dict(patch=k, methods=sorted(p["_methods"]), n_res=p["n_res"], n_islands=p["n_islands"],
                 epitope=p["epitope"], islands=p["islands"], keys=p["keys"],
+                keys_raw=p.get("keys_raw", p["keys"]),
                 vmd_selection=p["vmd_selection"]) for k, p in enumerate(kept)]
     return out, ag
 

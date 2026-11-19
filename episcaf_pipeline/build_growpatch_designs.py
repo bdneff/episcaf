@@ -139,8 +139,8 @@ def main(argv=None):
                     help="flank-split contigs per candidate (V); V=1 is the centered split")
     ap.add_argument("--sasa-cut", type=float, default=0.2)
     ap.add_argument("--footprint-radius", type=float, default=14.0)
-    ap.add_argument("--methods", default="growpatch,eyeview",
-                    help="enumerators to union (comma-separated)")
+    ap.add_argument("--methods", default="growpatch",
+                    help="enumerators to union (comma-separated; 'eyeview' adds directional sampling)")
     ap.add_argument("--top-k", type=int, default=0, help="cap candidates per antigen (0 = all)")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", required=True)

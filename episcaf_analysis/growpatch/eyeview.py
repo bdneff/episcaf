@@ -94,5 +94,6 @@ def enumerate_eyeview(antigen, sasa_cut=core.SASA_CUT, n_dirs=150, footprint_rad
         out.append(dict(
             patch=k, n_raw=len(raw_r), n_res=len(gf_r), n_islands=nisl,
             epitope=antigen.fmt_epitope(gf_r), islands=antigen.fmt_islands(gf_r),
-            keys=sorted(gf_r), vmd_selection=antigen.vmd_selection(gf_r)))
+            keys=sorted(gf_r), keys_raw=sorted(raw_r & gf_r),
+            vmd_selection=antigen.vmd_selection(gf_r)))
     return out
