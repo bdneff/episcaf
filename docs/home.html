@@ -24,46 +24,46 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 @media(min-width:720px){.hero h1{font-size:33px}}
 
 /* ---- main scientific illustration ---- */
-.flowfig{margin:24px auto 8px;padding:0;max-width:600px}
-.flowrow{display:flex;align-items:stretch;justify-content:center;gap:10px;flex-wrap:nowrap}
-.fpanel{flex:1 1 0;min-width:0;margin:0;text-align:center;background:#f7f9fc;border:1px solid #e2e8f1;border-radius:10px;padding:12px 10px 10px;display:flex;flex-direction:column}
+.structfig{margin:40px 0 0}
+.flowfig{margin:0;padding:0;max-width:none}
+.flowrow{display:flex;align-items:stretch;justify-content:center;gap:14px;flex-wrap:nowrap}
+.fpanel{flex:1 1 0;min-width:0;margin:0;text-align:center;background:#f7f9fc;border:1px solid #e2e8f1;border-radius:10px;padding:16px 14px 13px;display:flex;flex-direction:column}
 .fpanel .art{flex:1;display:flex;align-items:center;justify-content:center}
-.fpanel img,.fpanel svg{display:block;width:100%;height:auto;max-height:132px;object-fit:contain;margin:0 auto}
-.fpanel figcaption{font-size:12px;font-weight:bold;color:#1b4a86;line-height:1.25;margin-top:9px}
-.fpanel figcaption span{display:block;font-size:10.5px;font-weight:normal;color:#6a7686;margin-top:2px}
-.flowarrow{flex:0 0 auto;align-self:center;color:#9fb0c6;font-size:22px;font-weight:bold}
-.flowcap{font-size:11.5px;color:#6a7686;line-height:1.55;margin:13px auto 0;max-width:72ch;text-align:center}
+.fpanel img,.fpanel svg{display:block;width:100%;height:auto;max-height:190px;object-fit:contain;margin:0 auto}
+.fpanel figcaption{font-size:12.5px;font-weight:bold;color:#1b4a86;line-height:1.3;margin-top:11px}
+.flowarrow{flex:0 0 auto;align-self:center;color:#9fb0c6;font-size:24px;font-weight:bold}
+.flowcap{font-size:12px;color:#6a7686;line-height:1.55;margin:15px 0 0;max-width:72ch;text-align:left}
 .flowcap .epi{color:#c0392b;font-weight:bold}
-@media(max-width:680px){.flowrow{flex-direction:column;align-items:center}.flowarrow{transform:rotate(90deg)}.fpanel{width:100%;max-width:300px}.fpanel img,.fpanel svg{max-height:190px}}
+@media(max-width:680px){.flowrow{flex-direction:column;align-items:center;gap:8px}.flowarrow{transform:rotate(90deg)}.fpanel{width:100%;max-width:330px}.fpanel img,.fpanel svg{max-height:260px}}
 
 /* ---- section headings ---- */
-.apps h2,.paths h2,.workflow h2{font-size:19px;color:#15233a;margin:0 0 4px;font-weight:bold}
-.sub2{color:#6a7686;font-size:13px;margin:0 0 15px}
+.apps h2,.paths h2,.structfig h2{font-size:19px;color:#15233a;margin:0 0 12px;font-weight:bold}
 
 /* ---- applications ---- */
-.apps{margin:36px 0 0}
+.apps{margin:40px 0 0}
 .applist{display:grid;grid-template-columns:1fr 1fr;gap:20px 34px}
 @media(max-width:620px){.applist{grid-template-columns:1fr;gap:17px}}
 .app h3{font-size:14.5px;color:#1b4a86;margin:0 0 4px;font-weight:bold}
 .app p{font-size:13px;color:#3a4654;line-height:1.55}
 
 /* ---- two starting paths ---- */
-.paths{margin:22px 0 0}
-.fork{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:13px}
+.paths{margin:30px 0 0}
+.fork{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:0}
 @media(max-width:680px){.fork{grid-template-columns:1fr}}
 .card{border:1px solid #d5deea;border-radius:10px;background:#fff;display:flex;flex-direction:column;overflow:hidden;transition:box-shadow .12s,border-color .12s}
 .card:hover{border-color:#8fb0db;box-shadow:0 6px 20px rgba(23,60,110,.1)}
-.card-b{padding:14px 16px 6px;flex:1}
-.card-t{font-size:16px;font-weight:bold;color:#1b4a86;margin:0 0 9px}
+.card-b{padding:16px 16px 6px;flex:1}
+.card-t{font-size:16px;font-weight:bold;color:#1b4a86;margin:0 0 11px}
 .card-b p{margin:0;color:#3a4654;font-size:13px;line-height:1.55}
-.card-ill{display:block;width:auto;max-width:100%;max-height:150px;height:auto;margin:0 auto 4px;background:transparent}
-.candrow{display:flex;gap:6px;margin:0 0 4px;justify-content:center}
+.card-art{height:150px;display:flex;align-items:center;justify-content:center;margin:0 0 6px}
+.card-ill{display:block;width:auto;max-width:100%;max-height:150px;height:auto;margin:0;background:transparent}
+.candrow{display:flex;gap:6px;margin:0;justify-content:center;width:100%}
 .candrow figure{flex:1;margin:0;text-align:center}
 .candrow img{display:block;width:100%;height:auto;max-height:108px;object-fit:contain;background:transparent}
 .candrow figcaption{font-size:9.5px;color:#566b85;margin-top:3px}
 .candrow .sel img{box-shadow:0 0 0 1.5px #e5543f;border-radius:4px}
 .ill-cap{font-size:10.5px;color:#566b85;margin:0 0 9px;text-align:center}
-.card-f{padding:10px 16px 16px}
+.card-f{padding:12px 16px 16px}
 
 /* ---- short workflow ---- */
 .workflow{margin:42px 0 0}
@@ -78,7 +78,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 .wlinks a{color:#0033cc;font-weight:600;text-decoration:none}
 .wlinks a:hover{text-decoration:underline}
 
-.caps{margin:36px 0 0;border-top:1px solid #e2e8f1;padding-top:15px;color:#66707c;font-size:12px;line-height:1.55}
+.caps{margin:40px 0 0;border-top:1px solid #e2e8f1;padding-top:16px;color:#66707c;font-size:12px;line-height:1.55}
 </style>
 </head>
 <body>
@@ -113,13 +113,12 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 
   <section class="paths">
     <h2>Choose a starting point</h2>
-    <p class="sub2">Both paths feed into the same scaffold generation and evaluation.</p>
     <div class="fork">
       <div class="card">
         <div class="card-b">
           <div class="card-t">Scaffold a selected epitope</div>
-          <img class="card-ill" src="img/fig/antigen_epitope.png?v=3" loading="lazy"
-               alt="The 8PWW antigen as a grey ribbon with the selected epitope in red.">
+          <div class="card-art"><img class="card-ill" src="img/fig/antigen_epitope.png?v=3" loading="lazy"
+               alt="The 8PWW antigen as a grey ribbon with the selected epitope in red."></div>
           <p class="ill-cap">Antigen (grey) with the selected epitope (red). 8PWW chain A.</p>
           <p>Start from an antibody&ndash;antigen complex or select antigen residues directly.</p>
         </div>
@@ -128,11 +127,11 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
       <div class="card">
         <div class="card-b">
           <div class="card-t">Find candidate regions on an antigen</div>
-          <div class="candrow">
+          <div class="card-art"><div class="candrow">
             <figure><img src="img/fig/cand_a.png?v=3" loading="lazy" alt="One candidate surface region highlighted on the antigen."><figcaption>candidate 1</figcaption></figure>
             <figure><img src="img/fig/cand_b.png?v=3" loading="lazy" alt="A second candidate surface region on the same antigen."><figcaption>candidate 2</figcaption></figure>
-            <figure class="sel"><img src="img/fig/cand_selected.png?v=3" loading="lazy" alt="A candidate region selected for design, highlighted in red."><figcaption>selected</figcaption></figure>
-          </div>
+            <figure class="sel"><img src="img/fig/cand_selected.png?v=5" loading="lazy" alt="A candidate region selected for design, highlighted in red."><figcaption>selected</figcaption></figure>
+          </div></div>
           <p class="ill-cap">Candidate surface regions on the same antigen; the selected one is red.</p>
           <p>growPatch groups nearby exposed residues into candidate sites. Rank the sites by their
           DiscoTope scores, inspect them on the structure, and choose which ones to scaffold.</p>
@@ -142,35 +141,35 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     </div>
   </section>
 
-  <figure class="flowfig">
-    <div class="flowrow">
-      <figure class="fpanel">
-        <div class="art"><img src="img/fig/antigen_epitope.png?v=3" loading="lazy"
-             alt="PfRH5 antigen (8PWW chain A) as a grey ribbon with the selected epitope highlighted in red."></div>
-        <figcaption>Antigen with a selected epitope<span>PfRH5 &middot; 8PWW chain A</span></figcaption>
-      </figure>
-      <span class="flowarrow" aria-hidden="true">&rarr;</span>
-      <figure class="fpanel">
-        <div class="art"><img src="img/fig/design_scaffold.png?v=3" loading="lazy"
-             alt="A smaller episcaf-designed protein as a grey ribbon, presenting the same epitope in red."></div>
-        <figcaption>A designed scaffold displaying it<span>episcaf design</span></figcaption>
-      </figure>
-      <span class="flowarrow" aria-hidden="true">&rarr;</span>
-      <figure class="fpanel">
-        <div class="art"><img src="img/fig/scaffold_antibody.png?v=4" loading="lazy"
-             alt="A ribbon render of the 8PWW reference antibody (steel blue) in its complex position, aligned on the epitope (red) displayed on the episcaf scaffold (grey)."></div>
-        <figcaption>Reference antibody aligned to the designed scaffold<span>8PWW antibody &middot; episcaf design</span></figcaption>
-      </figure>
-    </div>
-    <figcaption class="flowcap">The <span class="epi">epitope</span> is carried from the native antigen onto
-    a smaller designed protein that preserves its three-dimensional arrangement. All three panels are
-    rendered from real structures: the 8PWW antigen and its antibody, and an episcaf design for that
-    epitope. The antibody is shown in its position from the 8PWW complex after alignment on the epitope.</figcaption>
-  </figure>
+  <section class="structfig">
+    <h2>How episcaf displays an epitope</h2>
+    <figure class="flowfig">
+      <div class="flowrow">
+        <figure class="fpanel">
+          <div class="art"><img src="img/fig/antigen_epitope.png?v=3" loading="lazy"
+               alt="PfRH5 antigen (8PWW chain A) as a grey ribbon with the selected epitope highlighted in red."></div>
+          <figcaption>Epitope on the native antigen</figcaption>
+        </figure>
+        <span class="flowarrow" aria-hidden="true">&rarr;</span>
+        <figure class="fpanel">
+          <div class="art"><img src="img/fig/design_scaffold.png?v=3" loading="lazy"
+               alt="A smaller episcaf-designed protein as a grey ribbon, presenting the same epitope in red."></div>
+          <figcaption>Designed scaffold displaying the epitope</figcaption>
+        </figure>
+        <span class="flowarrow" aria-hidden="true">&rarr;</span>
+        <figure class="fpanel">
+          <div class="art"><img src="img/fig/scaffold_antibody.png?v=4" loading="lazy"
+               alt="A ribbon render of the 8PWW reference antibody (steel blue) in its complex position, aligned on the epitope (red) displayed on the episcaf scaffold (grey)."></div>
+          <figcaption>Reference antibody aligned to the scaffold</figcaption>
+        </figure>
+      </div>
+      <figcaption class="flowcap">The <span class="epi">epitope</span> is shown in red in all three panels.
+      The antibody is shown in its position from the 8PWW complex after alignment on the epitope.</figcaption>
+    </figure>
+  </section>
 
   <section class="apps">
     <h2>Applications</h2>
-    <p class="sub2">Intended research uses of the exported scaffold designs.</p>
     <div class="applist">
       <div class="app">
         <h3>Map antibody recognition</h3>
