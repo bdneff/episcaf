@@ -118,5 +118,24 @@ a hosted URL); a static host with no backend stays disabled and points at the re
 (cluster SSH access is itself the auth) and open `http://localhost:8808`. One shared uvicorn serves
 everyone; each person runs their own tunnel. No domain, no Cloudflare, nothing public.
 
+## Always-on public deploy (no terminal to babysit)
+Candidate generation needs no GPU and no cluster, so the web tool doesn't belong on Gemini at all. Host
+it on a long-running platform (Render / Fly.io / Railway) for a stable public link; keep Gemini only for
+the actual GPU design runs. Note: GitHub Pages can't run the Python, and Vercel's serverless timeouts
+(10-60 s) are shorter than a ~1-minute enumeration, so neither fits — you need a persistent server.
+
+The repo ships a Render blueprint (`render.yaml`) and a self-contained deps file
+(`episcaf_service/requirements-web.txt`, verified in a clean venv). To deploy:
+1. Push the repo to GitHub.
+2. At render.com (free, sign in with GitHub) → **New +** → **Blueprint** → pick the repo. Render reads
+   `render.yaml`, installs the deps, and runs `uvicorn episcaf_service.app:app --host 0.0.0.0 --port $PORT`.
+3. It gives you a URL like `https://episcaf.onrender.com`; share `…/growpatch_tool.html`.
+
+The app serves its own UI, so there's no separate frontend to host. DiscoTope ranking works here (the host
+has internet + `pybiolib`), so uploads come back ranked. Notes: the free plan sleeps after ~15 min idle
+(≈30-60 s cold start on the next hit; `starter` stays warm); `/submit` writes to ephemeral `/tmp` and its
+`submit.sh` references cluster paths, so run real GPU jobs on Gemini, not here. The link is public — lock
+it to your group later with Cloudflare Access or a password if needed.
+
 ## Not in v1 (deferred)
 Auto-submitting GPU jobs; an in-app login/token (Cloudflare Access covers group auth at the edge).

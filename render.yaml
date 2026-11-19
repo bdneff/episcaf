@@ -1,0 +1,23 @@
+# Render blueprint for the episcaf web tool (upload -> growPatch candidates -> DiscoTope ranking).
+# One always-on web service; no cluster/GPU. Deploy: push this repo, then in the Render dashboard
+# "New +" -> "Blueprint" and point it at the repo. Render reads this file.
+#
+# The FastAPI app serves the UI itself, so the public URL Render gives you (e.g.
+# https://episcaf.onrender.com/growpatch_tool.html) is the shareable link.
+services:
+  - type: web
+    name: episcaf
+    runtime: python
+    plan: free                      # free spins down after ~15 min idle (cold start on next hit);
+                                     # use "starter" to keep it always warm.
+    buildCommand: pip install -r episcaf_service/requirements-web.txt
+    startCommand: uvicorn episcaf_service.app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      - key: EPISCAF_DISCOTOPE      # rank uploads with DiscoTope-3.0 via BioLib (host has internet)
+        value: biolib
+      - key: EPISCAF_RATE_LIMIT     # per-client cap on the expensive endpoints
+        value: 20/minute
+      - key: EPISCAF_WS             # run records on the host's ephemeral disk (no cluster here)
+        value: /tmp/episcaf_runs
