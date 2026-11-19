@@ -7,12 +7,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
 <link rel="stylesheet" href="site.css">
 <style>
-:root{--blue:#296DC0;--ink:#1a1a1a;--red:#c0392b;--purple:#7a4fb0;--green:#0a7a2f}
+:root{--blue:#296DC0;--ink:#1a1a1a;--red:#c0392b;--green:#0a7a2f}
 .page{max-width:960px;margin:0 auto}
 .card{border:1px solid #d5deea;border-radius:7px;background:#fbfcfe;padding:13px 15px;margin:12px 0}
 .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
 .fld{display:flex;flex-direction:column;gap:3px}
-.fld label{font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:.03em;color:#666}
+.fld label{font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:.03em;color:#666;display:block}
 input,select{font:inherit;font-size:13px;padding:4px 6px;border:1px solid #999;background:#fff;color:#1a1a1a;border-radius:4px}
 input[type=number]{width:72px}
 button{font:inherit;font-size:13px;padding:6px 14px;border:1px solid #1b4a86;background:var(--blue);color:#fff;font-weight:bold;cursor:pointer;border-radius:5px}
@@ -21,30 +21,37 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .seg button{font-weight:normal;padding:5px 11px;border:0;border-right:1px solid #d5deea;background:#fff;color:#3b6ea5}
 .seg button:last-child{border-right:0}
 .seg button.on{background:var(--blue);color:#fff;font-weight:bold}
+.seg button:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
 .stats{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
 .stat{background:#f6f8fb;border:1px solid #d5deea;border-radius:5px;padding:6px 11px;font-size:12.5px}
 .stat b{font-size:16px;color:var(--blue);display:block;font-variant-numeric:tabular-nums}
 .lbl{font-size:12px;color:#666;font-weight:bold;text-transform:uppercase;letter-spacing:.03em}
+.rankhdr{font-size:12px;color:#555;margin:2px 0 8px;max-width:74ch}
+.rankhdr.unavail{color:#7a551a;background:#fdf7e3;border:1px solid #efe3b8;border-radius:4px;padding:6px 10px}
 .main{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
 .listwrap{flex:1;min-width:240px;max-width:340px}
 .plist{border:1px solid #ccc;max-height:470px;overflow-y:auto}
-.prow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #eee;cursor:pointer;font-size:12.5px}
+.prow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #eee;cursor:pointer;font-size:12.5px;flex-wrap:wrap}
 .prow:hover{background:#f2f6fc}
-.prow.on{background:#eef4fd;box-shadow:inset 3px 0 0 var(--blue)}
+.prow.on,.prow[aria-selected="true"]{background:#eef4fd;box-shadow:inset 3px 0 0 var(--blue)}
+.prow:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
 .prow .ep{flex:1;min-width:0;font-variant-numeric:tabular-nums}
-.prow .meta{color:#666;font-size:11px}
-.mtag{font-size:9.5px;font-weight:bold;padding:1px 5px;border-radius:3px;color:#fff}
-.m-growpatch{background:var(--blue)} .m-eyeview{background:var(--purple)} .m-both{background:var(--green)}
+.prow .rowmeta{width:100%;color:#666;font-size:11px;margin-top:3px}
+.rank{font-size:10.5px;font-weight:bold;color:#888;font-variant-numeric:tabular-nums;white-space:nowrap}
+.disco{font-size:10.5px;font-weight:bold;padding:1px 6px;border-radius:3px;background:#eef3f0;color:#0a7a2f;border:1px solid #cfe3d6;font-variant-numeric:tabular-nums;white-space:nowrap}
+.disco.none{background:#f2f2f2;color:#888;border-color:#ddd}
 .viewwrap{flex:2;min-width:300px}
 #viewer{width:100%;height:480px;border:1px solid #ccc;background:#fff;position:relative}
-#flatwrap{display:none;border:1px solid #ccc;background:#fcfdff}
-#flat{display:block;width:100%;height:auto}
 .sel{font-size:12.5px;color:#444;margin:8px 0;min-height:1.4em}
 .sel b{color:var(--ink)}
+.sel .two{display:grid;gap:3px}
+.sel .two .k{color:#6a7686;font-weight:bold;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+.sel .gapnote{color:#6a7686;font-size:11.5px;margin-top:4px}
 .msg{font-size:12.5px;padding:8px 11px;border-radius:5px;margin:8px 0}
 .msg.err{background:#fdecea;border:1px solid #f5c6c0;color:#a0241a}
 .msg.busy{background:#eef4fd;border:1px solid #bcd3f0;color:#1b4a86}
 .note{font-size:12px;color:#555;background:#f6f6f6;border:1px solid #ddd;padding:8px 11px;margin-top:14px}
+.note b{color:var(--ink)}
 .conn{font-size:12.5px;border-radius:6px;padding:9px 12px;margin:4px 0 12px;line-height:1.45}
 .conn.ok{background:#eaf6ee;border:1px solid #bfe3c9;color:#1f6b36}
 .conn.bad{background:#fdf2e3;border:1px solid #efd8a8;color:#7a551a}
@@ -52,13 +59,6 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .conn code{background:rgba(0,0,0,.06);padding:1px 4px;border-radius:3px;font-size:11.5px}
 .conn a{color:inherit;font-weight:bold}
 .hint{font-size:11px;color:#777;font-weight:normal;text-transform:none;letter-spacing:0;margin-top:2px}
-.fld label{display:block}
-.prow{flex-wrap:wrap}
-.prow .rowmeta{width:100%;color:#666;font-size:11px;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.prow[aria-selected="true"]{background:#eef4fd;box-shadow:inset 3px 0 0 var(--blue)}
-.prow:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
-.seg button:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
-.mtag{cursor:default}
 .empty{padding:12px 10px;font-size:12.5px;color:#777}
 .viewbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
 .viewctrls{display:inline-flex;gap:6px}
@@ -66,10 +66,6 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .viewctrls button:hover{background:#f2f6fc}
 .viewmsg{font-size:12px;min-height:1.2em;margin:0 0 6px;color:#555}
 .viewmsg.err{color:#a0241a}
-.flathdr{font-size:12.5px;color:#444;padding:8px 10px 0;line-height:1.4}
-.flathdr b{color:var(--ink)}
-.flatlegend{font-size:11px;color:#666;padding:5px 10px 8px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
-.flatlegend .sw{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:4px}
 @media(max-width:640px){.listwrap{max-width:none}#viewer{height:360px}}
 </style>
 </head>
@@ -99,8 +95,10 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 <div class="page">
   <h1>Generate candidate surface regions</h1>
   <p style="font-size:12.5px;color:#555;margin:0 0 10px"><a href="growpatch.html">Explore the 8PWW example &rarr;</a></p>
-  <p class="lede">Upload an antigen structure and select the chain to process. growPatch generates
-  candidate surface patches that can be inspected and selected for scaffold design.</p>
+  <p class="lede">Upload an antigen structure and select the chain to process. growPatch groups nearby
+  exposed surface residues into candidate sites. When DiscoTope scores are available, the candidates
+  are ranked by their mean DiscoTope score; otherwise the full candidate set is shown for inspection
+  and selection.</p>
 
   <div class="conn" id="conn" role="status" aria-live="polite">Checking for the local service&hellip;</div>
 
@@ -109,15 +107,7 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
       <div class="fld"><label for="file">Antigen structure (PDB or mmCIF)</label><input type="file" id="file" accept=".pdb,.ent,.cif"></div>
       <div class="fld"><label for="chain">Antigen chain</label><select id="chain"><option value="A">A</option></select></div>
       <div class="fld"><label for="sasa">Minimum relative solvent accessibility</label><input type="number" id="sasa" value="0.2" step="0.05" min="0" max="1"><span class="hint">Residues at or above this threshold are treated as surface residues.</span></div>
-      <div class="fld"><label for="radius">Directional-sampling radius (&Aring;)</label><input type="number" id="radius" value="14" step="1" min="6" max="22"><span class="hint">Sets the surface-cap radius used in directional sampling.</span></div>
-      <div class="fld"><label for="topk">Maximum candidate count</label><input type="number" id="topk" value="0" step="10" min="0" title="0 keeps every candidate"><span class="hint">Limits the number of candidates returned. Leave at 0 to keep every candidate.</span></div>
-      <div class="fld"><label id="methodlbl">Surface-sampling methods</label>
-        <span class="seg" id="methodseg" role="group" aria-labelledby="methodlbl">
-          <button data-m="growpatch,eyeview" class="on" aria-pressed="true">Use both methods</button>
-          <button data-m="growpatch" aria-pressed="false">Neighbor-based growth</button>
-          <button data-m="eyeview" aria-pressed="false">Directional sampling</button>
-        </span>
-      </div>
+      <div class="fld"><label for="topk">Maximum candidate count</label><input type="number" id="topk" value="0" step="10" min="0" title="0 keeps every candidate"><span class="hint">Returns this many top-ranked candidates. Leave at 0 to keep every candidate.</span></div>
       <div class="fld"><label aria-hidden="true">&nbsp;</label><button id="run" class="btn-primary" disabled>Generate candidates</button></div>
     </div>
     <div class="row" style="margin-top:11px">
@@ -135,39 +125,22 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 
   <div id="results" style="display:none">
     <div class="stats" id="stats"></div>
+    <p class="rankhdr" id="rankhdr" hidden></p>
     <div class="row" style="margin:4px 0 10px">
-      <span class="lbl" id="viewlbl">view</span>
-      <span class="seg" id="viewseg" role="group" aria-labelledby="viewlbl">
-        <button data-v="3d" class="on" aria-pressed="true">3D structure</button>
-        <button data-v="flat" aria-pressed="false">Residue-position map</button>
-      </span>
       <span class="viewctrls" id="viewctrls">
         <button type="button" id="btnreset">Reset view</button>
         <button type="button" id="btnfit">Fit structure</button>
       </span>
     </div>
-    <div class="sel" id="sel">Select a candidate to highlight its residues.</div>
+    <div class="sel" id="sel">Select a candidate to see its residues and score.</div>
     <div class="main">
       <div class="listwrap">
-        <span class="lbl">candidates (<span id="nshown">0</span>)</span>
-        <div class="plist" id="plist" role="listbox" aria-label="candidate epitopes"></div>
+        <span class="lbl"><span id="listword">candidates</span> (<span id="nshown">0</span>)</span>
+        <div class="plist" id="plist" role="listbox" aria-label="candidate regions"></div>
       </div>
       <div class="viewwrap">
         <div id="viewmsg" class="viewmsg" role="status" aria-live="polite"></div>
         <div id="viewer" aria-label="3D structure of the uploaded antigen; a selected candidate's residues appear in red"></div>
-        <div id="flatwrap">
-          <div class="flathdr"><b>Residue-position map.</b> Each point represents a residue positioned by
-          its angular coordinates around the antigen centroid. Color indicates relative solvent
-          accessibility, and the selected candidate is red. Distances on this projection do not represent
-          molecular distances.</div>
-          <div class="flatlegend">
-            <span>Angle around antigen centroid &middot; angle above or below the equatorial plane</span>
-            <span><span class="sw" style="background:#d6d6d6"></span>lower solvent accessibility</span>
-            <span><span class="sw" style="background:#296dc0"></span>higher solvent accessibility</span>
-            <span><span class="sw" style="background:#c0392b"></span>selected candidate</span>
-          </div>
-          <svg id="flat" viewBox="0 0 720 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Projection of residue positions about the chain centroid, colored by relative solvent accessibility"></svg>
-        </div>
       </div>
     </div>
 
@@ -196,24 +169,25 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
     </div>
   </div>
 
-  <div class="note"><b>Sequence segments.</b> A candidate can contain several sequence segments that
-  are adjacent in the folded antigen. <b>Method labels</b> identify how a candidate was generated;
-  agreement between methods is not a binding-confidence score. Structure processing does not establish
-  that an antigen or candidate region is suitable for the intended experiment. Preparing design inputs
-  writes the design specifications and run configuration; it does not start RFdiffusion3, ProteinMPNN,
-  or AlphaFold&nbsp;3. <b>Data source:</b> <code>episcaf_analysis/growpatch</code>.</div>
+  <div class="note"><b>Sequence segments and gap filling.</b> A candidate can contain several sequence
+  segments that are adjacent in the folded antigen. growPatch fills short sequence gaps so the scaffold
+  includes the backbone connecting nearby surface residues: the segments sent to scaffold design are the
+  gap-filled ranges, while ranking uses the growth-selected surface residues. Structure processing does
+  not establish that an antigen or candidate region is suitable for the intended experiment. Preparing
+  design inputs writes the design specifications and run configuration; it does not start RFdiffusion3,
+  ProteinMPNN, or AlphaFold&nbsp;3. <b>Data source:</b> <code>episcaf_analysis/growpatch</code>.</div>
 </div>
 
 <script>
 "use strict";
-const BLUE="#296DC0", RED="#c0392b", GREY="#c4c4c4";
-let state={method:"growpatch,eyeview", mode:"growpatch", view:"3d", sel:null, D:null, pdbText:null,
-           picked:new Set(), budgetMode:"n_designs"};
-let viewer=null, FLAT=null;
+const RED="#c0392b", GREY="#c4c4c4";
+let state={mode:"growpatch", sel:null, D:null, pdbText:null, picked:new Set(), budgetMode:"n_designs"};
+let viewer=null, viewerDead=false;
 
 const $=id=>document.getElementById(id);
 function msg(t,cls){const m=$("msg");m.className=t?("msg "+(cls||"")):"";m.textContent=t||"";}
 const fileFmt=()=>($("file").files[0]&&$("file").files[0].name.toLowerCase().endsWith(".cif"))?"cif":"pdb";
+const hasDisco=()=>!!(state.D&&state.D.has_disco);
 
 function setMode(m){
   state.mode=m;
@@ -221,9 +195,7 @@ function setMode(m){
     const on=b.dataset.mode===m; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on?"true":"false");
   });
   $("run").textContent = m==="antibody" ? "Identify contact residues" : "Generate candidates";
-  // the growPatch knobs don't apply in antibody mode
-  ["sasa","radius","topk"].forEach(id=>$(id).disabled=(m==="antibody"));
-  document.querySelectorAll("#methodseg button").forEach(b=>b.disabled=(m==="antibody"));
+  ["sasa","topk"].forEach(id=>$(id).disabled=(m==="antibody"));  // growPatch knobs don't apply in antibody mode
 }
 
 // file -> read text, then ask the server what it is
@@ -241,7 +213,7 @@ $("file").onchange=()=>{
       if(d.is_complex){ setMode("antibody");
         $("guess").innerHTML=`Detected antibody contact with antigen chain ${d.antigen_chain}: ${d.n_epitope} contact residues (partner chain(s) ${d.partner_chains.join(", ")}).`;
       }else{ setMode("growpatch");
-        $("guess").innerHTML=`No antibody partner was detected. Candidate surface sampling is selected.`;
+        $("guess").innerHTML=`No antibody partner was detected. growPatch candidate generation is selected.`;
       }
     }catch(e){ console.warn("inspect:",e); $("guess").textContent="Could not inspect the structure. Check the service connection or choose the input mode manually."; }
   };
@@ -249,29 +221,20 @@ $("file").onchange=()=>{
 };
 
 document.querySelectorAll("#modeseg button").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
-document.querySelectorAll("#methodseg button").forEach(b=>b.onclick=()=>{
-  if(b.disabled) return;
-  state.method=b.dataset.m;
-  document.querySelectorAll("#methodseg button").forEach(x=>{
-    const on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false");
-  });
-});
 
 $("run").onclick=async()=>{
   if(!state.pdbText){msg("Choose a PDB file first.","err");return;}
   const qs=new URLSearchParams({chain:$("chain").value, sasa_cut:$("sasa").value,
-    footprint_radius:$("radius").value, top_k:$("topk").value, methods:state.method,
-    mode:state.mode, fmt:fileFmt()});
+    top_k:$("topk").value, mode:state.mode, fmt:fileFmt()});
   $("run").disabled=true;
-  msg(state.mode==="antibody" ? "Identifying contact residues…"
-      : "Generating candidate regions…","busy");
+  msg(state.mode==="antibody" ? "Identifying contact residues…" : "Generating candidate regions…","busy");
   try{
     const res=await fetch("/enumerate?"+qs.toString(),{method:"POST",body:state.pdbText});
     const data=await res.json();
     if(!res.ok||data.error) throw new Error(data.error||("HTTP "+res.status));
-    state.D=data; state.sel=null; FLAT=null; state.picked=new Set();
+    state.D=data; state.sel=null; state.picked=new Set();
     $("results").style.display="block"; msg("");
-    buildStats(); buildList(); loadStructure(); setView(state.view);
+    buildStats(); buildList(); loadStructure();
     if(state.mode==="antibody" && data.patches.length) select(data.patches[0].i);   // show the epitope
   }catch(e){ console.warn("enumerate:",e); msg((state.mode==="antibody"?"Could not identify contact residues.":"Could not generate candidates.")+" Check the service connection.","err"); }
   finally{ $("run").disabled=false; }
@@ -286,36 +249,55 @@ function buildStats(){
            ["bound partner",(D.partner_chains||[]).join(", ")||"—"],
            ["surface residues",D.n_surface+" / "+D.n_residues]];
   }else{
-    items=[["candidate regions",D.n_patches],["found by both methods",D.n_both],["growth candidates",D.n_growpatch],
-      ["directional candidates",D.n_eyeview],["surface residues",D.n_surface+" / "+D.n_residues]];
+    items=[["candidate regions",D.n_patches],["surface residues",D.n_surface+" / "+D.n_residues]];
   }
   $("stats").innerHTML=items.map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
 }
-const METHOD_NAME={growpatch:"neighbor-based growth",eyeview:"directional sampling","antibody-contact":"antibody contact"};
 function segText(n){return n===1?"1 sequence segment":n+" sequence segments";}
-function mtag(m){
-  if(m.includes("antibody-contact")) return '<span class="mtag" style="background:#444" title="Epitope read from antibody contact">Antibody-contact epitope</span>';
-  if(m.length===2) return '<span class="mtag m-both" title="Produced by both methods">Found by both methods</span>';
-  return m[0]==="growpatch"
-    ? '<span class="mtag m-growpatch" title="Neighbor-based patch growth">Neighbor-based growth</span>'
-    : '<span class="mtag m-eyeview" title="Directional surface sampling">Directional sampling</span>';
+function discoBadge(p){
+  if(!hasDisco()) return "";
+  if(p.disco_mean==null)
+    return '<span class="disco none" title="No DiscoTope-3.0 score for this candidate’s ranking residues">No score</span>';
+  return `<span class="disco" title="mean DiscoTope-3.0 score over ${p.disco_n} of ${p.disco_total} growth-selected residues, normalized within this antigen">DiscoTope ${p.disco_mean.toFixed(2)}</span>`;
+}
+function rankHdr(){
+  const el=$("rankhdr"); const D=state.D;
+  if(!D || D.mode==="antibody"){ el.hidden=true; return; }
+  el.hidden=false;
+  if(hasDisco()){
+    el.className="rankhdr";
+    el.innerHTML="Candidates are ranked by the mean DiscoTope-3.0 score over their growth-selected "+
+      "surface residues, normalized within this antigen (a relative ranking, not a calibrated binding "+
+      "probability).";
+  }else{
+    el.className="rankhdr unavail";
+    el.innerHTML="<b>DiscoTope scores unavailable.</b> Showing the full growPatch candidate set for "+
+      "inspection and selection. Scoring a new structure requires the external DiscoTope-3.0 step "+
+      "(not run by the local service).";
+  }
 }
 function buildList(){
-  const el=$("plist"); el.innerHTML=""; $("nshown").textContent=state.D.patches.length;
-  if(!state.D.patches.length){ el.innerHTML='<div class="empty">No candidates match the current settings.</div>'; updateStageSel(); return; }
-  for(const p of state.D.patches){
+  const el=$("plist"); el.innerHTML="";
+  const list=state.D.patches;
+  $("nshown").textContent=list.length;
+  $("listword").textContent = (state.D.mode!=="antibody" && hasDisco()) ? "ranked candidates" : "candidates";
+  rankHdr();
+  if(!list.length){ el.innerHTML='<div class="empty">No candidates match the current settings.</div>'; updateStageSel(); return; }
+  list.forEach((p,rank)=>{
     const row=document.createElement("div");
     row.className="prow"+(state.sel===p.i?" on":""); row.tabIndex=0; row.dataset.i=p.i;
     row.setAttribute("role","option"); row.setAttribute("aria-selected", state.sel===p.i ? "true":"false");
+    const ranked = state.D.mode!=="antibody" && hasDisco();
     row.innerHTML=`<input type="checkbox" class="pick" ${state.picked.has(p.i)?"checked":""} aria-label="Include ${p.epitope} in the staged run">`+
-      `<span class="ep">${p.epitope}</span>`+
-      `<span class="rowmeta">${p.n_res} residues &middot; ${segText(p.n_isl)} &middot; ${mtag(p.methods)}</span>`;
+      (ranked?`<span class="rank">${rank+1}.</span>`:"")+
+      `<span class="ep">${p.epitope}</span>`+discoBadge(p)+
+      `<span class="rowmeta">candidate ${p.i} &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)}</span>`;
     row.querySelector(".pick").onclick=e=>{e.stopPropagation();
       if(e.target.checked) state.picked.add(p.i); else state.picked.delete(p.i); updateStageSel();};
     row.onclick=()=>select(p.i);
     row.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(p.i);}};
     el.appendChild(row);
-  }
+  });
   updateStageSel();
 }
 function updateStageSel(){
@@ -327,18 +309,29 @@ function updateStageSel(){
 const patchById=i=>state.D.patches.find(p=>p.i===i);
 function select(i){
   state.sel=i; const p=patchById(i);
-  const by=p?p.methods.map(m=>METHOD_NAME[m]||m).join(" and "):"";
-  $("sel").innerHTML=p?`<b>${p.epitope}</b> &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)} &middot; found by ${by}`:"Select a candidate to highlight its residues.";
+  const sel=$("sel");
+  if(!p){ sel.textContent="Select a candidate to see its residues and score."; return; }
+  if((p.methods||[]).includes("antibody-contact")){
+    sel.innerHTML=`<b>${p.epitope}</b> &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)} &middot; antibody-contact epitope`;
+  }else{
+    const scoreLine = !hasDisco() ? `${(p.resis_rank||[]).length} residues`
+      : (p.disco_mean==null
+          ? `no DiscoTope score (0 of ${p.disco_total} residues scored)`
+          : `mean DiscoTope ${p.disco_mean.toFixed(2)} &middot; ${p.disco_n} of ${p.disco_total} residues scored`);
+    sel.innerHTML =
+      `<div class="two">`+
+      `<div><span class="k">Segments sent to scaffold design</span> <b>${p.epitope}</b> &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)}</div>`+
+      `<div><span class="k">Surface residues used for ranking</span> ${scoreLine}</div>`+
+      `</div>`+
+      `<div class="gapnote">growPatch fills short sequence gaps so the scaffold includes the backbone connecting nearby surface residues.</div>`;
+  }
   document.querySelectorAll(".prow").forEach(r=>{
     const on=+r.dataset.i===i; r.classList.toggle("on",on); r.setAttribute("aria-selected",on?"true":"false");
   });
-  if(state.view==="3d") paint3d(); else paintFlat();
+  paint3d();
 }
 
 // Explicit viewer states: loading -> success (status cleared) or failure (message, no silent blank).
-// The upload has no pre-rendered image, so there is no static fallback here; the projection map
-// (pure SVG) still works and locates a selected candidate.
-let viewerDead=false;
 function viewMsg(t,isErr){const m=$("viewmsg");if(!m)return;m.className="viewmsg"+(isErr?" err":"");m.innerHTML=t||"";}
 function webglOK(){
   try{const c=document.createElement("canvas");
@@ -347,19 +340,18 @@ function webglOK(){
 }
 function viewerFail(reason){
   viewerDead=true;
-  $("viewer").innerHTML='<p style="padding:14px;color:#a0241a;font-size:12.5px">'+reason+
-    ' The residue-position map remains available.</p>';
+  $("viewer").innerHTML='<p style="padding:14px;color:#a0241a;font-size:12.5px">'+reason+'</p>';
   viewMsg("");
 }
 function loadStructure(){
   viewerDead=false; viewMsg("Loading structure…");
-  if(typeof $3Dmol==="undefined"){ viewerFail("The interactive 3D viewer is unavailable in this browser."); return; }
-  if(!webglOK()){ viewerFail("The interactive 3D viewer is unavailable in this browser."); return; }
+  if(typeof $3Dmol==="undefined" || !webglOK()){ viewerFail("The interactive 3D viewer is unavailable in this browser."); return; }
   try{
     if(!viewer || $("viewer").querySelector("p")){ $("viewer").innerHTML=""; viewer=$3Dmol.createViewer("viewer",{backgroundColor:"white"}); }
     viewer.clear(); viewer.addModel(state.pdbText, "pdb");
     viewer.setStyle({},{}); viewer.setStyle({chain:state.D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
     viewer.zoomTo({chain:state.D.chain}); viewer.render(); viewMsg("");
+    if(state.sel!=null) paint3d();
   }catch(e){ console.warn("render:",e); viewerFail("Could not load the structure."); }
 }
 function paint3d(){
@@ -375,50 +367,12 @@ function paint3d(){
 }
 function fitStructure(){ if(viewer&&!viewerDead&&state.D){try{viewer.zoomTo({chain:state.D.chain});viewer.render();}catch(e){}} }
 function resetView(){ if(viewer&&!viewerDead&&state.D){try{paint3d();viewer.zoomTo({chain:state.D.chain});viewer.render();}catch(e){}} }
-function flatGeom(){
-  if(FLAT) return FLAT;
-  const R=state.D.residues, n=R.length, c=[0,0,0];
-  for(const r of R){c[0]+=r.p[0];c[1]+=r.p[1];c[2]+=r.p[2];}
-  c[0]/=n;c[1]/=n;c[2]/=n;
-  const W=720,H=360,pad=16,pts={};
-  for(const r of R){
-    const x=r.p[0]-c[0],y=r.p[1]-c[1],z=r.p[2]-c[2],rad=Math.hypot(x,y,z)||1;
-    const px=pad+(Math.atan2(y,x)+Math.PI)/(2*Math.PI)*(W-2*pad);
-    const py=pad+(Math.PI/2-Math.asin(Math.max(-1,Math.min(1,z/rad))))/Math.PI*(H-2*pad);
-    pts[r.resi]={px,py,rel:r.rel,surf:r.surf,resn:r.resn};
-  }
-  FLAT={pts}; return FLAT;
-}
-function relColor(rel){const t=Math.max(0,Math.min(1,rel/0.8)),a=[214,214,214],b=[41,109,192];
-  const m=a.map((v,i)=>Math.round(v+(b[i]-v)*t));return `rgb(${m[0]},${m[1]},${m[2]})`;}
-function paintFlat(){
-  const g=flatGeom(), p=state.sel!=null?patchById(state.sel):null, inP=new Set(p?p.resis:[]);
-  let s="";
-  for(const resi in g.pts){ if(inP.has(+resi)) continue; const q=g.pts[resi];
-    s+=`<circle cx="${q.px.toFixed(1)}" cy="${q.py.toFixed(1)}" r="${q.surf?3.2:2}" fill="${relColor(q.rel)}" opacity="${q.surf?0.95:0.5}"/>`;}
-  for(const resi of inP){ const q=g.pts[resi]; if(!q) continue;
-    s+=`<circle cx="${q.px.toFixed(1)}" cy="${q.py.toFixed(1)}" r="4.6" fill="${RED}" stroke="#fff" stroke-width="1"><title>${q.resn} ${resi} (relSASA ${q.rel})</title></circle>`;}
-  $("flat").innerHTML=s;
-}
-function setView(v){
-  state.view=v;
-  $("viewer").style.display=v==="3d"?"block":"none";
-  $("viewmsg").style.display=v==="3d"?"block":"none";
-  $("viewctrls").style.display=v==="3d"?"inline-flex":"none";
-  $("flatwrap").style.display=v==="flat"?"block":"none";
-  document.querySelectorAll("#viewseg button").forEach(b=>{
-    const on=b.dataset.v===v; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on?"true":"false");
-  });
-  if(v==="3d") paint3d(); else paintFlat();
-}
-document.querySelectorAll("#viewseg button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
 $("btnreset").onclick=resetView;
 $("btnfit").onclick=fitStructure;
 
 // --- stage a run ---
 document.querySelectorAll("#budgetseg button").forEach(b=>b.onclick=()=>{
   state.budgetMode=b.dataset.b;
-  // sensible default per mode: ~200 designs/epitope, or ~4 h of wall-time
   $("budgetval").value = (b.dataset.b==="time") ? 4 : 200;
   $("budgetvallbl").textContent = (b.dataset.b==="time") ? "Time limit (hours)" : "Designs per candidate region";
   document.querySelectorAll("#budgetseg button").forEach(x=>{

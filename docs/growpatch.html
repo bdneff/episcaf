@@ -8,46 +8,37 @@
 <script src="data/growpatch_8pww.js"></script>
 <link rel="stylesheet" href="site.css">
 <style>
-:root{--blue:#296DC0;--ink:#1a1a1a;--red:#c0392b;--purple:#7a4fb0;--green:#0a7a2f}
+:root{--blue:#296DC0;--ink:#1a1a1a;--red:#c0392b;--green:#0a7a2f}
 .page{max-width:900px;margin:0 auto}
 .lede b{color:var(--ink)}
 .stats{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
 .stat{background:#f6f8fb;border:1px solid #d5deea;border-radius:5px;padding:6px 11px;font-size:12.5px}
 .stat b{font-size:16px;color:var(--blue);display:block;font-variant-numeric:tabular-nums}
-.bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:6px 0 12px}
-.seg{display:inline-flex;border:1px solid #d5deea;border-radius:5px;overflow:hidden}
-.seg button{font:inherit;font-size:12.5px;padding:5px 12px;border:0;border-right:1px solid #d5deea;background:#fff;color:#3b6ea5;cursor:pointer}
-.seg button:last-child{border-right:0}
-.seg button.on{background:var(--blue);color:#fff;font-weight:bold}
 .lbl{font-size:12px;color:#666;font-weight:bold;text-transform:uppercase;letter-spacing:.03em}
+.rankhdr{font-size:12px;color:#555;margin:-2px 0 12px;max-width:72ch}
 .main{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
 .listwrap{flex:1;min-width:240px;max-width:340px}
 .plist{border:1px solid #ccc;max-height:460px;overflow-y:auto}
-.prow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #eee;cursor:pointer;font-size:12.5px}
+.prow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #eee;cursor:pointer;font-size:12.5px;flex-wrap:wrap}
 .prow:hover{background:#f2f6fc}
-.prow.on{background:#eef4fd;box-shadow:inset 3px 0 0 var(--blue)}
+.prow.on,.prow[aria-selected="true"]{background:#eef4fd;box-shadow:inset 3px 0 0 var(--blue)}
+.prow:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
 .prow .ep{flex:1;min-width:0;font-variant-numeric:tabular-nums}
-.prow .meta{color:#666;font-size:11px}
+.prow .rowmeta{width:100%;color:#666;font-size:11px;margin-top:3px}
+.rank{font-size:10.5px;font-weight:bold;color:#888;font-variant-numeric:tabular-nums;white-space:nowrap}
 .disco{font-size:10.5px;font-weight:bold;padding:1px 6px;border-radius:3px;background:#eef3f0;color:#0a7a2f;border:1px solid #cfe3d6;font-variant-numeric:tabular-nums;white-space:nowrap}
 .disco.none{background:#f2f2f2;color:#888;border-color:#ddd}
-.mtag{font-size:9.5px;font-weight:bold;padding:1px 5px;border-radius:3px;color:#fff;letter-spacing:.02em}
-.m-growpatch{background:var(--blue)} .m-eyeview{background:var(--purple)} .m-both{background:var(--green)}
 .viewwrap{flex:2;min-width:300px}
 #viewer{width:100%;height:470px;border:1px solid #ccc;background:#fff;position:relative}
 #viewer canvas{display:block}
-#flatwrap{display:none;border:1px solid #ccc;background:#fcfdff}
-#flat{display:block;width:100%;height:auto}
+#viewer img.fallback{width:100%;height:100%;object-fit:contain;display:block}
 .sel{font-size:12.5px;color:#444;margin:8px 0;min-height:1.4em}
 .sel b{color:var(--ink)}
+.sel .two{display:grid;gap:3px}
+.sel .two .k{color:#6a7686;font-weight:bold;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+.sel .gapnote{color:#6a7686;font-size:11.5px;margin-top:4px}
 .note{font-size:12px;color:#555;background:#f6f6f6;border:1px solid #ddd;padding:8px 11px;margin-top:14px}
 .note b{color:var(--ink)}
-.prow{flex-wrap:wrap}
-.prow .rowmeta{width:100%;color:#666;font-size:11px;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.mtag{cursor:default}
-.prow:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
-.prow[aria-selected="true"]{background:#eef4fd;box-shadow:inset 3px 0 0 var(--blue)}
-.seg button:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
-.empty{padding:12px 10px;font-size:12.5px;color:#777}
 .viewbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
 .viewctrls{display:inline-flex;gap:6px}
 .viewctrls button{font:inherit;font-size:12px;padding:4px 10px;border:1px solid #c9d4e3;background:#fff;color:#3b6ea5;border-radius:5px;cursor:pointer}
@@ -55,11 +46,7 @@
 .viewctrls button:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
 .viewmsg{font-size:12px;min-height:1.2em;margin:0 0 6px;color:#555}
 .viewmsg.err{color:#a0241a}
-#viewer img.fallback{width:100%;height:100%;object-fit:contain;display:block}
-.flathdr{font-size:12.5px;color:#444;padding:8px 10px 0;line-height:1.4}
-.flathdr b{color:var(--ink)}
-.flatlegend{font-size:11px;color:#666;padding:5px 10px 8px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
-.flatlegend .sw{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:4px}
+.empty{padding:12px 10px;font-size:12.5px;color:#777}
 @media(max-width:620px){.listwrap{max-width:none}#viewer{height:360px}}
 </style>
 </head>
@@ -89,49 +76,25 @@
 <div class="page">
   <h1>Candidate surface regions: 8PWW</h1>
   <p style="font-size:12.5px;color:#555;margin:0 0 10px"><a href="growpatch_tool.html">Process your own antigen &rarr;</a> Processing a new structure requires the local service.</p>
-  <p class="lede">This example shows candidate regions generated for PfRH5, chain A of 8PWW. Select a
-  candidate to highlight its residues. Drag the structure to rotate it, or switch to the projection
-  map.</p>
-  <p style="font-size:12.5px;color:#555;margin:-2px 0 10px">Candidates were generated by neighbor-based
-  patch growth and directional surface sampling. Each row identifies the method or methods that
-  produced it.</p>
+  <p class="lede">This example shows candidate regions generated for PfRH5, chain A of 8PWW. growPatch
+  groups nearby exposed surface residues into candidate sites, which are ranked by their mean DiscoTope
+  score. Select a candidate to highlight its residues; drag the structure to rotate it.</p>
   <p style="font-size:12px;color:#666;margin:-2px 0 10px">Candidate generation identifies regions for
   design and screening; it does not establish antibody binding.</p>
 
   <div class="stats" id="stats"></div>
 
-  <div class="bar">
-    <span class="lbl" id="methodlbl">candidate source</span>
-    <span class="seg" id="methodseg" role="group" aria-labelledby="methodlbl">
-      <button data-m="all" class="on" aria-pressed="true">All candidates</button>
-      <button data-m="growpatch" aria-pressed="false">Neighbor-based growth</button>
-      <button data-m="eyeview" aria-pressed="false">Directional sampling</button>
-    </span>
-    <span class="lbl" id="viewlbl">view</span>
-    <span class="seg" id="viewseg" role="group" aria-labelledby="viewlbl">
-      <button data-v="3d" class="on" aria-pressed="true">3D structure</button>
-      <button data-v="flat" aria-pressed="false">Residue-position map</button>
-    </span>
-    <span class="lbl" id="sortlbl" hidden>sort candidates by</span>
-    <span class="seg" id="sortseg" role="group" aria-labelledby="sortlbl" hidden>
-      <button data-s="disco_mean" class="on" aria-pressed="true">Mean DiscoTope score</button>
-      <button data-s="disco_sum" aria-pressed="false">Sum of DiscoTope scores</button>
-      <button data-s="none" aria-pressed="false">Original candidate order</button>
-    </span>
-  </div>
+  <p class="rankhdr" id="rankhdr" hidden>Candidates are ranked by the mean DiscoTope-3.0 score over their
+  growth-selected surface residues (the residues growPatch grew the patch from, before gap filling).
+  Scores are normalized within this antigen, so they give a relative ranking rather than a calibrated
+  binding probability.</p>
 
-  <p class="discohdr" id="discohdr" hidden style="font-size:12px;color:#555;margin:-4px 0 10px">
-  Candidates can be ranked by the mean or sum of their per-residue DiscoTope scores. The mean reduces
-  the direct effect of candidate size; the sum also reflects the number of contributing residues. The
-  displayed residue scores are normalized within this antigen, so they are relative scores rather than
-  calibrated binding probabilities.</p>
-
-  <div class="sel" id="sel">Select a candidate to highlight its residues.</div>
+  <div class="sel" id="sel">Select a candidate to see its residues and score.</div>
 
   <div class="main">
     <div class="listwrap">
-      <span class="lbl">candidates (<span id="nshown">0</span>)</span>
-      <div class="plist" id="plist" role="listbox" aria-label="candidate epitopes"></div>
+      <span class="lbl"><span id="listword">candidates</span> (<span id="nshown">0</span>)</span>
+      <div class="plist" id="plist" role="listbox" aria-label="candidate regions"></div>
     </div>
     <div class="viewwrap">
       <div class="viewbar">
@@ -142,103 +105,66 @@
       </div>
       <div id="viewmsg" class="viewmsg" role="status" aria-live="polite"></div>
       <div id="viewer" aria-label="3D structure of 8PWW chain A; a selected candidate's residues appear in red"></div>
-      <div id="flatwrap">
-        <div class="flathdr"><b>Residue-position map.</b> Each point represents a residue positioned by
-        its angular coordinates around the antigen centroid. Color indicates relative solvent
-        accessibility, and the selected candidate is red. Distances on this projection do not represent
-        molecular distances.</div>
-        <div class="flatlegend">
-          <span>Angle around antigen centroid &middot; angle above or below the equatorial plane</span>
-          <span><span class="sw" style="background:#d6d6d6"></span>lower solvent accessibility</span>
-          <span><span class="sw" style="background:#296dc0"></span>higher solvent accessibility</span>
-          <span><span class="sw" style="background:#c0392b"></span>selected candidate</span>
-        </div>
-        <svg id="flat" viewBox="0 0 720 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Projection of residue positions about the chain centroid, colored by relative solvent accessibility"></svg>
-      </div>
     </div>
   </div>
 
-  <div class="note"><b>Sequence segments.</b> A candidate can contain several sequence segments that
-  are adjacent in the folded antigen, so one candidate may span more than one segment.
-  <b>Method labels</b> identify how a candidate was generated; agreement between methods is not a
-  binding-confidence score (<span class="mtag m-both">Found by both methods</span> was produced by
-  both, <span class="mtag m-growpatch">Neighbor-based growth</span> and
-  <span class="mtag m-eyeview">Directional sampling</span> by one method only).
-  <b>Data source:</b> <code>scripts/growpatch_viz_data.py</code>.</div>
+  <div class="note"><b>Sequence segments and gap filling.</b> A candidate can contain several sequence
+  segments that are adjacent in the folded antigen. growPatch fills short sequence gaps so the scaffold
+  includes the backbone connecting nearby surface residues: the <b>segments sent to scaffold design</b>
+  are the gap-filled ranges, while the <b>surface residues used for ranking</b> are the growth-selected
+  residues only. <b>Data source:</b> <code>scripts/growpatch_viz_data.py</code>.</div>
 </div>
 
 <script>
 "use strict";
 const D = window.GROWPATCH_DATA || {residues:[],patches:[]};
-const BLUE="#296DC0", RED="#c0392b", GREY="#c4c4c4";
-let state = {method:"all", view:"3d", sel:null, sort:"disco_mean"};
+const RED="#c0392b", GREY="#c4c4c4";
 const HAS_DISCO = !!D.has_disco;
+let state = {sel:null};
 let viewer=null, loaded=false;
 
 // ---- stats ----
 (function(){
   const s=document.getElementById("stats");
-  const items=[["candidate regions",D.n_patches],["found by both methods",D.n_both],
-    ["growth candidates",D.n_growpatch],["directional candidates",D.n_eyeview],
+  const items=[["candidate regions",D.n_patches],
     ["surface residues",D.n_surface+" / "+D.n_residues]];
   s.innerHTML=items.map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
 })();
 
-const METHOD_NAME={growpatch:"neighbor-based growth",eyeview:"directional sampling"};
 function segText(n){return n===1?"1 sequence segment":n+" sequence segments";}
-function mtag(methods){
-  if(methods.length===2) return '<span class="mtag m-both" title="Produced by both methods">Found by both methods</span>';
-  return methods[0]==="growpatch"
-    ? '<span class="mtag m-growpatch" title="Neighbor-based patch growth">Neighbor-based growth</span>'
-    : '<span class="mtag m-eyeview" title="Directional surface sampling">Directional sampling</span>';
-}
-function shown(){
-  return D.patches.filter(p=> state.method==="all" ? true : p.methods.includes(state.method));
-}
-function discoLabel(p){
-  // null = no DiscoTope score for any of this candidate's residues
-  if(p.disco_mean==null) return '<span class="disco none" title="No DiscoTope-3.0 score for this candidate">no score</span>';
-  const v = state.sort==="disco_sum" ? p.disco_sum.toFixed(1) : p.disco_mean.toFixed(2);
-  const which = state.sort==="disco_sum" ? "sum" : "mean";
-  return `<span class="disco" title="DiscoTope score (${which} over ${p.disco_n} residues), normalized within this antigen">DiscoTope ${v}</span>`;
-}
-function sortedShown(){
-  const list=shown();
-  if(!HAS_DISCO || state.sort==="none") return list;  // candidate (index) order
-  const key = state.sort==="disco_sum" ? "disco_sum" : "disco_mean";
-  // highest predicted epitope likelihood first; nulls (no score) sink to the bottom
-  return list.slice().sort((a,b)=>{
-    const av=a[key], bv=b[key];
-    if(av==null && bv==null) return a.i-b.i;
-    if(av==null) return 1;
-    if(bv==null) return -1;
-    return bv-av || a.i-b.i;
-  });
+
+// Candidates arrive ranked by mean DiscoTope score (No-score last); keep that order for display.
+function ranked(){ return D.patches; }
+
+function discoBadge(p){
+  if(!HAS_DISCO) return "";
+  if(p.disco_mean==null)
+    return '<span class="disco none" title="No DiscoTope-3.0 score for this candidate’s ranking residues">No score</span>';
+  return `<span class="disco" title="mean DiscoTope-3.0 score over ${p.disco_n} of ${p.disco_total} growth-selected residues, normalized within this antigen">DiscoTope ${p.disco_mean.toFixed(2)}</span>`;
 }
 
 // ---- patch list ----
 function buildList(){
-  const list=sortedShown();
+  const list=ranked();
   document.getElementById("nshown").textContent=list.length;
+  document.getElementById("listword").textContent = HAS_DISCO ? "ranked candidates" : "candidates";
   const el=document.getElementById("plist");
   el.innerHTML="";
-  if(!list.length){
-    el.innerHTML='<div class="empty">No candidates match this method filter.</div>';
-    return;
-  }
-  for(const p of list){
+  if(!list.length){ el.innerHTML='<div class="empty">No candidates.</div>'; return; }
+  list.forEach((p,rank)=>{
     const row=document.createElement("div");
     row.className="prow"+(state.sel===p.i?" on":"");
     row.setAttribute("role","option"); row.tabIndex=0;
     row.setAttribute("aria-selected", state.sel===p.i ? "true" : "false");
     row.dataset.i=p.i;
-    row.innerHTML=`<span class="ep">${p.epitope}</span>`+
-      (HAS_DISCO?discoLabel(p):"")+
-      `<span class="rowmeta">${p.n_res} residues &middot; ${segText(p.n_isl)} &middot; ${mtag(p.methods)}</span>`;
+    row.innerHTML=
+      (HAS_DISCO?`<span class="rank">${rank+1}.</span>`:"")+
+      `<span class="ep">${p.epitope}</span>`+discoBadge(p)+
+      `<span class="rowmeta">candidate ${p.i} &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)}</span>`;
     row.onclick=()=>select(p.i);
     row.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(p.i);}};
     el.appendChild(row);
-  }
+  });
 }
 
 function patchById(i){return D.patches.find(p=>p.i===i);}
@@ -246,20 +172,27 @@ function patchById(i){return D.patches.find(p=>p.i===i);}
 function select(i){
   state.sel=i;
   const p=patchById(i);
-  const by = p ? p.methods.map(m=>METHOD_NAME[m]||m).join(" and ") : "";
-  document.getElementById("sel").innerHTML = p ?
-    `<b>${p.epitope}</b> &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)} &middot; found by ${by}` :
-    "Select a candidate to highlight its residues.";
+  const sel=document.getElementById("sel");
+  if(!p){ sel.textContent="Select a candidate to see its residues and score."; return; }
+  const scoreLine = !HAS_DISCO ? `${(p.resis_rank||[]).length} residues`
+    : (p.disco_mean==null
+        ? `no DiscoTope score (0 of ${p.disco_total} residues scored)`
+        : `mean DiscoTope ${p.disco_mean.toFixed(2)} &middot; ${p.disco_n} of ${p.disco_total} residues scored`);
+  sel.innerHTML =
+    `<div class="two">`+
+    `<div><span class="k">Segments sent to scaffold design</span> <b>${p.epitope}</b> &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)}</div>`+
+    `<div><span class="k">Surface residues used for ranking</span> ${scoreLine}</div>`+
+    `</div>`+
+    `<div class="gapnote">growPatch fills short sequence gaps so the scaffold includes the backbone connecting nearby surface residues.</div>`;
   document.querySelectorAll(".prow").forEach(r=>{
     const on=+r.dataset.i===i; r.classList.toggle("on",on); r.setAttribute("aria-selected",on?"true":"false");
   });
-  if(state.view==="3d") paint3d(); else paintFlat();
+  paint3d();
 }
 
 // ---- 3D viewer ----
-// States are explicit: loading -> success (status cleared), or a failure path that falls back to the
-// static render (docs/img/<PDB>.png) with a message. The flat projection map is pure SVG and keeps
-// working regardless, so a dead 3D view never blanks the whole page silently.
+// Explicit states: loading -> success (status cleared), or a failure path that falls back to the
+// static render (docs/img/<PDB>.png) with a message, so a dead 3D view never blanks the page.
 function viewMsg(t,isErr){
   const m=document.getElementById("viewmsg"); if(!m) return;
   m.className="viewmsg"+(isErr?" err":""); m.innerHTML=t||"";
@@ -275,7 +208,7 @@ function showFallback(reason){
   const img='img/'+D.pdb.toUpperCase()+'.png';
   document.getElementById("viewer").innerHTML=
     '<img class="fallback" src="'+img+'" alt="Static render of '+D.pdb.toUpperCase()+' chain '+D.chain+'">';
-  viewMsg(reason+' Showing a static structure image. The residue-position map remains available.',true);
+  viewMsg(reason+' Showing a static structure image.',true);
 }
 function paint3d(){
   if(!viewer||!loaded) return;
@@ -306,13 +239,8 @@ function resetView(){
   }
 }
 function initViewer(){
-  if(typeof $3Dmol==="undefined"){
-    showFallback("The interactive 3D viewer is unavailable in this browser.");
-    return;
-  }
-  if(!webglOK()){
-    showFallback("The interactive 3D viewer is unavailable in this browser.");
-    return;
+  if(typeof $3Dmol==="undefined" || !webglOK()){
+    showFallback("The interactive 3D viewer is unavailable in this browser."); return;
   }
   viewMsg("Loading structure…");
   try{ viewer=$3Dmol.createViewer("viewer",{backgroundColor:"white"}); }
@@ -331,98 +259,10 @@ function initViewer(){
     .catch(e=>{ console.warn("fetch pdb:",e); showFallback("Could not load the structure."); });
 }
 
-// ---- projection map (residue positions about the chain centroid) ----
-let FLAT=null;
-function flatGeom(){
-  if(FLAT) return FLAT;
-  const R=D.residues, n=R.length;
-  const c=[0,0,0];
-  for(const r of R){c[0]+=r.p[0];c[1]+=r.p[1];c[2]+=r.p[2];}
-  c[0]/=n;c[1]/=n;c[2]/=n;
-  const W=720,H=360,pad=16;
-  const pts={};
-  for(const r of R){
-    const x=r.p[0]-c[0], y=r.p[1]-c[1], z=r.p[2]-c[2];
-    const rad=Math.hypot(x,y,z)||1;
-    const lon=Math.atan2(y,x);                 // -pi..pi
-    const lat=Math.asin(Math.max(-1,Math.min(1,z/rad)));  // -pi/2..pi/2
-    const px=pad+(lon+Math.PI)/(2*Math.PI)*(W-2*pad);
-    const py=pad+(Math.PI/2-lat)/Math.PI*(H-2*pad);
-    pts[r.resi]={px,py,rel:r.rel,surf:r.surf,resn:r.resn};
-  }
-  FLAT={pts,W,H};
-  return FLAT;
-}
-function relColor(rel){
-  // light grey (buried) -> blue (exposed)
-  const t=Math.max(0,Math.min(1,rel/0.8));
-  const a=[214,214,214], b=[41,109,192];
-  const m=a.map((v,i)=>Math.round(v+(b[i]-v)*t));
-  return `rgb(${m[0]},${m[1]},${m[2]})`;
-}
-function paintFlat(){
-  const g=flatGeom(), svg=document.getElementById("flat");
-  const p=state.sel!=null?patchById(state.sel):null;
-  const inPatch=new Set(p?p.resis:[]);
-  let s="";
-  // base residues
-  for(const resi in g.pts){
-    const q=g.pts[resi];
-    if(inPatch.has(+resi)) continue;
-    s+=`<circle cx="${q.px.toFixed(1)}" cy="${q.py.toFixed(1)}" r="${q.surf?3.2:2}" `+
-       `fill="${relColor(q.rel)}" opacity="${q.surf?0.95:0.5}"/>`;
-  }
-  // selected patch on top
-  for(const resi of inPatch){
-    const q=g.pts[resi]; if(!q) continue;
-    s+=`<circle cx="${q.px.toFixed(1)}" cy="${q.py.toFixed(1)}" r="4.6" fill="${RED}" `+
-       `stroke="#fff" stroke-width="1"><title>${q.resn} ${resi} (relSASA ${q.rel})</title></circle>`;
-  }
-  svg.innerHTML=s;
-}
-
-// ---- view + method toggles ----
-function setView(v){
-  state.view=v;
-  document.getElementById("viewer").style.display = v==="3d"?"block":"none";
-  document.getElementById("viewmsg").style.display = v==="3d"?"block":"none";
-  document.getElementById("viewctrls").style.display = v==="3d"?"inline-flex":"none";
-  document.getElementById("flatwrap").style.display = v==="flat"?"block":"none";
-  document.querySelectorAll("#viewseg button").forEach(b=>{
-    const on=b.dataset.v===v; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on?"true":"false");
-  });
-  if(v==="3d") paint3d(); else paintFlat();
-}
-document.querySelectorAll("#methodseg button").forEach(b=>b.onclick=()=>{
-  state.method=b.dataset.m;
-  document.querySelectorAll("#methodseg button").forEach(x=>{
-    const on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false");
-  });
-  // if the selected patch is filtered out, drop the selection
-  if(state.sel!=null && !shown().some(p=>p.i===state.sel)){state.sel=null;
-    document.getElementById("sel").textContent="Select a candidate to highlight its residues.";
-    if(state.view==="3d")paint3d();else paintFlat();}
-  buildList();
-});
-document.querySelectorAll("#viewseg button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
-document.querySelectorAll("#sortseg button").forEach(b=>b.onclick=()=>{
-  state.sort=b.dataset.s;
-  document.querySelectorAll("#sortseg button").forEach(x=>{
-    const on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false");
-  });
-  buildList();  // re-sort and re-render the DOM list in place; selection is preserved
-});
 document.getElementById("btnreset").onclick=resetView;
 document.getElementById("btnfit").onclick=fitStructure;
+if(HAS_DISCO) document.getElementById("rankhdr").hidden=false;
 
-// ---- reveal DiscoTope ranking only when the target has a scored PDB ----
-if(HAS_DISCO){
-  document.getElementById("sortlbl").hidden=false;
-  document.getElementById("sortseg").hidden=false;
-  document.getElementById("discohdr").hidden=false;
-}
-
-// ---- go ----
 buildList();
 initViewer();
 </script>
