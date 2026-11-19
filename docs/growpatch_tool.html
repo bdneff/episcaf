@@ -21,6 +21,8 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .seg button{font-weight:normal;padding:5px 11px;border:0;border-right:1px solid #d5deea;background:#fff;color:#3b6ea5}
 .seg button:last-child{border-right:0}
 .seg button.on{background:var(--blue);color:#fff;font-weight:bold}
+.seg button:disabled{opacity:.5;cursor:default;background:#fff;color:#3b6ea5}
+.seg button.on:disabled{background:var(--blue);color:#fff;opacity:.5}
 .seg button:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
 .stats{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
 .stat{background:#f6f8fb;border:1px solid #d5deea;border-radius:5px;padding:6px 11px;font-size:12.5px}
@@ -199,9 +201,10 @@ function backendBase(){ try{ return (localStorage.getItem("episcaf_backend")||""
 const api=p=>backendBase()+p;
 
 function msg(t,cls){busyDone();const m=$("msg");m.className=t?("msg "+(cls||"")):"";m.textContent=t||"";}
-// Indeterminate progress for the slow step (growPatch enumeration can take ~a minute on a large
-// antigen): an animated bar + an elapsed-seconds counter. We don't know a true percentage, so this
-// is honestly indeterminate rather than a faked fraction.
+// Indeterminate progress for the slow step. growPatch enumeration is ~1s; the wait is the DiscoTope
+// ranking call (BioLib cloud: upload + remote ESM-IF1 inference), which runs up to ~5 min and varies
+// with their queue. An animated bar + elapsed-seconds counter; we don't know a true percentage, so
+// this is honestly indeterminate rather than a faked fraction.
 let _busyTimer=null,_busyStart=0;
 function busy(label,hint){
   _busyStart=Date.now();
@@ -212,6 +215,12 @@ function busy(label,hint){
   render(); clearInterval(_busyTimer); _busyTimer=setInterval(render,1000);
 }
 function busyDone(){ if(_busyTimer){clearInterval(_busyTimer);_busyTimer=null;} }
+// Lock inputs that would corrupt an in-flight run: the mode toggle (switching to antibody-contact
+// mid-enumeration) and the file picker. Re-enabled when the run settles.
+function setRunning(on){
+  document.querySelectorAll("#modeseg button").forEach(b=>{b.disabled=on;});
+  const f=$("file"); if(f) f.disabled=on;
+}
 const fileFmt=()=>($("file").files[0]&&$("file").files[0].name.toLowerCase().endsWith(".cif"))?"cif":"pdb";
 const hasDisco=()=>!!(state.D&&state.D.has_disco);
 
@@ -252,9 +261,9 @@ $("run").onclick=async()=>{
   if(!state.pdbText){msg("Choose a PDB file first.","err");return;}
   const qs=new URLSearchParams({chain:$("chain").value, sasa_cut:$("sasa").value,
     top_k:$("topk").value, mode:state.mode, fmt:fileFmt()});
-  $("run").disabled=true;
+  $("run").disabled=true; setRunning(true);
   busy(state.mode==="antibody" ? "Identifying contact residues…" : "Generating candidate regions…",
-       state.mode==="antibody" ? "" : "This usually takes about 1&ndash;2 minutes. Keep this tab open.");
+       state.mode==="antibody" ? "" : "This can take up to 5 minutes. Keep this tab open.");
   try{
     const res=await fetch(api("/enumerate?"+qs.toString()),{method:"POST",body:state.pdbText});
     const data=await res.json();
@@ -264,7 +273,7 @@ $("run").onclick=async()=>{
     buildStats(); buildList(); loadStructure();
     if(state.mode==="antibody" && data.patches.length) select(data.patches[0].i);   // show the epitope
   }catch(e){ console.warn("enumerate:",e); msg((state.mode==="antibody"?"Could not identify contact residues.":"Could not generate candidates.")+" Check the service connection.","err"); }
-  finally{ $("run").disabled=false; }
+  finally{ $("run").disabled=false; setRunning(false); }
 };
 
 function buildStats(){
