@@ -75,12 +75,14 @@ def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k, mod
     has_disco = scores is not None
     if has_disco:
         for p in patches:
-            vals = [scores[r] for r in p["resis_rank"] if r in scores]
+            vals = [scores[r] for r in p["resis"] if r in scores]   # over the full candidate patch
+            p["disco_sum"] = round(sum(vals), 4) if vals else None      # primary ranking score
             p["disco_mean"] = round(sum(vals) / len(vals), 4) if vals else None
             p["disco_n"] = len(vals)
-            p["disco_total"] = len(p["resis_rank"])
-        # rank within the antigen by descending mean; No-score candidates last; stable id tie-break.
-        patches.sort(key=lambda p: (p["disco_mean"] is None, -(p["disco_mean"] or 0.0), p["i"]))
+            p["disco_total"] = len(p["resis"])
+        # rank within the antigen by descending TOTAL DiscoTope over the candidate's residues --
+        # intentionally rewards larger high-likelihood patches. No-score candidates last; id tie-break.
+        patches.sort(key=lambda p: (p["disco_sum"] is None, -(p["disco_sum"] or 0.0), p["i"]))
     if top_k:
         patches = patches[:top_k]
     return dict(chain=chain, sasa_cut=sasa_cut, n_residues=len(residues),

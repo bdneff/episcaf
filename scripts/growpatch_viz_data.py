@@ -19,14 +19,16 @@ gets a within-antigen epitope-likelihood summary. The score is read from the CA 
 scored PDB (baked by scripts/webtool_discotope_bake.py as a per-residue DiscoTope-3.0 likelihood,
 min-max normalized across the chain and written on a 0-100 scale). We divide by --disco-scale
 (default 100) back to a 0-1 normalized score and attach, per candidate:
-    disco_mean   mean normalized DiscoTope-3.0 likelihood over the candidate's scored ranking residues
+    disco_sum    total normalized DiscoTope-3.0 likelihood over the candidate's scored ranking residues
+                 (the primary ranking score -- intentionally rewards larger high-likelihood patches)
+    disco_mean   the same divided by disco_n (shown as secondary context)
     disco_n      how many of the ranking residues had a score
     disco_total  how many ranking residues the candidate has (keys_raw)
-The mean is taken over the growth-selected surface residues (resis_rank), excluding gap-fill residues.
-Residues with no score are skipped, never treated as 0; a candidate with no scored ranking residue
-gets disco_mean null ("No score"). This is a PREDICTION of epitope likelihood, distinct from the
+Sum and mean are taken over the growth-selected surface residues (resis_rank), excluding gap-fill
+residues. Residues with no score are skipped, never treated as 0; a candidate with no scored ranking
+residue gets null scores ("No score"). This is a PREDICTION of epitope likelihood, distinct from the
 geometric growPatch sampling, and is not antibody-binding truth. Candidates are written in descending
-disco_mean order (No-score candidates last). Targets with no scored PDB omit the disco fields and the
+disco_sum order (No-score candidates last). Targets with no scored PDB omit the disco fields and the
 viewer shows the full candidate set unranked.
 """
 from __future__ import annotations
@@ -83,9 +85,10 @@ def attach_disco(patches, scores):
     """
     total_missing = 0
     for p in patches:
-        rank = p["resis_rank"]
+        rank = p["resis"]                                # over the full candidate patch
         vals = [scores[r] for r in rank if r in scores]
         total_missing += len(rank) - len(vals)
+        p["disco_sum"] = round(sum(vals), 4) if vals else None       # primary ranking score
         p["disco_mean"] = round(sum(vals) / len(vals), 4) if vals else None
         p["disco_n"] = len(vals)
         p["disco_total"] = len(rank)
@@ -130,9 +133,9 @@ def main(argv=None):
     if has_disco:
         scores = load_disco_scores(a.scored_pdb, a.scored_chain or a.chain, a.disco_scale)
         total_missing = attach_disco(patches, scores)
-        # rank within the antigen by descending mean DiscoTope score; No-score candidates last;
-        # stable id `i` as the deterministic tie-breaker. Candidate `i` stays its enumeration id.
-        patches.sort(key=lambda p: (p["disco_mean"] is None, -(p["disco_mean"] or 0.0), p["i"]))
+        # rank within the antigen by descending total DiscoTope (sum over the growth-selected scored
+        # residues); No-score candidates last; stable id `i` as the deterministic tie-breaker.
+        patches.sort(key=lambda p: (p["disco_sum"] is None, -(p["disco_sum"] or 0.0), p["i"]))
         n_scored = len(scores)
         print(f"  DiscoTope: {n_scored} residues scored from {a.scored_pdb}; "
               f"{total_missing} ranking-residue lookups had no score (skipped, not zeroed)")

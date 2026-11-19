@@ -106,14 +106,14 @@ figure.dgm figcaption{font-size:11.5px;color:#536477;margin:7px auto 0;line-heig
       <div class="step-content">
     <p class="how">growPatch generates candidate surface regions by neighbor-based growth, fills short
     sequence gaps, filters by the configured size and sequence-segment limits, and removes near-duplicates.
-    The candidates are then ranked by mean DiscoTope score (generation and ranking are separate steps).
+    The candidates are then ranked by total DiscoTope score (generation and ranking are separate steps).
     Selected candidates are converted into design specifications for scaffold generation.</p>
     <ul class="steps">
       <li><span class="mk o">1</span><span class="tx"><b>Surface.</b> Relative solvent accessibility per residue (freesasa, Tien-2013 normalization); residues exposing &ge; 20% of their type&rsquo;s area (relSASA &ge; 0.2) are &ldquo;surface.&rdquo;</span></li>
       <li><span class="mk o">2</span><span class="tx"><b>Grow.</b> From each surface residue, accrete the nearest connected surface residues to footprint size (~16). This produces conformational (sequence-discontinuous) patches.</span></li>
       <li><span class="mk o">3</span><span class="tx"><b>Clean up.</b> Gap-fill short sequence gaps, keep patches large enough (&ge;12 residues) and not too fragmented (&le;3 sequence segments, or &ldquo;islands&rdquo;). The gap-filled ranges are the segments sent to scaffold design.</span></li>
       <li><span class="mk o">4</span><span class="tx"><b>Dedupe.</b> Jaccard non-max suppression removes near-duplicates (overlap &ge; 0.8), keeping the one with fewer segments, then the larger.</span></li>
-      <li><span class="mk o">5</span><span class="tx"><b>Rank.</b> Candidates are ranked by their mean DiscoTope-3.0 score over the growth-selected surface residues, normalized within the antigen. When scores are unavailable the full candidate set is shown unranked.</span></li>
+      <li><span class="mk o">5</span><span class="tx"><b>Rank.</b> Candidates are ranked by their total DiscoTope-3.0 score (summed over the candidate's residues), normalized within the antigen; summing rewards larger high-likelihood patches. When scores are unavailable the full candidate set is shown unranked.</span></li>
     </ul>
     <p style="margin-top:12px">Each surviving candidate becomes an episcaf contig string handed to the same
     contig machinery as the known-antibody arm.</p>

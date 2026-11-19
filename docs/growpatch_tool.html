@@ -50,6 +50,10 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .msg{font-size:12.5px;padding:8px 11px;border-radius:5px;margin:8px 0}
 .msg.err{background:#fdecea;border:1px solid #f5c6c0;color:#a0241a}
 .msg.busy{background:#eef4fd;border:1px solid #bcd3f0;color:#1b4a86}
+.pbar{display:block;height:6px;background:#d7e3f3;border-radius:3px;overflow:hidden;margin-top:7px}
+.pbar>i{display:block;height:100%;width:38%;background:var(--blue);border-radius:3px;animation:pslide 1.15s ease-in-out infinite}
+@keyframes pslide{0%{margin-left:-38%}100%{margin-left:100%}}
+@media(prefers-reduced-motion:reduce){.pbar>i{animation:none;width:100%;opacity:.55}}
 .note{font-size:12px;color:#555;background:#f6f6f6;border:1px solid #ddd;padding:8px 11px;margin-top:14px}
 .note b{color:var(--ink)}
 .conn{font-size:12.5px;border-radius:6px;padding:9px 12px;margin:4px 0 12px;line-height:1.45}
@@ -97,7 +101,7 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
   <p style="font-size:12.5px;color:#555;margin:0 0 10px"><a href="growpatch.html">Explore the 8PWW example &rarr;</a></p>
   <p class="lede">Upload an antigen structure and select the chain to process. growPatch groups nearby
   exposed surface residues into candidate sites. When DiscoTope scores are available, the candidates
-  are ranked by their mean DiscoTope score; otherwise the full candidate set is shown for inspection
+  are ranked by their total DiscoTope score; otherwise the full candidate set is shown for inspection
   and selection.</p>
 
   <div class="conn" id="conn" role="status" aria-live="polite">Checking for the local service&hellip;</div>
@@ -172,7 +176,7 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
   <div class="note"><b>Sequence segments and gap filling.</b> A candidate can contain several sequence
   segments that are adjacent in the folded antigen. growPatch fills short sequence gaps so the scaffold
   includes the backbone connecting nearby surface residues: the segments sent to scaffold design are the
-  gap-filled ranges, while ranking uses the growth-selected surface residues. Structure processing does
+  gap-filled ranges, and candidates are ranked by the total DiscoTope score over those residues. Structure processing does
   not establish that an antigen or candidate region is suitable for the intended experiment. Preparing
   design inputs writes the design specifications and run configuration; it does not start RFdiffusion3,
   ProteinMPNN, or AlphaFold&nbsp;3. <b>Data source:</b> <code>episcaf_analysis/growpatch</code>.</div>
@@ -185,7 +189,19 @@ let state={mode:"growpatch", sel:null, D:null, pdbText:null, picked:new Set(), b
 let viewer=null, viewerDead=false;
 
 const $=id=>document.getElementById(id);
-function msg(t,cls){const m=$("msg");m.className=t?("msg "+(cls||"")):"";m.textContent=t||"";}
+function msg(t,cls){busyDone();const m=$("msg");m.className=t?("msg "+(cls||"")):"";m.textContent=t||"";}
+// Indeterminate progress for the slow step (growPatch enumeration can take ~a minute on a large
+// antigen): an animated bar + an elapsed-seconds counter. We don't know a true percentage, so this
+// is honestly indeterminate rather than a faked fraction.
+let _busyTimer=null,_busyStart=0;
+function busy(label){
+  _busyStart=Date.now();
+  const render=()=>{const s=Math.round((Date.now()-_busyStart)/1000);
+    const m=$("msg"); m.className="msg busy";
+    m.innerHTML=`${label} <span style="opacity:.65">${s}s</span><span class="pbar"><i></i></span>`;};
+  render(); clearInterval(_busyTimer); _busyTimer=setInterval(render,1000);
+}
+function busyDone(){ if(_busyTimer){clearInterval(_busyTimer);_busyTimer=null;} }
 const fileFmt=()=>($("file").files[0]&&$("file").files[0].name.toLowerCase().endsWith(".cif"))?"cif":"pdb";
 const hasDisco=()=>!!(state.D&&state.D.has_disco);
 
@@ -227,7 +243,7 @@ $("run").onclick=async()=>{
   const qs=new URLSearchParams({chain:$("chain").value, sasa_cut:$("sasa").value,
     top_k:$("topk").value, mode:state.mode, fmt:fileFmt()});
   $("run").disabled=true;
-  msg(state.mode==="antibody" ? "Identifying contact residues…" : "Generating candidate regions…","busy");
+  busy(state.mode==="antibody" ? "Identifying contact residues…" : "Generating candidate regions…");
   try{
     const res=await fetch("/enumerate?"+qs.toString(),{method:"POST",body:state.pdbText});
     const data=await res.json();
@@ -256,9 +272,9 @@ function buildStats(){
 function segText(n){return n===1?"1 sequence segment":n+" sequence segments";}
 function discoBadge(p){
   if(!hasDisco()) return "";
-  if(p.disco_mean==null)
-    return '<span class="disco none" title="No DiscoTope-3.0 score for this candidate’s ranking residues">No score</span>';
-  return `<span class="disco" title="mean DiscoTope-3.0 score over ${p.disco_n} of ${p.disco_total} growth-selected residues, normalized within this antigen">DiscoTope ${p.disco_mean.toFixed(2)}</span>`;
+  if(p.disco_sum==null)
+    return '<span class="disco none" title="No DiscoTope-3.0 score for this candidate">No score</span>';
+  return `<span class="disco" title="total DiscoTope-3.0 over ${p.disco_n} of ${p.disco_total} residues (mean ${p.disco_mean.toFixed(2)}), normalized within this antigen">DiscoTope Σ ${p.disco_sum.toFixed(1)}</span>`;
 }
 function rankHdr(){
   const el=$("rankhdr"); const D=state.D;
@@ -266,9 +282,9 @@ function rankHdr(){
   el.hidden=false;
   if(hasDisco()){
     el.className="rankhdr";
-    el.innerHTML="Candidates are ranked by the mean DiscoTope-3.0 score over their growth-selected "+
-      "surface residues, normalized within this antigen (a relative ranking, not a calibrated binding "+
-      "probability).";
+    el.innerHTML="Candidates are ranked by their total DiscoTope-3.0 score (the sum over the candidate's "+
+      "residues), which rewards larger patches with more high-likelihood residues. Scores are normalized "+
+      "within this antigen (a relative ranking, not a calibrated binding probability).";
   }else{
     el.className="rankhdr unavail";
     el.innerHTML="<b>DiscoTope scores unavailable.</b> Showing the full growPatch candidate set for "+
@@ -314,16 +330,13 @@ function select(i){
   if((p.methods||[]).includes("antibody-contact")){
     sel.innerHTML=`<b>${p.epitope}</b> &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)} &middot; antibody-contact epitope`;
   }else{
-    const scoreLine = !hasDisco() ? `${(p.resis_rank||[]).length} residues`
-      : (p.disco_mean==null
-          ? `no DiscoTope score (0 of ${p.disco_total} residues scored)`
-          : `mean DiscoTope ${p.disco_mean.toFixed(2)} &middot; ${p.disco_n} of ${p.disco_total} residues scored`);
+    const scoreLine = !hasDisco() ? ``
+      : (p.disco_sum==null
+          ? ` &middot; no DiscoTope score (0 of ${p.disco_total} residues scored)`
+          : ` &middot; total DiscoTope ${p.disco_sum.toFixed(1)} (${p.disco_n} of ${p.disco_total} residues scored, mean ${p.disco_mean.toFixed(2)})`);
     sel.innerHTML =
-      `<div class="two">`+
-      `<div><span class="k">Segments sent to scaffold design</span> <b>${p.epitope}</b> &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)}</div>`+
-      `<div><span class="k">Surface residues used for ranking</span> ${scoreLine}</div>`+
-      `</div>`+
-      `<div class="gapnote">growPatch fills short sequence gaps so the scaffold includes the backbone connecting nearby surface residues.</div>`;
+      `<div><span class="k">Segments sent to scaffold design</span> <b>${p.epitope}</b> &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)}${scoreLine}</div>`+
+      `<div class="gapnote">growPatch fills short sequence gaps so the scaffold includes the backbone connecting nearby surface residues; the segments above are what goes to scaffold design.</div>`;
   }
   document.querySelectorAll(".prow").forEach(r=>{
     const on=+r.dataset.i===i; r.classList.toggle("on",on); r.setAttribute("aria-selected",on?"true":"false");
