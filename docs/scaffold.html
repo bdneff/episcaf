@@ -551,10 +551,10 @@ function renderPDB(txt,fmt){
     }
     cviewer.zoomTo();cviewer.zoom(1.3);cviewer.render();
     hideLoading();updateCaption();
-    if(panelDirty && panelWanted()){ panelDirty=false; buildSeqPanel((CFG["__upload"]&&CFG["__upload"].ab)||[]); }
+    if(panelDirty && panelWanted()){ panelDirty=false; buildSeqPanel((CFG[state.target]&&CFG[state.target].ab)||[]); }
   }catch(e){ useImgFallback(); }
 }
-let panelDirty=false;
+let panelDirty=true;   // build the chain-selection panel on the first render too, not only after a change
 let _pdbCache={};
 function loadComplex(){
   if(!cviewer){useImgFallback();return;}
@@ -610,7 +610,10 @@ function updateKeepExample(){
     "</b> with the lowest obstruction score"+(keep===1?"":"s")+" continue; the other "+(n-keep)+
     " are discarded before ProteinMPNN and AlphaFold3.";
 }
-function panelWanted(){ return state.target==="__upload" || state.epi==="manual"; }
+// Show the chain-selection panel for the example complexes too, not just uploads/manual mode, so the
+// antibody (and thus the antigen + contact epitope) can be picked on any target. buildSeqPanel hides
+// itself when the loaded model has no chains (e.g. the 3D viewer fell back to a static image).
+function panelWanted(){ return true; }
 function syncHints(){
   $("#targethint").textContent = (state.target==="__upload" && !uploadDetected)
     ? "uploaded structure; the epitope was not detected (needs the local service). Showing the raw structure."
@@ -824,7 +827,7 @@ function applySeqSelection(){
     const abChains = selMode==="chain" ? [...abSet] : [...new Set([...abRes].map(k=>k.slice(0,k.indexOf(":"))))];
     let abres=null;
     if(selMode==="residue"){ abres={}; for(const k of abRes){const i=k.indexOf(":"),c=k.slice(0,i),ri=+k.slice(i+1); (abres[c]||(abres[c]=[])).push(ri);} }
-    CFG["__upload"]={ag:ag,ab:abChains,epi:epi,abres:abres};
+    CFG[state.target]={ag:ag,ab:abChains,epi:epi,abres:abres};   // current target (upload OR an example)
     state.epi="antibody"; uploadDetected=true;
     const r=document.querySelector('input[name=epi][value="antibody"]'); if(r)r.checked=true;
     if(cviewer) loadComplex(); else updateCaption();
