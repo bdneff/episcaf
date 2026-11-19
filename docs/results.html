@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Results · episcaf</title>
+<link rel="icon" type="image/svg+xml" href="img/episcaf.svg">
 <link rel="stylesheet" href="site.css">
 <style>
 :root{color-scheme:light;--blue:#296DC0;--ink:#1a1a1a;--good:#0a7a2f;--bad:#a00000}
 .page{max-width:1120px;margin:0 auto}
-.bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:10px 0}
 input[type=file]{font:inherit;font-size:13px}
 button{font:inherit;font-size:13px;padding:5px 12px;border:1px solid #999;background:#eee;border-radius:5px;cursor:pointer}
 button.on{background:var(--blue);color:#fff;border-color:#1b4a86;font-weight:bold}
@@ -28,71 +28,75 @@ tr.na td:first-child{box-shadow:inset 3px 0 0 #bbb}
 tr.na td{color:#777}
 td.good{color:var(--good)}td.bad{color:var(--bad)}
 .msg{font-size:12.5px;padding:8px 11px;border-radius:5px;margin:8px 0;background:#fdecea;border:1px solid #f5c6c0;color:#a0241a;display:none}
-.empty{font-size:13px;color:#444;background:#f6f8fb;border:1px dashed #c9d4e5;border-radius:6px;padding:14px 16px;margin:10px 0;line-height:1.55}
-.empty code{background:#eef2f8;padding:0 3px;border-radius:2px}
 .note{font-size:12px;color:#555;background:#f6f6f6;border:1px solid #ddd;padding:8px 11px;margin-top:14px}
 </style>
+<link rel="stylesheet" href="reference.css">
+<link rel="stylesheet" href="tools.css">
 </head>
-<body>
-<div class="banner"><div class="banner-inner">
+<body class="reference results-page">
+<header class="banner"><div class="banner-inner">
   <div class="brand">
-    <svg class="blogo" viewBox="0 0 44 44" fill="none" aria-hidden="true">
-      <path d="M5 31 C 13 13, 21 13, 25 24 C 28 32, 33 33, 39 15" stroke="#dce8f7" stroke-width="3.2" stroke-linecap="round" fill="none"/>
-      <circle cx="25" cy="20" r="4.4" fill="#e5543f"/>
-    </svg>
+    <img class="blogo" src="img/episcaf.svg" width="44" height="44" alt="">
     <div class="wm"><div class="name">episcaf</div><div class="tag">Epitope Scaffolder</div></div>
   </div>
-  <svg class="motif" viewBox="0 0 170 46" fill="none" aria-hidden="true">
-    <path d="M6 23 C 20 9, 28 9, 36 23 C 44 37, 52 37, 60 23 C 68 9, 76 9, 84 23 C 92 37, 100 37, 108 23 C 116 9, 124 9, 132 23 C 140 37, 148 37, 156 23" stroke="#bcd6f2" stroke-width="3.4" stroke-linecap="round" fill="none"/>
-    <circle cx="84" cy="16" r="5" fill="#e5543f"/>
-    <circle cx="60" cy="23" r="3" fill="#ffffff" opacity=".85"/>
-    <circle cx="108" cy="23" r="3" fill="#ffffff" opacity=".85"/>
-  </svg>
-</div></div>
-<div class="nav"><div class="nav-inner">
+</div></header>
+<nav class="nav" aria-label="Primary"><div class="nav-inner">
   <a href="home.html">Home</a>
   <a href="methods.html">Docs</a>
   <a href="pipeline.html">Pipeline</a>
-  <a href="results.html" class="on">Results</a>
-</div></div>
+  <a href="results.html" class="on" aria-current="page">Results</a>
+</div></nav>
 
-<div class="page">
-  <h1>Explore design results</h1>
-  <p class="lede">Load a metrics CSV to compare, filter, and rank designs. Available metrics depend on
-  the columns in the file. Files are processed in your browser. See
-  <a href="RESULTS_SCHEMA.md">the results-file format and metric definitions</a>.</p>
+<main class="page">
+  <header class="tool-heading">
+    <div>
+      <h1>Design results</h1>
+      <p class="lede">Compare structural metrics and ranking scores from a completed run.</p>
+    </div>
+  </header>
 
-  <div class="bar">
-    <input type="file" id="file" accept=".csv,.tsv,.txt">
-    <label class="ck">Sort designs by <select id="rankby" disabled></select></label>
-    <label class="ck"><input type="checkbox" id="passonly"> Show designs that pass the structural filters</label>
-    <button id="dl" class="btn-secondary" disabled>Download filtered results</button>
-  </div>
-  <div class="msg" id="msg"></div>
-  <div class="empty" id="empty">
-    <p><b>No results loaded.</b></p>
-    <p>Load a metrics CSV to view design scores and structural metrics.</p>
-    <details class="help" style="margin:6px 0 0"><summary>Supported columns</summary>
-    <p style="margin:6px 0 0">Common columns identify the design and epitope, structural deviations,
-    prediction confidence, antibody clashes, and ranking scores. Metric columns can be omitted, but a
-    design cannot be evaluated against a filter whose required metric is missing. Canonical column names
-    and exact definitions are in <a href="RESULTS_SCHEMA.md">the results-file format and metric
-    definitions</a>.</p></details>
-  </div>
-  <div class="stats" id="stats"></div>
-  <div class="tablewrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+  <section class="results-import" aria-labelledby="import-title">
+    <h2 id="import-title">Open a metrics file</h2>
+    <label class="tool-field" for="file">Choose a CSV or TSV file
+      <input type="file" id="file" accept=".csv,.tsv,.txt" aria-describedby="file-help">
+    </label>
+    <p id="file-help">Your file is processed in this browser. <a href="RESULTS_SCHEMA.md">Supported columns and metrics</a></p>
+  </section>
+  <div class="msg" id="msg" role="alert"></div>
 
-  <div class="note"><b>Structural-filter status.</b>
-  <b>Pass:</b> the design meets every required threshold (green left edge).
+  <section id="results-data" aria-labelledby="table-title" hidden>
+    <div class="results-heading">
+      <div>
+        <h2 id="table-title">Designs</h2>
+        <p id="row-count" role="status"></p>
+        <p id="loaded-file"></p>
+      </div>
+      <button id="dl" class="btn-secondary" disabled>Download filtered CSV</button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="results-controls">
+      <label class="tool-field" for="rankby">Sort by <select id="rankby" disabled></select></label>
+      <label class="ck"><input type="checkbox" id="passonly"> Show structural passes only</label>
+    </div>
+    <p id="empty" hidden>No designs pass the structural filters in this file. Clear the filter to see all designs.</p>
+    <div class="tablewrap" id="result-table" role="region" aria-label="Design metrics table" tabindex="0">
+      <table id="tbl"><thead></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <details class="tool-disclosure">
+    <summary>How structural filters are evaluated</summary>
+  <div class="note">
+  <b>Pass:</b> the design meets every required threshold.
   <b>Fail:</b> the available metrics show that the design does not meet the configured criteria.
-  <b>Not evaluated:</b> at least one required metric is missing (grey left edge).
+  <b>Not evaluated:</b> at least one required metric is missing.
   The thresholds are epitope RMSD &le;&nbsp;1&nbsp;&Aring;, overall RMSD &le;&nbsp;2&nbsp;&Aring;, and mean
   PAE &lt;&nbsp;5&nbsp;&Aring;. For antibody obstruction, the viewer uses zero clashing residues against a
   reference antibody (<code>af3_n_clash_res</code> = 0) or, when none is available, a calibrated AOMclash
   estimate below&nbsp;3 (<code>aomclash_pred</code> &lt; 3). Filter status describes the structural screen;
-  experimental binding is evaluated separately. Select a column heading to sort by that metric. See
-  <a href="RESULTS_SCHEMA.md">RESULTS_SCHEMA.md</a>.</div>
-</div>
+  experimental binding is evaluated separately.</div>
+  </details>
+</main>
 
 <script>
 "use strict";
@@ -143,8 +147,8 @@ function populateRank(){
       const o=document.createElement("option"); o.value=c; o.textContent=label; sel.appendChild(o);
     }
   }
-  // any remaining numeric columns, so nothing is unreachable
-  for(const c of COLS) if(![...sel.options].some(o=>o.value===c) && ROWS.some(r=>num(r[c])!==null)){
+  // Include the same columns offered by the table heading buttons.
+  for(const c of COLS) if(![...sel.options].some(o=>o.value===c)){
     const o=document.createElement("option"); o.value=c; o.textContent=c; sel.appendChild(o);
   }
   sel.disabled=false;
@@ -212,25 +216,48 @@ function shown(){
 function render(){
   const rs=shown();
   const th=$("tbl").tHead, tb=$("tbl").tBodies[0];
-  th.innerHTML="<tr>"+COLS.map(c=>`<th data-c="${escA(c)}" title="${escA(DEFS[c]||c)}" class="${c===sortCol?'sorted':''}">${esc(LABELS[c]||c)}`+
-    (c===sortCol?` <span class="ar">${sortDir<0?'▼':'▲'}</span>`:"")+"</th>").join("")+"</tr>";
-  th.querySelectorAll("th").forEach(h=>h.onclick=()=>{const c=h.dataset.c;
-    pcMode=false; if(sortCol===c) sortDir*=-1; else {sortCol=c; sortDir=-1;}
-    const sel=$("rankby"); if([...sel.options].some(o=>o.value===c)) sel.value=c; render();});
-  tb.innerHTML=rs.map(r=>"<tr class='"+(r.__cls||"")+"'>"+COLS.map(c=>{
-    let cls=""; const g=GOODCELL[c], n=num(r[c]);
-    if(g&&n!==null) cls=g(n)?"good":"bad";
-    return `<td class="${cls}">${esc(r[c]??"")}</td>`;}).join("")+"</tr>").join("");
-  const npass=ROWS.filter(r=>r.__cls==="pass").length;
-  const nfail=ROWS.filter(r=>r.__cls==="fail").length;
-  const nna=ROWS.filter(r=>r.__cls==="na").length;
-  const neval=npass+nfail;
-  const tgtKey=COLS.includes("id")?"id":(COLS.includes("target")?"target":null);
-  const ntgt=tgtKey?new Set(ROWS.map(r=>r[tgtKey])).size:"—";
-  $("empty").style.display = ROWS.length ? "none" : "block";
-  $("stats").innerHTML=[["designs loaded",ROWS.length],["pass",npass],["fail",nfail],["not evaluated",nna],
-    ["pass rate (evaluated)",neval?(100*npass/neval).toFixed(1)+"%":"—"],["target groups",ntgt],
-    ["shown",rs.length]].map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
+  th.innerHTML = '<tr><th scope="col" class="filter-status">Filter status</th>' + COLS.map(c => {
+    const active = !pcMode && c === sortCol;
+    const ascending = LOWER.has(c) ? sortDir < 0 : sortDir > 0;
+    const direction = ascending ? "ascending" : "descending";
+    return `<th scope="col"${active ? ` aria-sort="${direction}"` : ""}>
+      <button type="button" data-c="${escA(c)}" title="${escA(DEFS[c] || c)}">
+        ${esc(LABELS[c] || c)}${active ? ` <span aria-hidden="true">${ascending ? '↑' : '↓'}</span>` : ""}
+      </button></th>`;
+  }).join("") + "</tr>";
+  th.querySelectorAll("button").forEach(button => button.onclick = () => {
+    const wasFocused = document.activeElement === button;
+    const column = button.dataset.c;
+    sortDir = !pcMode && sortCol === column ? -sortDir : -1;
+    pcMode = false;
+    sortCol = column;
+    $("rankby").value = column;
+    render();
+    if (wasFocused) {
+      [...th.querySelectorAll("button")].find(item => item.dataset.c === column).focus();
+    }
+  });
+  const statuses = { pass: "Pass", fail: "Fail", na: "Not evaluated" };
+  tb.innerHTML = rs.map(r => `<tr><td class="filter-status ${r.__cls}">${statuses[r.__cls]}</td>` + COLS.map(c => {
+    let cls = "";
+    const g = GOODCELL[c], n = num(r[c]);
+    if (g && n !== null) cls = g(n) ? "good" : "bad";
+    return `<td class="${cls}">${esc(r[c] ?? "")}</td>`;
+  }).join("") + "</tr>").join("");
+  const npass = ROWS.filter(r => r.__cls === "pass").length;
+  const nfail = ROWS.filter(r => r.__cls === "fail").length;
+  const nna = ROWS.length - npass - nfail;
+  $("results-data").hidden = !ROWS.length;
+  $("empty").hidden = Boolean(rs.length);
+  $("result-table").hidden = !rs.length;
+  $("dl").disabled = !rs.length;
+  $("row-count").textContent = `Showing ${rs.length.toLocaleString()} of ${ROWS.length.toLocaleString()} designs`;
+  const evaluated = npass + nfail;
+  const idColumn = COLS.includes("id") ? "id" : (COLS.includes("target") ? "target" : null);
+  const stats = [["Pass", npass], ["Fail", nfail], ["Not evaluated", nna]];
+  if (evaluated) stats.push(["Pass rate (evaluated)", (100 * npass / evaluated).toFixed(1) + "%"]);
+  if (idColumn) stats.push(["Target groups", new Set(ROWS.map(r => r[idColumn])).size]);
+  $("stats").innerHTML = stats.map(([label, value]) => `<div class="stat"><b>${value}</b>${label}</div>`).join("");
 }
 
 $("file").onchange=()=>{
@@ -238,17 +265,20 @@ $("file").onchange=()=>{
   const r=new FileReader();
   r.onload=()=>{
     try{
-      try{ ROWS=parseCSV(r.result); }
+      let parsed;
+      try{ parsed=parseCSV(r.result); }
       catch(pe){ const err=new Error("Could not read the results file. Check its format and column headings."); err.detail=pe.message; throw err; }
-      if(!ROWS.length) throw new Error("The file contains no design rows.");
+      if(!parsed.length) throw new Error("The file contains no design rows.");
+      COLS=orderCols(Object.keys(parsed[0]));
+      ROWS=parsed;
       ROWS.forEach(x=>{x.__cls=classify(x);x.__pass=x.__cls==="pass";});
-      COLS=orderCols(Object.keys(ROWS[0]).filter(k=>k!=="__pass"));
       populateRank();
       pcMode = COLS.includes("composite");        // default scheme: filter status first, then composite
       sortCol = pcMode ? null : (COLS.includes("is_pass")?"is_pass":COLS[0]); sortDir=-1;
       $("rankby").value = pcMode ? "__pc" : (sortCol||"");
-      $("msg").style.display="none"; $("msg").title=""; $("dl").disabled=false; render();
-    }catch(e){ $("msg").textContent=e.message; $("msg").title=e.detail||""; $("msg").style.display="block"; }
+      $("loaded-file").textContent = f.name;
+      $("msg").style.display="none"; $("msg").title=""; render();
+    }catch(e){ $("msg").textContent=e.message; $("msg").title=e.detail||""; $("msg").style.display="block"; $("file").value=""; }
   };
   r.readAsText(f);
 };
@@ -257,8 +287,11 @@ $("rankby").onchange=()=>{const v=$("rankby").value;
   if(v==="__pc"){pcMode=true;} else {pcMode=false; sortCol=v; sortDir=-1;} render();};
 $("dl").onclick=()=>{
   const rs=shown();
-  const csv=[COLS.join(",")].concat(rs.map(r=>COLS.map(c=>{
-    const v=(r[c]??"")+""; return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(","))).join("\n");
+  const cell = value => {
+    const text = String(value ?? "");
+    return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+  };
+  const csv = [COLS.map(cell).join(","), ...rs.map(row => COLS.map(column => cell(row[column])).join(","))].join("\n");
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
   a.download="episcaf_results_filtered.csv"; a.click();
 };

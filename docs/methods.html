@@ -4,18 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Docs · episcaf</title>
+<link rel="icon" type="image/svg+xml" href="img/episcaf.svg">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <link rel="stylesheet" href="site.css">
 <style>
-.page{max-width:730px;margin:0 auto}
 p{margin:9px 0}
 code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0f0;padding:0 3px}
-.updated{font-size:11px;letter-spacing:.08em;color:#8a98a8;text-transform:uppercase;margin:0 0 4px}
-.toc{background:#f6f8fb;border:1px solid #d5deea;border-radius:7px;padding:11px 14px;margin:14px 0 4px;font-size:13px}
-.toc b{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6f7f90;margin-bottom:5px}
-.toc a{display:inline-block;margin:2px 14px 2px 0;color:#296DC0;text-decoration:none;font-weight:600}
-.toc a:hover{text-decoration:underline}
 .card{border:1px solid #d5deea;border-radius:7px;background:#fcfdfe;padding:3px 14px 12px;margin:12px 0}
 .mode{display:inline-block;font-size:10.5px;font-weight:bold;letter-spacing:.04em;text-transform:uppercase;padding:1px 7px;border-radius:3px;vertical-align:middle;margin-left:7px}
 .mode.ab{background:#e8f1fb;color:#21568f;border:1px solid #bcd6f2}
@@ -33,19 +28,8 @@ summary::before{content:"\25B8  "}
 details[open] summary::before{content:"\25BE  "}
 .eq{margin:9px 0;overflow-x:auto;overflow-y:hidden}
 .mnote{font-size:12px;color:#555;margin:6px 0}
-.flow{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f6f6f6;border:1px solid #cccccc;border-radius:5px;padding:9px 11px;overflow-x:auto;color:#333;line-height:1.5}
 .foot{font-size:12px;color:#666;line-height:1.6;margin-top:10px}
 .foot b{color:#444}
-.sec{border:1px solid #d5deea;border-radius:8px;margin:12px 0;background:#fff}
-.sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 16px;user-select:none;border-radius:8px}
-.sec>summary::-webkit-details-marker{display:none}
-.sec>summary::before{content:"\25B8";color:#296DC0;font-size:12px;line-height:1}
-.sec[open]>summary::before{content:"\25BE"}
-.sec>summary:hover{background:#f6f8fb}
-.sec>summary h2{border:none;margin:0;padding:0}
-.sec[open]>summary{border-bottom:1px solid #e8edf4;border-radius:8px 8px 0 0}
-.secbody{padding:2px 16px 14px}
-.secbody>p:first-child{margin-top:6px}
 figure.dgm{margin:14px 0 6px;padding:0;text-align:center}
 figure.dgm svg{display:block;width:100%;height:auto;margin:0 auto}
 figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width:62ch;line-height:1.5;text-align:left}
@@ -64,59 +48,40 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
 .seqfig .fold{flex:0 0 auto;width:170px}
 .seqfig .fold img{display:block;width:100%;height:auto;border:1px solid #e3e9f2;border-radius:7px;background:#f3f6fb}
 </style>
+<link rel="stylesheet" href="reference.css">
 </head>
-<body>
-<div class="banner"><div class="banner-inner">
+<body class="reference">
+<header class="banner"><div class="banner-inner">
   <div class="brand">
-    <svg class="blogo" viewBox="0 0 44 44" fill="none" aria-hidden="true">
-      <path d="M5 31 C 13 13, 21 13, 25 24 C 28 32, 33 33, 39 15" stroke="#dce8f7" stroke-width="3.2" stroke-linecap="round" fill="none"/>
-      <circle cx="25" cy="20" r="4.4" fill="#e5543f"/>
-    </svg>
+    <img class="blogo" src="img/episcaf.svg" width="44" height="44" alt="">
     <div class="wm"><div class="name">episcaf</div><div class="tag">Epitope Scaffolder</div></div>
   </div>
-  <svg class="motif" viewBox="0 0 170 46" fill="none" aria-hidden="true">
-    <path d="M6 23 C 20 9, 28 9, 36 23 C 44 37, 52 37, 60 23 C 68 9, 76 9, 84 23 C 92 37, 100 37, 108 23 C 116 9, 124 9, 132 23 C 140 37, 148 37, 156 23" stroke="#bcd6f2" stroke-width="3.4" stroke-linecap="round" fill="none"/>
-    <circle cx="84" cy="16" r="5" fill="#e5543f"/>
-    <circle cx="60" cy="23" r="3" fill="#ffffff" opacity=".85"/>
-    <circle cx="108" cy="23" r="3" fill="#ffffff" opacity=".85"/>
-  </svg>
-</div></div>
-<div class="nav"><div class="nav-inner">
+</div></header>
+<nav class="nav" aria-label="Primary"><div class="nav-inner">
   <a href="home.html">Home</a>
-  <a href="methods.html" class="on">Docs</a>
+  <a href="methods.html" class="on" aria-current="page">Docs</a>
   <a href="pipeline.html">Pipeline</a>
   <a href="results.html">Results</a>
-</div></div>
+</div></nav>
 
 <div class="page">
-  <p class="updated">Methods reference &middot; updated 2026-11-18</p>
-  <h1>Methods</h1>
-  <p class="lede">episcaf selects antigen residues, generates scaffold backbones, designs sequences, and
-  evaluates predicted structures. This page describes each stage, its parameters, and the scores used to
-  rank designs. Equations sit behind the expanders, so you can read the reasoning first and open the math
-  where you want it.</p>
-
-  <div class="flow">antigen in
-  &rarr; choose epitope (known antibody │ growPatch)
-  &rarr; RFdiffusion3 &rarr; AOMclash pre-filter &rarr; ProteinMPNN &rarr; AlphaFold3
-  &rarr; score (accessibility + binding) &rarr; ranked designs out</div>
-
-  <div class="toc"><b>On this page</b>
-    <a href="#epitope">Epitope selection</a>
-    <a href="#generate">Scaffold generation</a>
-    <a href="#score">Design evaluation</a>
-    <a href="#tool">Running the tools</a>
-    <a href="#repro">Reproducibility</a>
-  </div>
-
-  <p>The design objective is to preserve the selected epitope&rsquo;s geometry while leaving space for
-  antibody binding. The generative backbone (RFdiffusion3 &rarr; ProteinMPNN &rarr; AlphaFold&nbsp;3)
-  proposes candidates; predicted structures are then evaluated against the reference antigen and, when
-  available, a reference antibody.</p>
-
-  <!-- ============================================================ -->
-  <details class="sec"><summary><h2 id="epitope">1 &nbsp; Epitope selection</h2></summary>
-  <div class="secbody">
+  <main>
+    <header class="reference-heading">
+      <h1>Methods</h1>
+      <p class="lede">How episcaf selects epitopes, generates scaffolds, and evaluates designs.</p>
+    </header>
+    <div class="reader">
+      <nav class="chapters" aria-label="Methods chapters" data-section-nav>
+        <a href="#epitope">Epitope selection</a>
+        <a href="#generate">Scaffold generation</a>
+        <a href="#score">Design evaluation</a>
+        <a href="#tool">Running the tools</a>
+        <a href="#repro">Reproducibility</a>
+      </nav>
+      <div class="chapter-content">
+  <section class="method-chapter" data-section aria-labelledby="epitope">
+    <h2 id="epitope" tabindex="-1">Epitope selection</h2>
+    <div class="secbody">
   <p>An epitope can be defined from an antibody&ndash;antigen complex or selected directly. When no region
   has been selected, growPatch generates candidate surface patches. The tool infers which case applies
   from the uploaded structure and lets you override that choice.</p>
@@ -314,10 +279,12 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   </div>
 
   <!-- ============================================================ -->
-  </div></details>
+    </div>
+  </section>
 
-  <details class="sec"><summary><h2 id="generate">2 &nbsp; Generate scaffolds</h2></summary>
-  <div class="secbody">
+  <section class="method-chapter" data-section aria-labelledby="generate">
+    <h2 id="generate" tabindex="-1">Generate scaffolds</h2>
+    <div class="secbody">
   <p>The pipeline generates backbones around the selected epitope, filters them, designs sequences, and
   predicts structures. When iterative design is enabled, selected designs from one round are used to
   generate variants in the next round alongside independently generated backbones. The expensive steps,
@@ -425,10 +392,12 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   </div>
 
   <!-- ============================================================ -->
-  </div></details>
+    </div>
+  </section>
 
-  <details class="sec"><summary><h2 id="score">3 &nbsp; Evaluate designs</h2></summary>
-  <div class="secbody">
+  <section class="method-chapter" data-section aria-labelledby="score">
+    <h2 id="score" tabindex="-1">Evaluate designs</h2>
+    <div class="secbody">
   <p>Designs are evaluated using structural metrics and the available ranking scores. Structural metrics
   describe epitope geometry, prediction confidence, and antibody obstruction. A model fitted to
   binding-assay data provides an additional ranking score.</p>
@@ -538,10 +507,12 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   </div>
 
   <!-- ============================================================ -->
-  </div></details>
+    </div>
+  </section>
 
-  <details class="sec"><summary><h2 id="tool">4 &nbsp; Running the tools</h2></summary>
-  <div class="secbody">
+  <section class="method-chapter" data-section aria-labelledby="tool">
+    <h2 id="tool" tabindex="-1">Running the tools</h2>
+    <div class="secbody">
   <p>The browser displays structures, accepts selections, and explores results. Processing a new structure
   may also require the local service. RFdiffusion3 generation and AlphaFold&nbsp;3 prediction run on the
   cluster.</p>
@@ -565,10 +536,12 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   </div>
 
   <!-- ============================================================ -->
-  </div></details>
+    </div>
+  </section>
 
-  <details class="sec"><summary><h2 id="repro">5 &nbsp; Reproducibility</h2></summary>
-  <div class="secbody">
+  <section class="method-chapter" data-section aria-labelledby="repro">
+    <h2 id="repro" tabindex="-1">Reproducibility</h2>
+    <div class="secbody">
   <p>Method sections link to their implementation files (the grey paths above). Score transformations and
   weights are defined in presets (<code>episcaf_analysis/presets.py</code>); the occupancy map has a
   documented generation procedure (<code>episcaf_analysis/aomclash/aom_map.py</code>); and the model
@@ -577,16 +550,15 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   scientific background and analysis details, and the <a href="pipeline.html">Design workflow</a> page
   shows what is implemented versus in development.</p>
 
-  </div></details>
+    </div>
+  </section>
+      </div>
+    </div>
+  </main>
 </div>
 
+<script defer src="reference.js"></script>
 <script>
-function openHash(){
-  var id=decodeURIComponent((location.hash||"").slice(1)); if(!id)return;
-  var el=document.getElementById(id); if(!el)return;
-  var d=el.closest("details"); while(d){d.open=true; d=d.parentElement?d.parentElement.closest("details"):null;}
-  el.scrollIntoView();
-}
 document.addEventListener("DOMContentLoaded",function(){
   if(typeof katex!=="undefined"){
     document.querySelectorAll(".eq[data-tex]").forEach(function(el){
@@ -594,9 +566,7 @@ document.addEventListener("DOMContentLoaded",function(){
       catch(e){el.textContent=el.getAttribute("data-tex");}
     });
   }
-  openHash();
 });
-window.addEventListener("hashchange",openHash);
 </script>
 </body>
 </html>
