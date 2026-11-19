@@ -78,7 +78,7 @@ async def inspect(request: Request, fmt: str = Query("pdb"), chain: str = Query(
 @app.post("/enumerate")
 async def enumerate_patches(request: Request, fmt: str = Query("pdb"), chain: str = Query("A"),
                             sasa_cut: float = Query(0.2), footprint_radius: float = Query(14.0),
-                            methods: str = Query("growpatch,eyeview"), top_k: int = Query(0),
+                            methods: str = Query("growpatch"), top_k: int = Query(0),
                             mode: str = Query("growpatch")):
     body = await request.body()
     path = _tmp_structure(body, fmt)

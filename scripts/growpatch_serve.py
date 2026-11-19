@@ -94,7 +94,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 sasa_cut = float(q.get("sasa_cut", ["0.2"])[0])
                 footprint = float(q.get("footprint_radius", ["14"])[0])
                 top_k = int(q.get("top_k", ["0"])[0])
-                methods = tuple(m for m in q.get("methods", ["growpatch,eyeview"])[0].split(",") if m)
+                methods = tuple(m for m in q.get("methods", ["growpatch"])[0].split(",") if m)
             except ValueError as e:
                 self._send(400, json.dumps({"error": f"bad parameter: {e}"}))
                 return

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Emit a growPatch viewer data file (residues + relSASA + union candidate patches) for docs/growpatch.html.
+"""Emit a growPatch viewer data file (residues + relSASA + candidate patches) for docs/growpatch.html.
 
-Reads an antigen CIF, runs the combined enumerator (growpatch + eyeview, unioned), and writes a small
-JS file setting `window.GROWPATCH_DATA = {...}` that the viewer page loads. Regenerable:
+Reads an antigen CIF, runs the growPatch enumerator (neighbor-based growth), and writes a small JS
+file setting `window.GROWPATCH_DATA = {...}` that the viewer page loads. Regenerable:
 
   /Users/bneff/micromamba/envs/bcell-repair/bin/python scripts/growpatch_viz_data.py \
       --cif data/dp4_binding/structures/8PWW.cif --chain A \
@@ -11,18 +11,23 @@ JS file setting `window.GROWPATCH_DATA = {...}` that the viewer page loads. Rege
 
 The residue `p` is the side-chain-centroid representative point (what the enumerator grows on), used
 for the flat-surface projection; `resi` is the PDB residue number, so the 3D viewer can select it.
+Each candidate carries `resis` (the full gap-filled residue set sent to scaffold design) and
+`resis_rank` (the growth-selected surface residues used for DiscoTope ranking).
 
 DiscoTope ranking (optional, --scored-pdb): if a DiscoTope-3.0-scored PDB is given, each candidate
-also gets a predicted B-cell epitope-likelihood summary. The score is read from the CA B-factor of
-the scored PDB (baked by scripts/webtool_discotope_bake.py as a per-residue DiscoTope-3.0 likelihood,
+gets a within-antigen epitope-likelihood summary. The score is read from the CA B-factor of the
+scored PDB (baked by scripts/webtool_discotope_bake.py as a per-residue DiscoTope-3.0 likelihood,
 min-max normalized across the chain and written on a 0-100 scale). We divide by --disco-scale
 (default 100) back to a 0-1 normalized score and attach, per candidate:
-    disco_mean  mean normalized DiscoTope-3.0 likelihood over the candidate's scored residues (0-1)
-    disco_sum   sum of the same (size-dependent)
-    disco_n     how many of the candidate's residues had a score
-    disco_miss  how many had no score (explicitly skipped, never treated as 0)
-This is a PREDICTION of epitope likelihood, distinct from the geometric growPatch sampling, and is not
-antibody-binding truth. Targets with no scored PDB simply omit these fields (the viewer degrades).
+    disco_mean   mean normalized DiscoTope-3.0 likelihood over the candidate's scored ranking residues
+    disco_n      how many of the ranking residues had a score
+    disco_total  how many ranking residues the candidate has (keys_raw)
+The mean is taken over the growth-selected surface residues (resis_rank), excluding gap-fill residues.
+Residues with no score are skipped, never treated as 0; a candidate with no scored ranking residue
+gets disco_mean null ("No score"). This is a PREDICTION of epitope likelihood, distinct from the
+geometric growPatch sampling, and is not antibody-binding truth. Candidates are written in descending
+disco_mean order (No-score candidates last). Targets with no scored PDB omit the disco fields and the
+viewer shows the full candidate set unranked.
 """
 from __future__ import annotations
 
@@ -68,24 +73,22 @@ def load_disco_scores(scored_pdb, chain, scale):
 
 
 def attach_disco(patches, scores):
-    """Attach disco_mean / disco_sum / disco_n / disco_miss to each candidate, in place.
+    """Attach disco_mean / disco_n / disco_total to each candidate, in place.
 
-    Residues with no score are skipped explicitly (counted in disco_miss), never treated as 0. A
-    candidate with no scored residues at all gets null summaries so the viewer can show "no score".
+    The mean is taken over the candidate's growth-selected ranking residues (resis_rank), which are
+    the exposed surface residues growPatch selected, excluding gap-fill residues. Residues with no
+    score are skipped, never treated as 0. A candidate with no scored ranking residue gets
+    disco_mean = None so the viewer can show "No score". disco_total is the number of ranking residues
+    so the viewer can show "N of M residues scored".
     """
     total_missing = 0
     for p in patches:
-        vals = [scores[r] for r in p["resis"] if r in scores]
-        miss = [r for r in p["resis"] if r not in scores]
-        total_missing += len(miss)
-        if vals:
-            p["disco_mean"] = round(sum(vals) / len(vals), 4)
-            p["disco_sum"] = round(sum(vals), 4)
-        else:
-            p["disco_mean"] = None
-            p["disco_sum"] = None
+        rank = p["resis_rank"]
+        vals = [scores[r] for r in rank if r in scores]
+        total_missing += len(rank) - len(vals)
+        p["disco_mean"] = round(sum(vals) / len(vals), 4) if vals else None
         p["disco_n"] = len(vals)
-        p["disco_miss"] = len(miss)
+        p["disco_total"] = len(rank)
     return total_missing
 
 
@@ -95,7 +98,6 @@ def main(argv=None):
     ap.add_argument("--chain", default="A")
     ap.add_argument("--pdb-id", default="")
     ap.add_argument("--sasa-cut", type=float, default=0.2)
-    ap.add_argument("--footprint-radius", type=float, default=14.0)
     ap.add_argument("--scored-pdb", default="",
                     help="DiscoTope-3.0-scored PDB (CA B-factor = per-residue likelihood); enables ranking")
     ap.add_argument("--scored-chain", default="",
@@ -106,8 +108,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
 
     ag = R.read_antigen(a.cif, a.chain, relsasa=True, verbose=True)
-    cands, _ = R.enumerate_candidates(a.cif, a.chain, antigen=ag, sasa_cut=a.sasa_cut,
-                                      footprint_radius=a.footprint_radius)
+    cands, _ = R.enumerate_candidates(a.cif, a.chain, antigen=ag, sasa_cut=a.sasa_cut)
 
     residues = []
     for r in ag.residues:
@@ -120,25 +121,26 @@ def main(argv=None):
     patches = []
     for p in cands:
         resis = sorted({_resi(ag.label(c, s)) for (c, s) in p["keys"]})
-        patches.append(dict(i=p["patch"], methods=p["methods"], epitope=p["epitope"],
-                            n_res=p["n_res"], n_isl=p["n_islands"], resis=resis))
+        resis_rank = sorted({_resi(ag.label(c, s)) for (c, s) in p["keys_raw"]})
+        patches.append(dict(i=p["patch"], epitope=p["epitope"],
+                            n_res=p["n_res"], n_isl=p["n_islands"],
+                            resis=resis, resis_rank=resis_rank))
 
     has_disco = bool(a.scored_pdb)
     if has_disco:
         scores = load_disco_scores(a.scored_pdb, a.scored_chain or a.chain, a.disco_scale)
         total_missing = attach_disco(patches, scores)
+        # rank within the antigen by descending mean DiscoTope score; No-score candidates last;
+        # stable id `i` as the deterministic tie-breaker. Candidate `i` stays its enumeration id.
+        patches.sort(key=lambda p: (p["disco_mean"] is None, -(p["disco_mean"] or 0.0), p["i"]))
         n_scored = len(scores)
         print(f"  DiscoTope: {n_scored} residues scored from {a.scored_pdb}; "
-              f"{total_missing} candidate-residue lookups had no score (skipped, not zeroed)")
+              f"{total_missing} ranking-residue lookups had no score (skipped, not zeroed)")
 
     pdb_id = a.pdb_id or os.path.basename(a.cif).split(".")[0]
     data = dict(pdb=pdb_id, chain=a.chain, sasa_cut=a.sasa_cut,
                 n_residues=len(residues), n_surface=sum(r["surf"] for r in residues),
-                n_patches=len(patches),
-                n_growpatch=sum("growpatch" in p["methods"] for p in patches),
-                n_eyeview=sum("eyeview" in p["methods"] for p in patches),
-                n_both=sum(len(p["methods"]) == 2 for p in patches),
-                has_disco=has_disco,
+                n_patches=len(patches), has_disco=has_disco,
                 residues=residues, patches=patches)
 
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
@@ -148,8 +150,7 @@ def main(argv=None):
         json.dump(data, fh, separators=(",", ":"))
         fh.write(";\n")
     print(f"wrote {a.out}: {len(residues)} residues ({data['n_surface']} surface), "
-          f"{len(patches)} patches (gp {data['n_growpatch']}, ev {data['n_eyeview']}, "
-          f"both {data['n_both']})")
+          f"{len(patches)} growPatch candidates (has_disco={has_disco})")
 
 
 if __name__ == "__main__":

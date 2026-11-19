@@ -25,6 +25,7 @@ import re
 
 from episcaf_analysis.growpatch import read as R
 from episcaf_pipeline import build_growpatch_designs as BGD
+from episcaf_service import disco as _disco
 
 
 def _resi(label):
@@ -35,9 +36,15 @@ def _resi(label):
 def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k, mode="growpatch"):
     """Residues + candidate patches for the viewer (like docs/data/growpatch_*.js).
 
-    mode 'growpatch' -> enumerate candidate epitopes (lone antigen).
+    mode 'growpatch' -> enumerate candidate epitopes with growPatch (lone antigen), ranked by mean
+                        DiscoTope score when a scorer is configured (see episcaf_service.disco).
     mode 'antibody'  -> the epitope is already defined by the bound partner; return it as one patch,
                         no enumeration (growPatch unnecessary).
+
+    Each growPatch candidate carries `resis` (the full gap-filled residue set sent to scaffold design)
+    and `resis_rank` (the growth-selected surface residues used for ranking). The full candidate set
+    is generated and deduplicated, then ranked, and only then truncated to `top_k` -- so the top-k are
+    the highest-ranked candidates, never an early geometric slice.
     """
     ag = R.read_antigen(cif_path, chain, relsasa=True)
     residues = [dict(resi=_resi(ag.label(c, s)), resn=r["resname"],
@@ -45,29 +52,40 @@ def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k, mod
                      surf=bool(ag.rs(r["key"]) >= sasa_cut),
                      p=[round(float(x), 2) for x in r["rep"]])
                 for r in ag.residues for (c, s) in [r["key"]]]
-    extra = {}
     if mode == "antibody":
         det = R.detect_complex(cif_path, chain)
         epi = det["epitope"]
         resis = sorted({_resi(ag.label(c, s)) for (c, s) in ag.parse_epitope(epi)}) if epi else []
         patches = ([dict(i=0, methods=["antibody-contact"], epitope=epi, n_res=len(resis),
                          n_isl=len([t for t in epi.split(";") if t]), resis=resis)] if resis else [])
-        extra = dict(mode="antibody", partner_chains=det["partner_chains"])
-    else:
-        cands, _ = R.enumerate_candidates(cif_path, chain, antigen=ag, methods=methods,
-                                          sasa_cut=sasa_cut, footprint_radius=footprint_radius,
-                                          top_k=(top_k or None))
-        patches = [dict(i=p["patch"], methods=p["methods"], epitope=p["epitope"],
-                        n_res=p["n_res"], n_isl=p["n_islands"],
-                        resis=sorted({_resi(ag.label(c, s)) for (c, s) in p["keys"]}))
-                   for p in cands]
-        extra = dict(mode="growpatch")
+        extra = dict(mode="antibody", partner_chains=det["partner_chains"], has_disco=False)
+        return dict(chain=chain, sasa_cut=sasa_cut, n_residues=len(residues),
+                    n_surface=sum(r["surf"] for r in residues), n_patches=len(patches),
+                    residues=residues, patches=patches, **extra)
+
+    # lone antigen: full growPatch set (no early truncation), then rank, then truncate.
+    cands, _ = R.enumerate_candidates(cif_path, chain, antigen=ag, methods=methods,
+                                      sasa_cut=sasa_cut, footprint_radius=footprint_radius)
+    patches = [dict(i=p["patch"], epitope=p["epitope"], n_res=p["n_res"], n_isl=p["n_islands"],
+                    resis=sorted({_resi(ag.label(c, s)) for (c, s) in p["keys"]}),
+                    resis_rank=sorted({_resi(ag.label(c, s)) for (c, s) in p["keys_raw"]}))
+               for p in cands]
+
+    scores = _disco.score_cif(cif_path, chain)
+    has_disco = scores is not None
+    if has_disco:
+        for p in patches:
+            vals = [scores[r] for r in p["resis_rank"] if r in scores]
+            p["disco_mean"] = round(sum(vals) / len(vals), 4) if vals else None
+            p["disco_n"] = len(vals)
+            p["disco_total"] = len(p["resis_rank"])
+        # rank within the antigen by descending mean; No-score candidates last; stable id tie-break.
+        patches.sort(key=lambda p: (p["disco_mean"] is None, -(p["disco_mean"] or 0.0), p["i"]))
+    if top_k:
+        patches = patches[:top_k]
     return dict(chain=chain, sasa_cut=sasa_cut, n_residues=len(residues),
                 n_surface=sum(r["surf"] for r in residues), n_patches=len(patches),
-                n_growpatch=sum("growpatch" in p["methods"] for p in patches),
-                n_eyeview=sum("eyeview" in p["methods"] for p in patches),
-                n_both=sum(len(p["methods"]) == 2 for p in patches),
-                residues=residues, patches=patches, **extra)
+                has_disco=has_disco, residues=residues, patches=patches, mode="growpatch")
 
 
 def stage_run(cif_path, chain, epitopes, cfg):
