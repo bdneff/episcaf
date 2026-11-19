@@ -34,6 +34,13 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 .flowarrow{flex:0 0 auto;align-self:center;color:#9fb0c6;font-size:24px;font-weight:bold}
 .flowcap{font-size:12px;color:#6a7686;line-height:1.55;margin:15px 0 0;max-width:72ch;text-align:left}
 .flowcap .epi{color:#c0392b;font-weight:bold}
+/* antibody-occupancy sphere: a soft translucent field over the antibody panel. It stands for where
+   antibodies tend to sit, which episcaf also uses to place scaffolds when no antibody is present --
+   so this one panel reads for both the antibody and the no-antibody path. */
+.abocc .art{position:relative}
+.abocc .occ{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:66%;aspect-ratio:1;
+  border-radius:50%;pointer-events:none;z-index:1;
+  background:radial-gradient(circle,rgba(74,108,214,.30),rgba(74,108,214,.15) 44%,rgba(74,108,214,.05) 64%,rgba(74,108,214,0) 76%)}
 @media(max-width:680px){.flowrow{flex-direction:column;align-items:center;gap:8px}.flowarrow{transform:rotate(90deg)}.fpanel{width:100%;max-width:330px}.fpanel img,.fpanel svg{max-height:260px}}
 
 /* ---- section headings ---- */
@@ -62,7 +69,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 .candrow img{display:block;width:100%;height:auto;max-height:108px;object-fit:contain;background:transparent}
 .candrow figcaption{font-size:9.5px;color:#566b85;margin-top:3px}
 .candrow .sel img{box-shadow:0 0 0 1.5px #e5543f;border-radius:4px}
-.ill-cap{font-size:10.5px;color:#566b85;margin:0 0 9px;text-align:center}
+.ill-cap{font-size:10.5px;color:#566b85;margin:0 0 10px;text-align:left;line-height:1.35;min-height:2.7em}
 .card-f{padding:12px 16px 16px}
 
 /* ---- short workflow ---- */
@@ -157,14 +164,16 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
           <figcaption>Designed scaffold displaying the epitope</figcaption>
         </figure>
         <span class="flowarrow" aria-hidden="true">&rarr;</span>
-        <figure class="fpanel">
+        <figure class="fpanel abocc">
           <div class="art"><img src="img/fig/scaffold_antibody.png?v=4" loading="lazy"
-               alt="A ribbon render of the 8PWW reference antibody (steel blue) in its complex position, aligned on the epitope (red) displayed on the episcaf scaffold (grey)."></div>
+               alt="A ribbon render of the 8PWW reference antibody (steel blue) in its complex position, aligned on the epitope (red) displayed on the episcaf scaffold (grey), with a translucent blue sphere marking the space antibodies typically occupy."><span class="occ" aria-hidden="true"></span></div>
           <figcaption>Reference antibody aligned to the scaffold</figcaption>
         </figure>
       </div>
       <figcaption class="flowcap">The <span class="epi">epitope</span> is shown in red in all three panels.
-      The antibody is shown in its position from the 8PWW complex after alignment on the epitope.</figcaption>
+      The antibody is shown in its position from the 8PWW complex after alignment on the epitope. The
+      translucent sphere marks the space antibodies typically occupy around the epitope &mdash; episcaf
+      uses this occupancy model to keep a scaffold accessible even when no antibody structure is available.</figcaption>
     </figure>
   </section>
 
