@@ -84,5 +84,16 @@ So keep code + env in your home dir, let the service write records to `$WS`, and
 RFd3/MPNN/AF3 outputs land on scratch. **Extract what you need from `05_analysis` before scratch is
 purged** — only `02/03/04` are disposable (this is why the old runs needed `AF3_REMAP`).
 
+**If the host running the service can't see `$WS`.** The tgen_labs workspace is not mounted on the
+login node, so a service running there cannot write records to it (`/submit` would 400; `/enumerate`
+and `/stage` are unaffected — they never touch `$WS`). Point `EPISCAF_WS` at a path visible from both
+the service host and the compute nodes — your home dir:
+```bash
+export EPISCAF_WS=$HOME/episcaf_runs
+```
+Home is NFS-mounted everywhere, so the service writes the record there and the GPU job reads
+`designs.csv` / writes `05_analysis` back to the same durable spot. Only the big `02/03/04` outputs go
+to scratch. Copy records/metrics to tgen_labs later, from a node that can see it, if you want.
+
 ## Not in v1 (deferred)
 Public endpoint, TLS/CORS policy, private API key + rate-limiting, auto-submitting GPU jobs.
