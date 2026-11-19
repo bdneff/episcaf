@@ -10,22 +10,47 @@ html{scrollbar-gutter:stable}
 html,body{margin:0}
 body{background:#fff;color:#1a1a1a;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5}
 
-/* ---- banner ---- */
-.banner{background:linear-gradient(100deg,#21568f 0%,#296DC0 46%,#3b7fd1 100%);color:#fff;border-bottom:3px solid #1b4a86}
-.banner-inner{max-width:1120px;margin:0 auto;padding:15px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
-.brand{display:flex;align-items:center;gap:13px;min-width:0}
-.blogo{width:44px;height:44px;flex:none}
-.wm .name{font-size:27px;font-weight:bold;letter-spacing:.02em;line-height:1}
-.wm .tag{font-size:12.5px;color:#dce8f7;margin-top:3px;letter-spacing:.02em}
-.motif{height:44px;width:auto;flex:none;opacity:.95}
-@media(max-width:540px){.motif{display:none}.wm .name{font-size:23px}}
+/* ---- header and primary navigation ---- */
+.banner, .nav {
+  font-size: 15px;
+  font-family: system-ui, sans-serif;
+  line-height: 1.6;
+}
 
-/* ---- nav (four tabs) ---- */
-.nav{background:#eef3f9;border-bottom:1px solid #d5deea}
-.nav-inner{max-width:1120px;margin:0 auto;padding:0 16px;display:flex;gap:2px;flex-wrap:wrap}
-.nav a{display:inline-block;padding:9px 16px;font-size:13px;font-weight:bold;color:#3b6ea5;text-decoration:none;border:1px solid transparent;border-bottom:none}
-.nav a:hover{color:#21568f}
-.nav a.on{background:#fff;color:#1b4a86;border-color:#d5deea;border-radius:4px 4px 0 0;position:relative;top:1px}
+.banner { background: #142c47; color: #fff; }
+
+.banner-inner, .nav-inner {
+  max-width: 1120px;
+  margin-inline: auto;
+  padding-inline: clamp(18px, 4vw, 40px);
+}
+
+.banner-inner { padding-block: 15px; }
+.brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.blogo { width: 44px; height: 44px; flex: none; }
+.wm .name { font-size: 27px; font-weight: bold; letter-spacing: .02em; line-height: 1; }
+.wm .tag { font-size: 12.5px; color: #dce8f7; margin-top: 3px; letter-spacing: .02em; }
+@media (max-width: 540px) { .wm .name { font-size: 23px; } }
+
+.nav { background: #fff; border-bottom: 1px solid #d1dce5; }
+
+.nav-inner {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: clamp(16px, 4vw, 36px);
+}
+
+.nav a {
+  display: inline-block;
+  padding: 10px 0;
+  border-bottom: 2px solid transparent;
+  color: #4b6074;
+  font-size: 14px;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.nav a:hover, .nav a.on { color: #165f93; border-bottom-color: currentColor; }
 
 /* ---- links ---- */
 a{color:#0033cc}
