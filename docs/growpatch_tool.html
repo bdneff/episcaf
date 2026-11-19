@@ -189,6 +189,15 @@ let state={mode:"growpatch", sel:null, D:null, pdbText:null, picked:new Set(), b
 let viewer=null, viewerDead=false;
 
 const $=id=>document.getElementById(id);
+
+// Backend base URL. Lets the static GitHub Pages copy talk to a hosted backend (Render/Gemini) while
+// the same code stays same-origin ("") when the backend serves the UI itself. Resolution order:
+// a ?backend=<url> query param (saved for next time), else a saved value, else same-origin.
+(function(){ try{ const q=new URL(location.href).searchParams.get("backend");
+  if(q!==null) localStorage.setItem("episcaf_backend", q.trim()); }catch(e){} })();
+function backendBase(){ try{ return (localStorage.getItem("episcaf_backend")||"").replace(/\/+$/,""); }catch(e){ return ""; } }
+const api=p=>backendBase()+p;
+
 function msg(t,cls){busyDone();const m=$("msg");m.className=t?("msg "+(cls||"")):"";m.textContent=t||"";}
 // Indeterminate progress for the slow step (growPatch enumeration can take ~a minute on a large
 // antigen): an animated bar + an elapsed-seconds counter. We don't know a true percentage, so this
@@ -222,7 +231,7 @@ $("file").onchange=()=>{
     state.pdbText=r.result; $("run").disabled=false; msg("");
     $("guess").textContent="Inspecting…";
     try{
-      const res=await fetch("/inspect?fmt="+fileFmt(),{method:"POST",body:state.pdbText});
+      const res=await fetch(api("/inspect?fmt="+fileFmt()),{method:"POST",body:state.pdbText});
       const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
       $("chain").innerHTML=d.chains.map(c=>`<option value="${c.id}">${c.id} (${c.n} res)</option>`).join("");
       if(d.antigen_chain) $("chain").value=d.antigen_chain;
@@ -245,7 +254,7 @@ $("run").onclick=async()=>{
   $("run").disabled=true;
   busy(state.mode==="antibody" ? "Identifying contact residues…" : "Generating candidate regions…");
   try{
-    const res=await fetch("/enumerate?"+qs.toString(),{method:"POST",body:state.pdbText});
+    const res=await fetch(api("/enumerate?"+qs.toString()),{method:"POST",body:state.pdbText});
     const data=await res.json();
     if(!res.ok||data.error) throw new Error(data.error||("HTTP "+res.status));
     state.D=data; state.sel=null; state.picked=new Set();
@@ -405,7 +414,7 @@ $("stage").onclick=async()=>{
     helix_bias:$("helix").value, epitopes:chosen.map(p=>p.epitope).join("|")});
   $("stage").disabled=true; smsg("Preparing design specifications…","busy");
   try{
-    const res=await fetch("/stage?"+qs.toString(),{method:"POST",body:state.pdbText});
+    const res=await fetch(api("/stage?"+qs.toString()),{method:"POST",body:state.pdbText});
     const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
     dl(d.run_spec.antigen+"_contigs.csv", d.contigs_csv, "text/csv");
     dl(d.run_spec.antigen+"_run_spec.json", JSON.stringify(d.run_spec,null,2), "application/json");
@@ -430,23 +439,29 @@ function renderConn(ok){
   const c=$("conn");
   if(ok){
     c.className="conn ok";
-    c.innerHTML='<b>Local service connected.</b> Structure processing runs on your machine.';
+    c.innerHTML = backendBase()
+      ? '<b>Connected.</b> Using backend <code>'+backendBase()+'</code>.'
+      : '<b>Local service connected.</b> Structure processing runs on your machine.';
   }else{
     c.className="conn bad";
-    c.innerHTML='<b>Backend service unavailable.</b> Open this page from the running service '+
-      '(local or hosted), or <a href="growpatch.html">explore the recorded example</a>. '+
-      '<details style="margin-top:5px"><summary>Setup</summary>Run '+
-      '<code>python scripts/growpatch_serve.py</code>, then open '+
-      '<code>http://127.0.0.1:8765/growpatch_tool.html</code>.</details>';
+    c.innerHTML='<b>Backend not connected.</b> '+
+      (backendBase() ? 'Could not reach <code>'+backendBase()+'</code>. ' : '')+
+      'Enter the backend URL for this tool, or <a href="growpatch.html">explore the recorded example</a>.'+
+      '<div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
+        '<input id="backendurl" placeholder="https://your-backend.example.com" value="'+backendBase()+'" '+
+        'style="min-width:260px;font-size:12.5px;padding:4px 7px;border:1px solid #cbb37a;border-radius:4px">'+
+        '<button id="backendset" style="font-size:12.5px;padding:5px 12px">Connect</button></div>';
+    const b=$("backendset");
+    if(b) b.onclick=()=>{ try{ localStorage.setItem("episcaf_backend",($("backendurl").value||"").trim()); }catch(e){} checkService(); };
   }
   setFormEnabled(ok);
 }
 async function checkService(){
-  // Enable the form only when a real backend answers /health. Works at any origin -- localhost over an
-  // SSH tunnel, or a hosted URL -- and a static host (e.g. GitHub Pages) with no backend 404s, so the
-  // form stays disabled and points at the recorded example.
+  // Enable the form only when a real backend answers /health -- same-origin (backend serves the UI) or
+  // a configured remote backend (static GitHub Pages copy + a hosted API). A static host with no backend
+  // configured fails the probe, so the form stays disabled and offers a URL field + the recorded example.
   try{
-    const r=await fetch("health",{cache:"no-store"});
+    const r=await fetch(api("/health"),{cache:"no-store"});
     const d=r.ok ? await r.json().catch(()=>({})) : {};
     renderConn(!!(r.ok && d && d.service==="episcaf"));
   }catch(e){ renderConn(false); }
