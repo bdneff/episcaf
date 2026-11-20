@@ -33,7 +33,7 @@ these are the canonical names.
 | column | meaning | good |
 |---|---|---|
 | `af3_n_clash_res` | real AF3 clashing residues vs the native antibody (antibody arm — ground truth) | 0 |
-| `aomclash_pred` | **AOMclash** predicted clash on the no-antibody arm (the learned, finer-grained successor to the cylinder) | low |
+| `aomclash_pred` | Legacy AOMclash column. The current design scorer writes raw carved occupancy (`s_p1_free`). Calibration cannot be inferred from the column name. | low |
 | `cylinder_native_aware`, `cylinder_ca_clashes`, `native_in_cylinder` | legacy cylinder surrogate — kept for before/after, superseded by `aomclash_pred` |
 
 ## Score / selection
@@ -42,7 +42,7 @@ these are the canonical names.
 | `composite` | the weighted score (dials in `episcaf_analysis/presets.py`) |
 | `binding_pred` | predicted experimental-binding probability from the DP4 logistic model (L2-regularized logistic regression on the selected ~15 features; ROC-AUC ≈ 0.82). Optional; the Results tab's **rank-by** dropdown ranks by it when present. |
 | `rank_in_group` | rank within the target/epitope |
-| `is_pass` | DP3 four-filter: `overall_rmsd ≤ 2 ∧ epitope_chunk_rmsd ≤ 1 ∧ mean_pae < 5 ∧ (af3_n_clash_res == 0` on the antibody arm, else low `aomclash_pred)` |
+| `is_pass` | Status reported by the input file. Results computes its own structural screen from the measured metrics below. |
 
 The four-filter (`overall_rmsd ≤ 2`, `epitope_chunk_rmsd ≤ 1`, `mean_pae < 5`, clash == 0) is the
 in-silico pass used throughout; the composite ranks within it.

@@ -4,24 +4,54 @@ The real backend behind the GUI tool. The static page (GitHub Pages / local serv
 and the design spine (RFd3 → ProteinMPNN → AlphaFold3) is GPU/SLURM work, so this small FastAPI
 service runs on a cluster-access host and does everything up to the GPU boundary **for real**:
 epitope detection, growPatch enumeration, contig staging, and scoring. It stops at the GPU: `/submit`
-stages a run under `$WS` and hands back the exact submit script — **you** launch the GPU jobs.
+stages a run under `$WS` and hands back a submission template — **you** launch the GPU jobs.
 
-## Why it's shaped this way
-- **Private SSH tunnel, not public.** v1 is reachable only through `ssh -L`, so there's no TLS, CORS
-  policy, API key, or rate-limiting to get right yet. Public exposure + a private key + per-key
-  rate-limiting is the deferred hardening step (see memory `webtool-server-future`).
-- **Stage, don't auto-submit.** The service never runs an `sbatch`. It writes the run and prints the
-  command; you stay in control of GPU spend. (Claude also never submits — the Gemini boundary.)
-- **Durable artifacts under `$WS`, never `/scratch`.** `/scratch` is ephemeral.
+## Private simulated pilot
 
-## Endpoints (wire-compatible with the local stdlib server)
-Structure = raw request body; everything else = query params.
+Use the web service Python environment. From the repository root, create a private local directory outside the checkout and issue a token for each tester. Keep the same database path across service restarts. The example writes the token to a file readable by the operator.
+
+```bash
+umask 077
+mkdir -p "$HOME/.episcaf-pilot"
+export EPISCAF_PILOT_DB="$HOME/.episcaf-pilot/runs.sqlite"
+export EPISCAF_PILOT_MODE=simulated
+python -m episcaf_service.pilot issue alice > "$HOME/.episcaf-pilot/alice.token"
+python -m uvicorn episcaf_service.app:app --host 127.0.0.1 --port 8808
+```
+
+Open the candidate tool at `http://127.0.0.1:8808/growpatch_tool.html`. Under **My runs**, paste the tester token. Upload a PDB, choose its antigen chain, generate candidates, check three regions and choose **Prepare design inputs**. The frozen review shows eight backbone trials for each region, 24 overall, split across the contigs actually generated. **Start test run** launches one simulated job for that review. A new review can launch another run.
+
+The service polls the simulated scheduler every second. Return to **My runs** in a fresh browser, sign in with the same token and open the completed result. The CSV records the trial budget of each selected region. The simulator produces no structural measurements. To exercise failure, restart with `EPISCAF_SIM_FAIL=1` and launch a new test run. Already submitted jobs retain their outcome.
+
+Issue a new token for the same owner to rotate it. Run `python -m episcaf_service.pilot revoke alice` to revoke access, including existing sessions. Owner names identify people across rotations. The service compares token digests on every private request. The browser sends the sign-in header and the path-scoped HttpOnly session cookie only to the origin serving the pilot. Use HTTPS or a loopback tunnel for private access. Keep the database and its backups on a private local filesystem. It contains the reviewed uploads and results. Cloud Run (`K_SERVICE`) and the default service configuration expose staging only. The legacy staging API uses a separate artifact namespace.
+
+### Reproduce the browser acceptance test
+
+From the repo root, run `python tests/test_service.py` in the service environment. For the browser test, install Chrome and Playwright Core, then run the following. The test starts its own loopback services, uses a temporary database and strips the partner chains from the checked-in 8PWW fixture. DiscoTope is disabled for this test.
+
+```bash
+npm install --prefix /tmp/episcaf-browser playwright-core
+PYTHON="$(command -v python)" PLAYWRIGHT_MODULE=/tmp/episcaf-browser/node_modules/playwright-core/index.mjs node tests/pilot_browser.mjs
+```
+
+### Before the first Gemini run
+
+- Confirm the **approved submission host** and Brandon's Slurm account, partition and job environment. The repository calls the cluster Gemini and documents a tunnel to `<gemini-host>`. The approved submission hostname is unverified.
+- Confirm read/write access from the submission host and a worker to the same durable run directory. The configured workspace is `/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff`. The storage notes below report that the login node lacks that mount and identify `$HOME/episcaf_runs` as an alternative. Verify the chosen path before staging a real job.
+- Implement durable submission reconciliation using the review/run ID and the actual job and array IDs returned by Slurm. Reconcile interrupted submissions before retrying. Refresh the queue and accounting about every 30 minutes. Keep pending start estimates separate from actual terminal times. Surface failed, cancelled and timed-out jobs and collect completed metrics into owner-scoped storage.
+- The existing generated `submit.sh` is an operator template. RFd3 submission is commented out, the AF3 array still uses literal `1-N`, and the MPNN step leaves retained-backbone selection in a comment. Wire the per-contig trial allocation, stage dependencies, retained files, real array bounds and metrics production before the first submission.
+- The current design scorer writes raw `s_p1_free` to `aomclash_pred`. The Results viewer displays that column without applying a calibrated cutoff. The bare-backbone cutoff remains open. The simulator exercises the web workflow only.
+
+## Staging endpoints
+
+The CPU endpoints can run on a local, hosted or cluster-access service. The private pilot above uses its own database and endpoints under `/pilot`. Legacy `/submit` writes staging artifacts under `$WS` and has no tester ownership model. Use the private pilot for tester runs.
 
 | method | path | does |
 |---|---|---|
 | GET  | `/health` | liveness + resolved `$WS` + whether SLURM is on PATH |
 | POST | `/inspect?fmt=&chain=` | antibody-present vs lone-antigen + the contact epitope |
 | POST | `/enumerate?fmt=&chain=&top_k=&disco=&…` | growPatch candidate epitopes. `disco=0` returns them fast in generation order (unranked); `disco=1` (default) ranks by **total** DiscoTope when a scorer is configured. The GUI calls it twice — unranked first for instant display, then ranked in the background |
+| POST | `/prepare` | JSON filename, chain and selected regions → contigs and the fixed trial allocation for review |
 | POST | `/stage?fmt=&chain=&epitopes=a\|b&…` | build RFd3 contigs for the chosen epitopes → `{run_spec, contigs_csv, n_contigs}` (download; no `$WS` write) |
 | POST | `/submit?fmt=&chain=&mode=&name=&epitopes=a\|b&…` | stage a run under `$WS` → `{run_id, run_dir, submit_sh, …}` |
 | GET  | `/status/{run_id}` | staged spec, whether metrics exist, live `squeue` (on a SLURM host) |
@@ -51,8 +81,8 @@ ssh -L 8808:localhost:8808 <gemini-host>
 http://localhost:8808/growpatch_tool.html
 ```
 Uploading a structure runs real growPatch enumeration (and DiscoTope ranking, if enabled) on the
-cluster; **Prepare design inputs** calls `/stage` and downloads the contigs + run spec. To persist a
-run under `$WS` and get `submit.sh`, call `/submit`; run that script on the cluster, then read results
+configured host. In staging mode **Prepare design inputs** calls `/prepare` and offers both downloads. To persist a
+run under `$WS` and get `submit.sh`, call `/submit`; complete the template for your cluster, then read results
 back with `/status/{run_id}` and `/results/{run_id}` once AF3 finishes.
 
 ## DiscoTope scoring (candidate ranking)
@@ -167,4 +197,4 @@ still deferred. If you ever put a sanitizing load balancer in front, revisit whi
 (a GCLB appends `client, lb`, making the client the second-from-right).
 
 ## Not in v1 (deferred)
-Auto-submitting GPU jobs; an in-app login/token (Cloudflare Access covers group auth at the edge).
+Real GPU submission and Slurm accounting are pending.

@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from episcaf_analysis.growpatch import read as R   # noqa: E402
 # viewer_data / stage_run live in episcaf_service.staging (one source of truth, shared with the
 # cluster FastAPI service); _resi is re-exported so this module's callers keep working unchanged.
-from episcaf_service.staging import _resi, stage_run, viewer_data   # noqa: E402,F401
+from episcaf_service.staging import _resi, candidate_plan, stage_run, viewer_data   # noqa: E402,F401
 
 DOCS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs")
 
@@ -44,7 +44,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":                        # backend-presence probe (matches the FastAPI app)
-            self._send(200, json.dumps({"ok": True, "service": "episcaf"}).encode(), "application/json")
+            self._send(200, json.dumps({"ok": True, "service": "episcaf", "biolib": os.getenv("EPISCAF_DISCOTOPE") == "biolib"}).encode(), "application/json")
             return
         if self.path == "/" or self.path.startswith("/?"):
             try:
@@ -57,7 +57,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
-        if parsed.path not in ("/enumerate", "/inspect", "/stage"):
+        if parsed.path not in ("/enumerate", "/inspect", "/stage", "/prepare"):
             self._send(404, json.dumps({"error": "unknown endpoint"}))
             return
         q = urllib.parse.parse_qs(parsed.query)
@@ -69,6 +69,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         try:
             tmp.write(body)
             tmp.close()
+            if parsed.path == "/prepare":
+                selection = json.loads(body)
+                plan = candidate_plan(selection["filename"], selection["chain"], selection["regions"])
+                self._send(200, json.dumps(plan))
+                return
             if parsed.path == "/inspect":
                 self._send(200, json.dumps(R.detect_complex(tmp.name, chain)))
                 return
@@ -102,7 +107,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._send(400, json.dumps({"error": f"bad parameter: {e}"}))
                 return
             mode = q.get("mode", ["growpatch"])[0]
-            data = viewer_data(tmp.name, chain or "A", sasa_cut, footprint, methods, top_k, mode)
+            data = viewer_data(tmp.name, chain or "A", sasa_cut, footprint, methods, top_k, mode,
+                               bool(int(q.get("disco", ["1"])[0])))
             self._send(200, json.dumps(data))
         except Exception as e:                          # a bad upload must not crash the server
             self._send(400, json.dumps({"error": f"{type(e).__name__}: {e}"}))

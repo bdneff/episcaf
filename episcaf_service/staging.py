@@ -22,6 +22,7 @@ import io
 import json
 import os
 import re
+from collections import Counter
 
 from episcaf_analysis.growpatch import read as R
 from episcaf_pipeline import build_growpatch_designs as BGD
@@ -92,6 +93,32 @@ def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k, mod
     return dict(chain=chain, sasa_cut=sasa_cut, n_residues=len(residues),
                 n_surface=sum(r["surf"] for r in residues), n_patches=len(patches),
                 has_disco=has_disco, residues=residues, patches=patches, mode="growpatch")
+
+
+def candidate_plan(filename, chain, regions):
+    """Allocate eight attempts per selected region across the actual generated contigs."""
+    trials = 8
+    if not regions or len(set(regions)) != len(regions):
+        raise ValueError("Select one or more distinct regions.")
+    for region in regions:
+        islands = BGD.parse_epitope(region)
+        if not islands or any(c != chain or left > right for c, left, right in islands):
+            raise ValueError("Each region must contain ranges on the selected antigen chain.")
+    candidates = [dict(patch=i, epitope=e, n_islands=len(e.split(";")), n_res=0, methods=[])
+                  for i, e in enumerate(regions)]
+    rows, skipped = BGD.build_rows(filename, [chain], candidates, 103, 4, 0)
+    if skipped:
+        raise ValueError("A selected region cannot fit in the scaffold. Adjust your selection.")
+    counts = Counter(row["growpatch_epitope"] for row in rows)
+    assigned = Counter()
+    for row in rows:
+        region = row["growpatch_epitope"]
+        base, extra = divmod(trials, counts[region])
+        row["backbone_trials"] = base + int(assigned[region] < extra)
+        assigned[region] += 1
+    return dict(filename=filename, chain=chain, regions=regions, rounds=1,
+                partial_diffusion=False, trials_per_candidate=trials, contigs=rows,
+                total=sum(r["backbone_trials"] for r in rows))
 
 
 def stage_run(cif_path, chain, epitopes, cfg):

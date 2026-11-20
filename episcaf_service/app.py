@@ -16,6 +16,10 @@ See episcaf_service/README.md for the tunnel + GUI wiring.
 """
 from __future__ import annotations
 
+import asyncio
+import logging
+from contextlib import asynccontextmanager
+
 import os
 import shutil
 import subprocess
@@ -28,7 +32,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from episcaf_analysis.growpatch import read as R
-from episcaf_service import scoring, staging
+from episcaf_service import pilot, scoring, staging
 
 # $WS is persistent cluster storage; /scratch is ephemeral, never used for run artifacts.
 # EPISCAF_WS overrides it (used by the local test suite to point at a tmp dir).
@@ -43,11 +47,49 @@ def ws_root() -> str:
     return os.environ.get("EPISCAF_WS", _WS_DEFAULT)
 
 
-app = FastAPI(title="episcaf scaffolding service", version="0.1.0")
+async def monitor():
+    while True:
+        try:
+            await run_in_threadpool(pilot.refresh)
+        except Exception:
+            logging.getLogger(__name__).exception("Pilot monitor refresh failed")
+        await asyncio.sleep(pilot.scheduler.poll_seconds)
+
+
+@asynccontextmanager
+async def lifespan(app):
+    task = None
+    if pilot.enabled():
+        pilot.initialize()
+        task = asyncio.create_task(monitor())
+    try:
+        yield
+    finally:
+        if task:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+
+app = FastAPI(lifespan=lifespan, title="episcaf scaffolding service", version="0.1.0")
 # Localhost-only MVP reached cross-origin from the GUI (Pages / local server), so the browser needs
 # CORS to call it at all. Blanket-permissive is acceptable while it is tunnel-private; tightening it
 # is part of the deferred public-exposure hardening (private key + rate limit).
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+app.include_router(pilot.router)
+
+
+@app.middleware("http")
+async def private_response(request: Request, call_next):
+    if not request.url.path.startswith("/pilot/"):
+        return await call_next(request)
+    origin = request.headers.get("origin")
+    if origin and origin != str(request.base_url).rstrip("/"):
+        return Response(status_code=403)
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
 
 # Optional per-client rate limiting (slowapi). If the package isn't installed the app runs unlimited,
 # so this never breaks a deployment. EPISCAF_RATE_LIMIT (default "30/minute") caps the expensive
@@ -106,6 +148,8 @@ def _tmp_structure(body: bytes, fmt: str):
 def health():
     ws = ws_root()
     return {"ok": True, "service": "episcaf", "ws": ws, "ws_exists": os.path.isdir(ws),
+            "pilot_mode": "simulated" if pilot.enabled() else "staging",
+            "biolib": os.getenv("EPISCAF_DISCOTOPE") == "biolib",
             "slurm": bool(shutil.which("squeue"))}
 
 
@@ -138,6 +182,12 @@ async def enumerate_patches(request: Request, fmt: str = Query("pdb"), chain: st
         return JSONResponse(status_code=400, content={"error": f"{type(e).__name__}: {e}"})
     finally:
         os.unlink(path)
+
+
+@app.post("/prepare")
+@limit(_RATE)
+def prepare(request: Request, selection: pilot.RegionSelection):
+    return pilot.prepare(selection)
 
 
 @app.post("/stage")

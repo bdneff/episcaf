@@ -109,17 +109,24 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
   are ranked by their total DiscoTope score; otherwise the full candidate set is shown for inspection
   and selection.</p>
 
-  <div class="conn" id="conn" role="status" aria-live="polite">Checking for the local service&hellip;</div>
+  <div class="conn" id="conn" role="status" aria-live="polite">Checking the structure-processing service&hellip;</div>
 
+  <section class="card" id="myruns" hidden>
+    <h2>My runs</h2>
+    <form id="signin"><label>Tester token <input id="token" type="password" required autocomplete="off"></label>
+      <button>Sign in</button></form>
+    <button id="signout" hidden>Sign out</button>
+    <p id="authmsg" role="status"></p><div id="runlist"></div>
+  </section>
   <div class="card" id="formcard">
     <div class="row">
-      <div class="fld"><label for="file">Antigen structure (PDB or mmCIF)</label><input type="file" id="file" accept=".pdb,.ent,.cif"></div>
+      <div class="fld"><label for="file">Antigen structure (PDB or mmCIF)</label><input type="file" disabled id="file" accept=".pdb,.ent,.cif"></div>
       <div class="fld"><label for="chain">Antigen chain</label><select id="chain"><option value="A">A</option></select></div>
       <div class="fld"><label for="sasa">Minimum relative solvent accessibility</label><input type="number" id="sasa" value="0.2" step="0.05" min="0" max="1"><span class="hint">Residues at or above this threshold are treated as surface residues.</span></div>
       <div class="fld"><label for="topk">Maximum candidate count</label><input type="number" id="topk" value="0" step="10" min="0" title="0 keeps every candidate"><span class="hint">Returns this many top-ranked candidates. Leave at 0 to keep every candidate.</span></div>
       <div class="fld" id="discofld"><label for="disco">Candidate ranking</label>
         <label class="chk"><input type="checkbox" id="disco" checked><span>Rank by DiscoTope-3.0</span></label>
-        <span class="hint">Orders candidates by epitope likelihood (external DiscoTope-3.0 step, adds up to ~5&nbsp;min). Off returns them instantly in generation order.</span></div>
+        <span class="hint" id="provider">A BioLib-enabled service sends your structure to BioLib for ranking. </span><span class="hint">Orders candidates by epitope likelihood (external DiscoTope-3.0 step, adds up to ~5&nbsp;min). Off returns them instantly in generation order.</span></div>
       <div class="fld"><label aria-hidden="true">&nbsp;</label><button id="run" class="btn-primary" disabled>Generate candidates</button></div>
     </div>
     <div class="row" style="margin-top:9px">
@@ -153,24 +160,12 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
       <div class="lbl" style="margin-bottom:4px">Prepare scaffold-design inputs</div>
       <div style="font-size:12px;color:#555;margin-bottom:8px">Convert the selected regions into design
       specifications and a run configuration for the cluster.</div>
-      <div class="row">
-        <div class="fld"><label for="runname">Run name</label><input id="runname" value="antigen" style="width:100px"></div>
-        <div class="fld" title="How many positions of the epitope within the scaffold to generate, by varying the flanking residues on each side."><label for="variants">Epitope positions to try</label><input type="number" id="variants" value="4" min="1" max="30"></div>
-        <div class="fld"><label for="rfd3">Backbones per design specification</label><input type="number" id="rfd3" value="8" min="1"></div>
-        <div class="fld"><label for="mpnn">Sequences per backbone</label><input type="number" id="mpnn" value="8" min="1"></div>
-        <div class="fld"><label id="budgetlbl">Design limit</label>
-          <span class="seg" id="budgetseg" role="group" aria-labelledby="budgetlbl"><button data-b="n_designs" class="on" aria-pressed="true">Designs per candidate region</button><button data-b="time" aria-pressed="false">Time limit (hours)</button></span></div>
-        <div class="fld"><label for="budgetval" id="budgetvallbl">Designs per candidate region</label><input type="number" id="budgetval" value="200" min="1"></div>
-        <div class="fld" title="Planned setting; not connected to the current generation workflow.">
-          <label for="helix">Helix bias <span id="helixval" style="color:var(--blue);font-variant-numeric:tabular-nums">0.00</span></label>
-          <input type="range" id="helix" min="-1" max="1" step="0.05" value="0" style="width:120px"></div>
-        <div class="fld"><label aria-hidden="true">&nbsp;</label><button id="stage" class="btn-primary">Prepare design inputs</button></div>
-      </div>
-      <div style="font-size:11.5px;color:#8a6d1f;background:#fdf7e3;border:1px solid #efe3b8;border-radius:4px;padding:5px 9px;margin-top:8px">
-        Planned setting. Helix bias is not connected to the current generation workflow.
-      </div>
+      <button id="stage" disabled>Prepare design inputs</button>
       <div style="font-size:12px;color:#555;margin-top:8px" id="stagesel"></div>
-      <div id="stagemsg"></div>
+      <div id="stagemsg" role="status"></div>
+      <section id="review" hidden><h3>Review run</h3><p id="reviewtext"></p>
+        <div id="exports"></div>
+        <button id="launch" hidden>Start test run</button></section>
     </div>
   </div>
 
@@ -183,10 +178,12 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
   ProteinMPNN, or AlphaFold&nbsp;3. <b>Data source:</b> <code>episcaf_analysis/growpatch</code>.</div>
 </div>
 
+<script src="pilot.js"></script>
 <script>
 "use strict";
+const esc=value=>String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const RED="#c0392b", GREY="#c4c4c4";
-let state={sel:null, D:null, pdbText:null, picked:new Set(), budgetMode:"n_designs", ranking:false, discoRequested:true};
+let state={sel:null, D:null, pdbText:null, picked:new Set(), ranking:false, discoRequested:true};
 let viewer=null, viewerDead=false;
 
 const $=id=>document.getElementById(id);
@@ -194,9 +191,28 @@ const $=id=>document.getElementById(id);
 // Backend base URL. Lets the static GitHub Pages copy talk to a hosted backend (Render/Gemini) while
 // the same code stays same-origin ("") when the backend serves the UI itself. Resolution order:
 // a ?backend=<url> query param (saved for next time), else a saved value, else same-origin.
-(function(){ try{ const q=new URL(location.href).searchParams.get("backend");
-  if(q!==null) localStorage.setItem("episcaf_backend", q.trim()); }catch(e){} })();
-function backendBase(){ try{ return (localStorage.getItem("episcaf_backend")||"").replace(/\/+$/,""); }catch(e){ return ""; } }
+let simulated=false, reviewed=null, revision=0, signedIn=false;
+function backendBase(){
+  if(simulated) return "";
+  try{
+    const saved=localStorage.getItem("episcaf_backend");
+    const u=saved && new URL(saved);
+    return u && ["http:","https:"].includes(u.protocol) ? u.origin : "";
+  }catch{ return ""; }
+}
+function invalidate(){
+  revision++;
+  reviewed=null;
+  $("review").hidden=true;
+  clearExports();
+  $("stagemsg").textContent="";
+}
+function clearSelection(){
+  invalidate(); state.picked.clear(); state.D=null;
+  $("results").style.display="none";
+  $("sel").textContent="Select a candidate to see its residues and score.";
+}
+$("chain").onchange=clearSelection;
 const api=p=>backendBase()+p;
 
 function msg(t,cls){busyDone();const m=$("msg");m.className=t?("msg "+(cls||"")):"";m.textContent=t||"";}
@@ -217,7 +233,7 @@ function busyDone(){ if(_busyTimer){clearInterval(_busyTimer);_busyTimer=null;} 
 // Lock inputs that would corrupt an in-flight run: the file picker and the DiscoTope-ranking toggle.
 // Re-enabled when the run settles (via syncControls).
 function setRunning(on){
-  const f=$("file"); if(f) f.disabled=on;
+  const f=$("file"); if(f) f.disabled=on; $("chain").disabled=on;
   if(on){ $("disco").disabled=true; } else { syncControls(); }
 }
 // The "max candidate count" only truncates a ranked list, so it applies only when ranking is on.
@@ -230,24 +246,28 @@ const hasDisco=()=>!!(state.D&&state.D.has_disco);
 
 // file -> read text, then ask the server what it is
 $("file").onchange=()=>{
+  clearSelection(); $("guess").textContent=""; $("chain").replaceChildren(new Option("A","A")); state.pdbText=null; $("run").disabled=true;
   const f=$("file").files[0]; if(!f){$("run").disabled=true;return;}
   const r=new FileReader();
   r.onload=async()=>{
-    state.pdbText=r.result; $("run").disabled=false; msg("");
+    if($("file").files[0]!==f)return;
+    state.pdbText=r.result; msg("");
     $("guess").textContent="Inspecting…";
     try{
       const res=await fetch(api("/inspect?fmt="+fileFmt()),{method:"POST",body:state.pdbText});
       const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
-      $("chain").innerHTML=d.chains.map(c=>`<option value="${c.id}">${c.id} (${c.n} res)</option>`).join("");
+      if($("file").files[0]!==f)return;
+      $("chain").replaceChildren(...d.chains.map(c=>new Option(c.id+" ("+c.n+" res)",c.id)));
       if(d.antigen_chain) $("chain").value=d.antigen_chain;
       if(d.is_complex){
-        $("guess").innerHTML=`This looks like an antibody&ndash;antigen complex (partner chain(s) ${d.partner_chains.join(", ")}). `+
-          `growPatch will scan antigen chain ${d.antigen_chain} for candidate regions. To scaffold the `+
+        $("guess").innerHTML=`This looks like an antibody&ndash;antigen complex (partner chain(s) ${esc(d.partner_chains.join(", "))}). `+
+          `growPatch will scan antigen chain ${esc(d.antigen_chain)} for candidate regions. To scaffold the `+
           `antibody's contact epitope instead, use <a href="scaffold.html">Scaffold a selected epitope</a>.`;
       }else{
-        $("guess").innerHTML=`No antibody partner was detected. growPatch will scan chain ${d.antigen_chain||$("chain").value} for candidate regions.`;
+        $("guess").innerHTML=`No antibody partner was detected. growPatch will scan chain ${esc(d.antigen_chain||$("chain").value)} for candidate regions.`;
       }
     }catch(e){ console.warn("inspect:",e); $("guess").textContent="Could not inspect the structure. Check the service connection, then choose the antigen chain manually."; }
+    if($("file").files[0]===f)$("run").disabled=false;
   };
   r.readAsText(f);
 };
@@ -270,6 +290,7 @@ async function enumerateReq(disco){
 }
 $("run").onclick=async()=>{
   if(!state.pdbText){msg("Choose a PDB file first.","err");return;}
+  clearSelection();
   const disco=$("disco").checked;
   state.discoRequested=disco;
   $("run").disabled=true; setRunning(true); state.ranking=false;
@@ -311,14 +332,14 @@ $("run").onclick=async()=>{
 function buildStats(){
   const D=state.D;
   const items=[["candidate regions",D.n_patches],["surface residues",D.n_surface+" / "+D.n_residues]];
-  $("stats").innerHTML=items.map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
+  $("stats").innerHTML=items.map(([k,v])=>`<div class="stat"><b>${esc(v)}</b>${k}</div>`).join("");
 }
-function segText(n){return n===1?"1 sequence segment":n+" sequence segments";}
+function segText(n){return n===1?"1 sequence segment":Number(n)+" sequence segments";}
 function discoBadge(p){
   if(!hasDisco()) return "";
   if(p.disco_sum==null)
     return '<span class="disco none" title="No DiscoTope-3.0 score for this candidate">No score</span>';
-  return `<span class="disco" title="total DiscoTope-3.0 over ${p.disco_n} of ${p.disco_total} residues (mean ${p.disco_mean.toFixed(2)}), normalized within this antigen">DiscoTope Σ ${p.disco_sum.toFixed(1)}</span>`;
+  return `<span class="disco" title="total DiscoTope-3.0 over ${Number(p.disco_n)} of ${Number(p.disco_total)} residues (mean ${p.disco_mean.toFixed(2)}), normalized within this antigen">DiscoTope Σ ${p.disco_sum.toFixed(1)}</span>`;
 }
 function rankHdr(){
   const el=$("rankhdr"); const D=state.D;
@@ -344,7 +365,7 @@ function rankHdr(){
     el.className="rankhdr unavail";
     el.innerHTML="<b>DiscoTope scores unavailable.</b> Showing the full growPatch candidate set for "+
       "inspection and selection. Scoring a new structure requires the external DiscoTope-3.0 step "+
-      "(not run by the local service).";
+      "on a service with a configured scorer.";
   }
 }
 function buildList(){
@@ -359,10 +380,10 @@ function buildList(){
     row.className="prow"+(state.sel===p.i?" on":""); row.tabIndex=0; row.dataset.i=p.i;
     row.setAttribute("role","option"); row.setAttribute("aria-selected", state.sel===p.i ? "true":"false");
     const ranked = hasDisco();
-    row.innerHTML=`<input type="checkbox" class="pick" ${state.picked.has(p.i)?"checked":""} aria-label="Include ${p.epitope} in the staged run">`+
+    row.innerHTML=`<input type="checkbox" class="pick" ${state.picked.has(p.i)?"checked":""} aria-label="Include ${esc(p.epitope)} in the staged run">`+
       (ranked?`<span class="rank">${rank+1}.</span>`:"")+
-      `<span class="ep">${p.epitope}</span>`+discoBadge(p)+
-      `<span class="rowmeta">candidate ${p.i} &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)}</span>`;
+      `<span class="ep">${esc(p.epitope)}</span>`+discoBadge(p)+
+      `<span class="rowmeta">candidate ${Number(p.i)} &middot; ${Number(p.n_res)} residues &middot; ${segText(p.n_isl)}</span>`;
     row.querySelector(".pick").onclick=e=>{e.stopPropagation();
       if(e.target.checked) state.picked.add(p.i); else state.picked.delete(p.i); updateStageSel();};
     row.onclick=()=>select(p.i);
@@ -372,10 +393,11 @@ function buildList(){
   updateStageSel();
 }
 function updateStageSel(){
+  invalidate();
   const el=$("stagesel"); if(!el) return;
-  const n=state.picked.size, tot=state.D?state.D.patches.length:0;
-  el.innerHTML = n ? `<b>${n}</b> candidate region(s) selected for input preparation.` :
-    `All <b>${tot}</b> candidate regions will be included. Select rows to use a subset.`;
+  const n=state.picked.size;
+  el.textContent=n ? n+" regions selected." : "Select at least one region to prepare a run.";
+  $("stage").disabled=!n;
 }
 const patchById=i=>state.D.patches.find(p=>p.i===i);
 function select(i){
@@ -384,10 +406,10 @@ function select(i){
   if(!p){ sel.textContent="Select a candidate to see its residues and score."; return; }
   const scoreLine = !hasDisco() ? ``
     : (p.disco_sum==null
-        ? ` &middot; no DiscoTope score (0 of ${p.disco_total} residues scored)`
-        : ` &middot; total DiscoTope ${p.disco_sum.toFixed(1)} (${p.disco_n} of ${p.disco_total} residues scored, mean ${p.disco_mean.toFixed(2)})`);
+        ? ` &middot; no DiscoTope score (0 of ${Number(p.disco_total)} residues scored)`
+        : ` &middot; total DiscoTope ${p.disco_sum.toFixed(1)} (${Number(p.disco_n)} of ${Number(p.disco_total)} residues scored, mean ${p.disco_mean.toFixed(2)})`);
   sel.innerHTML =
-    `<div><span class="k">Segments sent to scaffold design</span> <b>${p.epitope}</b> &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)}${scoreLine}</div>`+
+    `<div><span class="k">Segments sent to scaffold design</span> <b>${esc(p.epitope)}</b> &middot; ${Number(p.n_res)} residues &middot; ${segText(p.n_isl)}${scoreLine}</div>`+
     `<div class="gapnote">growPatch fills short sequence gaps so the scaffold includes the backbone connecting nearby surface residues; the segments above are what goes to scaffold design.</div>`;
   document.querySelectorAll(".prow").forEach(r=>{
     const on=+r.dataset.i===i; r.classList.toggle("on",on); r.setAttribute("aria-selected",on?"true":"false");
@@ -412,7 +434,7 @@ function loadStructure(){
   if(typeof $3Dmol==="undefined" || !webglOK()){ viewerFail("The interactive 3D viewer is unavailable in this browser."); return; }
   try{
     if(!viewer || $("viewer").querySelector("p")){ $("viewer").innerHTML=""; viewer=$3Dmol.createViewer("viewer",{backgroundColor:"white"}); }
-    viewer.clear(); viewer.addModel(state.pdbText, "pdb");
+    viewer.clear(); viewer.addModel(state.pdbText, fileFmt());
     viewer.setStyle({},{}); viewer.setStyle({chain:state.D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
     viewer.zoomTo({chain:state.D.chain}); viewer.render(); viewMsg("");
     if(state.sel!=null) paint3d();
@@ -434,56 +456,36 @@ function resetView(){ if(viewer&&!viewerDead&&state.D){try{paint3d();viewer.zoom
 $("btnreset").onclick=resetView;
 $("btnfit").onclick=fitStructure;
 
-// --- stage a run ---
-document.querySelectorAll("#budgetseg button").forEach(b=>b.onclick=()=>{
-  state.budgetMode=b.dataset.b;
-  $("budgetval").value = (b.dataset.b==="time") ? 4 : 200;
-  $("budgetvallbl").textContent = (b.dataset.b==="time") ? "Time limit (hours)" : "Designs per candidate region";
-  document.querySelectorAll("#budgetseg button").forEach(x=>{
-    const on=x===b; x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false");
-  });
-});
-$("helix").oninput=()=>{$("helixval").textContent=parseFloat($("helix").value).toFixed(2);};
-function smsg(t,cls){const m=$("stagemsg");m.className=t?("msg "+(cls||"")):"";m.innerHTML=t||"";}
-function dl(name,text,type){const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click();}
-$("stage").onclick=async()=>{
-  if(!state.D||!state.D.patches.length){smsg("Generate candidate regions before preparing design inputs.","err");return;}
-  const chosen=state.picked.size?state.D.patches.filter(p=>state.picked.has(p.i)):state.D.patches;
-  const qs=new URLSearchParams({chain:$("chain").value, name:$("runname").value||"antigen",
-    variants:$("variants").value, rfd3:$("rfd3").value, mpnn:$("mpnn").value,
-    budget_mode:state.budgetMode, budget_value:$("budgetval").value, mode:"growpatch", fmt:fileFmt(),
-    helix_bias:$("helix").value, epitopes:chosen.map(p=>p.epitope).join("|")});
-  $("stage").disabled=true; smsg("Preparing design specifications…","busy");
-  try{
-    const res=await fetch(api("/stage?"+qs.toString()),{method:"POST",body:state.pdbText});
-    const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
-    dl(d.run_spec.antigen+"_contigs.csv", d.contigs_csv, "text/csv");
-    dl(d.run_spec.antigen+"_run_spec.json", JSON.stringify(d.run_spec,null,2), "application/json");
-    smsg(`Prepared <b>${d.n_contigs}</b> design specifications for ${chosen.length} selected region(s). The estimated total is ${d.run_spec.designs_at_full_fanout.toLocaleString()} sequence candidates under the current generation settings. Downloaded the design-specification CSV and run configuration. The cluster calculations have not started.`,"busy");
-  }catch(e){ console.warn("stage:",e); smsg("Could not prepare the design inputs. Check the local service connection.","err"); }
-  finally{ $("stage").disabled=false; }
-};
+$("stage").onclick=prepareReview;
 
-// --- local-service connection status ---------------------------------------
-// This page's /inspect, /enumerate and /stage calls are same-origin, so they only reach a backend
-// when the page is itself served by scripts/growpatch_serve.py (http://127.0.0.1:8765/). Opened from
-// GitHub Pages or as a file://, those paths hit a static origin with no service and the form would
-// fail silently. We detect that up front from the origin, then confirm the server is actually
-// listening with one lightweight same-origin request (no new endpoint, no side effects).
+function clearExports(){
+  for(const a of $("exports").querySelectorAll("a"))URL.revokeObjectURL(a.href);
+  $("exports").replaceChildren();
+}
+function addExport(label,filename,text,type){
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([text],{type})); a.download=filename; a.textContent=label;
+  $("exports").append(a," ");
+}
+function exportPlan(plan){
+  const cols=Object.keys(plan.contigs[0]);
+  const cell=value=>'"'+String(value??"").replaceAll('"','""')+'"';
+  const csv=[cols,...plan.contigs.map(row=>cols.map(key=>row[key]))]
+    .map(row=>row.map(cell).join(",")).join("\n")+"\n";
+  addExport("Download contigs", "contigs.csv", csv, "text/csv");
+  addExport("Download run configuration","run_spec.json",JSON.stringify(plan,null,2),"application/json");
+}
 function setFormEnabled(on){
-  ["file","run","stage"].forEach(id=>{const e=$(id);if(e)e.disabled=on?e.disabled:true;});
-  if(!on){ $("run").disabled=true; $("stage").disabled=true; }
-  else { $("stage").disabled=false; }  // run stays disabled until a file is chosen
+  $("file").disabled=!on;
+  $("run").disabled=!on || !state.pdbText;
+  $("stage").disabled=!on || !state.picked.size;
   $("formcard").style.opacity=on?"1":"0.55";
 }
 function renderConn(ok){
   const c=$("conn");
   if(ok){
     c.className="conn ok";
-    c.innerHTML = backendBase()
-      ? '<b>Connected.</b> Using backend <code>'+backendBase()+'</code>.'
-      : '<b>Local service connected.</b> Structure processing runs on your machine.';
+    c.textContent="Your upload is processed by the episcaf service at "+(backendBase() || location.origin)+".";
   }else{
     c.className="conn bad";
     c.innerHTML='<b>Backend not connected.</b> '+
@@ -503,11 +505,104 @@ async function checkService(){
   // a configured remote backend (static GitHub Pages copy + a hosted API). A static host with no backend
   // configured fails the probe, so the form stays disabled and offers a URL field + the recorded example.
   try{
-    const r=await fetch(api("/health"),{cache:"no-store"});
-    const d=r.ok ? await r.json().catch(()=>({})) : {};
-    renderConn(!!(r.ok && d && d.service==="episcaf"));
+    const own=await fetch("/health",{cache:"no-store"}).then(r=>r.json()).catch(()=>({}));
+    simulated=own.service==="episcaf" && own.pilot_mode==="simulated";
+    if(!simulated){
+      const configured=new URL(location.href).searchParams.get("backend");
+      try{if(configured!==null)localStorage.setItem("episcaf_backend",configured.trim());}catch{}
+    }
+    $("myruns").hidden=!simulated;
+    $("launch").hidden=!simulated;
+    if(simulated) await loadRuns();
+    const d=backendBase() ? await fetch(api("/health"),{cache:"no-store"}).then(r=>r.ok?r.json():{}) : own;
+    $("provider").textContent=d.biolib ? "Enabling ranking sends your uploaded structure to BioLib. " :
+      d.biolib===false ? "Ranking uses scores available on the processing service. " :
+      "A BioLib-enabled service sends your structure to BioLib for ranking. ";
+    renderConn(d.service==="episcaf");
   }catch(e){ renderConn(false); }
 }
+let loadingRuns=false;
+function showLogin(message){
+  signedIn=false;
+  $("signin").hidden=false; $("signout").hidden=true;
+  $("runlist").replaceChildren(); $("authmsg").textContent=message;
+}
+async function loadRuns(){
+  if(loadingRuns)return;
+  loadingRuns=true;
+  try{
+    const rows=await (await pilotRequest("runs")).json();
+    signedIn=true; $("signin").hidden=true; $("signout").hidden=false;
+    $("authmsg").textContent=rows.length ? "" : "You have no submitted runs.";
+    const items=rows.map(run=>{
+      const p=document.createElement("p");
+      const date=t=>new Date(1000*t).toLocaleString();
+      p.textContent=run.filename+" · chain "+run.chain+" · "+run.stage+" · submitted "+
+        date(run.submitted)+" · updated "+date(run.updated)+" ";
+      if(run.estimated_start)p.append("· estimated start "+date(run.estimated_start)+" ");
+      if(run.completed)p.append("· completed "+date(run.completed)+" ");
+      if(run.reason)p.append(run.reason);
+      if(run.stage==="completed"){
+        const a=document.createElement("a"); a.textContent="Open simulated results";
+        a.href="results.html?run="+encodeURIComponent(run.id); p.append(a);
+      }
+      return p;
+    });
+    $("runlist").replaceChildren(...items);
+  }catch(e){showLogin(e.message);}
+  finally{loadingRuns=false;}
+}
+$("signin").onsubmit=async e=>{
+  e.preventDefault();
+  const token=$("token").value.trim(); $("token").value="";
+  try{
+    await pilotRequest("session",{method:"POST",headers:{Authorization:"Bearer "+token}});
+    await loadRuns();
+  }catch(err){showLogin(err.message);}
+};
+$("signout").onclick=async()=>{
+  try{await pilotRequest("session",{method:"DELETE"});invalidate();showLogin("Signed out.");}
+  catch(e){$("authmsg").textContent=e.message;}
+};
+async function prepareReview(){
+  if(simulated && !signedIn){showLogin("Sign in to prepare a private test run.");$("token").focus();return;}
+  invalidate();
+  const current=revision;
+  $("stage").disabled=true;
+  try{
+    const regions=state.D.patches.filter(p=>state.picked.has(p.i)).map(p=>p.epitope);
+    const payload={filename:$("file").files[0].name,chain:state.D.chain,regions};
+    if(simulated)payload.structure=state.pdbText;
+    const options={method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)};
+    const res=simulated ? await pilotRequest("reviews",options) : await fetch(api("/prepare"),options);
+    if(!res.ok){
+      const error=await res.json().catch(()=>({}));
+      throw new Error(error.error || error.detail || "Could not prepare the selected regions.");
+    }
+    const plan=await res.json();
+    if(current!==revision)return;
+    reviewed=plan.id;
+    exportPlan(plan);
+    $("reviewtext").textContent=plan.filename+" · chain "+plan.chain+" · selected regions: "+
+      plan.regions.join(" | ")+". Backbone trials per candidate: "+plan.trials_per_candidate+
+      ". Total: "+plan.total+" backbone attempts across all contig variants. One round, no partial diffusion."+
+      (simulated?"":" Staging mode. Download your prepared inputs below.");
+    $("launch").disabled=false; $("review").hidden=false;
+  }catch(e){if(current===revision)$("stagemsg").textContent=e.message;}
+  finally{$("stage").disabled=!state.picked.size;}
+}
+$("launch").onclick=async()=>{
+  if(!reviewed)return;
+  const id=reviewed;
+  $("launch").disabled=true;
+  try{
+    const run=await (await pilotRequest("runs/"+id,{method:"POST"})).json();
+    if(reviewed===id){$("review").hidden=true;$("stagemsg").textContent="Test run submitted. Follow it in My runs.";}
+    await loadRuns(); $("myruns").scrollIntoView();
+  }catch(e){$("stagemsg").textContent=e.message;$("launch").disabled=false;}
+};
+setInterval(()=>{if(simulated && signedIn && !document.hidden)loadRuns();},3000);
+
 checkService();
 </script>
 </body>
