@@ -37,7 +37,6 @@ async function launchBrowser(){
   browser=await chromium.launch({channel:'chrome',headless:true});
 }
 async function login(page,token){
-  await page.goto(origin+'/growpatch_tool.html?backend=https://unconfigured.invalid');
   await page.locator('#token').fill(token);
   await page.getByRole('button',{name:'Sign in',exact:true}).click();
   await page.locator('#signout').waitFor();
@@ -47,7 +46,7 @@ try{
   await start();
   await launchBrowser();
   let page=await browser.newPage();
-  await login(page,alice);
+  await page.goto(origin+'/growpatch_tool.html?backend=https://unconfigured.invalid');
   assert.equal(await page.locator('#file').inputValue(),'');
   // Strip partners from the checked-in fixture to exercise the lone-antigen path.
   const pdb=(await readFile('docs/pdb/8PWW.pdb','utf8')).split('\n')
@@ -56,6 +55,7 @@ try{
   await page.locator('#disco').uncheck();
   await page.locator('#run').click();
   for(let i=0;i<3;i++)await page.locator('.pick').nth(i).check();
+  await login(page,alice);
   const reviewResponse=page.waitForResponse(r=>r.url().endsWith('/pilot/reviews'));
   await page.locator('#stage').click();
   const review=await (await reviewResponse).json();
@@ -72,6 +72,9 @@ try{
   const [duplicate]=await Promise.all([page.request.post(origin+path),page.locator('#launch').click()]);
   assert.equal((await duplicate.json()).id,(await (await result).json()).id);
   assert.equal((await (await page.request.get(origin+'/pilot/runs')).json()).length,1);
+  await page.waitForURL(origin+'/results.html?run='+review.id+'#result-title');
+  await page.locator('#runlist tr[aria-current="true"]').waitFor();
+  assert.match(await page.locator('#runlist').innerText(),/8PWW-A.pdb/);
   await browser.close();browser=null;
   // Read the durable state directly, without polling the web API or leaving a browser open.
   for(let i=0;i<20;i++){
@@ -85,8 +88,10 @@ try{
   const port=new URL(origin).port;
   await stop();env.EPISCAF_SIM_FAIL='1';await start(port);
   await launchBrowser();page=await browser.newPage();
+  await page.goto(origin+'/results.html?run='+review.id);
   await login(page,alice);
-  await page.getByText('Open simulated results').click();
+  await page.getByRole('link',{name:'My runs',exact:true}).click();
+  await page.getByRole('link',{name:'View results',exact:true}).click();
   assert.equal(await page.locator('#tbl tbody tr').first().innerText().then(t=>t.includes('simulated')),true);
   assert.equal(await page.locator('#tbl tbody tr.na').count(),3);
   assert.equal((await page.request.get(origin+path+'/results?download=true')).status(),200);
@@ -94,7 +99,12 @@ try{
     buffer:Buffer.from('epitope_chunk_rmsd,overall_rmsd,mean_pae,aomclash_pred\n0.1,1,2,0.1\n')});
   await page.getByText('legacy.csv',{exact:true}).waitFor();
   assert.equal(await page.locator('#tbl tbody tr.na').count(),1);
+  await page.getByRole('link',{name:'View results',exact:true}).click();
+  await page.waitForURL(origin+'/results.html?run='+review.id+'#result-title');
+  await page.locator('#original').waitFor();
+  assert.equal(await page.locator('#tbl tbody tr').count(),3);
   const other=await browser.newPage();
+  await other.goto(origin+'/results.html#myruns');
   await login(other,bob);
   assert.deepEqual(await (await other.request.get(origin+'/pilot/runs')).json(),[]);
   for(const url of [path,path+'/results',path+'/results?download=true','/results/'+review.id,'/status/'+review.id])

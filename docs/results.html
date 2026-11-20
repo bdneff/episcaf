@@ -31,6 +31,13 @@ td.good{color:var(--good)}td.bad{color:var(--bad)}
 .empty{font-size:13px;color:#444;background:#f6f8fb;border:1px dashed #c9d4e5;border-radius:6px;padding:14px 16px;margin:10px 0;line-height:1.55}
 .empty code{background:#eef2f8;padding:0 3px;border-radius:2px}
 .note{font-size:12px;color:#555;background:#f6f6f6;border:1px solid #ddd;padding:8px 11px;margin-top:14px}
+#myruns{border-bottom:1px solid #ccd7e3;padding-bottom:1rem}
+#myruns h2{display:inline-block;margin-right:1em}
+#runlist{overflow-x:auto}
+#runlist table{margin:0 0 12px}
+#runlist th,#runlist td{text-align:left;padding:8px;cursor:default}
+#runlist tr[aria-current]{background:#eef4fc}
+label.ck[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -57,15 +64,26 @@ td.good{color:var(--good)}td.bad{color:var(--bad)}
 </div></div>
 
 <div class="page">
-  <h1>Explore design results</h1>
-  <p class="lede">Load a metrics CSV to compare, filter, and rank designs. Available metrics depend on
+  <h1>Results</h1>
+  <section id="myruns" aria-labelledby="runs-title" hidden>
+    <h2 id="runs-title">My runs</h2>
+    <form id="signin"><label>Tester token <input id="token" type="password" required autocomplete="off"></label>
+      <button>Sign in</button></form>
+    <button id="signout" hidden>Sign out</button>
+    <p id="authmsg" role="status"></p>
+    <div id="runlist"></div>
+    <a href="growpatch_tool.html">Find candidate regions</a>
+  </section>
+  <h2 id="result-title">Design results</h2>
+  <a id="back-runs" href="#myruns" hidden>My runs</a>
+  <p class="lede" id="csvintro">Load a metrics CSV to compare, filter, and rank designs. Available metrics depend on
   the columns in the file. Files are processed in your browser. See
   <a href="RESULTS_SCHEMA.md">the results-file format and metric definitions</a>.</p>
 
   <p id="origin" role="status"></p>
   <a id="original" hidden>Download simulated CSV</a>
   <div class="bar">
-    <input type="file" id="file" accept=".csv,.tsv,.txt">
+    <label>Load results CSV <input type="file" id="file" accept=".csv,.tsv,.txt"></label>
     <label class="ck">Sort designs by <select id="rankby" disabled></select></label>
     <label class="ck"><input type="checkbox" id="passonly"> Show designs that pass the structural filters</label>
     <button id="dl" class="btn-secondary" disabled>Download filtered results</button>
@@ -84,7 +102,7 @@ td.good{color:var(--good)}td.bad{color:var(--bad)}
   <div class="stats" id="stats"></div>
   <div class="tablewrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
 
-  <div class="note"><b>Structural-filter status.</b>
+  <div class="note" id="screenhelp"><b>Structural-filter status.</b>
   <b>Pass:</b> the design meets every required threshold (green left edge).
   <b>Fail:</b> the available metrics show that the design does not meet the configured criteria.
   <b>Not evaluated:</b> at least one required metric is missing (grey left edge).
@@ -211,6 +229,9 @@ function shown(){
 }
 function render(){
   const rs=shown();
+  const budgetOnly=ROWS.length>0 && ROWS.every(r=>r.source==="simulated");
+  $("passonly").closest("label").hidden=budgetOnly;
+  $("screenhelp").hidden=budgetOnly;
   const th=$("tbl").tHead, tb=$("tbl").tBodies[0];
   th.innerHTML="<tr>"+COLS.map(c=>`<th data-c="${escA(c)}" title="${escA(DEFS[c]||c)}" class="${c===sortCol?'sorted':''}">${esc(LABELS[c]||c)}`+
     (c===sortCol?` <span class="ar">${sortDir<0?'▼':'▲'}</span>`:"")+"</th>").join("")+"</tr>";
@@ -228,6 +249,10 @@ function render(){
   const tgtKey=COLS.includes("id")?"id":(COLS.includes("target")?"target":null);
   const ntgt=tgtKey?new Set(ROWS.map(r=>r[tgtKey])).size:"—";
   $("empty").style.display = ROWS.length ? "none" : "block";
+  if(budgetOnly){
+    $("stats").textContent=ROWS.length+" selected regions";
+    return;
+  }
   $("stats").innerHTML=[["designs loaded",ROWS.length],["pass",npass],["fail",nfail],["not evaluated",nna],
     ["pass rate (evaluated)",neval?(100*npass/neval).toFixed(1)+"%":"—"],["target groups",ntgt],
     ["shown",rs.length]].map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
@@ -238,6 +263,7 @@ function loadTable(text, title){
       try{ ROWS=parseCSV(text); }
       catch(pe){ const err=new Error("Could not read the results file. Check its format and column headings."); err.detail=pe.message; throw err; }
       if(!ROWS.length) throw new Error("The file contains no design rows.");
+      $("passonly").checked=false;
       ROWS.forEach(x=>{x.__cls=classify(x);x.__pass=x.__cls==="pass";});
       COLS=orderCols(Object.keys(ROWS[0]).filter(k=>k!=="__pass" && k!=="__cls"));
       populateRank();
@@ -249,34 +275,106 @@ function loadTable(text, title){
     }catch(e){ $("msg").textContent=e.message; $("msg").title=e.detail||""; $("msg").style.display="block"; }
 
 }
-let loadVersion=0;
+let loadVersion=0, manualFile=false;
 $("file").onchange=async()=>{
   const f=$("file").files[0]; if(!f)return;
+  manualFile=true;
+  if(selectedRun){
+    const url=new URL(location.href); url.searchParams.delete("run");
+    history.replaceState(null,"",url);
+    selectedRun=null; historyKey=null;
+  }
+  $("csvintro").hidden=false; $("result-title").textContent="Design results";
   const version=++loadVersion;
   const text=await f.text();
   if(version!==loadVersion)return;
   $("original").hidden=true;
   loadTable(text,f.name);
 };
-async function loadPrivateRun(){
-  const id=new URLSearchParams(location.search).get("run");
-  if(!id)return;
-  try{
-    if(!/^[a-f0-9]{32}$/.test(id))throw new Error("Invalid run ID.");
-    const path="runs/"+id+"/results";
-    const response=await pilotRequest(path);
-    const text=await response.text();
-    if(loadVersion)return;
-    loadTable(text,"Simulated results · "+id+" · one trial-budget row per region. No structural metrics were calculated.");
-    $("original").href="/pilot/"+path+"?download=true"; $("original").hidden=false;
-  }catch(e){
-    if(loadVersion)return;
-    $("origin").textContent=e.message+" ";
-    const a=document.createElement("a");a.href="growpatch_tool.html#myruns";a.textContent="My runs";
-    $("origin").append(a);
+let selectedRun=new URLSearchParams(location.search).get("run");
+let historyKey=null, privateLoaded=false, sessionActive=false;
+function showHistory(runs){
+  const key=JSON.stringify(runs);
+  if(key===historyKey)return;
+  historyKey=key;
+  const list=$("runlist");
+  if(!runs.length){list.textContent="You have no submitted runs.";return;}
+  const table=document.createElement("table");
+  const headings=table.createTHead().insertRow();
+  for(const label of ["Protein","Status","Submitted","Last update",""]){
+    const th=document.createElement("th"); th.scope="col"; th.textContent=label; headings.append(th);
   }
+  const body=table.createTBody();
+  const date=t=>new Date(t*1000).toLocaleString();
+  for(const run of runs){
+    const row=body.insertRow();
+    if(run.id===selectedRun)row.setAttribute("aria-current","true");
+    row.insertCell().textContent=run.filename+" · chain "+run.chain;
+    const status=row.insertCell();
+    status.textContent=run.stage;
+    if(run.reason)status.append(document.createElement("br"),run.reason);
+    if(run.estimated_start)status.append(document.createElement("br"),"Estimated start "+date(run.estimated_start));
+    row.insertCell().textContent=date(run.submitted);
+    row.insertCell().textContent=date(run.updated);
+    const link=document.createElement("a");
+    link.textContent=run.stage==="completed" ? "View results" : "View run";
+    link.href="results.html?run="+encodeURIComponent(run.id)+"#result-title";
+    row.insertCell().append(link);
+  }
+  list.replaceChildren(table);
 }
-loadPrivateRun();
+async function showRuns(runs){
+  sessionActive=true;
+  showHistory(runs);
+  if(!selectedRun || manualFile)return;
+  const current=loadVersion;
+  const run=runs.find(r=>r.id===selectedRun);
+  $("csvintro").hidden=true;
+  $("result-title").textContent=run ? "Test run · "+run.filename+" · chain "+run.chain : "Test run";
+  if(!run){
+    clearPrivateResults();
+    $("origin").textContent="This run is unavailable for this account.";
+    return;
+  }
+  if(privateLoaded)return;
+  if(run.stage!=="completed"){
+    $("origin").textContent=run.reason || "Your test run is "+run.stage+". Results will appear here when it finishes.";
+    $("empty").style.display="none";
+    return;
+  }
+  const path="runs/"+encodeURIComponent(run.id)+"/results";
+  try{
+    const text=await (await pilotRequest(path)).text();
+    if(current!==loadVersion)return;
+    loadTable(text,"Completed · simulated results. Each row shows the backbone trial budget for one selected region.");
+    privateLoaded=true;
+    $("original").href="/pilot/"+path+"?download=true"; $("original").hidden=false;
+  }catch(e){if(current===loadVersion)$("origin").textContent=e.message;}
+}
+function clearPrivateResults(){
+  ++loadVersion;privateLoaded=false; $("csvintro").hidden=false;
+  ROWS=[]; COLS=[]; render(); $("stats").replaceChildren(); $("rankby").replaceChildren();
+  $("rankby").disabled=true; $("dl").disabled=true; $("original").hidden=true;
+  $("result-title").textContent="Design results";
+}
+const refreshRuns=pilotSession(showRuns,()=>{
+  sessionActive=false;historyKey=null;
+  $("runlist").replaceChildren();
+  if(manualFile)return;
+  clearPrivateResults();
+  $("origin").textContent=selectedRun?"Sign in under My runs to open this run.":"";
+});
+async function initRuns(){
+  const health=await fetch("/health",{cache:"no-store"}).then(r=>r.json()).catch(()=>({}));
+  if(health.service!=="episcaf" || health.pilot_mode!=="simulated"){
+    if(selectedRun)$("origin").textContent="Open this run on the private pilot service.";
+    return;
+  }
+  $("myruns").hidden=false; $("back-runs").hidden=!selectedRun;
+  await refreshRuns();
+  setInterval(()=>{if(sessionActive && !document.hidden)refreshRuns();},3000);
+}
+initRuns();
 
 $("passonly").onchange=render;
 $("rankby").onchange=()=>{const v=$("rankby").value;

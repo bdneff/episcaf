@@ -99,25 +99,16 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
   <a href="home.html">Home</a>
   <a href="methods.html">Docs</a>
   <a href="pipeline.html">Pipeline</a>
-  <a href="results.html">Results</a>
+  <a href="results.html" id="runsnav">Results</a>
 </div></div>
 
 <div class="page">
-  <h1>Generate candidate surface regions</h1>
-  <p class="lede">Upload an antigen structure and select the chain to process. growPatch groups nearby
-  exposed surface residues into candidate sites. When DiscoTope scores are available, the candidates
-  are ranked by their total DiscoTope score; otherwise the full candidate set is shown for inspection
-  and selection.</p>
+  <h1>Find candidate regions</h1>
+  <p class="lede">Upload an antigen, choose its chain, and generate candidate surface regions with growPatch.
+  Inspect the regions on the structure and select the ones you want to try in scaffold design.</p>
 
   <div class="conn" id="conn" role="status" aria-live="polite">Checking the structure-processing service&hellip;</div>
 
-  <section class="card" id="myruns" hidden>
-    <h2>My runs</h2>
-    <form id="signin"><label>Tester token <input id="token" type="password" required autocomplete="off"></label>
-      <button>Sign in</button></form>
-    <button id="signout" hidden>Sign out</button>
-    <p id="authmsg" role="status"></p><div id="runlist"></div>
-  </section>
   <div class="card" id="formcard">
     <div class="row">
       <div class="fld"><label for="file">Antigen structure (PDB or mmCIF)</label><input type="file" disabled id="file" accept=".pdb,.ent,.cif"></div>
@@ -160,6 +151,12 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
       <div class="lbl" style="margin-bottom:4px">Prepare scaffold-design inputs</div>
       <div style="font-size:12px;color:#555;margin-bottom:8px">Convert the selected regions into design
       specifications and a run configuration for the cluster.</div>
+      <div id="pilot-auth" hidden>
+    <form id="signin"><label>Tester token <input id="token" type="password" required autocomplete="off"></label>
+      <button>Sign in</button></form>
+    <button id="signout" hidden>Sign out</button>
+    <p id="authmsg" role="status"></p>
+      </div>
       <button id="stage" disabled>Prepare design inputs</button>
       <div style="font-size:12px;color:#555;margin-top:8px" id="stagesel"></div>
       <div id="stagemsg" role="status"></div>
@@ -511,9 +508,13 @@ async function checkService(){
       const configured=new URL(location.href).searchParams.get("backend");
       try{if(configured!==null)localStorage.setItem("episcaf_backend",configured.trim());}catch{}
     }
-    $("myruns").hidden=!simulated;
+    $("pilot-auth").hidden=!simulated;
+    if(simulated){
+      $("runsnav").textContent="My runs";
+      $("runsnav").href="results.html#myruns";
+    }
     $("launch").hidden=!simulated;
-    if(simulated) await loadRuns();
+    if(simulated) await refreshSession();
     const d=backendBase() ? await fetch(api("/health"),{cache:"no-store"}).then(r=>r.ok?r.json():{}) : own;
     $("provider").textContent=d.biolib ? "Enabling ranking sends your uploaded structure to BioLib. " :
       d.biolib===false ? "Ranking uses scores available on the processing service. " :
@@ -521,51 +522,9 @@ async function checkService(){
     renderConn(d.service==="episcaf");
   }catch(e){ renderConn(false); }
 }
-let loadingRuns=false;
-function showLogin(message){
-  signedIn=false;
-  $("signin").hidden=false; $("signout").hidden=true;
-  $("runlist").replaceChildren(); $("authmsg").textContent=message;
-}
-async function loadRuns(){
-  if(loadingRuns)return;
-  loadingRuns=true;
-  try{
-    const rows=await (await pilotRequest("runs")).json();
-    signedIn=true; $("signin").hidden=true; $("signout").hidden=false;
-    $("authmsg").textContent=rows.length ? "" : "You have no submitted runs.";
-    const items=rows.map(run=>{
-      const p=document.createElement("p");
-      const date=t=>new Date(1000*t).toLocaleString();
-      p.textContent=run.filename+" · chain "+run.chain+" · "+run.stage+" · submitted "+
-        date(run.submitted)+" · updated "+date(run.updated)+" ";
-      if(run.estimated_start)p.append("· estimated start "+date(run.estimated_start)+" ");
-      if(run.completed)p.append("· completed "+date(run.completed)+" ");
-      if(run.reason)p.append(run.reason);
-      if(run.stage==="completed"){
-        const a=document.createElement("a"); a.textContent="Open simulated results";
-        a.href="results.html?run="+encodeURIComponent(run.id); p.append(a);
-      }
-      return p;
-    });
-    $("runlist").replaceChildren(...items);
-  }catch(e){showLogin(e.message);}
-  finally{loadingRuns=false;}
-}
-$("signin").onsubmit=async e=>{
-  e.preventDefault();
-  const token=$("token").value.trim(); $("token").value="";
-  try{
-    await pilotRequest("session",{method:"POST",headers:{Authorization:"Bearer "+token}});
-    await loadRuns();
-  }catch(err){showLogin(err.message);}
-};
-$("signout").onclick=async()=>{
-  try{await pilotRequest("session",{method:"DELETE"});invalidate();showLogin("Signed out.");}
-  catch(e){$("authmsg").textContent=e.message;}
-};
+const refreshSession=pilotSession(()=>{signedIn=true;},()=>{signedIn=false;invalidate();});
 async function prepareReview(){
-  if(simulated && !signedIn){showLogin("Sign in to prepare a private test run.");$("token").focus();return;}
+  if(simulated && !signedIn){$("authmsg").textContent="Sign in to prepare a test run.";$("token").focus();return;}
   invalidate();
   const current=revision;
   $("stage").disabled=true;
@@ -597,11 +556,10 @@ $("launch").onclick=async()=>{
   $("launch").disabled=true;
   try{
     const run=await (await pilotRequest("runs/"+id,{method:"POST"})).json();
-    if(reviewed===id){$("review").hidden=true;$("stagemsg").textContent="Test run submitted. Follow it in My runs.";}
-    await loadRuns(); $("myruns").scrollIntoView();
+    location.assign("results.html?run="+encodeURIComponent(run.id)+"#result-title");
   }catch(e){$("stagemsg").textContent=e.message;$("launch").disabled=false;}
 };
-setInterval(()=>{if(simulated && signedIn && !document.hidden)loadRuns();},3000);
+
 
 checkService();
 </script>
