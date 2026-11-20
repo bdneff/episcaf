@@ -70,6 +70,8 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .conn a{color:inherit;font-weight:bold}
 .hint{font-size:11px;color:#777;font-weight:normal;text-transform:none;letter-spacing:0;margin-top:2px}
 .empty{padding:12px 10px;font-size:12.5px;color:#777}
+.viewbar h2{margin:0;font-size:16px}
+#structure:not(.has-candidates) :is(#stats,#rankhdr,#sel,.listwrap){display:none}
 .viewbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
 .viewctrls{display:inline-flex;gap:6px}
 .viewctrls button{font:inherit;font-size:12px;padding:4px 10px;border:1px solid #c9d4e3;background:#fff;color:#3b6ea5;border-radius:5px;cursor:pointer;font-weight:normal}
@@ -126,10 +128,11 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
     <div id="msg"></div>
   </div>
 
-  <div id="results" style="display:none">
+  <section id="structure" hidden>
     <div class="stats" id="stats"></div>
     <p class="rankhdr" id="rankhdr" hidden></p>
-    <div class="row" style="margin:4px 0 10px">
+    <div class="viewbar">
+      <h2>Structure preview</h2>
       <span class="viewctrls" id="viewctrls">
         <button type="button" id="btnreset">Reset view</button>
         <button type="button" id="btnfit">Fit structure</button>
@@ -146,7 +149,9 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
         <div id="viewer" aria-label="3D structure of the uploaded antigen; a selected candidate's residues appear in red"></div>
       </div>
     </div>
+  </section>
 
+  <div id="results" hidden>
     <div class="card" style="margin-top:14px">
       <div class="lbl" style="margin-bottom:4px">Prepare scaffold-design inputs</div>
       <div style="font-size:12px;color:#555;margin-bottom:8px">Convert the selected regions into design
@@ -205,11 +210,11 @@ function invalidate(){
   $("stagemsg").textContent="";
 }
 function clearSelection(){
-  invalidate(); state.picked.clear(); state.D=null;
-  $("results").style.display="none";
+  invalidate(); state.picked.clear(); state.D=null; state.sel=null;
+  $("results").hidden=true; $("structure").classList.remove("has-candidates");
   $("sel").textContent="Select a candidate to see its residues and score.";
 }
-$("chain").onchange=clearSelection;
+$("chain").onchange=()=>{clearSelection(); resetView();};
 const api=p=>backendBase()+p;
 
 function msg(t,cls){busyDone();const m=$("msg");m.className=t?("msg "+(cls||"")):"";m.textContent=t||"";}
@@ -243,12 +248,14 @@ const hasDisco=()=>!!(state.D&&state.D.has_disco);
 
 // file -> read text, then ask the server what it is
 $("file").onchange=()=>{
-  clearSelection(); $("guess").textContent=""; $("chain").replaceChildren(new Option("A","A")); state.pdbText=null; $("run").disabled=true;
+  clearSelection(); $("structure").hidden=true; $("guess").textContent="";
+  $("chain").replaceChildren(); $("chain").disabled=true; state.pdbText=null; $("run").disabled=true;
   const f=$("file").files[0]; if(!f){$("run").disabled=true;return;}
   const r=new FileReader();
   r.onload=async()=>{
     if($("file").files[0]!==f)return;
     state.pdbText=r.result; msg("");
+    $("structure").hidden=false; loadStructure();
     $("guess").textContent="Inspecting…";
     try{
       const res=await fetch(api("/inspect?fmt="+fileFmt()),{method:"POST",body:state.pdbText});
@@ -256,15 +263,16 @@ $("file").onchange=()=>{
       if($("file").files[0]!==f)return;
       $("chain").replaceChildren(...d.chains.map(c=>new Option(c.id+" ("+c.n+" res)",c.id)));
       if(d.antigen_chain) $("chain").value=d.antigen_chain;
+      resetView();
       if(d.is_complex){
         $("guess").innerHTML=`This looks like an antibody&ndash;antigen complex (partner chain(s) ${esc(d.partner_chains.join(", "))}). `+
-          `growPatch will scan antigen chain ${esc(d.antigen_chain)} for candidate regions. To scaffold the `+
+          `Chain ${esc(d.antigen_chain)} was detected as the antigen. To scaffold the `+
           `antibody's contact epitope instead, use <a href="scaffold.html">Scaffold a selected epitope</a>.`;
       }else{
-        $("guess").innerHTML=`No antibody partner was detected. growPatch will scan chain ${esc(d.antigen_chain||$("chain").value)} for candidate regions.`;
+        $("guess").innerHTML=`No antibody partner was detected.`;
       }
-    }catch(e){ console.warn("inspect:",e); $("guess").textContent="Could not inspect the structure. Check the service connection, then choose the antigen chain manually."; }
-    if($("file").files[0]===f)$("run").disabled=false;
+    }catch(e){ if($("file").files[0]!==f)return; console.warn("inspect:",e); $("guess").textContent="Could not inspect the structure. Check the service connection, then choose the antigen chain manually."; }
+    if($("file").files[0]===f){ $("chain").disabled=false; $("run").disabled=false; }
   };
   r.readAsText(f);
 };
@@ -287,7 +295,7 @@ async function enumerateReq(disco){
 }
 $("run").onclick=async()=>{
   if(!state.pdbText){msg("Choose a PDB file first.","err");return;}
-  clearSelection();
+  clearSelection(); resetView();
   const disco=$("disco").checked;
   state.discoRequested=disco;
   $("run").disabled=true; setRunning(true); state.ranking=false;
@@ -296,8 +304,8 @@ $("run").onclick=async()=>{
   try{
     const data=await enumerateReq(false);
     state.D=data; state.sel=null; state.picked=new Set();
-    $("results").style.display="block";
-    buildStats(); buildList(); loadStructure();
+    $("results").hidden=false; $("structure").classList.add("has-candidates");
+    buildStats(); buildList(); resetView();
   }catch(e){
     console.warn("enumerate:",e);
     msg("Could not generate candidates. Check the service connection.","err");
@@ -431,16 +439,23 @@ function loadStructure(){
   if(typeof $3Dmol==="undefined" || !webglOK()){ viewerFail("The interactive 3D viewer is unavailable in this browser."); return; }
   try{
     if(!viewer || $("viewer").querySelector("p")){ $("viewer").innerHTML=""; viewer=$3Dmol.createViewer("viewer",{backgroundColor:"white"}); }
-    viewer.clear(); viewer.addModel(state.pdbText, fileFmt());
-    viewer.setStyle({},{}); viewer.setStyle({chain:state.D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
-    viewer.zoomTo({chain:state.D.chain}); viewer.render(); viewMsg("");
-    if(state.sel!=null) paint3d();
+    viewer.clear();
+    const model=viewer.addModel(state.pdbText, fileFmt());
+    const atoms=model.selectedAtoms({});
+    if(!atoms.length){ viewerFail("No atoms could be read from this file."); return; }
+    const chains=[...new Set(atoms.map(atom=>atom.chain).filter(Boolean))];
+    $("chain").replaceChildren(...chains.map(chain=>new Option(chain,chain)));
+    resetView(); viewMsg("");
   }catch(e){ console.warn("render:",e); viewerFail("Could not load the structure."); }
+}
+function chainSelection(){
+  const chain=$("chain").value;
+  return chain ? {chain} : {};
 }
 function paint3d(){
   if(!viewer||viewerDead) return;
   try{
-    viewer.setStyle({},{}); viewer.setStyle({chain:state.D.chain},{cartoon:{color:GREY,thickness:0.7,arrows:true}});
+    viewer.setStyle({},{}); viewer.setStyle(chainSelection(),{cartoon:{color:GREY,thickness:0.7,arrows:true}});
     const p=state.sel!=null?patchById(state.sel):null;
     if(p){const sel={chain:state.D.chain,resi:p.resis};
       viewer.setStyle(sel,{cartoon:{color:RED,thickness:1.0,arrows:true}});
@@ -448,8 +463,8 @@ function paint3d(){
     viewer.render();
   }catch(e){ console.warn("paint3d:",e); viewerFail("Could not load the structure."); }
 }
-function fitStructure(){ if(viewer&&!viewerDead&&state.D){try{viewer.zoomTo({chain:state.D.chain});viewer.render();}catch(e){}} }
-function resetView(){ if(viewer&&!viewerDead&&state.D){try{paint3d();viewer.zoomTo({chain:state.D.chain});viewer.render();}catch(e){}} }
+function fitStructure(){ if(viewer&&!viewerDead&&state.pdbText){try{viewer.resize();viewer.zoomTo(chainSelection());viewer.render();}catch(e){}} }
+function resetView(){ if(viewer&&!viewerDead&&state.pdbText){paint3d();fitStructure();} }
 $("btnreset").onclick=resetView;
 $("btnfit").onclick=fitStructure;
 

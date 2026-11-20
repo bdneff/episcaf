@@ -49,7 +49,25 @@ try{
   await page.goto(origin+'/growpatch_tool.html?backend=https://unconfigured.invalid');
   assert.equal(await page.locator('#file').inputValue(),'');
   // Strip partners from the checked-in fixture to exercise the lone-antigen path.
-  const pdb=(await readFile('docs/pdb/8PWW.pdb','utf8')).split('\n')
+  const fixture=await readFile('docs/pdb/8PWW.pdb','utf8');
+  assert.equal(await page.locator('#structure').isVisible(),false);
+  let enumerations=0;
+  page.on('request',req=>{if(new URL(req.url()).pathname==='/enumerate')enumerations++;});
+  let finishInspect;
+  const inspectionGate=new Promise(resolve=>{finishInspect=resolve;});
+  await page.route('**/inspect?*',async route=>{await inspectionGate;await route.continue();},{times:1});
+  await page.locator('#file').setInputFiles({name:'complex.pdb',mimeType:'text/plain',buffer:Buffer.from(fixture)});
+  try{
+    await page.locator('#viewer canvas').first().waitFor({timeout:10000});
+    assert.equal(await page.locator('#results').isVisible(),false);
+    assert.ok(await page.evaluate(()=>viewer.getModel().selectedAtoms({chain:'B'}).length>0));
+  }finally{finishInspect();}
+  await page.waitForFunction(()=>!document.getElementById('run').disabled);
+  await page.locator('#chain').selectOption('B');
+  assert.ok(await page.evaluate(()=>viewer.getModel().selectedAtoms({chain:'B'}).some(a=>a.style.cartoon)));
+  assert.equal(await page.evaluate(()=>viewer.getModel().selectedAtoms({chain:'A'}).some(a=>a.style.cartoon)),false);
+  assert.equal(enumerations,0);
+  const pdb=fixture.split('\n')
     .filter(l=>l.startsWith('ATOM  ') && l[21]==='A').join('\n')+'\nEND\n';
   await page.locator('#file').setInputFiles({name:'8PWW-A.pdb',mimeType:'text/plain',buffer:Buffer.from(pdb)});
   await page.locator('#disco').uncheck();
