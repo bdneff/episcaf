@@ -71,10 +71,19 @@ try{
     assert.ok(await page.evaluate(()=>viewer.getModel().selectedAtoms({chain:'B'}).length>0));
   }finally{finishInspect();}
   await page.waitForFunction(()=>!document.getElementById('run').disabled);
-  await page.locator('#chain').selectOption('B');
+  const chainB=page.getByRole('radio',{name:/^Chain B · \d+ residues$/});
+  assert.equal(await page.getByRole('radio',{name:/^Chain A ·/}).isChecked(),true);
+  await chainB.check();
   assert.ok(await page.evaluate(()=>viewer.getModel().selectedAtoms({chain:'B'}).some(a=>a.style.cartoon)));
   assert.equal(await page.evaluate(()=>viewer.getModel().selectedAtoms({chain:'A'}).some(a=>a.style.cartoon)),false);
   assert.equal(enumerations,0);
+  const scanning=page.waitForRequest(r=>new URL(r.url()).pathname==='/enumerate');
+  await page.locator('#disco').uncheck();
+  await page.locator('#run').click();
+  assert.equal(new URL((await scanning).url()).searchParams.get('chain'),'B');
+  await page.locator('.pick').first().check();
+  await page.getByRole('radio',{name:/^Chain A ·/}).check();
+  assert.equal(await page.locator('#results').isVisible(),false);
   const pdb=fixture.split('\n')
     .filter(l=>l.startsWith('ATOM  ') && l[21]==='A').join('\n')+'\nEND\n';
   await page.locator('#file').setInputFiles({name:'8PWW-A.pdb',mimeType:'text/plain',buffer:Buffer.from(pdb)});

@@ -70,6 +70,12 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .conn a{color:inherit;font-weight:bold}
 .hint{font-size:11px;color:#777;font-weight:normal;text-transform:none;letter-spacing:0;margin-top:2px}
 .empty{padding:12px 10px;font-size:12.5px;color:#777}
+#chain{border:0;padding:0;margin:8px 0;min-width:0}
+#chain legend{padding:0;margin-bottom:4px;font-size:12px;font-weight:bold}
+#chain-options{display:flex;flex-wrap:wrap;gap:5px}
+#chain-options label{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid #c9d4e3;border-radius:12px;font-size:12px;cursor:pointer}
+#chain-options label:has(:checked){background:#eef4fd;border-color:var(--blue)}
+#chain-options input{margin:0;accent-color:var(--blue)}
 .viewbar h2{margin:0;font-size:16px}
 #structure:not(.has-candidates) :is(#stats,#rankhdr,#sel,.listwrap,.viewctrls){display:none}
 #structure:not(.has-candidates){width:min(100%,340px);margin:12px 0}
@@ -125,7 +131,6 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
     <div class="card" id="formcard">
       <div class="row">
         <div class="fld"><label for="file">Antigen structure (PDB or mmCIF)</label><input type="file" disabled id="file" accept=".pdb,.ent,.cif"></div>
-        <div class="fld"><label for="chain">Antigen chain</label><select id="chain"><option value="A">A</option></select></div>
         <div class="fld"><label for="sasa">Minimum relative solvent accessibility</label><input type="number" id="sasa" value="0.2" step="0.05" min="0" max="1"><span class="hint">Residues at or above this threshold are treated as surface residues.</span></div>
         <div class="fld"><label for="topk">Maximum candidate count</label><input type="number" id="topk" value="0" step="10" min="0" title="0 keeps every candidate"><span class="hint">Returns this many top-ranked candidates. Leave at 0 to keep every candidate.</span></div>
         <div class="fld" id="discofld"><label for="disco">Candidate ranking</label>
@@ -158,6 +163,10 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
         <div class="viewwrap">
           <div id="viewmsg" class="viewmsg" role="status" aria-live="polite"></div>
           <div id="viewer" aria-label="3D structure of the uploaded antigen; a selected candidate's residues appear in red"></div>
+          <fieldset id="chain" hidden>
+            <legend>Antigen chain to scan</legend>
+            <div id="chain-options"></div>
+          </fieldset>
         </div>
       </div>
     </section>
@@ -223,8 +232,23 @@ function invalidate(){
 }
 function clearSelection(){
   invalidate(); state.picked.clear(); state.D=null; state.sel=null;
+  $("plist").replaceChildren();
   $("results").hidden=true; $("structure").classList.remove("has-candidates");
   $("sel").textContent="Select a candidate to see its residues and score.";
+}
+function selectedChain(){
+  return $("chain-options").querySelector("input:checked")?.value || "";
+}
+function showChains(chains, preferred){
+  const selected=preferred ?? chains[0]?.id;
+  $("chain").hidden=!chains.length;
+  $("chain-options").replaceChildren(...chains.map(({id,n})=>{
+    const input=document.createElement("input");
+    input.type="radio"; input.name="antigen-chain"; input.value=id; input.checked=id===selected;
+    const label=document.createElement("label");
+    label.append(input,"Chain "+(id.trim() || "(unnamed)")+(n==null?"":" · "+n+" residues"));
+    return label;
+  }));
 }
 $("chain").onchange=()=>{clearSelection(); resetView();};
 const api=p=>backendBase()+p;
@@ -261,7 +285,7 @@ const hasDisco=()=>!!(state.D&&state.D.has_disco);
 // file -> read text, then ask the server what it is
 $("file").onchange=()=>{
   clearSelection(); $("structure").hidden=true; $("guess").textContent="";
-  $("chain").replaceChildren(); $("chain").disabled=true; state.pdbText=null; $("run").disabled=true;
+  showChains([]); $("chain").disabled=true; state.pdbText=null; $("run").disabled=true;
   const f=$("file").files[0]; if(!f){$("run").disabled=true;return;}
   const r=new FileReader();
   r.onload=async()=>{
@@ -273,13 +297,12 @@ $("file").onchange=()=>{
       const res=await fetch(api("/inspect?fmt="+fileFmt()),{method:"POST",body:state.pdbText});
       const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
       if($("file").files[0]!==f)return;
-      $("chain").replaceChildren(...d.chains.map(c=>new Option(c.id+" ("+c.n+" res)",c.id)));
-      if(d.antigen_chain) $("chain").value=d.antigen_chain;
+      showChains(d.chains,d.antigen_chain);
       resetView();
       if(d.is_complex){
-        $("guess").innerHTML=`This looks like an antibody&ndash;antigen complex (partner chain(s) ${esc(d.partner_chains.join(", "))}). `+
-          `Chain ${esc(d.antigen_chain)} was detected as the antigen. To scaffold the `+
-          `antibody's contact epitope instead, use <a href="scaffold.html">Scaffold a selected epitope</a>.`;
+        $("guess").innerHTML=`Chain ${esc(d.antigen_chain)} has contacts with ${esc(d.partner_chains.join(", "))}. `+
+          `For an antibody contact epitope, use `+
+          `<a href="scaffold.html">Scaffold a selected epitope</a>.`;
       }else{
         $("guess").innerHTML=`No antibody partner was detected.`;
       }
@@ -297,7 +320,7 @@ syncControls();
 // auto-re-ranks when it lands (skipped when ranking is off). The run button and file input stay
 // locked until both phases settle, so the request can't be corrupted mid-flight.
 async function enumerateReq(disco){
-  const qs=new URLSearchParams({chain:$("chain").value, sasa_cut:$("sasa").value,
+  const qs=new URLSearchParams({chain:selectedChain(), sasa_cut:$("sasa").value,
     top_k: disco ? $("topk").value : 0,   // phase 1 keeps all; ranking truncates
     mode:"growpatch", fmt:fileFmt(), disco:disco?1:0});
   const res=await fetch(api("/enumerate?"+qs.toString()),{method:"POST",body:state.pdbText});
@@ -456,12 +479,12 @@ function loadStructure(){
     const atoms=model.selectedAtoms({});
     if(!atoms.length){ viewerFail("No atoms could be read from this file."); return; }
     const chains=[...new Set(atoms.map(atom=>atom.chain).filter(Boolean))];
-    $("chain").replaceChildren(...chains.map(chain=>new Option(chain,chain)));
+    showChains(chains.map(id=>({id})));
     resetView(); viewMsg("");
   }catch(e){ console.warn("render:",e); viewerFail("Could not load the structure."); }
 }
 function chainSelection(){
-  const chain=$("chain").value;
+  const chain=selectedChain();
   return chain ? {chain} : {};
 }
 function paint3d(){
