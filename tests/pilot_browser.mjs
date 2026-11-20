@@ -1,6 +1,6 @@
 // Run from the repo root. Requires playwright-core, Chrome, and the web service Python environment.
 import assert from 'node:assert/strict';
-import {mkdtemp, readFile, rm} from 'node:fs/promises';
+import {mkdir, mkdtemp, readFile, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawn, execFileSync} from 'node:child_process';
@@ -159,6 +159,25 @@ try{
     headers:{Authorization:'Bearer '+rotated,Origin:'https://unconfigured.invalid'}})).status(),403);
   await page.request.post(origin+'/pilot/session',{headers:{Authorization:'Bearer '+rotated}});
   assert.equal((await (await page.request.get(origin+path)).json()).id,review.id);
+  // The private gateway can take requests without a dispatcher or a cluster.
+  await stop();
+  env.EPISCAF_PILOT_MODE='gemini-lysozyme';
+  env.EPISCAF_GEMINI_RUNS=join(dir,'private');
+  await mkdir(env.EPISCAF_GEMINI_RUNS,{mode:0o700});
+  await start(port);
+  const reference=await (await page.request.get(origin+'/pilot/reference.pdb')).text();
+  for(const [structure,button,stage] of [[reference,'Start Gemini run','requested'],
+                                          [pdb,'Request lab review','awaiting lab review']]){
+    await page.goto(origin+'/growpatch_tool.html');
+    await page.locator('#live-note').waitFor();
+    await page.locator('#file').setInputFiles({name:'my-structure.pdb',mimeType:'text/plain',buffer:Buffer.from(structure)});
+    await page.locator('#disco').uncheck();
+    await page.locator('#run').click();
+    await page.locator('.pick').first().check();
+    await page.locator('#stage').click();
+    await page.getByRole('button',{name:button,exact:true}).click();
+    await page.locator('#origin').filter({hasText:stage}).waitFor();
+  }
   // Exercise the deployed mode guard and the non-persistent preparation endpoint.
   await stop();env.K_SERVICE='cloud-run-staging-test';await start(port);
   assert.equal((await (await page.request.get(origin+'/health')).json()).pilot_mode,'staging');

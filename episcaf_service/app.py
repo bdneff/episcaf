@@ -61,7 +61,11 @@ async def lifespan(app):
     task = None
     if pilot.enabled():
         pilot.initialize()
-        task = asyncio.create_task(monitor())
+        if pilot.mode() == "simulated":
+            task = asyncio.create_task(monitor())
+        else:
+            from episcaf_service.gemini import run_root
+            run_root()  # Validate storage before accepting private requests.
     try:
         yield
     finally:
@@ -81,6 +85,9 @@ app.include_router(pilot.router)
 
 @app.middleware("http")
 async def private_response(request: Request, call_next):
+    if pilot.mode() == "gemini-lysozyme" and (request.url.path == "/submit" or
+            request.url.path.startswith(("/status/", "/results/"))):
+        return Response(status_code=404)
     if not request.url.path.startswith("/pilot/"):
         return await call_next(request)
     origin = request.headers.get("origin")
@@ -148,7 +155,7 @@ def _tmp_structure(body: bytes, fmt: str):
 def health():
     ws = ws_root()
     return {"ok": True, "service": "episcaf", "ws": ws, "ws_exists": os.path.isdir(ws),
-            "pilot_mode": "simulated" if pilot.enabled() else "staging",
+            "pilot_mode": pilot.mode(),
             "biolib": os.getenv("EPISCAF_DISCOTOPE") == "biolib",
             "slurm": bool(shutil.which("squeue"))}
 

@@ -34,13 +34,11 @@ npm install --prefix /tmp/episcaf-browser playwright-core
 PYTHON="$(command -v python)" PLAYWRIGHT_MODULE=/tmp/episcaf-browser/node_modules/playwright-core/index.mjs node tests/pilot_browser.mjs
 ```
 
-### Before the first Gemini run
+### Private Gemini pilot
 
-- Confirm the **approved submission host** and Brandon's Slurm account, partition and job environment. The repository calls the cluster Gemini and documents a tunnel to `<gemini-host>`. The approved submission hostname is unverified.
-- Confirm read/write access from the submission host and a worker to the same durable run directory. The configured workspace is `/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff`. The storage notes below report that the login node lacks that mount and identify `$HOME/episcaf_runs` as an alternative. Verify the chosen path before staging a real job.
-- Implement durable submission reconciliation using the review/run ID and the actual job and array IDs returned by Slurm. Reconcile interrupted submissions before retrying. Refresh the queue and accounting about every 30 minutes. Keep pending start estimates separate from actual terminal times. Surface failed, cancelled and timed-out jobs and collect completed metrics into owner-scoped storage.
-- The existing generated `submit.sh` is an operator template. RFd3 submission is commented out, the AF3 array still uses literal `1-N`, and the MPNN step leaves retained-backbone selection in a comment. Wire the per-contig trial allocation, stage dependencies, retained files, real array bounds and metrics production before the first submission.
-- The current design scorer writes raw `s_p1_free` to `aomclash_pred`. The Results viewer displays that column without applying a calibrated cutoff. The bare-backbone cutoff remains open. The simulator exercises the web workflow only.
+The advisor setup guide covers the separate private service, tester tokens, the 3HFM lysozyme worker, and private lab review of other PDB and mmCIF uploads. [Gemini setup and first run](GEMINI_PILOT.md)
+
+The legacy generated `submit.sh` still has a commented RFd3 submission, an AF3 array placeholder, and a manual retained-backbone step. The private lysozyme worker runs its own stages within a single Slurm allocation. The bare-backbone cutoff remains an open scientific decision.
 
 ## Staging endpoints
 

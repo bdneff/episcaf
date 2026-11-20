@@ -11,13 +11,14 @@ these are the canonical names.
 | `design_id` | unique design: `<target>__contig<c>__seed<s>__rep<r>` |
 | `id` / `target` | the epitope/target this design presents |
 | `epitope` | epitope spec (`A:298-307;B:37-47`) |
+| `sequence` | designed protein sequence in the private Gemini results |
 | `source` | how the epitope was chosen: `growpatch`, `antibody` (known Ab contact), `known` |
 | `contig_id`, `seed`, `rep` | the generation coordinates |
 
 ## Fidelity — does it present the epitope in its native geometry?
 | column | meaning | good |
 |---|---|---|
-| `epitope_chunk_rmsd` | epitope backbone RMSD to native (Å) | ≤ 1 |
+| `epitope_chunk_rmsd` | epitope backbone RMSD (Å). In the Gemini pilot, stage05 compares AF3 with the epitope in the MPNN model. | ≤ 1 |
 | `overall_rmsd` | whole-window backbone RMSD to the MPNN model (Å) | ≤ 2 |
 
 ## Confidence — AlphaFold3
@@ -33,6 +34,7 @@ these are the canonical names.
 | column | meaning | good |
 |---|---|---|
 | `af3_n_clash_res` | real AF3 clashing residues vs the native antibody (antibody arm — ground truth) | 0 |
+| `s_p1_free` | raw carved occupancy on the final predicted structure, used by the lysozyme pilot composite | lower within the run |
 | `aomclash_pred` | Legacy AOMclash column. The current design scorer writes raw carved occupancy (`s_p1_free`). Calibration cannot be inferred from the column name. | low |
 | `cylinder_native_aware`, `cylinder_ca_clashes`, `native_in_cylinder` | legacy cylinder surrogate — kept for before/after, superseded by `aomclash_pred` |
 

@@ -127,10 +127,12 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 
   <div class="conn" id="conn" role="status" aria-live="polite">Checking the structure-processing service&hellip;</div>
 
+  <p id="live-note" hidden>Upload your antigen to request a design run from the lab.
+    For the automatic Gemini reference run, upload the <a href="/pilot/reference.pdb" download>3HFM lysozyme PDB</a> and select chain Y.</p>
   <div class="upload-layout">
     <div class="card" id="formcard">
       <div class="row">
-        <div class="fld"><label for="file">Antigen structure (PDB or mmCIF)</label><input type="file" disabled id="file" accept=".pdb,.ent,.cif"></div>
+        <div class="fld"><label for="file">Antigen structure (PDB or mmCIF)</label><input type="file" disabled id="file" accept=".pdb,.ent,.cif,.mmcif"></div>
         <div class="fld"><label for="sasa">Minimum relative solvent accessibility</label><input type="number" id="sasa" value="0.2" step="0.05" min="0" max="1"><span class="hint">Residues at or above this threshold are treated as surface residues.</span></div>
         <div class="fld"><label for="topk">Maximum candidate count</label><input type="number" id="topk" value="0" step="10" min="0" title="0 keeps every candidate"><span class="hint">Returns this many top-ranked candidates. Leave at 0 to keep every candidate.</span></div>
         <div class="fld" id="discofld"><label for="disco">Candidate ranking</label>
@@ -214,9 +216,9 @@ const $=id=>document.getElementById(id);
 // Backend base URL. Lets the static GitHub Pages copy talk to a hosted backend (Render/Gemini) while
 // the same code stays same-origin ("") when the backend serves the UI itself. Resolution order:
 // a ?backend=<url> query param (saved for next time), else a saved value, else same-origin.
-let simulated=false, reviewed=null, revision=0, signedIn=false;
+let privatePilot=false, reviewed=null, revision=0, signedIn=false;
 function backendBase(){
-  if(simulated) return "";
+  if(privatePilot) return "";
   try{
     const saved=localStorage.getItem("episcaf_backend");
     const u=saved && new URL(saved);
@@ -279,7 +281,7 @@ function syncControls(){
   $("disco").disabled=false;
   $("topk").disabled=!$("disco").checked;
 }
-const fileFmt=()=>($("file").files[0]&&$("file").files[0].name.toLowerCase().endsWith(".cif"))?"cif":"pdb";
+const fileFmt=()=>/\.(mm)?cif$/i.test($("file").files[0]?.name || "")?"cif":"pdb";
 const hasDisco=()=>!!(state.D&&state.D.has_disco);
 
 // file -> read text, then ask the server what it is
@@ -553,18 +555,19 @@ async function checkService(){
   // configured fails the probe, so the form stays disabled and offers a URL field + the recorded example.
   try{
     const own=await fetch("/health",{cache:"no-store"}).then(r=>r.json()).catch(()=>({}));
-    simulated=own.service==="episcaf" && own.pilot_mode==="simulated";
-    if(!simulated){
+    privatePilot=own.service==="episcaf" && ["simulated","gemini-lysozyme"].includes(own.pilot_mode);
+    $("live-note").hidden=own.pilot_mode!=="gemini-lysozyme";
+    if(!privatePilot){
       const configured=new URL(location.href).searchParams.get("backend");
       try{if(configured!==null)localStorage.setItem("episcaf_backend",configured.trim());}catch{}
     }
-    $("pilot-auth").hidden=!simulated;
-    if(simulated){
+    $("pilot-auth").hidden=!privatePilot;
+    if(privatePilot){
       $("runsnav").textContent="My runs";
       $("runsnav").href="results.html#myruns";
     }
-    $("launch").hidden=!simulated;
-    if(simulated) await refreshSession();
+    $("launch").hidden=!privatePilot;
+    if(privatePilot) await refreshSession();
     const d=backendBase() ? await fetch(api("/health"),{cache:"no-store"}).then(r=>r.ok?r.json():{}) : own;
     $("provider").textContent=d.biolib ? "Enabling ranking sends your uploaded structure to BioLib. " :
       d.biolib===false ? "Ranking uses scores available on the processing service. " :
@@ -574,16 +577,16 @@ async function checkService(){
 }
 const refreshSession=pilotSession(()=>{signedIn=true;},()=>{signedIn=false;invalidate();});
 async function prepareReview(){
-  if(simulated && !signedIn){$("authmsg").textContent="Sign in to prepare a test run.";$("token").focus();return;}
+  if(privatePilot && !signedIn){$("authmsg").textContent="Sign in to prepare a private run.";$("token").focus();return;}
   invalidate();
   const current=revision;
   $("stage").disabled=true;
   try{
     const regions=state.D.patches.filter(p=>state.picked.has(p.i)).map(p=>p.epitope);
     const payload={filename:$("file").files[0].name,chain:state.D.chain,regions};
-    if(simulated)payload.structure=state.pdbText;
+    if(privatePilot)payload.structure=state.pdbText;
     const options={method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)};
-    const res=simulated ? await pilotRequest("reviews",options) : await fetch(api("/prepare"),options);
+    const res=privatePilot ? await pilotRequest("reviews",options) : await fetch(api("/prepare"),options);
     if(!res.ok){
       const error=await res.json().catch(()=>({}));
       throw new Error(error.error || error.detail || "Could not prepare the selected regions.");
@@ -595,7 +598,14 @@ async function prepareReview(){
     $("reviewtext").textContent=plan.filename+" · chain "+plan.chain+" · selected regions: "+
       plan.regions.join(" | ")+". Backbone trials per candidate: "+plan.trials_per_candidate+
       ". Total: "+plan.total+" backbone attempts across all contig variants. One round, no partial diffusion."+
-      (simulated?"":" Staging mode. Download your prepared inputs below.");
+      (privatePilot?"":" Staging mode. Download your prepared inputs below.");
+    if(plan.backend==="gemini-lysozyme"){
+      $("reviewtext").append(" Gemini will design and score "+plan.sequence_predictions+" sequences from these backbones.");
+      $("launch").textContent="Start Gemini run";
+    }else if(plan.backend==="gemini-reviewed"){
+      $("reviewtext").append(" The lab will review this upload before scheduling compute.");
+      $("launch").textContent="Request lab review";
+    }
     $("launch").disabled=false; $("review").hidden=false;
   }catch(e){if(current===revision)$("stagemsg").textContent=e.message;}
   finally{$("stage").disabled=!state.picked.size;}

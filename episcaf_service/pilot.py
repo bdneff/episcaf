@@ -1,4 +1,4 @@
-"""Private simulated runs. Start the API with EPISCAF_PILOT_MODE=simulated."""
+"""Owner-scoped run review, submission, and result retrieval for the private pilot."""
 import argparse
 import csv
 import hashlib
@@ -15,17 +15,25 @@ from pathlib import Path
 from typing import Protocol
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from episcaf_service import staging
 
 router = APIRouter(prefix="/pilot")
 COOKIE = "episcaf_tester"
-SUMMARY = "id,filename,chain,stage,submitted,updated,job_id,estimated_start,completed,reason"
+SUMMARY = "backend,id,filename,chain,stage,submitted,updated,job_id,estimated_start,completed,reason"
+
+
+def mode():
+    configured = os.getenv("EPISCAF_PILOT_MODE")
+    if configured in {"simulated", "gemini-lysozyme"} and not os.getenv("K_SERVICE"):
+        return configured
+    return "staging"
 
 
 def enabled():
-    return os.getenv("EPISCAF_PILOT_MODE") == "simulated" and not os.getenv("K_SERVICE")
+    return mode() != "staging"
 
 
 @contextmanager
@@ -53,6 +61,9 @@ def initialize():
                 job_id TEXT, estimated_start REAL, completed REAL, reason TEXT, result TEXT);
             CREATE INDEX IF NOT EXISTS by_owner ON runs(owner,submitted);
         """)
+        db.execute("BEGIN IMMEDIATE")
+        if "backend" not in {r["name"] for r in db.execute("PRAGMA table_info(runs)")}:
+            db.execute("ALTER TABLE runs ADD COLUMN backend TEXT NOT NULL DEFAULT 'simulated'")
 
 
 def issue(owner):
@@ -112,15 +123,40 @@ def prepare(s: RegionSelection):
         raise HTTPException(422, str(exc)) from exc
 
 
+@router.get("/reference.pdb")
+def reference():
+    if mode() != "gemini-lysozyme":
+        raise HTTPException(404)
+    from episcaf_service.lysozyme_job import reference_pdb
+    return Response(reference_pdb(), media_type="chemical/x-pdb",
+                    headers={"Content-Disposition": 'attachment; filename="3HFM-lysozyme.pdb"'})
+
+
 @router.post("/reviews")
 def review(selection: Selection, name=Depends(owner)):
+    backend = mode()
+    if backend == "gemini-lysozyme":
+        from episcaf_service.lysozyme_job import reference_pdb, validate_regions
+        selected_atoms = [line.rstrip() for line in selection.structure.splitlines()
+                          if line.startswith("ATOM  ") and line[21:22] == "Y"]
+        reference_atoms = [line.rstrip() for line in reference_pdb().splitlines() if line.startswith("ATOM  ")]
+        if selection.chain != "Y" or selected_atoms != reference_atoms:
+            backend = "gemini-reviewed"
+        else:
+            try:
+                validate_regions(selection.regions)
+            except ValueError as exc:
+                raise HTTPException(422, str(exc)) from exc
     plan = prepare(selection)
+    if backend == "gemini-lysozyme":
+        from scripts.stage03_mpnn_submit import SEQS_PER_STRUCT
+        plan["sequence_predictions"] = plan["total"] * SEQS_PER_STRUCT
     rid = uuid.uuid4().hex
     with database() as db:
-        db.execute("""INSERT INTO runs(id,owner,filename,chain,structure,plan,stage)
-                      VALUES(?,?,?,?,?,?,'review')""",
-                   (rid, name, selection.filename, selection.chain, selection.structure, json.dumps(plan)))
-    return dict(id=rid, **plan)
+        db.execute("""INSERT INTO runs(id,owner,filename,chain,structure,plan,stage,backend)
+                      VALUES(?,?,?,?,?,?,'review',?)""",
+                   (rid, name, selection.filename, selection.chain, selection.structure, json.dumps(plan), backend))
+    return dict(id=rid, backend=backend, **plan)
 
 
 @dataclass(frozen=True)
@@ -171,7 +207,7 @@ def simulated_csv(plan):
 def refresh():
     with database() as db:
         active = db.execute("""SELECT id,job_id,submitted,stage,estimated_start
-                               FROM runs WHERE stage IN ('queued','running')""").fetchall()
+                               FROM runs WHERE backend='simulated' AND stage IN ('queued','running')""").fetchall()
         for row in active:
             now = time.time()
             status = scheduler.status(row["job_id"], row["submitted"], now)
@@ -200,7 +236,13 @@ def launch(rid: str, name=Depends(owner)):
     with database() as db:
         db.execute("BEGIN IMMEDIATE")
         row = owned(db, rid, name, include_review=True)
-        if row["stage"] == "review":
+        if row["backend"] != mode() and not (row["backend"] == "gemini-reviewed" and mode() == "gemini-lysozyme"):
+            raise HTTPException(409, "Prepare a new review on this backend.")
+        if row["stage"] == "review" and mode() == "gemini-lysozyme":
+            now = time.time()
+            stage = "awaiting lab review" if row["backend"] == "gemini-reviewed" else "requested"
+            db.execute("UPDATE runs SET stage=?,submitted=?,updated=? WHERE id=?", (stage, now, now, rid))
+        elif row["stage"] == "review":
             now = time.time()
             db.execute("""UPDATE runs SET stage='queued',submitted=?,updated=?,job_id=? WHERE id=?""",
                        (now, now, scheduler.submit(rid), rid))
@@ -223,11 +265,25 @@ def status(rid: str, name=Depends(owner)):
 @router.get("/runs/{rid}/results")
 def results(rid: str, download: bool = False, name=Depends(owner)):
     with database() as db:
-        row = owned(db, rid, name, "stage,result,reason")
+        row = owned(db, rid, name, "backend,stage,result,reason")
     if row["stage"] != "completed":
         raise HTTPException(409, row["reason"] or "Results are pending.")
-    headers = {"Content-Disposition": f'attachment; filename="simulated-{rid}.csv"'} if download else {}
+    backend = row["backend"]
+    headers = {"Content-Disposition": f'attachment; filename="{backend}-{rid}.csv"'} if download else {}
     return Response(row["result"], media_type="text/csv", headers=headers)
+
+
+@router.get("/runs/{rid}/designs.zip")
+def designs(rid: str, name=Depends(owner)):
+    from episcaf_service.gemini import run_dir
+    with database() as db:
+        row = owned(db, rid, name, "backend,stage")
+    if row["backend"] not in {"gemini-lysozyme","gemini-reviewed"} or row["stage"] != "completed":
+        raise HTTPException(404)
+    path = run_dir(rid) / "designs.zip"
+    if not path.is_file():
+        raise HTTPException(409, "The scored design archive is unavailable.")
+    return FileResponse(path, media_type="application/zip", filename=f"designs-{rid}.zip")
 
 
 if __name__ == "__main__":
