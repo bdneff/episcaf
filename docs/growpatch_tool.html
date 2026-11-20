@@ -72,14 +72,14 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .empty{padding:12px 10px;font-size:12.5px;color:#777}
 .viewbar h2{margin:0;font-size:16px}
 #structure:not(.has-candidates) :is(#stats,#rankhdr,#sel,.listwrap,.viewctrls){display:none}
-#structure:not(.has-candidates){width:min(100%,240px);margin:12px 0}
+#structure:not(.has-candidates){width:min(100%,340px);margin:12px 0}
 #structure:not(.has-candidates) .viewwrap{min-width:0}
 #structure:not(.has-candidates) .viewmsg:empty{display:none}
 #structure:not(.has-candidates) .viewbar h2{font-size:13px}
-#structure:not(.has-candidates) #viewer{height:180px;box-sizing:border-box;border-radius:6px;overflow:hidden}
+#structure:not(.has-candidates) #viewer{height:auto;aspect-ratio:4/3;box-sizing:border-box;border-radius:6px;overflow:hidden}
 @media(min-width:720px){
   .upload-layout:has(> #structure:not([hidden],.has-candidates)){
-    display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:16px;align-items:start
+    display:grid;grid-template-columns:minmax(0,1fr) min(36%,340px);gap:16px;align-items:start
   }
 }
 .viewbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
