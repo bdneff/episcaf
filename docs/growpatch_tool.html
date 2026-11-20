@@ -71,7 +71,17 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .hint{font-size:11px;color:#777;font-weight:normal;text-transform:none;letter-spacing:0;margin-top:2px}
 .empty{padding:12px 10px;font-size:12.5px;color:#777}
 .viewbar h2{margin:0;font-size:16px}
-#structure:not(.has-candidates) :is(#stats,#rankhdr,#sel,.listwrap){display:none}
+#structure:not(.has-candidates) :is(#stats,#rankhdr,#sel,.listwrap,.viewctrls){display:none}
+#structure:not(.has-candidates){width:min(100%,240px);margin:12px 0}
+#structure:not(.has-candidates) .viewwrap{min-width:0}
+#structure:not(.has-candidates) .viewmsg:empty{display:none}
+#structure:not(.has-candidates) .viewbar h2{font-size:13px}
+#structure:not(.has-candidates) #viewer{height:180px;box-sizing:border-box;border-radius:6px;overflow:hidden}
+@media(min-width:720px){
+  .upload-layout:has(> #structure:not([hidden],.has-candidates)){
+    display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:16px;align-items:start
+  }
+}
 .viewbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
 .viewctrls{display:inline-flex;gap:6px}
 .viewctrls button{font:inherit;font-size:12px;padding:4px 10px;border:1px solid #c9d4e3;background:#fff;color:#3b6ea5;border-radius:5px;cursor:pointer;font-weight:normal}
@@ -111,45 +121,47 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 
   <div class="conn" id="conn" role="status" aria-live="polite">Checking the structure-processing service&hellip;</div>
 
-  <div class="card" id="formcard">
-    <div class="row">
-      <div class="fld"><label for="file">Antigen structure (PDB or mmCIF)</label><input type="file" disabled id="file" accept=".pdb,.ent,.cif"></div>
-      <div class="fld"><label for="chain">Antigen chain</label><select id="chain"><option value="A">A</option></select></div>
-      <div class="fld"><label for="sasa">Minimum relative solvent accessibility</label><input type="number" id="sasa" value="0.2" step="0.05" min="0" max="1"><span class="hint">Residues at or above this threshold are treated as surface residues.</span></div>
-      <div class="fld"><label for="topk">Maximum candidate count</label><input type="number" id="topk" value="0" step="10" min="0" title="0 keeps every candidate"><span class="hint">Returns this many top-ranked candidates. Leave at 0 to keep every candidate.</span></div>
-      <div class="fld" id="discofld"><label for="disco">Candidate ranking</label>
-        <label class="chk"><input type="checkbox" id="disco" checked><span>Rank by DiscoTope-3.0</span></label>
-        <span class="hint" id="provider">A BioLib-enabled service sends your structure to BioLib for ranking. </span><span class="hint">Orders candidates by epitope likelihood (external DiscoTope-3.0 step, adds up to ~5&nbsp;min). Off returns them instantly in generation order.</span></div>
-      <div class="fld"><label aria-hidden="true">&nbsp;</label><button id="run" class="btn-primary" disabled>Generate candidates</button></div>
+  <div class="upload-layout">
+    <div class="card" id="formcard">
+      <div class="row">
+        <div class="fld"><label for="file">Antigen structure (PDB or mmCIF)</label><input type="file" disabled id="file" accept=".pdb,.ent,.cif"></div>
+        <div class="fld"><label for="chain">Antigen chain</label><select id="chain"><option value="A">A</option></select></div>
+        <div class="fld"><label for="sasa">Minimum relative solvent accessibility</label><input type="number" id="sasa" value="0.2" step="0.05" min="0" max="1"><span class="hint">Residues at or above this threshold are treated as surface residues.</span></div>
+        <div class="fld"><label for="topk">Maximum candidate count</label><input type="number" id="topk" value="0" step="10" min="0" title="0 keeps every candidate"><span class="hint">Returns this many top-ranked candidates. Leave at 0 to keep every candidate.</span></div>
+        <div class="fld" id="discofld"><label for="disco">Candidate ranking</label>
+          <label class="chk"><input type="checkbox" id="disco" checked><span>Rank by DiscoTope-3.0</span></label>
+          <span class="hint" id="provider">A BioLib-enabled service sends your structure to BioLib for ranking. </span><span class="hint">Orders candidates by epitope likelihood (external DiscoTope-3.0 step, adds up to ~5&nbsp;min). Off returns them instantly in generation order.</span></div>
+        <div class="fld"><label aria-hidden="true">&nbsp;</label><button id="run" class="btn-primary" disabled>Generate candidates</button></div>
+      </div>
+      <div class="row" style="margin-top:9px">
+        <span id="guess" style="font-size:12px;color:#555"></span>
+      </div>
+      <div id="msg"></div>
     </div>
-    <div class="row" style="margin-top:9px">
-      <span id="guess" style="font-size:12px;color:#555"></span>
-    </div>
-    <div id="msg"></div>
-  </div>
 
-  <section id="structure" hidden>
-    <div class="stats" id="stats"></div>
-    <p class="rankhdr" id="rankhdr" hidden></p>
-    <div class="viewbar">
-      <h2>Structure preview</h2>
-      <span class="viewctrls" id="viewctrls">
-        <button type="button" id="btnreset">Reset view</button>
-        <button type="button" id="btnfit">Fit structure</button>
-      </span>
-    </div>
-    <div class="sel" id="sel">Select a candidate to see its residues and score.</div>
-    <div class="main">
-      <div class="listwrap">
-        <span class="lbl"><span id="listword">candidates</span> (<span id="nshown">0</span>)</span>
-        <div class="plist" id="plist" role="listbox" aria-label="candidate regions"></div>
+    <section id="structure" hidden>
+      <div class="stats" id="stats"></div>
+      <p class="rankhdr" id="rankhdr" hidden></p>
+      <div class="viewbar">
+        <h2>Structure preview</h2>
+        <span class="viewctrls" id="viewctrls">
+          <button type="button" id="btnreset">Reset view</button>
+          <button type="button" id="btnfit">Fit structure</button>
+        </span>
       </div>
-      <div class="viewwrap">
-        <div id="viewmsg" class="viewmsg" role="status" aria-live="polite"></div>
-        <div id="viewer" aria-label="3D structure of the uploaded antigen; a selected candidate's residues appear in red"></div>
+      <div class="sel" id="sel">Select a candidate to see its residues and score.</div>
+      <div class="main">
+        <div class="listwrap">
+          <span class="lbl"><span id="listword">candidates</span> (<span id="nshown">0</span>)</span>
+          <div class="plist" id="plist" role="listbox" aria-label="candidate regions"></div>
+        </div>
+        <div class="viewwrap">
+          <div id="viewmsg" class="viewmsg" role="status" aria-live="polite"></div>
+          <div id="viewer" aria-label="3D structure of the uploaded antigen; a selected candidate's residues appear in red"></div>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </div>
 
   <div id="results" hidden>
     <div class="card" style="margin-top:14px">

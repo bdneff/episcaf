@@ -59,6 +59,14 @@ try{
   await page.locator('#file').setInputFiles({name:'complex.pdb',mimeType:'text/plain',buffer:Buffer.from(fixture)});
   try{
     await page.locator('#viewer canvas').first().waitFor({timeout:10000});
+    const preview=await page.locator('#viewer').boundingBox();
+    const form=await page.locator('#formcard').boundingBox();
+    assert.ok(preview.x>=form.x+form.width && preview.y<form.y+form.height);
+    assert.ok(preview.width<=240 && preview.height<=180);
+    await page.setViewportSize({width:390,height:844});
+    const mobile=await page.locator('#viewer').boundingBox();
+    assert.ok(mobile.x>=0 && mobile.x+mobile.width<=390 && mobile.height<=180);
+    await page.setViewportSize({width:1280,height:720});
     assert.equal(await page.locator('#results').isVisible(),false);
     assert.ok(await page.evaluate(()=>viewer.getModel().selectedAtoms({chain:'B'}).length>0));
   }finally{finishInspect();}
@@ -73,6 +81,8 @@ try{
   await page.locator('#disco').uncheck();
   await page.locator('#run').click();
   for(let i=0;i<3;i++)await page.locator('.pick').nth(i).check();
+  const expanded=await page.locator('#viewer').boundingBox();
+  assert.ok(expanded.width>240 && expanded.height>=480);
   await login(page,alice);
   const reviewResponse=page.waitForResponse(r=>r.url().endsWith('/pilot/reviews'));
   await page.locator('#stage').click();
