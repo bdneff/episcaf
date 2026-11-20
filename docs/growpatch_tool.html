@@ -24,6 +24,9 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .seg button:disabled{opacity:.5;cursor:default;background:#fff;color:#3b6ea5}
 .seg button.on:disabled{background:var(--blue);color:#fff;opacity:.5}
 .seg button:focus-visible{outline:2px solid #296DC0;outline-offset:2px}
+.fld .chk{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:normal;text-transform:none;letter-spacing:0;color:#1a1a1a;padding:4px 0;cursor:pointer}
+.fld .chk input{width:auto;margin:0}
+.fld .chk input:disabled+span,.fld .chk:has(input:disabled){opacity:.5;cursor:default}
 .stats{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
 .stat{background:#f6f8fb;border:1px solid #d5deea;border-radius:5px;padding:6px 11px;font-size:12.5px}
 .stat b{font-size:16px;color:var(--blue);display:block;font-variant-numeric:tabular-nums}
@@ -114,17 +117,13 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
       <div class="fld"><label for="chain">Antigen chain</label><select id="chain"><option value="A">A</option></select></div>
       <div class="fld"><label for="sasa">Minimum relative solvent accessibility</label><input type="number" id="sasa" value="0.2" step="0.05" min="0" max="1"><span class="hint">Residues at or above this threshold are treated as surface residues.</span></div>
       <div class="fld"><label for="topk">Maximum candidate count</label><input type="number" id="topk" value="0" step="10" min="0" title="0 keeps every candidate"><span class="hint">Returns this many top-ranked candidates. Leave at 0 to keep every candidate.</span></div>
+      <div class="fld" id="discofld"><label for="disco">Candidate ranking</label>
+        <label class="chk"><input type="checkbox" id="disco" checked><span>Rank by DiscoTope-3.0</span></label>
+        <span class="hint">Orders candidates by epitope likelihood (external DiscoTope-3.0 step, adds up to ~5&nbsp;min). Off returns them instantly in generation order.</span></div>
       <div class="fld"><label aria-hidden="true">&nbsp;</label><button id="run" class="btn-primary" disabled>Generate candidates</button></div>
     </div>
-    <div class="row" style="margin-top:11px">
-      <div class="fld"><label id="modelbl">Epitope selection</label>
-        <span class="seg" id="modeseg" role="group" aria-labelledby="modelbl">
-          <button data-mode="growpatch" class="on" aria-pressed="true">Generate candidate regions</button>
-          <button data-mode="antibody" aria-pressed="false">Use antibody contact residues</button>
-        </span>
-      </div>
-      <div class="fld" style="flex:1;min-width:200px"><label>&nbsp;</label>
-        <span id="guess" style="font-size:12px;color:#555"></span></div>
+    <div class="row" style="margin-top:9px">
+      <span id="guess" style="font-size:12px;color:#555"></span>
     </div>
     <div id="msg"></div>
   </div>
@@ -187,7 +186,7 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 <script>
 "use strict";
 const RED="#c0392b", GREY="#c4c4c4";
-let state={mode:"growpatch", sel:null, D:null, pdbText:null, picked:new Set(), budgetMode:"n_designs", ranking:false};
+let state={sel:null, D:null, pdbText:null, picked:new Set(), budgetMode:"n_designs", ranking:false, discoRequested:true};
 let viewer=null, viewerDead=false;
 
 const $=id=>document.getElementById(id);
@@ -215,23 +214,19 @@ function busy(label,hint){
   render(); clearInterval(_busyTimer); _busyTimer=setInterval(render,1000);
 }
 function busyDone(){ if(_busyTimer){clearInterval(_busyTimer);_busyTimer=null;} }
-// Lock inputs that would corrupt an in-flight run: the mode toggle (switching to antibody-contact
-// mid-enumeration) and the file picker. Re-enabled when the run settles.
+// Lock inputs that would corrupt an in-flight run: the file picker and the DiscoTope-ranking toggle.
+// Re-enabled when the run settles (via syncControls).
 function setRunning(on){
-  document.querySelectorAll("#modeseg button").forEach(b=>{b.disabled=on;});
   const f=$("file"); if(f) f.disabled=on;
+  if(on){ $("disco").disabled=true; } else { syncControls(); }
+}
+// The "max candidate count" only truncates a ranked list, so it applies only when ranking is on.
+function syncControls(){
+  $("disco").disabled=false;
+  $("topk").disabled=!$("disco").checked;
 }
 const fileFmt=()=>($("file").files[0]&&$("file").files[0].name.toLowerCase().endsWith(".cif"))?"cif":"pdb";
 const hasDisco=()=>!!(state.D&&state.D.has_disco);
-
-function setMode(m){
-  state.mode=m;
-  document.querySelectorAll("#modeseg button").forEach(b=>{
-    const on=b.dataset.mode===m; b.classList.toggle("on",on); b.setAttribute("aria-pressed",on?"true":"false");
-  });
-  $("run").textContent = m==="antibody" ? "Identify contact residues" : "Generate candidates";
-  ["sasa","topk"].forEach(id=>$(id).disabled=(m==="antibody"));  // growPatch knobs don't apply in antibody mode
-}
 
 // file -> read text, then ask the server what it is
 $("file").onchange=()=>{
@@ -245,26 +240,29 @@ $("file").onchange=()=>{
       const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
       $("chain").innerHTML=d.chains.map(c=>`<option value="${c.id}">${c.id} (${c.n} res)</option>`).join("");
       if(d.antigen_chain) $("chain").value=d.antigen_chain;
-      if(d.is_complex){ setMode("antibody");
-        $("guess").innerHTML=`Detected antibody contact with antigen chain ${d.antigen_chain}: ${d.n_epitope} contact residues (partner chain(s) ${d.partner_chains.join(", ")}).`;
-      }else{ setMode("growpatch");
-        $("guess").innerHTML=`No antibody partner was detected. growPatch candidate generation is selected.`;
+      if(d.is_complex){
+        $("guess").innerHTML=`This looks like an antibody&ndash;antigen complex (partner chain(s) ${d.partner_chains.join(", ")}). `+
+          `growPatch will scan antigen chain ${d.antigen_chain} for candidate regions. To scaffold the `+
+          `antibody's contact epitope instead, use <a href="scaffold.html">Scaffold a selected epitope</a>.`;
+      }else{
+        $("guess").innerHTML=`No antibody partner was detected. growPatch will scan chain ${d.antigen_chain||$("chain").value} for candidate regions.`;
       }
-    }catch(e){ console.warn("inspect:",e); $("guess").textContent="Could not inspect the structure. Check the service connection or choose the input mode manually."; }
+    }catch(e){ console.warn("inspect:",e); $("guess").textContent="Could not inspect the structure. Check the service connection, then choose the antigen chain manually."; }
   };
   r.readAsText(f);
 };
 
-document.querySelectorAll("#modeseg button").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+$("disco").onchange=syncControls;
+syncControls();
 
-// Two phases for the lone-antigen path: (1) growPatch candidates are fast, so show them immediately,
+// Two phases for candidate generation: (1) growPatch candidates are fast, so show them immediately,
 // unranked; (2) DiscoTope ranking is the slow BioLib step -- it runs in the background and the list
-// auto-re-ranks when it lands. Antibody mode has no ranking phase. The run button and mode/file inputs
-// stay locked until BOTH phases settle, so the request can't be corrupted mid-flight.
+// auto-re-ranks when it lands (skipped when ranking is off). The run button and file input stay
+// locked until both phases settle, so the request can't be corrupted mid-flight.
 async function enumerateReq(disco){
   const qs=new URLSearchParams({chain:$("chain").value, sasa_cut:$("sasa").value,
-    top_k: (disco || state.mode==="antibody") ? $("topk").value : 0,   // phase 1 keeps all; ranking truncates
-    mode:state.mode, fmt:fileFmt(), disco:disco?1:0});
+    top_k: disco ? $("topk").value : 0,   // phase 1 keeps all; ranking truncates
+    mode:"growpatch", fmt:fileFmt(), disco:disco?1:0});
   const res=await fetch(api("/enumerate?"+qs.toString()),{method:"POST",body:state.pdbText});
   const data=await res.json();
   if(!res.ok||data.error) throw new Error(data.error||("HTTP "+res.status));
@@ -272,23 +270,23 @@ async function enumerateReq(disco){
 }
 $("run").onclick=async()=>{
   if(!state.pdbText){msg("Choose a PDB file first.","err");return;}
-  const antibody=state.mode==="antibody";
+  const disco=$("disco").checked;
+  state.discoRequested=disco;
   $("run").disabled=true; setRunning(true); state.ranking=false;
-  // Phase 1: candidates (or, in antibody mode, the contact epitope) -- fast.
-  busy(antibody ? "Identifying contact residues…" : "Generating candidate regions…",
-       antibody ? "" : "Finding candidate regions…");
+  // Phase 1: growPatch candidates -- fast.
+  busy("Generating candidate regions…", "Finding candidate regions…");
   try{
     const data=await enumerateReq(false);
     state.D=data; state.sel=null; state.picked=new Set();
     $("results").style.display="block";
     buildStats(); buildList(); loadStructure();
-    if(antibody && data.patches.length) select(data.patches[0].i);   // show the epitope
   }catch(e){
     console.warn("enumerate:",e);
-    msg((antibody?"Could not identify contact residues.":"Could not generate candidates.")+" Check the service connection.","err");
+    msg("Could not generate candidates. Check the service connection.","err");
     $("run").disabled=false; setRunning(false); return;
   }
-  if(antibody){ busyDone(); msg(""); $("run").disabled=false; setRunning(false); return; }
+  // With ranking off, stop here and show the full candidate set in generation order.
+  if(!disco){ busyDone(); msg(""); $("run").disabled=false; setRunning(false); return; }
   // Phase 2: DiscoTope ranking in the background; candidates already visible and marked "not ranked yet".
   state.ranking=true; rankHdr();
   busy("Ranking candidates by DiscoTope-3.0…",
@@ -312,15 +310,7 @@ $("run").onclick=async()=>{
 
 function buildStats(){
   const D=state.D;
-  let items;
-  if(D.mode==="antibody"){
-    const p=D.patches[0]||{n_res:0,n_isl:0};
-    items=[["epitope residues",p.n_res],["sequence segments",p.n_isl],
-           ["bound partner",(D.partner_chains||[]).join(", ")||"—"],
-           ["surface residues",D.n_surface+" / "+D.n_residues]];
-  }else{
-    items=[["candidate regions",D.n_patches],["surface residues",D.n_surface+" / "+D.n_residues]];
-  }
+  const items=[["candidate regions",D.n_patches],["surface residues",D.n_surface+" / "+D.n_residues]];
   $("stats").innerHTML=items.map(([k,v])=>`<div class="stat"><b>${v}</b>${k}</div>`).join("");
 }
 function segText(n){return n===1?"1 sequence segment":n+" sequence segments";}
@@ -332,7 +322,7 @@ function discoBadge(p){
 }
 function rankHdr(){
   const el=$("rankhdr"); const D=state.D;
-  if(!D || D.mode==="antibody"){ el.hidden=true; return; }
+  if(!D){ el.hidden=true; return; }
   el.hidden=false;
   if(state.ranking){
     el.className="rankhdr unavail";
@@ -346,6 +336,10 @@ function rankHdr(){
     el.innerHTML="Candidates are ranked by their total DiscoTope-3.0 score (the sum over the candidate's "+
       "residues), which rewards larger patches with more high-likelihood residues. Scores are normalized "+
       "within this antigen (a relative ranking, not a calibrated binding probability).";
+  }else if(!state.discoRequested){
+    el.className="rankhdr";
+    el.innerHTML="DiscoTope-3.0 ranking is turned off. Candidates are shown in generation order. "+
+      "To order them by epitope likelihood, enable <b>Rank by DiscoTope-3.0</b> above and generate again.";
   }else{
     el.className="rankhdr unavail";
     el.innerHTML="<b>DiscoTope scores unavailable.</b> Showing the full growPatch candidate set for "+
@@ -357,14 +351,14 @@ function buildList(){
   const el=$("plist"); el.innerHTML="";
   const list=state.D.patches;
   $("nshown").textContent=list.length;
-  $("listword").textContent = (state.D.mode!=="antibody" && hasDisco()) ? "ranked candidates" : "candidates";
+  $("listword").textContent = hasDisco() ? "ranked candidates" : "candidates";
   rankHdr();
   if(!list.length){ el.innerHTML='<div class="empty">No candidates match the current settings.</div>'; updateStageSel(); return; }
   list.forEach((p,rank)=>{
     const row=document.createElement("div");
     row.className="prow"+(state.sel===p.i?" on":""); row.tabIndex=0; row.dataset.i=p.i;
     row.setAttribute("role","option"); row.setAttribute("aria-selected", state.sel===p.i ? "true":"false");
-    const ranked = state.D.mode!=="antibody" && hasDisco();
+    const ranked = hasDisco();
     row.innerHTML=`<input type="checkbox" class="pick" ${state.picked.has(p.i)?"checked":""} aria-label="Include ${p.epitope} in the staged run">`+
       (ranked?`<span class="rank">${rank+1}.</span>`:"")+
       `<span class="ep">${p.epitope}</span>`+discoBadge(p)+
@@ -388,17 +382,13 @@ function select(i){
   state.sel=i; const p=patchById(i);
   const sel=$("sel");
   if(!p){ sel.textContent="Select a candidate to see its residues and score."; return; }
-  if((p.methods||[]).includes("antibody-contact")){
-    sel.innerHTML=`<b>${p.epitope}</b> &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)} &middot; antibody-contact epitope`;
-  }else{
-    const scoreLine = !hasDisco() ? ``
-      : (p.disco_sum==null
-          ? ` &middot; no DiscoTope score (0 of ${p.disco_total} residues scored)`
-          : ` &middot; total DiscoTope ${p.disco_sum.toFixed(1)} (${p.disco_n} of ${p.disco_total} residues scored, mean ${p.disco_mean.toFixed(2)})`);
-    sel.innerHTML =
-      `<div><span class="k">Segments sent to scaffold design</span> <b>${p.epitope}</b> &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)}${scoreLine}</div>`+
-      `<div class="gapnote">growPatch fills short sequence gaps so the scaffold includes the backbone connecting nearby surface residues; the segments above are what goes to scaffold design.</div>`;
-  }
+  const scoreLine = !hasDisco() ? ``
+    : (p.disco_sum==null
+        ? ` &middot; no DiscoTope score (0 of ${p.disco_total} residues scored)`
+        : ` &middot; total DiscoTope ${p.disco_sum.toFixed(1)} (${p.disco_n} of ${p.disco_total} residues scored, mean ${p.disco_mean.toFixed(2)})`);
+  sel.innerHTML =
+    `<div><span class="k">Segments sent to scaffold design</span> <b>${p.epitope}</b> &middot; ${p.n_res} residues &middot; ${segText(p.n_isl)}${scoreLine}</div>`+
+    `<div class="gapnote">growPatch fills short sequence gaps so the scaffold includes the backbone connecting nearby surface residues; the segments above are what goes to scaffold design.</div>`;
   document.querySelectorAll(".prow").forEach(r=>{
     const on=+r.dataset.i===i; r.classList.toggle("on",on); r.setAttribute("aria-selected",on?"true":"false");
   });
@@ -462,7 +452,7 @@ $("stage").onclick=async()=>{
   const chosen=state.picked.size?state.D.patches.filter(p=>state.picked.has(p.i)):state.D.patches;
   const qs=new URLSearchParams({chain:$("chain").value, name:$("runname").value||"antigen",
     variants:$("variants").value, rfd3:$("rfd3").value, mpnn:$("mpnn").value,
-    budget_mode:state.budgetMode, budget_value:$("budgetval").value, mode:state.mode, fmt:fileFmt(),
+    budget_mode:state.budgetMode, budget_value:$("budgetval").value, mode:"growpatch", fmt:fileFmt(),
     helix_bias:$("helix").value, epitopes:chosen.map(p=>p.epitope).join("|")});
   $("stage").disabled=true; smsg("Preparing design specifications…","busy");
   try{
