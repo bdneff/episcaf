@@ -95,9 +95,8 @@ def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k, mod
                 has_disco=has_disco, residues=residues, patches=patches, mode="growpatch")
 
 
-def candidate_plan(filename, chain, regions):
-    """Allocate eight attempts per selected region across the actual generated contigs."""
-    trials = 8
+def candidate_plan(filename, chain, regions, trials=8):
+    """Allocate the fixed attempts per selected region across the generated contigs."""
     if not regions or len(set(regions)) != len(regions):
         raise ValueError("Select one or more distinct regions.")
     for region in regions:

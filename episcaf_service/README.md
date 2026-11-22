@@ -6,9 +6,9 @@ service runs on a cluster-access host and does everything up to the GPU boundary
 epitope detection, growPatch enumeration, contig staging, and scoring. It stops at the GPU: `/submit`
 stages a run under `$WS` and hands back a submission template — **you** launch the GPU jobs.
 
-## Private Google Cloud backbone pilot
+## Staged Gemini pilot
 
-Cloud Shell deployment, tester access and the two 3HFM reference routes are described in the [cloud pilot guide](gcloud/README.md). Each run attempts 16 backbones and returns up to eight retained structures.
+The hosted pilot saves a private bundle and notifies Brandon when configured. He submits from his Gemini home directory. The compute node writes the durable run to the lab workspace. [Deploy the web service, enable email and submit a request](gcloud/README.md).
 
 ## Private simulated pilot
 

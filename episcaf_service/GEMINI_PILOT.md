@@ -1,4 +1,6 @@
-# Advisor pilot on Gemini
+# Private on-cluster dispatcher (earlier pilot)
+
+For the hosted lab pilot, use the [manual Gemini handoff](gcloud/README.md). Brandon receives a notification and submits each job from his Gemini home directory. The instructions below apply to the separate SQLite-backed service.
 
 John can upload a PDB or mmCIF, preview it, choose its antigen chain, select growPatch regions and submit a private request. The request follows him across sign-ins under **Results → My runs**. For the first automatic GPU run, the candidate page provides the checked-in hen egg lysozyme PDB from 3HFM. Select chain Y. Other structures enter **Awaiting lab review**. The browser shows which path applies before submission.
 

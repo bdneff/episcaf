@@ -11,7 +11,8 @@ import uuid
 from fastapi import HTTPException, Response
 
 from episcaf_service import cloud_backbones as worker
-from episcaf_service import lysozyme_job, pilot
+from episcaf_service import pilot
+from episcaf_service.reference import matches_reference
 
 MODE = "cloud-lysozyme"
 PENDING = "cloud-reviewed"
@@ -58,38 +59,29 @@ def record_blob(owner, rid):
     return store().blob(f"runs/{owner}/{rid}")
 
 
-def matches_reference(structure, route, chain):
-    if chain != "Y":
-        return False
-    reference = lysozyme_job.REFERENCE.read_text() if route == "antibody" else lysozyme_job.reference_pdb()
-    chains = "HLY" if route == "antibody" else "Y"
-    def atoms(text):
-        return [line.rstrip() for line in text.splitlines() if line.startswith("ATOM  ") and line[21:22] in chains]
-    return atoms(structure) == atoms(reference)
-
-
 def review(s, owner):
     route = s.route
     enabled = matches_reference(s.structure, route, s.chain)
     regions = s.regions
     if enabled:
         if len(regions) != 1:
-            raise HTTPException(422, "Choose one region for the cloud pilot.")
+            raise HTTPException(422, "Choose one region per reference run.")
         try:
             worker.region_for(route, regions[0])
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
-    plan = pilot.prepare(pilot.RegionSelection(filename=s.filename, chain=s.chain, regions=regions))
+    plan = pilot.prepare(s, trials=worker.ATTEMPTS if enabled else 8)
     if enabled:
-        rows = plan["contigs"]
-        for i,r in enumerate(rows):
-            r["backbone_trials"] = worker.ATTEMPTS // len(rows) + int(i < worker.ATTEMPTS % len(rows))
-        plan.update(total=worker.ATTEMPTS, trials_per_candidate=worker.ATTEMPTS, retained_limit=worker.LIMIT)
+        plan["retained_limit"] = worker.LIMIT
     rid = uuid.uuid4().hex
-    backend = MODE if enabled else PENDING
+    backend = pilot.mode() if enabled else PENDING
+    if not enabled and pilot.mode() == "manual-gemini":
+        backend = "manual-review"
     record = dict(id=rid, filename=s.filename, chain=s.chain, route=route, regions=regions, backend=backend,
                   stage="review", submitted=None, updated=None, job_id=None, reason=None,
                   completed=None, estimated_start=None)
+    if backend == "manual-gemini":
+        record["plan"] = worker.reference_plan(regions)
     # Keep the uploaded bytes private. The worker can only read its checked-in reference.
     store().blob(f"uploads/{owner}/{rid}").upload_from_string(s.structure, if_generation_match=0)
     write(record_blob(owner,rid), record, if_generation_match=0)
@@ -145,6 +137,11 @@ def launch(owner, rid):
     if r is None:
         raise HTTPException(404, "Run unavailable.")
     generation = blob.generation
+    if r["backend"] in {"manual-gemini", "manual-review"}:
+        from episcaf_service import handoff
+        return handoff.launch(owner, r, blob)
+    if r["stage"] == "review" and pilot.mode() != MODE:
+        raise HTTPException(409, "Prepare a new review for manual Gemini submission.")
     if r["stage"] == "review":
         now = time.time()
         r.update(submitted=now, updated=now, stage="submitting" if r["backend"]==MODE else "awaiting lab review")
@@ -161,6 +158,11 @@ def stamp(value, fallback):
 
 def status(owner, r):
     from google.api_core.exceptions import PreconditionFailed
+    if r["backend"] in {"manual-gemini", "manual-review"}:
+        from episcaf_service import handoff
+        return handoff.status(owner, r)
+    if pilot.mode() != MODE and r["stage"] == "submitting":
+        return dict(r, reason="Check the earlier Google Batch submission with the operator.")
     if r["stage"] in ("completed","failed","awaiting lab review"):
         return r
     blob = record_blob(owner, r["id"])

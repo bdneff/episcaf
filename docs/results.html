@@ -231,7 +231,7 @@ function shown(){
 }
 function render(){
   const rs=shown();
-  const backboneOnly=ROWS.length>0 && ROWS.every(r=>r.source==="cloud-backbone");
+  const backboneOnly=ROWS.length>0 && ROWS.every(r=>["cloud-backbone","gemini-backbone"].includes(r.source));
   const budgetOnly=ROWS.length>0 && ROWS.every(r=>r.source==="simulated");
   $("passonly").closest("label").hidden=budgetOnly || backboneOnly;
   $("screenhelp").hidden=budgetOnly || backboneOnly;
@@ -273,7 +273,7 @@ function loadTable(text, title){
       populateRank();
       $("origin").textContent=title;
       pcMode = COLS.includes("composite");        // default scheme: filter status first, then composite
-      sortCol = pcMode ? null : (ROWS[0]?.source==="cloud-backbone"?"s_p1_free":COLS.includes("is_pass")?"is_pass":COLS[0]); sortDir=-1;
+      sortCol = pcMode ? null : (["cloud-backbone","gemini-backbone"].includes(ROWS[0]?.source)?"s_p1_free":COLS.includes("is_pass")?"is_pass":COLS[0]); sortDir=-1;
       $("rankby").value = pcMode ? "__pc" : (sortCol||"");
       $("msg").style.display="none"; $("msg").title=""; $("dl").disabled=false; render();
     }catch(e){ $("msg").textContent=e.message; $("msg").title=e.detail||""; $("msg").style.display="block"; }
@@ -352,15 +352,15 @@ async function showRuns(runs){
   try{
     const text=await (await pilotRequest(path)).text();
     if(current!==loadVersion)return;
-    if(run.backend==="cloud-lysozyme" && !parseCSV(text).length){
+    if(["cloud-lysozyme","manual-gemini"].includes(run.backend) && !parseCSV(text).length){
       clearPrivateResults();
       $("origin").textContent=run.reason+" The archive contains the score for each attempt.";
       $("empty").style.display="none";
     }else loadTable(text,testRun ? "Completed · simulated results. Each row shows the backbone trial budget for one selected region." :
-      run.backend==="cloud-lysozyme" ? run.reason+" Download the backbone coordinates and filter scores below." : "Completed · scored design sequences and predicted structures.");
+      ["cloud-lysozyme","manual-gemini"].includes(run.backend) ? run.reason+" Download the backbone coordinates and filter scores below." : "Completed · scored design sequences and predicted structures.");
     $("original").textContent=testRun?"Download simulated CSV":"Download scores CSV";
     $("models").href="/pilot/runs/"+encodeURIComponent(run.id)+"/designs.zip"; $("models").hidden=testRun;
-    $("models").textContent=run.backend==="cloud-lysozyme"?"Download retained backbones and all filter scores (ZIP)":"Download designs and scores (ZIP)";
+    $("models").textContent=["cloud-lysozyme","manual-gemini"].includes(run.backend)?"Download retained backbones and all filter scores (ZIP)":"Download designs and scores (ZIP)";
     privateLoaded=true;
     $("original").href="/pilot/"+path+"?download=true"; $("original").hidden=false;
   }catch(e){if(current===loadVersion)$("origin").textContent=e.message;}
@@ -380,7 +380,7 @@ const refreshRuns=pilotSession(showRuns,()=>{
 });
 async function initRuns(){
   const health=await fetch("/health",{cache:"no-store"}).then(r=>r.json()).catch(()=>({}));
-  if(health.service!=="episcaf" || !["simulated","gemini-lysozyme","cloud-lysozyme"].includes(health.pilot_mode)){
+  if(health.service!=="episcaf" || !["simulated","gemini-lysozyme","cloud-lysozyme","manual-gemini"].includes(health.pilot_mode)){
     if(selectedRun)$("origin").textContent="Open this run on the private pilot service.";
     return;
   }

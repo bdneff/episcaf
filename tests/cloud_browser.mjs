@@ -5,6 +5,7 @@ import {randomBytes} from 'node:crypto';
 import {once} from 'node:events';
 import {setTimeout as delay} from 'node:timers/promises';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || 'playwright-core');
+const manual=process.env.EPISCAF_PILOT_MODE==='manual-gemini';
 const token='alice.'+randomBytes(30).toString('hex');
 const setup=`
 import os, sys
@@ -24,7 +25,7 @@ cloud.write(requests.blob("testers/alice"),{"digest":pilot.digest(os.environ.pop
 uvicorn.run(app,host="127.0.0.1",port=0)
 `;
 const server=spawn(process.env.PYTHON || 'python3',['-c',setup],{env:{...process.env,
-  EPISCAF_PILOT_MODE:'cloud-lysozyme', EPISCAF_DISCOTOPE:'off',EPISCAF_GPU_IMAGE:'fixture',
+  EPISCAF_PILOT_MODE:manual?'manual-gemini':'cloud-lysozyme', EPISCAF_DISCOTOPE:'off',EPISCAF_GPU_IMAGE:'fixture',
   EPISCAF_RESULT_BUCKET:'results',EPISCAF_WORKER_SA:'worker',BROWSER_TEST_TOKEN:token}});
 let logs='',browser;
 server.stderr.on('data',s=>logs+=s);
@@ -56,15 +57,15 @@ try{
       await page.locator('#signout').waitFor();
     }
     await page.locator('#stage').click();
-    await page.getByRole('button',{name:'Start cloud run'}).waitFor();
+    await page.getByRole('button',{name:manual?'Request a Gemini run':'Start cloud run'}).waitFor();
     assert.match(await page.locator('#reviewtext').innerText(),/Total: 16 backbone attempts/);
     assert.match(await page.locator('#reviewtext').innerText(),/up to 8 backbones/);
-    await page.getByRole('button',{name:'Start cloud run'}).click();
-    await page.locator('#runlist').getByText(/Google Batch job/).first().waitFor();
+    await page.getByRole('button',{name:manual?'Request a Gemini run':'Start cloud run'}).click();
+    await page.locator('#runlist').getByText(manual?/awaiting Brandon’s submission/:/Google Batch job/).first().waitFor();
   }
   assert.equal((await (await page.request.get(origin+'/pilot/runs')).json()).length,2);
   assert.ok(!logs.includes(token));
-  console.log('Both cloud routes passed from the home page to the 16-trial review and private Batch receipt.');
+  console.log('Both epitope routes passed the 16-trial review and submission in '+(manual?'manual Gemini':'Google Batch')+' mode.');
 }finally{
   await browser?.close();
   if(server.exitCode===null){const done=once(server,'exit');server.kill();await done;}

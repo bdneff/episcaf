@@ -40,12 +40,13 @@ def validate_regions(regions):
             raise ValueError("Select regions on 3HFM lysozyme chain Y (residues 1–129).")
 
 
-def prepare(directory, regions):
+def prepare(directory, regions, plan=None):
     from episcaf_pipeline.build_growpatch_designs import parse_epitope
     validate_regions(regions)
     # The shipped fixed-PDB and stage05 extractors use chain A and positional
     # residue indices. 3HFM Y has contiguous native positions 1..129.
-    plan = candidate_plan("lysozyme", "A", [r.replace("Y:", "A:") for r in regions])
+    if plan is None:
+        plan = candidate_plan("lysozyme", "A", [r.replace("Y:", "A:") for r in regions])
     native = directory / "native"
     native.mkdir(mode=0o700)
     coordinates = reference_pdb("A")

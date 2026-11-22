@@ -85,14 +85,14 @@ app.include_router(pilot.router)
 
 @app.middleware("http")
 async def private_response(request: Request, call_next):
-    if pilot.mode() in {"cloud-lysozyme", "gemini-lysozyme"} and (request.url.path == "/submit" or
+    if pilot.mode() in pilot.HOSTED | {"gemini-lysozyme"} and (request.url.path == "/submit" or
             request.url.path.startswith(("/status/", "/results/"))):
         return Response(status_code=404)
     if not request.url.path.startswith("/pilot/"):
         return await call_next(request)
     origin = request.headers.get("origin")
     base = request.base_url
-    if pilot.mode() == "cloud-lysozyme" and os.getenv("K_SERVICE"):
+    if pilot.mode() in pilot.HOSTED and os.getenv("K_SERVICE"):
         base = base.replace(scheme="https")  # Cloud Run terminates TLS before forwarding to Uvicorn.
     if origin and origin != str(base).rstrip("/"):
         return Response(status_code=403)

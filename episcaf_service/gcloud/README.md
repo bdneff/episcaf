@@ -1,38 +1,70 @@
-# Deploy the private backbone pilot from Cloud Shell
+# Manual Gemini pilot
 
-Use the Google Cloud project that owns the existing `episcaf` service in `us-central1`. Billing, GPU quota for one L4, a Batch-compatible network, and permission to build images, deploy Cloud Run, create service accounts and assign IAM roles are required. The GPU build pins the upstream Linux/amd64 Foundry image by digest and uses its bundled weights. Allow time and disk space for the initial image build. The lab project pays for builds, storage and GPU jobs. The one-hour task timeout limits a single execution, not total project spend.
+Testers sign in to episcaf on Cloud Run. Both epitope routes accept private requests. Brandon reviews the request, transfers it and submits it from his own Gemini login. The website has no cluster credentials. The public episcaf service stays in staging mode.
 
-From a fresh checkout of the pilot branch:
+## Deploy the web service from Cloud Shell
+
+Select the project that owns the existing episcaf service in us-central1. The operator needs permission to build a web image, deploy Cloud Run and provision or use the private buckets and web service account. The deployment builds a CPU web image and prints the pilot URL. Issue one token per person. Reissuing a token rotates it while preserving their runs.
 
 ```bash
+git clone --single-branch --branch pilot/private-simulated-runs https://github.com/bdneff/episcaf.git episcaf-pilot
+cd episcaf-pilot
 gcloud config get-value project
-git clone --branch pilot/private-simulated-runs --single-branch https://github.com/bdneff/episcaf.git episcaf-cloud-pilot
-cd episcaf-cloud-pilot
 bash episcaf_service/gcloud/deploy.sh
 bash episcaf_service/gcloud/tester.sh issue john
 ```
 
-For a later update, use `git pull --ff-only` in that checkout and repeat the deploy command. The tester command prints the path of a private token file in Cloud Shell. Deliver its contents to John separately from the link. Reissuing for the same owner rotates the token. `bash episcaf_service/gcloud/tester.sh revoke john` revokes existing sessions and leaves that owner's runs in place.
+For an existing pilot checkout use `git pull --ff-only` before deploying. Give John the printed pilot URL and the contents of his private token file separately. To revoke his access run `bash episcaf_service/gcloud/tester.sh revoke john`.
 
-The script builds the CPU web and GPU worker images in Artifact Registry, creates two private buckets and two service accounts, and deploys a separate `episcaf-pilot` Cloud Run service. The existing `episcaf` site receives the text updates and a link to the pilot. Its own launch endpoints stay in staging mode. The pilot URL is browser-accessible. Reading a run or starting a paid job requires a tester token. The worker account can create result objects but cannot read tester records. No patient data, tokens, SSH keys, or Gemini paths are required.
+## Where each request goes
 
-## First run
+1. **Cloud Run** writes an immutable private bundle to `gs://episcaf-requests-PROJECT_NUMBER/inbox/OWNER/RUN_ID/`. It contains the original structure and a JSON manifest of its hash, route, chain, regions, budget and owner. For reference runs it also contains the frozen contigs, per-contig trial counts and a copy of the batch script. A tester's retry returns the same request. A reference run appears in My runs as **awaiting Brandon’s submission**. Other structures appear as **awaiting lab review**.
+2. **Brandon’s laptop** uses his normal Google Cloud login and SSH alias to transfer the bundle into `$HOME/.episcaf-pilot/inbox/RUN_ID/request.zip` on Gemini. The transfer needs the lab network or VPN, gcloud with access to the private buckets and a current copy of this branch. The login node only needs the home directory. Inspect the manifest there with `unzip -p request.zip request.json`.
+3. **The compute node** writes the reference bundle, intermediates, scores and backbone coordinates under `$WS/pilot/requests/RUN_ID/`. The configured workspace is `/tgen_labs/altin/alphafold3/workspace/episcaf_v2_bneff`. Slurm writes its log in the home inbox. The job copies the small final CSV, ZIP and completion record back to that inbox for transfer. A second job for the same ID exits before inference.
+4. **Brandon** publishes the numeric Slurm receipt from his laptop and returns the result files after completion. My runs then offers the scores and structures to the owner. The manual pilot shows the last published status. Closing the browser has no effect on the job.
 
-Open the printed pilot URL. Choose one starting point:
+## Email Brandon when a tester submits
 
-- **Find candidate regions** — download the linked 3HFM lysozyme PDB, upload it, choose chain Y, generate regions and select one.
-- **Find antibody contacts** — download and upload the linked 3HFM complex, choose chain Y and click **Find contact residues**. The server computes the antigen residues within 4 Å of bound chains H and L and verifies the region again at review.
+Use a private Apps Script project under a lab-approved Google account with read access to the request bucket. Set its Code.gs to the contents of `notify.gs`. In Project Settings, show the manifest and replace `appsscript.json` with the supplied manifest. Set the Script Properties `REQUEST_BUCKET` (bucket name only) and `OPERATOR_EMAIL` (your recipient). Run `notifyOperator` once to authorize it, then add a **time-driven, every 5 minutes** trigger for that function. The script emails the tester name, run ID, budget and transfer/submission commands. The original structure and token stay out of email. Stored run IDs suppress repeat notifications. An interrupted execution just after mail delivery can repeat the email. All commands refer to the same run.
 
-Sign in, choose **Prepare design inputs**, review the 16 attempts and click **Start cloud run**. Both routes use the existing relative backbone filter: retain the lowest-scoring half of the scorable trials, up to eight per run. The antibody supplies the epitope for the second route. Both filters rank raw backbone occupancy. An absolute bare-backbone quality threshold remains open. Each ZIP contains the retained backbone PDBs, their scores and the filter decisions for all attempts. ProteinMPNN sequences and AF3 predictions belong to the downstream Gemini workflow. Other uploads can be saved for lab review and do not start a cloud GPU.
-
-Batch provisions one GPU task per launch and performs the work after the browser closes. Retries of the same launch use the same Batch job ID. Cloud Run can scale to zero. The worker writes the archive and CSV before writing its completion record. My runs reads the saved record when the researcher returns. While jobs are active, the web service checks Batch on visits, at most about once every 30 seconds per run.
-
-To check a submission from Cloud Shell, copy its `ep-…` Batch job ID from My runs and run:
+If your Workspace administrator disables Apps Script, the private inbox is also available from a signed-in terminal. This command lists submitted bundles, including those submitted during a notification outage.
 
 ```bash
-gcloud batch jobs describe "$JOB_ID" --location=us-central1
+number=$(gcloud projects describe "$(gcloud config get-value project)" --format='value(projectNumber)')
+gcloud storage ls --recursive "gs://episcaf-requests-$number/inbox/"
 ```
 
-A successful first cloud run should produce a completed Batch job and a downloadable archive. Compare the retained row count with the number of PDBs. Local tests use native-coordinate controls and stand-ins for GPU inference and Google APIs. They cannot verify project IAM, network, GPU availability or execution of the installed checkpoint.
+## First Gemini submission
 
-[Google Batch GPU jobs](https://docs.cloud.google.com/batch/docs/create-run-job-gpus) · [Rosetta Commons Foundry worker image](https://rosettacommons.org/2026/02/25/6111/)
+For a fresh checkout, run this once on Gemini:
+
+```bash
+git clone --single-branch --branch pilot/private-simulated-runs https://github.com/bdneff/episcaf.git "$HOME/episcaf-advisor"
+```
+
+Once, on Gemini, install the same pilot branch in `$HOME/episcaf-advisor` (or update that checkout with `git pull --ff-only`). The batch script uses the established Mamba module and RFd3 environment. For the first test John downloads the linked 3HFM lysozyme reference in either route and selects one region on chain Y. Each job requests one GPU for up to one hour and attempts 16 backbones. It returns up to eight structures using the lowest half of scorable raw occupancy values. Other uploads produce a review bundle only. The standalone backbone filter has no validated absolute cutoff.
+
+The notification supplies OWNER and RUN_ID. On your laptop, in the pilot checkout, run:
+
+```bash
+python3 episcaf_service/gcloud/pilot_transfer.py fetch "$OWNER" "$RUN_ID"
+```
+
+On Gemini, use the run ID from the notification. Inspect the manifest, then submit once:
+
+```bash
+cd "$HOME/.episcaf-pilot/inbox/$RUN_ID"
+unzip -p request.zip request.json
+sbatch --parsable "$HOME/episcaf-advisor/episcaf_service/handoff.sbatch"
+```
+
+If the submission response is lost, check Slurm before submitting again. On your laptop, record the numeric receipt and publish after successful completion:
+
+```bash
+python3 episcaf_service/gcloud/pilot_transfer.py receipt "$OWNER" "$RUN_ID" "$JOB_ID"
+python3 episcaf_service/gcloud/pilot_transfer.py publish "$OWNER" "$RUN_ID" "$JOB_ID"
+```
+
+If Slurm reports failure, inspect the job log. To return the explanation use `pilot_transfer.py fail "$OWNER" "$RUN_ID" "$JOB_ID" --reason "…"`. For other uploaded structures use `pilot_transfer.py review "$OWNER" "$RUN_ID"` to retrieve the request for inspection.
+
+Project IAM, institutional email delivery, installed RFd3 model execution and GPU runtime require verification under the lab accounts. No always-running Gemini process or Open OnDemand app is needed.

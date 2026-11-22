@@ -39,6 +39,7 @@ class Blob:
         self.objects = objects
         self.key = key
         self.generation = None
+        self.time_created = None
 
     def exists(self):
         return self.key in self.objects
@@ -118,6 +119,48 @@ class CloudPilot(unittest.TestCase):
         self.assertEqual(self.bob.get("/pilot/runs").json(),[])
         cloud.write(self.store.blob("testers/alice"),{"digest":None})
         self.assertEqual(self.alice.get("/pilot/runs").status_code,401)
+
+    def test_manual_gemini_handoff(self):
+        from episcaf_service import handoff_job
+        with patch.dict(os.environ, {"EPISCAF_PILOT_MODE":"manual-gemini"}):
+            for route, region in [("growpatch","Y:20-34"), ("antibody",worker.contact_region())]:
+                upload = self.alice.get("/pilot/reference.pdb?route="+route).text
+                plan = self.review(route, upload, [region]).json()
+                rid = plan["id"]
+                url = "/pilot/runs/"+rid
+                self.assertEqual(plan["total"],16)
+                self.assertEqual(self.bob.post(url).status_code,404)
+                for _ in range(2):
+                    self.assertEqual(self.alice.post(url).json()["stage"],"awaiting Brandon’s submission")
+                bundle = self.store.blob("inbox/alice/"+rid+"/reference.zip")
+                data = bundle.download_as_bytes()
+                self.assertEqual(bundle.generation,1)
+                cloud.write(self.results.blob(rid+"/receipt.json"),{"stage":"queued","job_id":"12345"})
+                self.assertEqual(self.alice.get(url).json()["job_id"], "12345")
+                with tempfile.TemporaryDirectory() as tmp:
+                    base = Path(tmp)
+                    inbox = base / "home" / rid
+                    inbox.mkdir(parents=True)
+                    (inbox/"request.zip").write_bytes(data)
+                    def fake_generate(directory, selected_route, selected_region, source):
+                        self.assertEqual((selected_route,selected_region,source),(route,region,"gemini-backbone"))
+                        (directory/"retained.csv").write_text("source,design_id,s_p1_free\n")
+                        (directory/"designs.zip").write_bytes(b"archive fixture")
+                        return 0
+                    with patch.object(worker,"generate",side_effect=fake_generate):
+                        handoff_job.execute(inbox,base/"ws","12345")
+                        with self.assertRaises(FileExistsError):
+                            handoff_job.execute(inbox,base/"ws","12346")
+                    self.assertEqual((base/"ws/pilot/requests"/rid/"request.zip").read_bytes(),data)
+                    for name in ("terminal.json","retained.csv","designs.zip"):
+                        self.results.blob(rid+"/"+name).upload_from_string((inbox/name).read_bytes())
+                self.assertEqual(self.alice.get(url).json()["job_id"],"12345")
+                self.assertEqual(self.alice.get(url+"/designs.zip").status_code,200)
+                self.assertEqual(self.bob.get(url+"/results").status_code,404)
+            plan = self.review("growpatch","unmatched upload",["Y:20-34"]).json()
+            self.assertEqual(self.alice.post("/pilot/runs/"+plan["id"]).json()["stage"],"awaiting lab review")
+            self.assertTrue(self.store.blob("inbox/alice/"+plan["id"]+"/review.zip").exists())
+            self.assertFalse(self.jobs)
 
     def test_lost_receipt_reconciles_and_failed_job_is_terminal(self):
         from requests import Response

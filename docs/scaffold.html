@@ -144,7 +144,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 </div></div>
 <div class="page">
   <h1>Configure scaffold design</h1>
-  <p id="cloud-link" hidden><a href="growpatch_tool.html?route=antibody">Run the antibody contact epitope on Google Cloud</a></p>
+  <p id="cloud-link" hidden><a href="growpatch_tool.html?route=antibody">Request backbones for the antibody contact epitope</a></p>
   <p class="lede">Define the epitope from an antibody&ndash;antigen complex or select antigen residues
   directly. Configure backbone generation, sequence design, structure prediction, and ranking below.</p>
   <p class="note"><b>Without a connected service, this page simulates a run.</b> Use a staging service to prepare inputs for an uploaded structure. The viewer shows your selection; the table below uses example design metrics.</p>
@@ -1043,6 +1043,6 @@ updateCaption();
 paint(computeJob(state),false);
 if(document.readyState==="complete") initCViewer(); else window.addEventListener("load",initCViewer);
 </script>
-<script>fetch("/health").then(r=>r.json()).then(d=>{document.getElementById("cloud-link").hidden=d.pilot_mode!=="cloud-lysozyme";}).catch(()=>{});</script>
+<script>fetch("/health").then(r=>r.json()).then(d=>{document.getElementById("cloud-link").hidden=!["cloud-lysozyme","manual-gemini"].includes(d.pilot_mode);}).catch(()=>{});</script>
 </body>
 </html>

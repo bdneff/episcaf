@@ -562,9 +562,9 @@ async function checkService(){
   // configured fails the probe, so the form stays disabled and offers a URL field + the recorded example.
   try{
     const own=await fetch("/health",{cache:"no-store"}).then(r=>r.json()).catch(()=>({}));
-    privatePilot=own.service==="episcaf" && ["simulated","gemini-lysozyme","cloud-lysozyme"].includes(own.pilot_mode);
+    privatePilot=own.service==="episcaf" && ["simulated","gemini-lysozyme","cloud-lysozyme","manual-gemini"].includes(own.pilot_mode);
     $("live-note").hidden=own.pilot_mode!=="gemini-lysozyme";
-    cloudPilot=own.pilot_mode==="cloud-lysozyme";
+    cloudPilot=["cloud-lysozyme","manual-gemini"].includes(own.pilot_mode);
     if(cloudPilot){
       antibodyRoute=new URLSearchParams(location.search).get("route")==="antibody";
       const note=$("live-note"), link=document.createElement("a");
@@ -623,10 +623,13 @@ async function prepareReview(){
     if(plan.backend==="cloud-lysozyme"){
       $("reviewtext").append(" Google Cloud retains the half with the lowest raw occupancy scores, up to "+plan.retained_limit+" backbones. Download their coordinates and scores in My runs.");
       $("launch").textContent="Start cloud run";
+    }else if(plan.backend==="manual-gemini"){
+      $("reviewtext").append(" Brandon will review this request and submit it on Gemini. The filter retains up to 8 backbones with the lowest raw occupancy scores.");
+      $("launch").textContent="Request a Gemini run";
     }else if(plan.backend==="gemini-lysozyme"){
       $("reviewtext").append(" Gemini will design and score "+plan.sequence_predictions+" sequences from these backbones.");
       $("launch").textContent="Start Gemini run";
-    }else if(["gemini-reviewed","cloud-reviewed"].includes(plan.backend)){
+    }else if(["gemini-reviewed","cloud-reviewed","manual-review"].includes(plan.backend)){
       $("reviewtext").append(" The lab will review this upload before scheduling compute.");
       $("launch").textContent="Request lab review";
     }

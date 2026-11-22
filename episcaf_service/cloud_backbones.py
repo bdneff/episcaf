@@ -38,11 +38,17 @@ def region_for(route, region):
     return region
 
 
-def generate(directory, route, region):
+def reference_plan(regions):
+    from episcaf_service.staging import candidate_plan
+    return candidate_plan("lysozyme", "A", [r.replace("Y:", "A:") for r in regions], trials=ATTEMPTS)
+
+
+def generate(directory, route, region, source="cloud-backbone"):
     from episcaf_analysis.aomclash import score as raw
     from scripts.stage04_af3_emit_jsons import extract_sequence_from_pdb
 
-    plan = lysozyme.prepare(directory, [region_for(route, region)])
+    regions = [region_for(route, region)]
+    plan = lysozyme.prepare(directory, regions, plan=reference_plan(regions))
     rows = plan["contigs"]
     scores = []
     models = directory / "models"
@@ -53,9 +59,9 @@ def generate(directory, route, region):
         raise ValueError("The selected lysozyme region could not be scored.")
     sequence = extract_sequence_from_pdb(native)
     motif = "".join(sequence[a-1:b] for _, a, b in parse_epitope(region))
-    for index, row in enumerate(rows):
+    for row in rows:
         key = lysozyme.design_key(row)
-        attempts = ATTEMPTS // len(rows) + int(index < ATTEMPTS % len(rows))
+        attempts = row["backbone_trials"]
         out = directory / key
         subprocess.run(["rfd3", "design", f"++inputs={directory / 'inputs' / (key+'.json')}",
                         f"++out_dir={out}", "n_batches=1", f"diffusion_batch_size={attempts}"],
@@ -72,7 +78,7 @@ def generate(directory, route, region):
                 seq = extract_sequence_from_pdb(pdb)
                 if len(seq) == 103 and "".join(seq[j] for j in fixed) == motif:
                     value = raw.aomclash_score(target, str(pdb), [j+1 for j in fixed])
-            scores.append(dict(source="cloud-backbone", design_id=name, epitope=region, route=route,
+            scores.append(dict(source=source, design_id=name, epitope=region, route=route,
                                s_p1_free=value if value is not None and math.isfinite(value) else None))
     keep_mask(scores, "epitope", keep_frac=0.5, cutoff=None)
     kept = sorted((r for r in scores if r["kept"]), key=lambda r:r["s_p1_free"])
