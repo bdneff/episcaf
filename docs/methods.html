@@ -345,8 +345,7 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
       <li><span class="k">Clashes with the reference antibody</span> &mdash; the number of scaffold
       residues satisfying the geometric overlap criterion after alignment to the reference complex.
       Available only when an antibody structure is in hand.</li>
-      <li><span class="k">Estimated antibody clashes (AOMclash)</span> &mdash; the AOMclash output
-      calibrated to the reference clash-count scale, used when no reference antibody is available (below).</li>
+      <li><span class="k">Backbone obstruction (AOMclash)</span> &mdash; a raw occupancy score. Lower scores indicate less scaffold overlap with positions that antibodies often occupy.</li>
     </ul>
     <p>The standard antibody-reference filters require epitope RMSD &le; 1&nbsp;&Aring;, overall RMSD &le;
     2&nbsp;&Aring;, mean PAE &lt; 5&nbsp;&Aring;, and zero clashing residues. A design with a missing
@@ -407,8 +406,7 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
       <div class="eq" data-tex="P(\text{bind})=\sigma\!\Big(\beta_0+\textstyle\sum_j \beta_j\,\tilde{x}_j\Big),\qquad \sigma(z)=\frac{1}{1+e^{-z}}"></div>
       <p class="mnote">Missing features are median-imputed and numeric features are standardized before
       fitting; the weights <span class="k">&beta;</span> are L2-regularized and class-balanced for the 8%
-      base rate. The class-balanced output orders designs for ranking rather than giving a calibrated
-      binding probability.</p>
+      base rate. Use the class-balanced score to rank designs within the dataset.</p>
     </details>
     <p class="loc">episcaf_analysis/binding_model/ &middot; results/feature_model/model_v1_findings.md</p>
   </div>
@@ -445,24 +443,23 @@ figure.dgm figcaption{font-size:11.5px;color:#6a7686;margin:7px auto 0;max-width
   <section class="method-chapter" data-section aria-labelledby="tool">
     <h2 id="tool" tabindex="-1">Running the tools</h2>
     <div class="secbody">
-  <p>The browser displays structures, accepts selections, and explores results. Processing a new structure
-  may also require the local service. RFdiffusion3 generation and AlphaFold&nbsp;3 prediction run on the
-  cluster.</p>
+  <p>Your browser displays the structure and reads results CSVs. The service shown on the upload page finds candidate regions. The private cloud pilot runs RFdiffusion3 on Google Batch. The Gemini workflow also designs sequences and runs AlphaFold&nbsp;3.</p>
   <div class="card">
-    <h3>Browser tools, local processing, and cluster jobs</h3>
+    <h3>Where each calculation runs</h3>
     <ul>
       <li><span class="k">Browser.</span> Displays structures, supports the implemented residue
       selections, and reads results files. Served as plain HTML, including from GitHub Pages.</li>
       <li><span class="k">Local service</span> (<code>scripts/growpatch_serve.py</code>). Processes
       uploaded structures, generates candidate regions, and prepares design specifications on your own
       machine.</li>
+      <li><span class="k">Cloud pilot.</span> Google Batch generates and filters up to 16 backbones for one lysozyme epitope. Download the retained structures in My runs.</li>
       <li><span class="k">Cluster service</span> (<code>episcaf_service/</code>, FastAPI). Prepares cluster
       inputs and provides access to completed results through the configured connection, over a private
       SSH tunnel.</li>
     </ul>
-    <div class="why"><b>Job preparation and submission:</b> preparing a job writes the input files and
+    <div class="why"><b>Gemini staging.</b> Preparing a job writes the input files and
     submission script to the configured workspace. It does not start RFdiffusion3 or AlphaFold&nbsp;3.
-    Submit the generated script on the cluster to begin those calculations. Setup commands, host details,
+    The operator completes the staging template and submits the job to Slurm. Setup commands, host details,
     and the SSH tunnel are in the service setup notes.</div>
     <p class="loc">episcaf_service/README.md</p>
   </div>

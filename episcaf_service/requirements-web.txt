@@ -12,3 +12,4 @@ slowapi>=0.1.9        # per-client rate limiting (EPISCAF_RATE_LIMIT, default 30
 pybiolib>=1.1         # DiscoTope-3.0 ranking of uploads on BioLib's cloud (EPISCAF_DISCOTOPE=biolib).
                       # If this ever fails to build, drop the line: uploads then show scores
                       # unavailable but candidate generation still works.
+google-cloud-storage>=2.18,<4  # private Cloud Run pilot records and downloads

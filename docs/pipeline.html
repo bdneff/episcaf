@@ -124,7 +124,7 @@ figure.dgm figcaption{font-size:11.5px;color:#536477;margin:7px auto 0;line-heig
     epitopes (a candidate counts as recovered at Jaccard overlap &ge; 0.8 with a reference epitope),
     neighbor-based growth reaches recall@0.8 &asymp; 0.80. The surface cutoff is <code>SASA_CUT = 0.2</code>.
     A directional-sampling method and its higher union recall are recorded in ENUMERATOR_DECISION.md but are
-    off by default. Staging a full no-antibody design run end-to-end through the tool is in development.</p>
+    off by default. In the cloud pilot, select one lysozyme region to generate and filter its backbones.</p>
     <h3>Implementation</h3>
     <span class="tool">episcaf_analysis/growpatch/{core,read}.py · scripts/growpatch_viz_data.py · episcaf_service/disco.py · results/growpatch/ENUMERATOR_DECISION.md</span>
       </div>
@@ -143,7 +143,7 @@ figure.dgm figcaption{font-size:11.5px;color:#536477;margin:7px auto 0;line-heig
     contig specification. The default configuration requests eight backbones per contig.</p>
     <p>The contig fixes the epitope residues and their order but leaves the rest of the fold free, so each
     backbone is a different way of presenting the same epitope. The backbone coordinates are passed to
-    sequence design. Runs as a SLURM array on the cluster.</p>
+    sequence design. The cloud pilot runs one bounded GPU job per request.</p>
     <p class="io"><b>In:</b> epitope residues held fixed (a contig spec on the antigen). <b>&rarr; Out:</b> de novo backbone(s) presenting that epitope &mdash; coordinates, no sequence yet.</p>
     <h3>Implementation</h3>
     <span class="tool">hpc/sbatch/rfd3_array.sbatch</span>
@@ -252,7 +252,7 @@ figure.dgm figcaption{font-size:11.5px;color:#536477;margin:7px auto 0;line-heig
     <p>Epitope RMSD measures backbone deviation from the reference epitope; overall RMSD measures deviation
     from the intended (MPNN-designed) structure over the comparison region; epitope PAE reports confidence
     at the epitope. Geometric clashes are calculated against the reference antibody when one is available;
-    otherwise the selected AOMclash estimate (<code>aomclash_pred</code>) supplies the obstruction metric.</p>
+    for runs without an antibody, the raw occupancy score ranks obstruction. The four-filter screen requires an antibody clash count.</p>
     <p class="io"><b>In:</b> each AF3 structure, aligned to the reference on the epitope. <b>&rarr; Out:</b> the per-design metrics &mdash; epitope &amp; overall RMSD, epitope PAE, antibody clashes, AOMclash.</p>
     <h3>Implementation</h3>
     <span class="tool">stage05_extract_metrics</span>
@@ -268,13 +268,12 @@ figure.dgm figcaption{font-size:11.5px;color:#536477;margin:7px auto 0;line-heig
     score, and calibration.</p>
     <p>The deployed scorer uses the single occupancy-sum feature. A multi-feature model comparison is
     documented separately. The score is used in the supported backbone-filtering and final-ranking stages,
-    with raw and calibrated outputs identified separately. The map is vendored in-repo, so the scorer runs
-    offline.</p>
+    with raw and calibrated outputs identified separately. The scorer reads the occupancy map included with episcaf.</p>
     <p class="io"><b>In:</b> a design's scaffold atoms, framed on the epitope. <b>&rarr; Out:</b> the raw occupancy sum <code>s_p1_free</code>, and a calibrated clash-scale output where applied.</p>
     <ul class="steps">
       <li><span class="mk d">&#10003;</span><span class="tx"><b>Map.</b> Vendored (<code>aom_map.pkl</code>); occupancy peaks about 14&nbsp;&Aring; out along the outward normal (a measured map property).</span></li>
       <li><span class="mk d">&#10003;</span><span class="tx"><b>Scorer.</b> <code>score.py</code> frames a design (PDB or AF3 CIF) and returns <code>s_p1_free</code>; parity-checked against the reference extractor.</span></li>
-      <li><span class="mk p">&bull;</span><span class="tx"><b>Final ranking wired.</b> The <code>twelvemer</code> preset uses <code>aomclash_pred</code> for accessibility. In development: the backbone-filtering stage and its cluster-side validation.</span></li>
+      <li><span class="mk p">&bull;</span><span class="tx"><b>Final structure ranking.</b> The <code>twelvemer</code> preset uses <code>aomclash_pred</code> for accessibility. The cloud pilot returns the backbone scores and retained PDBs.</span></li>
     </ul>
     <h3>Implementation</h3>
     <span class="tool">episcaf_analysis/aomclash/ (aom_map, score, features) · results/aomclash/feature_set_decision.md</span>

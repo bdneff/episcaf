@@ -1,0 +1,11 @@
+FROM rosettacommons/foundry@sha256:77a76a051247ce500de8b2789e82fd15d99710840bf5ec8ef6eeffa0787beabf
+WORKDIR /opt/episcaf
+RUN python -m ensurepip --upgrade && python -m pip install --no-cache-dir gemmi "google-cloud-storage>=2.18,<4" biopython
+COPY episcaf_service/ ./episcaf_service/
+COPY episcaf_pipeline/ ./episcaf_pipeline/
+COPY episcaf_analysis/ ./episcaf_analysis/
+COPY scripts/ ./scripts/
+COPY configs/ ./configs/
+COPY episcaf_v3/energetics/md/3hfm_apo/structures/3hfm.pdb ./episcaf_v3/energetics/md/3hfm_apo/structures/3hfm.pdb
+RUN test -d "$FOUNDRY_CHECKPOINT_DIRS" && rfd3 --help >/dev/null && python -m episcaf_service.cloud_backbones --help >/dev/null
+ENTRYPOINT ["python", "-m", "episcaf_service.cloud_backbones"]

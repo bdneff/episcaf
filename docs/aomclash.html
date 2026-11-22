@@ -164,7 +164,7 @@ ul.tight li{margin:4px 0}
   <div class="formula"><span class="v">s_p1_free</span> = &Sigma;<sub>atoms</sub> &nbsp;p1(atom) &middot; [ atom is more than 4 &Aring; from the reference antigen ]</div>
   <p><code>p1(atom)</code> is the occupancy read at the atom. The distance condition selects atoms outside
   the specified reference-antigen boundary; atoms within that boundary do not contribute to the sum.</p>
-  <div class="io"><b>Input:</b> reference antigen, epitope definition, and scaffold structure. &nbsp;<b>&rarr; Output:</b> the raw occupancy score <code>s_p1_free</code> and the calibrated score, where available.</div>
+  <div class="io"><b>Input:</b> reference antigen, epitope definition, and scaffold structure. &nbsp;<b>&rarr; Output:</b> <code>s_p1_free</code>, the raw occupancy score used to rank pilot backbones. A separately fitted calibration is needed to estimate a clash count.</div>
 
   <h2>E. Score interpretation</h2>
   <h3>Raw score</h3>
@@ -182,8 +182,7 @@ ul.tight li{margin:4px 0}
 
   <h2>F. Use in the design pipeline</h2>
   <h3>Backbone filtering</h3>
-  <p>Each RFdiffusion3 backbone is scored before sequence design. For each epitope, the backbones with the
-  lowest <code>s_p1_free</code> continue to ProteinMPNN and AlphaFold&nbsp;3, and the rest are dropped.
+  <p>The cloud pilot scores 16 RFdiffusion3 backbones for one epitope. It returns the half with the lowest <code>s_p1_free</code> scores, up to eight structures. In a full design run these retained structures can proceed to sequence design.
   <a href="scaffold.html#step-filter">See the protocol control &rsaquo;</a></p>
   <h3>Design evaluation</h3>
   <p>After structure prediction, AOMclash can provide the obstruction term for designs without a reference

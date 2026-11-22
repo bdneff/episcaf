@@ -137,7 +137,7 @@ const DEFS={
   epitope_pae:"Predicted aligned error for the defined epitope residue pairs, in Å.",
   scaffold_pae:"Predicted aligned error for the defined scaffold residue pairs, in Å.",
   af3_n_clash_res:"Scaffold residues overlapping the reference antibody under the geometric clash criterion. The filter requires 0.",
-  s_p1_free:"Raw accessibility score on the final predicted structure. Lower values rank higher within the run.",
+  s_p1_free:"Raw obstruction score on the structure identified by the row. Lower scores indicate less overlap with the antibody occupancy map.",
   aomclash_pred:"Legacy score with unspecified calibration. Displayed for reference.",
   composite:"Weighted combination of the metrics specified by the selected preset. Higher scores rank first.",
   binding_pred:"Output of the fitted binding model. Higher scores rank first.",
@@ -231,9 +231,10 @@ function shown(){
 }
 function render(){
   const rs=shown();
+  const backboneOnly=ROWS.length>0 && ROWS.every(r=>r.source==="cloud-backbone");
   const budgetOnly=ROWS.length>0 && ROWS.every(r=>r.source==="simulated");
-  $("passonly").closest("label").hidden=budgetOnly;
-  $("screenhelp").hidden=budgetOnly;
+  $("passonly").closest("label").hidden=budgetOnly || backboneOnly;
+  $("screenhelp").hidden=budgetOnly || backboneOnly;
   const th=$("tbl").tHead, tb=$("tbl").tBodies[0];
   th.innerHTML="<tr>"+COLS.map(c=>`<th data-c="${escA(c)}" title="${escA(DEFS[c]||c)}" class="${c===sortCol?'sorted':''}">${esc(LABELS[c]||c)}`+
     (c===sortCol?` <span class="ar">${sortDir<0?'▼':'▲'}</span>`:"")+"</th>").join("")+"</tr>";
@@ -251,6 +252,7 @@ function render(){
   const tgtKey=COLS.includes("id")?"id":(COLS.includes("target")?"target":null);
   const ntgt=tgtKey?new Set(ROWS.map(r=>r[tgtKey])).size:"—";
   $("empty").style.display = ROWS.length ? "none" : "block";
+  if(backboneOnly){$("stats").textContent=rs.length+" retained backbones"; return;}
   if(budgetOnly){
     $("stats").textContent=ROWS.length+" selected regions";
     return;
@@ -271,7 +273,7 @@ function loadTable(text, title){
       populateRank();
       $("origin").textContent=title;
       pcMode = COLS.includes("composite");        // default scheme: filter status first, then composite
-      sortCol = pcMode ? null : (COLS.includes("is_pass")?"is_pass":COLS[0]); sortDir=-1;
+      sortCol = pcMode ? null : (ROWS[0]?.source==="cloud-backbone"?"s_p1_free":COLS.includes("is_pass")?"is_pass":COLS[0]); sortDir=-1;
       $("rankby").value = pcMode ? "__pc" : (sortCol||"");
       $("msg").style.display="none"; $("msg").title=""; $("dl").disabled=false; render();
     }catch(e){ $("msg").textContent=e.message; $("msg").title=e.detail||""; $("msg").style.display="block"; }
@@ -314,7 +316,7 @@ function showHistory(runs){
     row.insertCell().textContent=run.filename+" · chain "+run.chain;
     const status=row.insertCell();
     status.textContent=run.stage;
-    if(run.job_id && run.backend && run.backend!=="simulated")status.append(document.createElement("br"),"Slurm job "+run.job_id);
+    if(run.job_id && run.backend && run.backend!=="simulated")status.append(document.createElement("br"),(run.backend==="cloud-lysozyme"?"Google Batch job ":"Slurm job ")+run.job_id);
     if(run.reason)status.append(document.createElement("br"),run.reason);
     if(run.estimated_start)status.append(document.createElement("br"),"Estimated start "+date(run.estimated_start));
     row.insertCell().textContent=date(run.submitted);
@@ -350,10 +352,15 @@ async function showRuns(runs){
   try{
     const text=await (await pilotRequest(path)).text();
     if(current!==loadVersion)return;
-    loadTable(text,testRun ? "Completed · simulated results. Each row shows the backbone trial budget for one selected region." :
-      "Completed · scored design sequences and predicted structures.");
+    if(run.backend==="cloud-lysozyme" && !parseCSV(text).length){
+      clearPrivateResults();
+      $("origin").textContent=run.reason+" The archive contains the score for each attempt.";
+      $("empty").style.display="none";
+    }else loadTable(text,testRun ? "Completed · simulated results. Each row shows the backbone trial budget for one selected region." :
+      run.backend==="cloud-lysozyme" ? run.reason+" Download the backbone coordinates and filter scores below." : "Completed · scored design sequences and predicted structures.");
     $("original").textContent=testRun?"Download simulated CSV":"Download scores CSV";
     $("models").href="/pilot/runs/"+encodeURIComponent(run.id)+"/designs.zip"; $("models").hidden=testRun;
+    $("models").textContent=run.backend==="cloud-lysozyme"?"Download retained backbones and all filter scores (ZIP)":"Download designs and scores (ZIP)";
     privateLoaded=true;
     $("original").href="/pilot/"+path+"?download=true"; $("original").hidden=false;
   }catch(e){if(current===loadVersion)$("origin").textContent=e.message;}
@@ -373,7 +380,7 @@ const refreshRuns=pilotSession(showRuns,()=>{
 });
 async function initRuns(){
   const health=await fetch("/health",{cache:"no-store"}).then(r=>r.json()).catch(()=>({}));
-  if(health.service!=="episcaf" || !["simulated","gemini-lysozyme"].includes(health.pilot_mode)){
+  if(health.service!=="episcaf" || !["simulated","gemini-lysozyme","cloud-lysozyme"].includes(health.pilot_mode)){
     if(selectedRun)$("origin").textContent="Open this run on the private pilot service.";
     return;
   }

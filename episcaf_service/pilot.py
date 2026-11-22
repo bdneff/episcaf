@@ -12,7 +12,7 @@ import uuid
 from dataclasses import dataclass
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
@@ -27,6 +27,8 @@ SUMMARY = "backend,id,filename,chain,stage,submitted,updated,job_id,estimated_st
 
 def mode():
     configured = os.getenv("EPISCAF_PILOT_MODE")
+    if configured == "cloud-lysozyme" and os.getenv("K_SERVICE", "episcaf-pilot") == "episcaf-pilot":
+        return configured
     if configured in {"simulated", "gemini-lysozyme"} and not os.getenv("K_SERVICE"):
         return configured
     return "staging"
@@ -78,6 +80,9 @@ def digest(token):
 
 
 def tester(token):
+    if mode() == "cloud-lysozyme":
+        from episcaf_service import cloud
+        return cloud.tester(token)
     if not enabled():
         raise HTTPException(404)
     with database() as db:
@@ -95,7 +100,7 @@ def owner(request: Request):
 def signin(request: Request, response: Response):
     scheme, _, token = request.headers.get("Authorization", "").partition(" ")
     name = tester(token if scheme.lower() == "bearer" else "")
-    response.set_cookie(COOKIE, token, httponly=True, secure=request.url.scheme == "https",
+    response.set_cookie(COOKIE, token, httponly=True, secure=bool(os.getenv("K_SERVICE")) or request.url.scheme == "https",
                         samesite="strict", path="/pilot")
     return {"owner": name}
 
@@ -113,6 +118,7 @@ class RegionSelection(BaseModel):
 
 
 class Selection(RegionSelection):
+    route: Literal["growpatch", "antibody"] = "growpatch"
     structure: str = Field(min_length=1)
 
 
@@ -124,8 +130,11 @@ def prepare(s: RegionSelection):
 
 
 @router.get("/reference.pdb")
-def reference():
-    if mode() != "gemini-lysozyme":
+def reference(route: Literal["antibody","growpatch"] = "growpatch"):
+    if mode() == "cloud-lysozyme" and route == "antibody":
+        from episcaf_service.lysozyme_job import REFERENCE
+        return FileResponse(REFERENCE, media_type="chemical/x-pdb", filename="3HFM-complex.pdb")
+    if mode() not in {"gemini-lysozyme", "cloud-lysozyme"}:
         raise HTTPException(404)
     from episcaf_service.lysozyme_job import reference_pdb
     return Response(reference_pdb(), media_type="chemical/x-pdb",
@@ -135,6 +144,9 @@ def reference():
 @router.post("/reviews")
 def review(selection: Selection, name=Depends(owner)):
     backend = mode()
+    if backend == "cloud-lysozyme":
+        from episcaf_service import cloud
+        return cloud.review(selection, name)
     if backend == "gemini-lysozyme":
         from episcaf_service.lysozyme_job import reference_pdb, validate_regions
         selected_atoms = [line.rstrip() for line in selection.structure.splitlines()
@@ -233,6 +245,9 @@ def owned(db, rid, name, columns=SUMMARY, include_review=False):
 
 @router.post("/runs/{rid}")
 def launch(rid: str, name=Depends(owner)):
+    if mode() == "cloud-lysozyme":
+        from episcaf_service import cloud
+        return cloud.launch(name, rid)
     with database() as db:
         db.execute("BEGIN IMMEDIATE")
         row = owned(db, rid, name, include_review=True)
@@ -251,6 +266,9 @@ def launch(rid: str, name=Depends(owner)):
 
 @router.get("/runs")
 def runs(name=Depends(owner)):
+    if mode() == "cloud-lysozyme":
+        from episcaf_service import cloud
+        return cloud.runs(name)
     with database() as db:
         return [dict(r) for r in db.execute(f"SELECT {SUMMARY} FROM runs WHERE owner=? AND "
                                             "submitted IS NOT NULL ORDER BY submitted DESC", (name,))]
@@ -258,12 +276,18 @@ def runs(name=Depends(owner)):
 
 @router.get("/runs/{rid}")
 def status(rid: str, name=Depends(owner)):
+    if mode() == "cloud-lysozyme":
+        from episcaf_service import cloud
+        return cloud.status(name, cloud.owned(name, rid))
     with database() as db:
         return dict(owned(db, rid, name))
 
 
 @router.get("/runs/{rid}/results")
 def results(rid: str, download: bool = False, name=Depends(owner)):
+    if mode() == "cloud-lysozyme":
+        from episcaf_service import cloud
+        return cloud.result(name, rid, "retained.csv", download)
     with database() as db:
         row = owned(db, rid, name, "backend,stage,result,reason")
     if row["stage"] != "completed":
@@ -275,6 +299,9 @@ def results(rid: str, download: bool = False, name=Depends(owner)):
 
 @router.get("/runs/{rid}/designs.zip")
 def designs(rid: str, name=Depends(owner)):
+    if mode() == "cloud-lysozyme":
+        from episcaf_service import cloud
+        return cloud.result(name, rid, "designs.zip", True)
     from episcaf_service.gemini import run_dir
     with database() as db:
         row = owned(db, rid, name, "backend,stage")

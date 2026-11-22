@@ -144,12 +144,10 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 </div></div>
 <div class="page">
   <h1>Configure scaffold design</h1>
+  <p id="cloud-link" hidden><a href="growpatch_tool.html?route=antibody">Run the antibody contact epitope on Google Cloud</a></p>
   <p class="lede">Define the epitope from an antibody&ndash;antigen complex or select antigen residues
   directly. Configure backbone generation, sequence design, structure prediction, and ranking below.</p>
-  <p class="note"><b>Without a connected service, this page simulates a run.</b> With a service and an
-  uploaded structure, it prepares design inputs and a cluster submission script; cluster calculations
-  begin when that script is submitted. The structure viewer displays the selected example or uploaded
-  file, and changing protocol settings does not rerun a recorded example.</p>
+  <p class="note"><b>Without a connected service, this page simulates a run.</b> Use a staging service to prepare inputs for an uploaded structure. The viewer shows your selection; the table below uses example design metrics.</p>
 
   <hr>
 
@@ -291,7 +289,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     </div>
 
     <div class="field">
-      <div class="demobadge">With no service URL this simulates a run (illustrative numbers). With a service URL and an uploaded structure it prepares real design inputs on the cluster; the design still runs there.</div>
+      <div class="demobadge">Simulation uses example numbers. To prepare a Gemini job, upload a structure and enter the staging service URL.</div>
       <div><button type="submit" id="runbtn" class="btn-primary">Simulate a run</button>
       <span class="help" id="runnote"></span></div>
     </div>
@@ -322,7 +320,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   </section>
 
   <h2>Simulated output</h2>
-  <div class="demobadge">The table illustrates the interface using simulated design metrics. It does not contain new structure predictions. Upload a structure and set a service URL to prepare a real job.</div>
+  <div class="demobadge">These values come from the simulator. Use Results to open a completed run or your own metrics CSV.</div>
   <div class="tablewrap">
     <table id="results">
       <thead><tr><th>#</th><th>design</th><th>epitope RMSD (&Aring;)</th><th>Ab clash</th><th>score</th><th>status</th></tr></thead>
@@ -337,7 +335,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   <h2>Submission-script preview</h2>
   <pre id="cmd"></pre>
   <p><button id="cmdbtn" type="button" class="btn-secondary">Copy submission script</button></p>
-  <p class="help">The submission script this run maps to. The page cannot submit it; run it on the cluster, or set a service URL above to prepare the job for real.</p>
+  <p class="help">Example Gemini submission template. Preparing inputs saves a run-specific copy for the operator to complete.</p>
 
   <div id="stagedwrap" hidden>
     <h2>Prepared job</h2>
@@ -349,7 +347,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   <hr>
   <p class="foot"><b>Running real jobs.</b> With a service URL, preparing a job writes the input files and
   submission script to the configured workspace. It does not start RFdiffusion3 or AlphaFold&nbsp;3;
-  submit the generated script on the cluster to begin those calculations. See
+  complete the submission template before running it on Gemini. See
   <code>episcaf_service/README.md</code> for setup and the SSH tunnel.</p>
 </div>
 
@@ -904,14 +902,14 @@ $("#pdbfile").addEventListener("change",e=>{
       CFG["__upload"]={ag:d.antigen_chain,ab:d.partner_chains||[],epi:epiResids(d.epitope)};
       state.epi=d.is_complex?"antibody":"manual";
       const r=document.querySelector('input[name=epi][value="'+state.epi+'"]'); if(r)r.checked=true;
-      $("#uploadnote").innerHTML=d.is_complex
-        ? "detected an <b>antibody</b> (chain "+(d.partner_chains||[]).join(", ")+") bound to chain <b>"+d.antigen_chain+"</b>; epitope = "+d.n_epitope+" contact residues (red)."
-        : "no bound partner &mdash; <b>lone antigen</b> (chain "+d.antigen_chain+"); specify the epitope residues on the structure below, or use the <a href=\"growpatch_tool.html\">surface scan</a> to find candidate regions.";
+      $("#uploadnote").textContent=d.is_complex
+        ? "Chain "+d.antigen_chain+" contacts "+d.partner_chains.join(", ")+". Check the antibody chain selection below. The "+d.n_epitope+" contact residues are red."
+        : "No bound partner detected. Choose residues on the antigen or use Find candidate regions.";
     }catch(err){
       // detection could not run (no local service / no service URL): do NOT assume "no antibody".
       uploadDetected=false;
       CFG["__upload"]={ag:firstChain(uploadText),ab:[],epi:[]};
-      $("#uploadnote").innerHTML="Loaded "+f.name+". <b>Epitope detection is unavailable.</b> Select the antigen residues manually, or connect the local service (open this page from <code>http://127.0.0.1:8765/</code> after running <code>python scripts/growpatch_serve.py</code>, or set a service URL above).";
+      $("#uploadnote").textContent="Loaded "+f.name+". Automatic contact detection is unavailable. Select antigen residues on the structure or enter the processing service URL.";
     }
     syncHints(); loadComplex();
     buildSeqPanel((CFG["__upload"]&&CFG["__upload"].ab)||[]);   // sequence strip + manual chain assignment
@@ -980,11 +978,11 @@ function fillRealResults(d){
   const col=c=>d.columns.includes(c)?c:null;
   const idc=col("design_id")||col("id")||d.columns[0];
   const rmsdc=col("epitope_chunk_rmsd");               // the column heading is "epitope RMSD"; bind it, don't substitute overall
-  const clashc=col("af3_n_clash_res")||col("aomclash_pred");
+  const clashc=col("af3_n_clash_res");
   // show the score column that matches the chosen scorer, not always composite
   const scorec=state.strategy==="composite"?(col("composite")||col("binding_pred")):(col("binding_pred")||col("composite"));
   d.rows.forEach((row,i)=>{const tr=document.createElement("tr");
-    [i+1,row[idc],rmsdc?(+row[rmsdc]).toFixed(2):"—",clashc?(+row[clashc]).toFixed(1):"—",
+    [i+1,row[idc],rmsdc?(+row[rmsdc]).toFixed(2):"—",clashc && row[clashc]!=null && row[clashc]!==""?(+row[clashc]).toFixed(0):"—",
      scorec?(+row[scorec]).toFixed(3):"—","scored"].forEach(c=>{
        const td=document.createElement("td");td.textContent=c;tr.appendChild(td);});
     tb.appendChild(tr);});
@@ -1045,5 +1043,6 @@ updateCaption();
 paint(computeJob(state),false);
 if(document.readyState==="complete") initCViewer(); else window.addEventListener("load",initCViewer);
 </script>
+<script>fetch("/health").then(r=>r.json()).then(d=>{document.getElementById("cloud-link").hidden=d.pilot_mode!=="cloud-lysozyme";}).catch(()=>{});</script>
 </body>
 </html>

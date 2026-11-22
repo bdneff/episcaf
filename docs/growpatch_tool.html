@@ -137,7 +137,7 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
         <div class="fld"><label for="topk">Maximum candidate count</label><input type="number" id="topk" value="0" step="10" min="0" title="0 keeps every candidate"><span class="hint">Returns this many top-ranked candidates. Leave at 0 to keep every candidate.</span></div>
         <div class="fld" id="discofld"><label for="disco">Candidate ranking</label>
           <label class="chk"><input type="checkbox" id="disco" checked><span>Rank by DiscoTope-3.0</span></label>
-          <span class="hint" id="provider">A BioLib-enabled service sends your structure to BioLib for ranking. </span><span class="hint">Orders candidates by epitope likelihood (external DiscoTope-3.0 step, adds up to ~5&nbsp;min). Off returns them instantly in generation order.</span></div>
+          <span class="hint" id="provider">A BioLib-enabled service sends your structure to BioLib for ranking. </span><span class="hint">Ranking can take several minutes. Leave unchecked to see regions in generation order.</span></div>
         <div class="fld"><label aria-hidden="true">&nbsp;</label><button id="run" class="btn-primary" disabled>Generate candidates</button></div>
       </div>
       <div class="row" style="margin-top:9px">
@@ -177,8 +177,7 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
   <div id="results" hidden>
     <div class="card" style="margin-top:14px">
       <div class="lbl" style="margin-bottom:4px">Prepare scaffold-design inputs</div>
-      <div style="font-size:12px;color:#555;margin-bottom:8px">Convert the selected regions into design
-      specifications and a run configuration for the cluster.</div>
+      <div style="font-size:12px;color:#555;margin-bottom:8px">Review the selected residues and the number of backbone attempts before submitting.</div>
       <div id="pilot-auth" hidden>
     <form id="signin"><label>Tester token <input id="token" type="password" required autocomplete="off"></label>
       <button>Sign in</button></form>
@@ -216,7 +215,7 @@ const $=id=>document.getElementById(id);
 // Backend base URL. Lets the static GitHub Pages copy talk to a hosted backend (Render/Gemini) while
 // the same code stays same-origin ("") when the backend serves the UI itself. Resolution order:
 // a ?backend=<url> query param (saved for next time), else a saved value, else same-origin.
-let privatePilot=false, reviewed=null, revision=0, signedIn=false;
+let cloudPilot=false, antibodyRoute=false, privatePilot=false, reviewed=null, revision=0, signedIn=false;
 function backendBase(){
   if(privatePilot) return "";
   try{
@@ -299,9 +298,11 @@ $("file").onchange=()=>{
       const res=await fetch(api("/inspect?fmt="+fileFmt()),{method:"POST",body:state.pdbText});
       const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
       if($("file").files[0]!==f)return;
-      showChains(d.chains,d.antigen_chain);
+      showChains(d.chains,antibodyRoute && d.chains.some(c=>c.id==="Y")?"Y":d.antigen_chain);
       resetView();
-      if(d.is_complex){
+      if(antibodyRoute){
+        $("guess").textContent="Select the antigen chain to find its contacts.";
+      }else if(d.is_complex){
         $("guess").innerHTML=`Chain ${esc(d.antigen_chain)} has contacts with ${esc(d.partner_chains.join(", "))}. `+
           `For an antibody contact epitope, use `+
           `<a href="scaffold.html">Scaffold a selected epitope</a>.`;
@@ -324,7 +325,7 @@ syncControls();
 async function enumerateReq(disco){
   const qs=new URLSearchParams({chain:selectedChain(), sasa_cut:$("sasa").value,
     top_k: disco ? $("topk").value : 0,   // phase 1 keeps all; ranking truncates
-    mode:"growpatch", fmt:fileFmt(), disco:disco?1:0});
+    mode:antibodyRoute?"antibody":"growpatch", fmt:fileFmt(), disco:disco?1:0});
   const res=await fetch(api("/enumerate?"+qs.toString()),{method:"POST",body:state.pdbText});
   const data=await res.json();
   if(!res.ok||data.error) throw new Error(data.error||("HTTP "+res.status));
@@ -333,7 +334,7 @@ async function enumerateReq(disco){
 $("run").onclick=async()=>{
   if(!state.pdbText){msg("Choose a PDB file first.","err");return;}
   clearSelection(); resetView();
-  const disco=$("disco").checked;
+  const disco=!antibodyRoute && $("disco").checked;
   state.discoRequested=disco;
   $("run").disabled=true; setRunning(true); state.ranking=false;
   // Phase 1: growPatch candidates -- fast.
@@ -342,7 +343,9 @@ $("run").onclick=async()=>{
     const data=await enumerateReq(false);
     state.D=data; state.sel=null; state.picked=new Set();
     $("results").hidden=false; $("structure").classList.add("has-candidates");
+    if(antibodyRoute && data.patches.length===1){state.sel=data.patches[0].i;state.picked.add(state.sel);}
     buildStats(); buildList(); resetView();
+    if(antibodyRoute && state.sel!=null)select(state.sel);
   }catch(e){
     console.warn("enumerate:",e);
     msg("Could not generate candidates. Check the service connection.","err");
@@ -385,7 +388,7 @@ function discoBadge(p){
 }
 function rankHdr(){
   const el=$("rankhdr"); const D=state.D;
-  if(!D){ el.hidden=true; return; }
+  if(!D || antibodyRoute){ el.hidden=true; return; }
   el.hidden=false;
   if(state.ranking){
     el.className="rankhdr unavail";
@@ -414,7 +417,7 @@ function buildList(){
   const el=$("plist"); el.innerHTML="";
   const list=state.D.patches;
   $("nshown").textContent=list.length;
-  $("listword").textContent = hasDisco() ? "ranked candidates" : "candidates";
+  $("listword").textContent = antibodyRoute ? "contact epitope" : hasDisco() ? "ranked candidates" : "candidates";
   rankHdr();
   if(!list.length){ el.innerHTML='<div class="empty">No candidates match the current settings.</div>'; updateStageSel(); return; }
   list.forEach((p,rank)=>{
@@ -427,6 +430,10 @@ function buildList(){
       `<span class="ep">${esc(p.epitope)}</span>`+discoBadge(p)+
       `<span class="rowmeta">candidate ${Number(p.i)} &middot; ${Number(p.n_res)} residues &middot; ${segText(p.n_isl)}</span>`;
     row.querySelector(".pick").onclick=e=>{e.stopPropagation();
+      if(e.target.checked && cloudPilot){
+        state.picked.clear();
+        for(const input of el.querySelectorAll(".pick")) input.checked=input===e.target;
+      }
       if(e.target.checked) state.picked.add(p.i); else state.picked.delete(p.i); updateStageSel();};
     row.onclick=()=>select(p.i);
     row.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(p.i);}};
@@ -555,8 +562,22 @@ async function checkService(){
   // configured fails the probe, so the form stays disabled and offers a URL field + the recorded example.
   try{
     const own=await fetch("/health",{cache:"no-store"}).then(r=>r.json()).catch(()=>({}));
-    privatePilot=own.service==="episcaf" && ["simulated","gemini-lysozyme"].includes(own.pilot_mode);
+    privatePilot=own.service==="episcaf" && ["simulated","gemini-lysozyme","cloud-lysozyme"].includes(own.pilot_mode);
     $("live-note").hidden=own.pilot_mode!=="gemini-lysozyme";
+    cloudPilot=own.pilot_mode==="cloud-lysozyme";
+    if(cloudPilot){
+      antibodyRoute=new URLSearchParams(location.search).get("route")==="antibody";
+      const note=$("live-note"), link=document.createElement("a");
+      link.href="/pilot/reference.pdb?route="+(antibodyRoute?"antibody":"growpatch"); link.download="";
+      link.textContent=antibodyRoute?"3HFM antibody–lysozyme complex":"3HFM lysozyme";
+      note.hidden=false; note.replaceChildren("For a GPU run, upload the ",link," and choose one region on chain Y. Other uploads go to lab review.");
+      if(antibodyRoute){
+        document.querySelector("h1").textContent="Find the antibody contact epitope";
+        document.querySelector(".lede").textContent="Choose the antigen chain. The contact epitope contains its residues within 4 Å of a bound partner. For 3HFM the antibody chains are H and L.";
+        $("run").textContent="Find contact residues";
+        for(const id of ["disco","sasa","topk"]) $(id).closest(".fld").hidden=true;
+      }
+    }
     if(!privatePilot){
       const configured=new URL(location.href).searchParams.get("backend");
       try{if(configured!==null)localStorage.setItem("episcaf_backend",configured.trim());}catch{}
@@ -584,7 +605,7 @@ async function prepareReview(){
   try{
     const regions=state.D.patches.filter(p=>state.picked.has(p.i)).map(p=>p.epitope);
     const payload={filename:$("file").files[0].name,chain:state.D.chain,regions};
-    if(privatePilot)payload.structure=state.pdbText;
+    if(privatePilot){payload.structure=state.pdbText;payload.route=antibodyRoute?"antibody":"growpatch";}
     const options={method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)};
     const res=privatePilot ? await pilotRequest("reviews",options) : await fetch(api("/prepare"),options);
     if(!res.ok){
@@ -599,10 +620,13 @@ async function prepareReview(){
       plan.regions.join(" | ")+". Backbone trials per candidate: "+plan.trials_per_candidate+
       ". Total: "+plan.total+" backbone attempts across all contig variants. One round, no partial diffusion."+
       (privatePilot?"":" Staging mode. Download your prepared inputs below.");
-    if(plan.backend==="gemini-lysozyme"){
+    if(plan.backend==="cloud-lysozyme"){
+      $("reviewtext").append(" Google Cloud retains the half with the lowest raw occupancy scores, up to "+plan.retained_limit+" backbones. Download their coordinates and scores in My runs.");
+      $("launch").textContent="Start cloud run";
+    }else if(plan.backend==="gemini-lysozyme"){
       $("reviewtext").append(" Gemini will design and score "+plan.sequence_predictions+" sequences from these backbones.");
       $("launch").textContent="Start Gemini run";
-    }else if(plan.backend==="gemini-reviewed"){
+    }else if(["gemini-reviewed","cloud-reviewed"].includes(plan.backend)){
       $("reviewtext").append(" The lab will review this upload before scheduling compute.");
       $("launch").textContent="Request lab review";
     }

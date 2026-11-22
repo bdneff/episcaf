@@ -109,15 +109,16 @@ def read_pdb_atoms(path):
     for PDB-based callers and the cross-check test.
     """
     out = []
-    for l in open(path):
-        if l.startswith("ATOM"):
-            if l[16] not in " A":
-                continue
-            el = l[76:78].strip()
-            name = l[12:16].strip()
-            if (el == "H") if el else name.startswith("H"):
-                continue
-            out.append((name, l[21], int(l[22:26]), float(l[30:38]), float(l[38:46]), float(l[46:54])))
+    with open(path) as atoms:
+        for l in atoms:
+            if l.startswith("ATOM"):
+                if l[16] not in " A":
+                    continue
+                el = l[76:78].strip()
+                name = l[12:16].strip()
+                if (el == "H") if el else name.startswith("H"):
+                    continue
+                out.append((name, l[21], int(l[22:26]), float(l[30:38]), float(l[38:46]), float(l[46:54])))
     return out
 
 

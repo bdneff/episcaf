@@ -6,6 +6,10 @@ service runs on a cluster-access host and does everything up to the GPU boundary
 epitope detection, growPatch enumeration, contig staging, and scoring. It stops at the GPU: `/submit`
 stages a run under `$WS` and hands back a submission template — **you** launch the GPU jobs.
 
+## Private Google Cloud backbone pilot
+
+Cloud Shell deployment, tester access and the two 3HFM reference routes are described in the [cloud pilot guide](gcloud/README.md). Each run attempts 16 backbones and returns up to eight retained structures.
+
 ## Private simulated pilot
 
 Use the web service Python environment. From the repository root, create a private local directory outside the checkout and issue a token for each tester. Keep the same database path across service restarts. The example writes the token to a file readable by the operator.

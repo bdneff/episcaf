@@ -59,7 +59,7 @@ async def monitor():
 @asynccontextmanager
 async def lifespan(app):
     task = None
-    if pilot.enabled():
+    if pilot.mode() in {"simulated", "gemini-lysozyme"}:
         pilot.initialize()
         if pilot.mode() == "simulated":
             task = asyncio.create_task(monitor())
@@ -85,13 +85,16 @@ app.include_router(pilot.router)
 
 @app.middleware("http")
 async def private_response(request: Request, call_next):
-    if pilot.mode() == "gemini-lysozyme" and (request.url.path == "/submit" or
+    if pilot.mode() in {"cloud-lysozyme", "gemini-lysozyme"} and (request.url.path == "/submit" or
             request.url.path.startswith(("/status/", "/results/"))):
         return Response(status_code=404)
     if not request.url.path.startswith("/pilot/"):
         return await call_next(request)
     origin = request.headers.get("origin")
-    if origin and origin != str(request.base_url).rstrip("/"):
+    base = request.base_url
+    if pilot.mode() == "cloud-lysozyme" and os.getenv("K_SERVICE"):
+        base = base.replace(scheme="https")  # Cloud Run terminates TLS before forwarding to Uvicorn.
+    if origin and origin != str(base).rstrip("/"):
         return Response(status_code=403)
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-store"
@@ -155,7 +158,7 @@ def _tmp_structure(body: bytes, fmt: str):
 def health():
     ws = ws_root()
     return {"ok": True, "service": "episcaf", "ws": ws, "ws_exists": os.path.isdir(ws),
-            "pilot_mode": pilot.mode(),
+            "pilot_mode": pilot.mode(), "pilot_url": os.getenv("EPISCAF_PILOT_URL", ""),
             "biolib": os.getenv("EPISCAF_DISCOTOPE") == "biolib",
             "slurm": bool(shutil.which("squeue"))}
 

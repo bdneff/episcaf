@@ -122,6 +122,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 
   <section class="paths">
     <h2>Choose a starting point</h2>
+    <p id="invite" hidden><a>Open the private cloud pilot</a> with your tester token to request backbones.</p>
     <div class="fork">
       <div class="card">
         <div class="card-b">
@@ -131,7 +132,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
           <p class="ill-cap">Antigen (grey) with the selected epitope (red). 8PWW chain A.</p>
           <p>Start from an antibody&ndash;antigen complex or select antigen residues directly.</p>
         </div>
-        <div class="card-f"><a class="btn btn-primary" href="scaffold.html">Configure scaffold design</a></div>
+        <div class="card-f"><a class="btn btn-primary" id="selected-path" href="scaffold.html">Configure scaffold design</a></div>
       </div>
       <div class="card">
         <div class="card-b">
@@ -205,9 +206,19 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     </div>
   </section>
 
-  <p class="caps">Recorded examples can be explored in the browser. Processing a new structure requires the
-  episcaf processing service. Scaffold generation and structure prediction require cluster jobs.</p>
+  <p class="caps">Browse recorded examples here. The upload page shows where your structure will be processed and what each run returns.</p>
 
 </div>
+<script>
+fetch("/health").then(r=>r.json()).then(d=>{
+  if(d.pilot_url && new URL(d.pilot_url).protocol==="https:"){
+    const p=document.getElementById("invite"); p.hidden=false; p.querySelector("a").href=new URL("/home.html",d.pilot_url);
+  }
+  if(d.pilot_mode==="cloud-lysozyme"){
+    const link=document.getElementById("selected-path");
+    link.href="growpatch_tool.html?route=antibody";link.textContent="Find antibody contacts";
+  }
+}).catch(()=>{});
+</script>
 </body>
 </html>
