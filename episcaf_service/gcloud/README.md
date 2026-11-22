@@ -16,6 +16,12 @@ bash episcaf_service/gcloud/tester.sh issue john
 
 For an existing pilot checkout use `git pull --ff-only` before deploying. Give John the printed pilot URL and the contents of his private token file separately. To revoke his access run `bash episcaf_service/gcloud/tester.sh revoke john`.
 
+## Review requests in your browser
+
+For your own upload, open **Results → My runs → View run** to see the selected regions or **Download submitted request (ZIP)**. Existing staged requests work too. Open `request.json` inside the ZIP to inspect its manifest.
+
+To review someone else’s request, use the download link in the operator email while signed into the Google account with bucket access. You can also browse the request bucket’s `inbox/` folder in the Cloud Storage console. To add the link to an existing email setup, replace Code.gs with the updated `notify.gs` and save it.
+
 ## Where each request goes
 
 1. **Cloud Run** writes an immutable private bundle to `gs://episcaf-requests-PROJECT_NUMBER/inbox/OWNER/RUN_ID/`. It contains the original structure and a JSON manifest of its hash, route, chain, regions, budget and owner. For reference runs it also contains the frozen contigs, per-contig trial counts and a copy of the batch script. A tester's retry returns the same request. A reference run appears in My runs as **awaiting Brandon’s submission**. Other structures appear as **awaiting lab review**.

@@ -62,6 +62,13 @@ try{
     assert.match(await page.locator('#reviewtext').innerText(),/up to 8 backbones/);
     await page.getByRole('button',{name:manual?'Request a Gemini run':'Start cloud run'}).click();
     await page.locator('#runlist').getByText(manual?/awaiting Brandon’s submission/:/Google Batch job/).first().waitFor();
+    if(manual){
+      const link=page.getByRole('link',{name:'Download submitted request (ZIP)'});
+      const [download]=await Promise.all([page.waitForEvent('download'),link.click()]);
+      assert.match(download.suggestedFilename(),/^request-[a-f0-9]{32}\.zip$/);
+      assert.equal(await download.failure(),null);
+      assert.match(await page.locator('#request-regions').innerText(),/Y:/);
+    }
   }
   assert.equal((await (await page.request.get(origin+'/pilot/runs')).json()).length,2);
   assert.ok(!logs.includes(token));

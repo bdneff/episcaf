@@ -81,6 +81,10 @@ label.ck[hidden]{display:none}
   <a href="RESULTS_SCHEMA.md">the results-file format and metric definitions</a>.</p>
 
   <p id="origin" role="status"></p>
+  <div id="request-files" hidden>
+    <p id="request-regions"></p>
+    <a id="request-download" download>Download submitted request (ZIP)</a>
+  </div>
   <a id="models" hidden>Download designs and scores (ZIP)</a>
   <a id="original" hidden>Download simulated CSV</a>
   <div class="bar">
@@ -282,7 +286,7 @@ function loadTable(text, title){
 let loadVersion=0, manualFile=false;
 $("file").onchange=async()=>{
   const f=$("file").files[0]; if(!f)return;
-  manualFile=true;
+  manualFile=true; $("request-files").hidden=true;
   if(selectedRun){
     const url=new URL(location.href); url.searchParams.delete("run");
     history.replaceState(null,"",url);
@@ -338,13 +342,22 @@ async function showRuns(runs){
   const testRun=run && (!run.backend || run.backend==="simulated");
   $("result-title").textContent=run ? (testRun?"Test run · ":"Design run · ")+run.filename+" · chain "+run.chain : "Run";
   if(!run){
+    $("request-files").hidden=true;
     clearPrivateResults();
     $("origin").textContent="This run is unavailable for this account.";
     return;
   }
+  const hasRequest=["manual-gemini","manual-review"].includes(run.backend) && run.stage!=="preparing handoff";
+  $("request-files").hidden=!hasRequest;
+  if(hasRequest){
+    $("request-regions").textContent="Selected regions: "+run.regions.join(" | ");
+    $("request-download").href="/pilot/runs/"+encodeURIComponent(run.id)+"/request.zip";
+  }
   if(privateLoaded)return;
   if(run.stage!=="completed"){
-    $("origin").textContent=run.reason || "Run status: "+run.stage+". Results will appear here when available.";
+    $("origin").textContent=run.reason || (run.stage==="awaiting lab review"
+      ? "Your upload is saved for lab review. The lab can inspect the structure and selected regions."
+      : "Run status: "+run.stage+". Results will appear here when available.");
     $("empty").style.display="none";
     return;
   }
@@ -372,7 +385,7 @@ function clearPrivateResults(){
   $("result-title").textContent="Design results";
 }
 const refreshRuns=pilotSession(showRuns,()=>{
-  sessionActive=false;historyKey=null;
+  sessionActive=false;historyKey=null; $("request-files").hidden=true;
   $("runlist").replaceChildren();
   if(manualFile)return;
   clearPrivateResults();

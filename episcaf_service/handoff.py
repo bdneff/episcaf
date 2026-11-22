@@ -6,11 +6,29 @@ from pathlib import Path
 import time
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from google.api_core.exceptions import PreconditionFailed
+from fastapi import HTTPException, Response
+from google.api_core.exceptions import NotFound, PreconditionFailed
 
 from episcaf_service import cloud
 
 READY = "awaiting Brandon’s submission"
+
+
+def bundle_blob(owner, record):
+    name = {"manual-gemini": "reference.zip", "manual-review": "review.zip"}.get(record["backend"])
+    if name is None:
+        raise HTTPException(404, "No staged request for this run.")
+    return cloud.store().blob(f"inbox/{owner}/{record['id']}/{name}")
+
+
+def download(owner, rid):
+    record = cloud.owned(owner, rid)
+    try:
+        data = bundle_blob(owner, record).download_as_bytes()
+    except NotFound as exc:
+        raise HTTPException(409, "The request files are not available yet.") from exc
+    return Response(data, media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="request-{rid}.zip"'})
 
 
 def bundle(record, owner, upload):
@@ -47,9 +65,8 @@ def status(owner, r):
         r = cloud.read(blob)
         if r["stage"] == "preparing handoff":
             reference = r["backend"] == "manual-gemini"
-            name = "reference.zip" if reference else "review.zip"
             upload = cloud.store().blob(f"uploads/{owner}/{rid}").download_as_bytes()
-            out = cloud.store().blob(f"inbox/{owner}/{rid}/{name}")
+            out = bundle_blob(owner, r)
             try:
                 out.upload_from_string(bundle(r, owner, upload), content_type="application/zip",
                                        if_generation_match=0)

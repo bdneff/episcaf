@@ -135,6 +135,10 @@ class CloudPilot(unittest.TestCase):
                 bundle = self.store.blob("inbox/alice/"+rid+"/reference.zip")
                 data = bundle.download_as_bytes()
                 self.assertEqual(bundle.generation,1)
+                response = self.alice.get(url+"/request.zip")
+                self.assertEqual(response.content, data)
+                self.assertIn("attachment", response.headers["content-disposition"])
+                self.assertEqual(self.bob.get(url+"/request.zip").status_code,404)
                 cloud.write(self.results.blob(rid+"/receipt.json"),{"stage":"queued","job_id":"12345"})
                 self.assertEqual(self.alice.get(url).json()["job_id"], "12345")
                 with tempfile.TemporaryDirectory() as tmp:
@@ -159,7 +163,13 @@ class CloudPilot(unittest.TestCase):
                 self.assertEqual(self.bob.get(url+"/results").status_code,404)
             plan = self.review("growpatch","unmatched upload",["Y:20-34"]).json()
             self.assertEqual(self.alice.post("/pilot/runs/"+plan["id"]).json()["stage"],"awaiting lab review")
-            self.assertTrue(self.store.blob("inbox/alice/"+plan["id"]+"/review.zip").exists())
+            path = "/pilot/runs/"+plan["id"]+"/request.zip"
+            with ZipFile(io.BytesIO(self.alice.get(path).content)) as files:
+                self.assertEqual(json.loads(files.read("request.json"))["regions"], ["Y:20-34"])
+                self.assertEqual(files.read("upload"), b"unmatched upload")
+            self.assertEqual(self.bob.get(path).status_code,404)
+            cloud.write(self.store.blob("testers/alice"),{"digest":None})
+            self.assertEqual(self.alice.get(path).status_code,401)
             self.assertFalse(self.jobs)
 
     def test_lost_receipt_reconciles_and_failed_job_is_terminal(self):

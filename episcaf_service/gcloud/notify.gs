@@ -23,11 +23,13 @@ function notifyOperator() {
         const body = [
           owner + ' submitted request ' + id + '.',
           ref ? '3HFM reference: 16 backbone attempts, up to 8 retained.' : 'Structure submitted for lab review.',
-          'From your laptop in the pilot checkout, copy the bundle into your private Gemini home:',
-          op + (ref ? 'fetch ' : 'review ') + owner + ' ' + id,
-          'Gemini inbox: ~/.episcaf-pilot/inbox/' + id + '/request.zip'
+          'Open the submitted ZIP with your lab Google account:',
+          'https://storage.cloud.google.com/' + encodeURIComponent(bucket) + '/' + item.name,
+          'Open request.json inside the ZIP for the filename, chain and selected regions.'
         ];
-        if (ref) body.push('After review, on Gemini:',
+        if (ref) body.push('To transfer the reference request, run this from your laptop checkout:',
+          op + 'fetch ' + owner + ' ' + id,
+          'After review, on Gemini:',
           'cd ~/.episcaf-pilot/inbox/' + id + ' && sbatch --parsable ~/episcaf-advisor/episcaf_service/handoff.sbatch',
           'From your laptop, record the numeric job ID:',
           op + 'receipt ' + owner + ' ' + id + ' JOB_ID',

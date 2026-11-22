@@ -300,6 +300,14 @@ def results(rid: str, download: bool = False, name=Depends(owner)):
     return Response(row["result"], media_type="text/csv", headers=headers)
 
 
+@router.get("/runs/{rid}/request.zip")
+def request_files(rid: str, name=Depends(owner)):
+    if mode() != "manual-gemini":
+        raise HTTPException(404)
+    from episcaf_service import handoff
+    return handoff.download(name, rid)
+
+
 @router.get("/runs/{rid}/designs.zip")
 def designs(rid: str, name=Depends(owner)):
     if mode() in HOSTED:
