@@ -83,7 +83,11 @@ td{font-variant-numeric:tabular-nums}
 .seqrow{display:flex;gap:8px;margin:2px 0;align-items:flex-start}
 .seqrow .clab{font-family:"Courier New",monospace;font-weight:bold;flex:none;width:58px;font-size:11px}
 .seqres{font-family:"Courier New",Courier,monospace;font-size:12px;line-height:1.7;letter-spacing:1px;word-break:break-all}
+.seqbody.pick .seqres{user-select:none;-webkit-user-select:none;touch-action:none}
 .seqbody.pick .seqres span{cursor:pointer}
+.seqbody.pick .seqres .range-add{background:#dfe7fb;outline:1px solid #2b47d6}
+.seqbody.pick.manual .seqres .range-add{background:#fde3df;outline:1px solid #e5543f}
+.seqbody.pick .seqres .range-remove{background:#fff;outline:1px dashed #777;text-decoration:line-through}
 .seqres .epi{background:#fde3df;outline:1px solid #e5543f;border-radius:2px}
 .seqres .absel{background:#dfe7fb;outline:1px solid #2b47d6;border-radius:2px}
 .seqlegend{font-size:11px;color:#777;margin-top:7px}
@@ -199,6 +203,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <span class="phelp">Fill sequence gaps up to this length between selected antigen residues. Set to 0 to leave the gaps unchanged.</span>
       </div>
       <div id="chainpills" class="chainpills" role="group" aria-label="Chains"></div>
+      <p id="residue-help" class="help" hidden>Click a letter to toggle it, or drag across a chain to select a range. Start on a selected letter to remove a range. Shift-click extends from your last selection.</p>
       <div id="seqstatus" class="seqstatus"></div>
       <div id="seqbody" class="seqbody" aria-label="Sequence by chain"></div>
       <div class="seqlegend">Chain colors identify the protein chains. <span class="epimark">Boxed</span> antigen residues belong to the epitope. <span class="absmark">Shaded</span> antibody residues identify the antibody selection.</div>
@@ -521,7 +526,7 @@ function updateCaption(){
     leg.innerHTML=sw(GREY)+" antigen &nbsp;"+sw(RED)+" selected epitope";
     vn.textContent = (MANUAL.epi&&MANUAL.epi.length)
       ? name+" — "+MANUAL.epi.length+" epitope residue"+(MANUAL.epi.length===1?"":"s")+" selected (red)"
-      : name+" — click the epitope residues to scaffold (red)";
+      : name+" — select epitope residues in the sequence (red)";
   }
 }
 function useImgFallback(){
@@ -617,7 +622,7 @@ function syncHints(){
     ? "uploaded structure; the epitope was not detected (needs the local service). Showing the raw structure."
     : (state.epi==="antibody"
       ? "antibody present: antigen (grey), antibody (blue), contact epitope (red). Mark the antibody below, and tune the distance and gap-fill."
-      : "specify the epitope: click the residues to scaffold on the structure below (shift-click for a range).");
+      : "Select the epitope residues in the sequence below.");
   $("#recorded").hidden = state.target!=="8PWW";
   if(!panelWanted()){const sp=$("#seqpanel"); if(sp) sp.hidden=true;}
   updateRunBtn();
@@ -783,6 +788,8 @@ function renderChainPills(ag){
 }
 function renderSeq(epiSet, ag){
   const body=$("#seqbody"); body.innerHTML=""; body.classList.toggle("pick", state.epi==="manual" || selMode==="residue");
+  body.classList.toggle("manual", state.epi==="manual");
+  $("#residue-help").hidden=!body.classList.contains("pick");
   Object.keys(seqChains).forEach(c=>{
     const row=document.createElement("div"); row.className="seqrow";
     const lab=document.createElement("span"); lab.className="clab"; lab.style.color=chainColor[c]||"#333"; lab.textContent=c;
@@ -807,13 +814,13 @@ function applySeqSelection(){
     MANUAL={ag:ag||null, epi:epi.slice()};
     st.innerHTML = epi.length
       ? "Epitope: chain <b>"+(ag||"?")+"</b> &middot; <b>"+epi.length+"</b> residue"+(epi.length===1?"":"s")+" selected (red)."
-      : "Click the epitope residues to scaffold on the structure below (shift-click for a range).";
+      : "Select epitope residues in the sequence below.";
     uploadDetected=true;
     if(cviewer) loadComplex(); else updateCaption();
     return;
   }
   if(!abSelected()) st.textContent = selMode==="residue"
-    ? "Select the antibody residues in the sequence; shift-click to extend a range."
+    ? "Select the antibody residues in the sequence below."
     : "Select the antibody chains to calculate the contact epitope.";
   else if(!ag) st.textContent="The selection leaves no antigen available. Keep an antigen chain outside the antibody selection.";
   else{
@@ -821,15 +828,14 @@ function applySeqSelection(){
     st.innerHTML="Antigen: chain <b>"+ag+"</b> &middot; antibody: "+abDesc+
       " &middot; epitope = <b>"+epi.length+"</b> residue"+(epi.length===1?"":"s")+" (red).";
   }
-  if(abSelected() && ag){                                // feed the run + the 3D view
-    const abChains = selMode==="chain" ? [...abSet] : [...new Set([...abRes].map(k=>k.slice(0,k.indexOf(":"))))];
-    let abres=null;
-    if(selMode==="residue"){ abres={}; for(const k of abRes){const i=k.indexOf(":"),c=k.slice(0,i),ri=+k.slice(i+1); (abres[c]||(abres[c]=[])).push(ri);} }
-    CFG[state.target]={ag:ag,ab:abChains,epi:epi,abres:abres};   // current target (upload OR an example)
-    state.epi="antibody"; uploadDetected=true;
-    const r=document.querySelector('input[name=epi][value="antibody"]'); if(r)r.checked=true;
-    if(cviewer) loadComplex(); else updateCaption();
-  }
+  if(!uploadDetected && !abSelected()) return;
+  const abChains = selMode==="chain" ? [...abSet] : [...new Set([...abRes].map(k=>k.slice(0,k.indexOf(":"))))];
+  let abres=null;
+  if(selMode==="residue"){ abres={}; for(const k of abRes){const i=k.indexOf(":"),c=k.slice(0,i),ri=+k.slice(i+1); (abres[c]||(abres[c]=[])).push(ri);} }
+  CFG[state.target]={ag:ag,ab:abChains,epi:epi,abres:abres};   // current target (upload OR an example)
+  state.epi="antibody"; uploadDetected=true;
+  const r=document.querySelector('input[name=epi][value="antibody"]'); if(r)r.checked=true;
+  if(cviewer) loadComplex(); else updateCaption();
 }
 function syncPanelMode(){                                  // show/hide controls that only apply to one mode
   const manual=(state.epi==="manual");
@@ -837,7 +843,7 @@ function syncPanelMode(){                                  // show/hide controls
   const cut=$("#cutoff"); if(cut){ const lab=cut.closest("label"); if(lab) lab.style.display = manual ? "none" : ""; }
   const head=document.querySelector(".seqhead");
   if(head) head.innerHTML = manual
-    ? "Click the <b>epitope</b> residues to scaffold on the structure. Where a contact epitope is known it is pre-filled; add or remove residues. Gap-fill can bridge short gaps."
+    ? "Select the <b>epitope</b> residues in the sequence. Where a contact epitope is known it is pre-filled; add or remove residues. Gap-fill can bridge short gaps."
     : "Mark the <b>antibody</b>; the largest remaining chain is treated as the antigen, and its residues within the contact cutoff (heavy atoms) become the epitope. Computed in your browser.";
 }
 function setSelMode(m){
@@ -870,17 +876,56 @@ function buildSeqPanel(seedAb){
   if(mr) mr.addEventListener("click",()=>setSelMode("residue"));
   if(cut) cut.addEventListener("input",()=>{ if(seqChains) applySeqSelection(); });
   if(gap) gap.addEventListener("input",()=>{ if(seqChains) applySeqSelection(); });
-  if(body) body.addEventListener("click",e=>{
-    if(selMode!=="residue") return;
-    const t=e.target.closest("span[data-ri]"); if(!t) return;
-    const c=t.getAttribute("data-c"), ri=+t.getAttribute("data-ri"), key=c+":"+ri;
-    if(e.shiftKey && lastClick && lastClick.c===c){            // extend a range within the chain
-      const order=seqChains[c].order.map(k=>seqChains[c].res[k].resi);
-      let i1=order.indexOf(lastClick.ri), i2=order.indexOf(ri); if(i1>i2){const t2=i1;i1=i2;i2=t2;}
-      const add=!abRes.has(key);
-      for(let i=i1;i<=i2;i++){const k2=c+":"+order[i]; add?abRes.add(k2):abRes.delete(k2);}
-    }else{ abRes.has(key)?abRes.delete(key):abRes.add(key); }
-    lastClick={c:c,ri:ri}; applySeqSelection();
+  let drag=null;
+  function endpoints(letter,extend){
+    const letters=Array.from(letter.parentElement.children);
+    const chain=letter.dataset.c, end=letters.indexOf(letter);
+    const anchor=extend && lastClick?.c===chain ? letters.findIndex(el=>+el.dataset.ri===lastClick.ri) : -1;
+    return {letters,chain,start:anchor<0?end:anchor,end,add:!abRes.has(chain+":"+letter.dataset.ri)};
+  }
+  function interval(range){
+    return range.letters.slice(Math.min(range.start,range.end),Math.max(range.start,range.end)+1);
+  }
+  function commit(range){
+    for(const el of interval(range)){
+      const key=range.chain+":"+el.dataset.ri;
+      if(range.add) abRes.add(key); else abRes.delete(key);
+    }
+    lastClick={c:range.chain,ri:+range.letters[range.end].dataset.ri};
+    applySeqSelection();
+  }
+  function preview(on){
+    for(const el of interval(drag)) el.classList.toggle(drag.add?"range-add":"range-remove",on);
+  }
+  function track(event){
+    const hit=document.elementFromPoint(event.clientX,event.clientY)?.closest("span[data-ri]");
+    const end=drag.letters.indexOf(hit);
+    if(end<0 || end===drag.end) return;
+    preview(false); drag.end=end; preview(true);
+  }
+  body.addEventListener("pointerdown",event=>{
+    const letter=event.target.closest("span[data-ri]");
+    if(!letter || selMode!=="residue" || event.button!==0 || !event.isPrimary || drag) return;
+    drag={...endpoints(letter,event.shiftKey),pointer:event.pointerId};
+    body.setPointerCapture(event.pointerId);
+    preview(true);
+  });
+  body.addEventListener("pointermove",event=>{
+    if(drag?.pointer===event.pointerId) track(event);
+  });
+  body.addEventListener("pointerup",event=>{
+    if(drag?.pointer!==event.pointerId) return;
+    track(event);
+    const finished=drag;
+    preview(false); drag=null;
+    if(finished.letters[0].isConnected && selMode==="residue") commit(finished);
+  });
+  body.addEventListener("lostpointercapture",event=>{
+    if(drag?.pointer===event.pointerId){preview(false);drag=null;}
+  });
+  body.addEventListener("click",event=>{
+    const letter=event.target.closest("span[data-ri]");
+    if(event.detail===0 && letter && selMode==="residue") commit(endpoints(letter,event.shiftKey));
   });
 })();
 $("#pdbfile").addEventListener("change",e=>{
