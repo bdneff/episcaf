@@ -26,7 +26,7 @@ gcloud storage buckets add-iam-policy-binding "gs://$results" --member="serviceA
 gcloud builds submit . --tag="$repo/web:$tag"
 gcloud run deploy episcaf-pilot --image="$repo/web:$tag" --region="$region" --service-account="$web" --allow-unauthenticated \
   --min-instances=0 --memory=2Gi --cpu=2 --timeout=300 \
-  --set-env-vars="EPISCAF_PILOT_MODE=manual-gemini,EPISCAF_REQUEST_BUCKET=$requests,EPISCAF_RESULT_BUCKET=$results,EPISCAF_DISCOTOPE=off"
+  --set-env-vars="EPISCAF_PILOT_MODE=manual-gemini,EPISCAF_REQUEST_BUCKET=$requests,EPISCAF_RESULT_BUCKET=$results,EPISCAF_DISCOTOPE=biolib"
 pilot_url=$(gcloud run services describe episcaf-pilot --region="$region" --format='value(status.url)')
 # Keep the public site in staging mode and keep its existing service configuration.
 gcloud run services update episcaf --region="$region" --image="$repo/web:$tag" --update-env-vars="EPISCAF_PILOT_URL=$pilot_url"

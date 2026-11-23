@@ -35,10 +35,10 @@ def _resi(label):
 
 
 def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k, mode="growpatch",
-                with_disco=True):
+                with_disco=True, structure_type="solved"):
     """Residues + candidate patches for the viewer (like docs/data/growpatch_*.js).
 
-    mode 'growpatch' -> enumerate candidate epitopes with growPatch (lone antigen), ranked by mean
+    mode 'growpatch' -> enumerate candidate epitopes with growPatch (lone antigen), ranked by total
                         DiscoTope score when a scorer is configured (see episcaf_service.disco).
     mode 'antibody'  -> the epitope is already defined by the bound partner; return it as one patch,
                         no enumeration (growPatch unnecessary).
@@ -76,19 +76,22 @@ def viewer_data(cif_path, chain, sasa_cut, footprint_radius, methods, top_k, mod
     # Two-phase viewer: phase 1 (with_disco=False) returns candidates fast in generation order so the
     # UI can show them immediately; phase 2 (with_disco=True) runs the slow DiscoTope step and the UI
     # re-ranks. The candidate set/ids are identical across phases (growPatch is deterministic).
-    scores = _disco.score_cif(cif_path, chain) if with_disco else None
-    has_disco = scores is not None
-    if has_disco:
-        for p in patches:
-            vals = [scores[r] for r in p["resis"] if r in scores]   # over the full candidate patch
-            p["disco_sum"] = round(sum(vals), 4) if vals else None      # primary ranking score
+    scores = _disco.score_cif(cif_path, chain, structure_type) if with_disco else None
+    has_disco = False
+    if scores:
+        for p, candidate in zip(patches, cands):
+            labels = [ag.label(c, s) for c, s in sorted(candidate["keys"])]
+            vals = [scores[label] for label in labels if label in scores]
+            if vals:
+                has_disco = True
+            p["disco_sum"] = sum(vals) if vals else None      # primary ranking score
             p["disco_mean"] = round(sum(vals) / len(vals), 4) if vals else None
             p["disco_n"] = len(vals)
-            p["disco_total"] = len(p["resis"])
+            p["disco_total"] = len(labels)
         # rank within the antigen by descending TOTAL DiscoTope over the candidate's residues --
         # intentionally rewards larger high-likelihood patches. No-score candidates last; id tie-break.
         patches.sort(key=lambda p: (p["disco_sum"] is None, -(p["disco_sum"] or 0.0), p["i"]))
-    if top_k:
+    if top_k and (has_disco or not with_disco):
         patches = patches[:top_k]
     return dict(chain=chain, sasa_cut=sasa_cut, n_residues=len(residues),
                 n_surface=sum(r["surf"] for r in residues), n_patches=len(patches),

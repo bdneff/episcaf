@@ -1,114 +1,102 @@
-"""DiscoTope-3.0 per-residue epitope-likelihood provider for the live tool backend.
-
-Scoring an uploaded antigen is a CAPABILITY, not a guarantee. The local/static tool ships with no
-scorer configured, so `score_cif` returns None and the viewer shows the full growPatch candidate set
-unranked ("DiscoTope scores unavailable"). A hosted backend can turn scoring on without any code
-change, via environment variables:
-
-  EPISCAF_DISCOTOPE=biolib            Run DiscoTope-3.0 on BioLib's cloud for each uploaded antigen.
-                                      Needs `pip install pybiolib` (imports as `biolib`); the ESM-IF1
-                                      compute is remote, no local GPU. Off by default.
-  EPISCAF_DISCOTOPE_SCORED_PDB=PATH   Read per-residue scores from a pre-baked DiscoTope PDB's CA
-                                      B-factor column (0-100, divided by EPISCAF_DISCOTOPE_SCALE,
-                                      default 100). For a host that bakes scores ahead of time, or a
-                                      local fixture when exercising the ranked path.
-
-Scores are returned as {pdb_residue_number: likelihood in 0..1}, min-max normalized within the chain,
-so they rank regions within one antigen. They are NEVER derived from an uploaded PDB's own B-factor
-column -- only from a DiscoTope run or an explicitly pre-baked DiscoTope score file.
-
-Mirrors scripts/webtool_run_discotope.py (the offline baker) for the BioLib call and CSV columns.
-"""
-from __future__ import annotations
-
+"""Per-residue DiscoTope scores for the selected chain, keyed by author residue label."""
+import csv
+import logging
+import math
 import os
-import re
+from pathlib import Path
+import tempfile
+
+from Bio.PDB import PDBIO
+from Bio.PDB.Chain import Chain
+from Bio.SeqUtils import seq1
+
+from episcaf_analysis.growpatch import read as reader
 
 
-def available() -> bool:
-    """True when a scorer is configured (so callers can message the capability without running it)."""
-    return bool(os.environ.get("EPISCAF_DISCOTOPE_SCORED_PDB")
-                or os.environ.get("EPISCAF_DISCOTOPE"))
+def available():
+    return bool(os.getenv("EPISCAF_DISCOTOPE_SCORED_PDB") or os.getenv("EPISCAF_DISCOTOPE") == "biolib")
 
 
-def _minmax(raw: dict) -> dict | None:
-    """Min-max normalize raw per-residue scores to 0..1 within the chain (as the bake does)."""
+def _residues(path, chain):
+    model = next(iter(reader._parse_structure(str(path))))
+    return [r for r in model[chain] if r.id[0] == " " and r.resname in reader.MAXASA and r.has_id("CA")]
+
+
+def _label(residue):
+    return str(residue.id[1]) + residue.id[2].strip()
+
+
+def _from_scored_pdb(path, uploaded, chain):
+    # A configured score file belongs to one structure. Chain name and numbering
+    # alone cannot identify it when another researcher uploads a different PDB.
+    def signature(residues):
+        return [(_label(r), r.resname, [(a.name, tuple(a.coord)) for a in r]) for r in residues]
+
+    scored = _residues(path, chain)
+    if signature(scored) != signature(_residues(uploaded, chain)):
+        return None
+    scale = float(os.getenv("EPISCAF_DISCOTOPE_SCALE", "100"))
+    if not math.isfinite(scale) or scale <= 0:
+        return None
+    return {_label(r): r["CA"].bfactor / scale for r in scored if math.isfinite(r["CA"].bfactor)} or None
+
+
+def _from_biolib(struct_path, chain, structure_type):
+    import biolib
+
+    # The provider accepts PDB and returns a per-chain CSV. Send one chain with
+    # simple IDs so relative and PDB-numbered outputs map to the same residues,
+    # including insertions and author IDs from mmCIF that PDB cannot represent.
+    selected = Chain("A")
+    mapping = {}
+    for residue in _residues(struct_path, chain):
+        index = len(mapping) + 1
+        mapping[index] = (_label(residue), seq1(residue.resname))
+        copy = residue.copy()
+        copy.id = (" ", index, " ")
+        selected.add(copy)
+    if not mapping:
+        return None
+    with tempfile.TemporaryDirectory(prefix="episcaf_disco_") as tmp:
+        pdb = Path(tmp) / "antigen.pdb"
+        writer = PDBIO()
+        writer.set_structure(selected)
+        writer.save(str(pdb))
+        job = biolib.load("DTU/DiscoTope-3").cli(args=["-f", str(pdb), "--struc_type", structure_type])
+        if job.get_exit_code() != 0:
+            raise ValueError("DiscoTope exited unsuccessfully")
+        job.save_files(tmp)
+        result, = Path(tmp).rglob("*discotope3.csv")
+        raw = {}
+        with result.open(newline="") as fh:
+            for row in csv.DictReader(fh):
+                label, amino = mapping[int(row["res_id"])]
+                if row["residue"].strip().upper() != amino or label in raw:
+                    raise ValueError("DiscoTope residue mapping mismatch")
+                score = float(row["DiscoTope-3.0_score"])
+                if math.isfinite(score):
+                    raw[label] = score
     if not raw:
         return None
-    vals = list(raw.values())
-    lo, hi = min(vals), max(vals)
-    rng = hi - lo
-    if rng <= 0:
-        return {k: 0.0 for k in raw}
-    return {k: (v - lo) / rng for k, v in raw.items()}
+    lo, hi = min(raw.values()), max(raw.values())
+    return {key: (v - lo) / (hi - lo) if hi > lo else 0.0 for key, v in raw.items()}
 
 
-def _from_scored_pdb(path: str, chain: str) -> dict | None:
-    """Read normalized scores from a pre-baked DiscoTope PDB's CA B-factor column (0-100 / scale)."""
-    try:
-        from Bio.PDB import PDBParser
-    except Exception:
-        return None
-    scale = float(os.environ.get("EPISCAF_DISCOTOPE_SCALE", "100"))
-    try:
-        model = next(iter(PDBParser(QUIET=True).get_structure("scored", path)))
-    except Exception:
-        return None
-    if chain not in model:
-        return None
-    out = {res.id[1]: res["CA"].get_bfactor() / scale for res in model[chain] if res.has_id("CA")}
-    return out or None
-
-
-def _from_biolib(struct_path: str, chain: str) -> dict | None:
-    """Run DiscoTope-3.0 on BioLib and return min-max-normalized per-residue scores, or None.
-
-    Any failure (no client, network error, unexpected output) returns None so the live tool simply
-    falls back to the unscored "Candidates" state rather than erroring.
-    """
-    try:
-        import csv as _csv
-        import glob
-        import tempfile
-        import biolib  # pybiolib; optional
-    except Exception:
-        return None
-    try:
-        app = biolib.load("DTU/DiscoTope-3")
-        job = app.cli(args=f"-f {struct_path} --struc_type solved --out_dir output")
-        out = tempfile.mkdtemp(prefix="episcaf_disco_")
-        job.save_files(out)
-        hits = glob.glob(out + "/**/*discotope3.csv", recursive=True)
-        if not hits:
-            return None
-        raw: dict = {}
-        with open(hits[0]) as fh:
-            for row in _csv.DictReader(fh):
-                ch = (row.get("chain") or row.get("chain_id") or "").strip()
-                if ch and chain and ch != chain:
-                    continue
-                rid, sc = row.get("res_id"), row.get("DiscoTope-3.0_score")
-                if rid is None or sc in (None, ""):
-                    continue
-                m = re.match(r"-?\d+", str(rid))
-                if m:
-                    raw[int(m.group())] = float(sc)
-        return _minmax(raw)
-    except Exception:
-        return None
-
-
-def score_cif(cif_path: str, chain: str) -> dict | None:
-    """Per-residue DiscoTope-3.0 likelihood (0..1, within-chain normalized) for an uploaded antigen.
-
-    Returns None when no scorer is configured or scoring fails -- the viewer then shows the full
-    growPatch candidate set unranked.
-    """
-    scored = os.environ.get("EPISCAF_DISCOTOPE_SCORED_PDB")
+def score_cif(cif_path, chain, structure_type="solved"):
+    if structure_type not in {"solved", "alphafold"}:
+        raise ValueError("Select solved or AlphaFold for DiscoTope.")
+    scored = os.getenv("EPISCAF_DISCOTOPE_SCORED_PDB")
     if scored:
-        s = _from_scored_pdb(scored, chain)
-        if s is not None:
-            return s
-    if os.environ.get("EPISCAF_DISCOTOPE") == "biolib":
-        return _from_biolib(cif_path, chain)
+        try:
+            values = _from_scored_pdb(scored, cif_path, chain)
+            if values:
+                return values
+        except (OSError, ValueError, KeyError, StopIteration):
+            logging.getLogger(__name__).warning("Configured DiscoTope score file unavailable")
+    if os.getenv("EPISCAF_DISCOTOPE") == "biolib":
+        try:
+            return _from_biolib(cif_path, chain, structure_type)
+        except Exception as exc:
+            # Never log uploaded coordinates, provider response bodies or credentials.
+            logging.getLogger(__name__).warning("DiscoTope ranking unavailable (%s)", type(exc).__name__)
     return None

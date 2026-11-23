@@ -28,6 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from episcaf_analysis.growpatch import read as R   # noqa: E402
 # viewer_data / stage_run live in episcaf_service.staging (one source of truth, shared with the
 # cluster FastAPI service); _resi is re-exported so this module's callers keep working unchanged.
+from episcaf_service import disco
 from episcaf_service.staging import _resi, candidate_plan, stage_run, viewer_data   # noqa: E402,F401
 
 DOCS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs")
@@ -44,7 +45,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":                        # backend-presence probe (matches the FastAPI app)
-            self._send(200, json.dumps({"ok": True, "service": "episcaf", "biolib": os.getenv("EPISCAF_DISCOTOPE") == "biolib"}).encode(), "application/json")
+            self._send(200, json.dumps({"ok": True, "service": "episcaf", "disco_available": disco.available(), "biolib": os.getenv("EPISCAF_DISCOTOPE") == "biolib"}).encode(), "application/json")
             return
         if self.path == "/" or self.path.startswith("/?"):
             try:
@@ -108,7 +109,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return
             mode = q.get("mode", ["growpatch"])[0]
             data = viewer_data(tmp.name, chain or "A", sasa_cut, footprint, methods, top_k, mode,
-                               bool(int(q.get("disco", ["1"])[0])))
+                               bool(int(q.get("disco", ["1"])[0])), q.get("structure_type", ["solved"])[0])
             self._send(200, json.dumps(data))
         except Exception as e:                          # a bad upload must not crash the server
             self._send(400, json.dumps({"error": f"{type(e).__name__}: {e}"}))

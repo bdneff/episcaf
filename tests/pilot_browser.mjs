@@ -78,7 +78,7 @@ try{
   assert.equal(await page.evaluate(()=>viewer.getModel().selectedAtoms({chain:'A'}).some(a=>a.style.cartoon)),false);
   assert.equal(enumerations,0);
   const scanning=page.waitForRequest(r=>new URL(r.url()).pathname==='/enumerate');
-  await page.locator('#disco').uncheck();
+  assert.ok(await page.locator('#disco').isDisabled());
   await page.locator('#run').click();
   assert.equal(new URL((await scanning).url()).searchParams.get('chain'),'B');
   await page.locator('.pick').first().check();
@@ -87,7 +87,7 @@ try{
   const pdb=fixture.split('\n')
     .filter(l=>l.startsWith('ATOM  ') && l[21]==='A').join('\n')+'\nEND\n';
   await page.locator('#file').setInputFiles({name:'8PWW-A.pdb',mimeType:'text/plain',buffer:Buffer.from(pdb)});
-  await page.locator('#disco').uncheck();
+  assert.ok(await page.locator('#disco').isDisabled());
   await page.locator('#run').click();
   for(let i=0;i<3;i++)await page.locator('.pick').nth(i).check();
   const expanded=await page.locator('#viewer').boundingBox();
@@ -107,7 +107,8 @@ try{
   const path='/pilot/runs/'+review.id;
   const result=page.waitForResponse(r=>r.url().endsWith(path));
   const [duplicate]=await Promise.all([page.request.post(origin+path),page.locator('#launch').click()]);
-  assert.equal((await duplicate.json()).id,(await (await result).json()).id);
+  assert.equal((await duplicate.json()).id,review.id);
+  assert.equal((await result).status(),200);
   assert.equal((await (await page.request.get(origin+'/pilot/runs')).json()).length,1);
   await page.waitForURL(origin+'/results.html?run='+review.id+'#result-title');
   await page.locator('#runlist tr[aria-current="true"]').waitFor();
@@ -171,12 +172,12 @@ try{
     await page.goto(origin+'/growpatch_tool.html');
     await page.locator('#live-note').waitFor();
     await page.locator('#file').setInputFiles({name:'my-structure.pdb',mimeType:'text/plain',buffer:Buffer.from(structure)});
-    await page.locator('#disco').uncheck();
+    assert.ok(await page.locator('#disco').isDisabled());
     await page.locator('#run').click();
     await page.locator('.pick').first().check();
     await page.locator('#stage').click();
     await page.getByRole('button',{name:button,exact:true}).click();
-    await page.locator('#origin').filter({hasText:stage}).waitFor();
+    await page.locator('#runlist tr[aria-current="true"]').filter({hasText:stage}).waitFor();
   }
   // Exercise the deployed mode guard and the non-persistent preparation endpoint.
   await stop();env.K_SERVICE='cloud-run-staging-test';await start(port);

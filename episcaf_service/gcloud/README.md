@@ -16,6 +16,10 @@ bash episcaf_service/gcloud/tester.sh issue john
 
 For an existing pilot checkout use `git pull --ff-only` before deploying. Give John the printed pilot URL and the contents of his private token file separately. To revoke his access run `bash episcaf_service/gcloud/tester.sh revoke john`.
 
+## Rank candidates on an uploaded antigen
+
+On **Find candidate regions**, upload a PDB or mmCIF, choose its antigen chain, and check **Rank by DiscoTope-3.0**. Choose the structure type and click **Generate candidates**. BioLib receives the selected protein chain. Regions appear in generation order while scoring runs, then reorder by the sum of their within-chain normalized residue scores. If scoring fails, all candidates remain available. Scoring accepts user uploads independently of eligibility for the Gemini reference job.
+
 ## Review requests in your browser
 
 For your own upload, open **Results → My runs → View run** to see the selected regions or **Download submitted request (ZIP)**. Existing staged requests work too. Open `request.json` inside the ZIP to inspect its manifest.

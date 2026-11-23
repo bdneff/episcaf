@@ -32,7 +32,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from episcaf_analysis.growpatch import read as R
-from episcaf_service import pilot, scoring, staging
+from episcaf_service import disco as discotope, pilot, scoring, staging
 
 # $WS is persistent cluster storage; /scratch is ephemeral, never used for run artifacts.
 # EPISCAF_WS overrides it (used by the local test suite to point at a tmp dir).
@@ -159,6 +159,7 @@ def health():
     ws = ws_root()
     return {"ok": True, "service": "episcaf", "ws": ws, "ws_exists": os.path.isdir(ws),
             "pilot_mode": pilot.mode(), "pilot_url": os.getenv("EPISCAF_PILOT_URL", ""),
+            "disco_available": discotope.available(),
             "biolib": os.getenv("EPISCAF_DISCOTOPE") == "biolib",
             "slurm": bool(shutil.which("squeue"))}
 
@@ -181,13 +182,14 @@ async def inspect(request: Request, fmt: str = Query("pdb"), chain: str = Query(
 async def enumerate_patches(request: Request, fmt: str = Query("pdb"), chain: str = Query("A"),
                             sasa_cut: float = Query(0.2), footprint_radius: float = Query(14.0),
                             methods: str = Query("growpatch"), top_k: int = Query(0),
-                            mode: str = Query("growpatch"), disco: int = Query(1)):
+                            mode: str = Query("growpatch"), disco: int = Query(1),
+                            structure_type: str = Query("solved", pattern="^(solved|alphafold)$")):
     body = await request.body()
     path = _tmp_structure(body, fmt)
     try:
         ms = tuple(m for m in methods.split(",") if m)
         return await run_in_threadpool(staging.viewer_data, path, chain or "A",
-                                       sasa_cut, footprint_radius, ms, top_k, mode, bool(disco))
+                                       sasa_cut, footprint_radius, ms, top_k, mode, bool(disco), structure_type)
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": f"{type(e).__name__}: {e}"})
     finally:

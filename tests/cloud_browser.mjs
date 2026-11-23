@@ -11,7 +11,7 @@ const setup=`
 import os, sys
 sys.path.insert(0,"tests")
 from test_cloud_backbones import Bucket, CloudPilot
-from episcaf_service import cloud, pilot
+from episcaf_service import cloud, pilot, disco
 from episcaf_service.app import app
 import uvicorn
 os.environ.pop("K_SERVICE",None)
@@ -21,11 +21,13 @@ cloud.outputs=lambda:results
 fake=CloudPilot()
 fake.jobs={}
 cloud.batch_request=fake.batch
+if os.environ["EPISCAF_DISCOTOPE"] == "biolib":
+    disco._from_biolib=lambda path,chain,kind: {"%d"%i:i/129 for i in range(1,130)}
 cloud.write(requests.blob("testers/alice"),{"digest":pilot.digest(os.environ.pop("BROWSER_TEST_TOKEN"))})
 uvicorn.run(app,host="127.0.0.1",port=0)
 `;
 const server=spawn(process.env.PYTHON || 'python3',['-c',setup],{env:{...process.env,
-  EPISCAF_PILOT_MODE:manual?'manual-gemini':'cloud-lysozyme', EPISCAF_DISCOTOPE:'off',EPISCAF_GPU_IMAGE:'fixture',
+  EPISCAF_PILOT_MODE:manual?'manual-gemini':'cloud-lysozyme', EPISCAF_DISCOTOPE:manual?'biolib':'off',EPISCAF_GPU_IMAGE:'fixture',
   EPISCAF_RESULT_BUCKET:'results',EPISCAF_WORKER_SA:'worker',BROWSER_TEST_TOKEN:token}});
 let logs='',browser;
 server.stderr.on('data',s=>logs+=s);
@@ -46,9 +48,13 @@ try{
     const structure=await (await page.request.get(origin+ref)).body();
     await page.locator('#file').setInputFiles({name:'test.pdb',mimeType:'chemical/x-pdb',buffer:structure});
     await page.getByRole('radio',{name:/Chain Y/}).waitFor();
-    if(route==='growpatch') await page.locator('#disco').uncheck();
+    if(route==='growpatch' && manual){
+      assert.match(await page.locator('#provider').innerText(),/selected protein chain to BioLib/);
+      await page.locator('#disco').check();
+    }
     await page.locator('#run').click();
     await page.locator('.pick').first().waitFor();
+    if(route==='growpatch' && manual) await page.locator('.disco').first().waitFor();
     if(route==='antibody') assert.ok(await page.locator('.pick').first().isChecked());
     else await page.locator('.pick').first().check();
     if(await page.locator('#signin').isVisible()){

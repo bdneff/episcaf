@@ -91,8 +91,8 @@ back with `/status/{run_id}` and `/results/{run_id}` once AF3 finishes.
 Ranking an uploaded antigen needs per-residue DiscoTope-3.0 scores, which are **not** computed in the
 base service. The provider (`episcaf_service/disco.py`) is off by default — uploads then show
 "DiscoTope scores unavailable" and the full candidate set, unranked. Turn it on with either:
-- `EPISCAF_DISCOTOPE=biolib` (+ `pip install pybiolib`) — runs DiscoTope-3.0 on BioLib's cloud for each
-  upload (needs outbound internet from the host; no local GPU).
+- `EPISCAF_DISCOTOPE=biolib` (+ `pip install pybiolib`) — runs DiscoTope-3.0 on BioLib's cloud for the selected protein chain when the researcher enables ranking
+  (needs outbound internet from the host; no local GPU).
 - `EPISCAF_DISCOTOPE_SCORED_PDB=<path>` — read scores from a pre-baked DiscoTope PDB's CA B-factor
   column (for a fixed antigen, or a test fixture; `EPISCAF_DISCOTOPE_SCALE` defaults to 100).
 

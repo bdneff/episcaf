@@ -12,6 +12,7 @@
 .card{border:1px solid #d5deea;border-radius:7px;background:#fbfcfe;padding:13px 15px;margin:12px 0}
 .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
 .fld{display:flex;flex-direction:column;gap:3px}
+.fld[hidden],.fld label[hidden]{display:none}
 .fld label{font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:.03em;color:#666;display:block}
 input,select{font:inherit;font-size:13px;padding:4px 6px;border:1px solid #999;background:#fff;color:#1a1a1a;border-radius:4px}
 input[type=number]{width:72px}
@@ -136,8 +137,11 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
         <div class="fld"><label for="sasa">Minimum relative solvent accessibility</label><input type="number" id="sasa" value="0.2" step="0.05" min="0" max="1"><span class="hint">Residues at or above this threshold are treated as surface residues.</span></div>
         <div class="fld"><label for="topk">Maximum candidate count</label><input type="number" id="topk" value="0" step="10" min="0" title="0 keeps every candidate"><span class="hint">Returns this many top-ranked candidates. Leave at 0 to keep every candidate.</span></div>
         <div class="fld" id="discofld"><label for="disco">Candidate ranking</label>
-          <label class="chk"><input type="checkbox" id="disco" checked><span>Rank by DiscoTope-3.0</span></label>
-          <span class="hint" id="provider">A BioLib-enabled service sends your structure to BioLib for ranking. </span><span class="hint">Ranking can take several minutes. Leave unchecked to see regions in generation order.</span></div>
+          <label class="chk"><input type="checkbox" id="disco"><span>Rank by DiscoTope-3.0</span></label>
+          <span class="hint" id="provider">Checking for a scoring provider…</span>
+          <label id="disco-type-label" hidden>Structure type
+            <select id="disco-type"><option value="solved">Experimentally determined</option><option value="alphafold">AlphaFold model</option></select>
+          </label></div>
         <div class="fld"><label aria-hidden="true">&nbsp;</label><button id="run" class="btn-primary" disabled>Generate candidates</button></div>
       </div>
       <div class="row" style="margin-top:9px">
@@ -215,6 +219,7 @@ const $=id=>document.getElementById(id);
 // Backend base URL. Lets the static GitHub Pages copy talk to a hosted backend (Render/Gemini) while
 // the same code stays same-origin ("") when the backend serves the UI itself. Resolution order:
 // a ?backend=<url> query param (saved for next time), else a saved value, else same-origin.
+let discoAvailable=false, usesBioLib=false;
 let cloudPilot=false, antibodyRoute=false, privatePilot=false, reviewed=null, revision=0, signedIn=false;
 function backendBase(){
   if(privatePilot) return "";
@@ -273,12 +278,14 @@ function busyDone(){ if(_busyTimer){clearInterval(_busyTimer);_busyTimer=null;} 
 // Re-enabled when the run settles (via syncControls).
 function setRunning(on){
   const f=$("file"); if(f) f.disabled=on; $("chain").disabled=on;
-  if(on){ $("disco").disabled=true; } else { syncControls(); }
+  if(on){ $("disco").disabled=true; $("disco-type").disabled=true; $("topk").disabled=true; } else { syncControls(); }
 }
 // The "max candidate count" only truncates a ranked list, so it applies only when ranking is on.
 function syncControls(){
-  $("disco").disabled=false;
-  $("topk").disabled=!$("disco").checked;
+  $("disco").disabled=!discoAvailable;
+  $("topk").disabled=!discoAvailable || !$("disco").checked;
+  $("disco-type-label").hidden=!usesBioLib || !$("disco").checked;
+  $("disco-type").disabled=$("disco-type-label").hidden;
 }
 const fileFmt=()=>/\.(mm)?cif$/i.test($("file").files[0]?.name || "")?"cif":"pdb";
 const hasDisco=()=>!!(state.D&&state.D.has_disco);
@@ -325,7 +332,7 @@ syncControls();
 async function enumerateReq(disco){
   const qs=new URLSearchParams({chain:selectedChain(), sasa_cut:$("sasa").value,
     top_k: disco ? $("topk").value : 0,   // phase 1 keeps all; ranking truncates
-    mode:antibodyRoute?"antibody":"growpatch", fmt:fileFmt(), disco:disco?1:0});
+    mode:antibodyRoute?"antibody":"growpatch", fmt:fileFmt(), structure_type:$("disco-type").value, disco:disco?1:0});
   const res=await fetch(api("/enumerate?"+qs.toString()),{method:"POST",body:state.pdbText});
   const data=await res.json();
   if(!res.ok||data.error) throw new Error(data.error||("HTTP "+res.status));
@@ -361,6 +368,7 @@ $("run").onclick=async()=>{
     const data=await enumerateReq(true);
     const keepSel=state.sel, present=new Set(data.patches.map(p=>p.i));
     state.D=data; state.ranking=false;
+    if([...state.picked].some(i=>!present.has(i)))invalidate();
     state.picked=new Set([...state.picked].filter(i=>present.has(i)));   // drop picks truncated out by top_k
     state.sel=present.has(keepSel)?keepSel:null;
     busyDone(); msg("");
@@ -402,15 +410,17 @@ function rankHdr(){
     el.innerHTML="Candidates are ranked by their total DiscoTope-3.0 score (the sum over the candidate's "+
       "residues), which rewards larger patches with more high-likelihood residues. Scores are normalized "+
       "within this antigen (a relative ranking, not a calibrated binding probability).";
+  }else if(!discoAvailable){
+    el.className="rankhdr";
+    el.textContent="DiscoTope ranking is unavailable on this service. Candidates are in generation order.";
   }else if(!state.discoRequested){
     el.className="rankhdr";
     el.innerHTML="DiscoTope-3.0 ranking is turned off. Candidates are shown in generation order. "+
       "To order them by epitope likelihood, enable <b>Rank by DiscoTope-3.0</b> above and generate again.";
   }else{
     el.className="rankhdr unavail";
-    el.innerHTML="<b>DiscoTope scores unavailable.</b> Showing the full growPatch candidate set for "+
-      "inspection and selection. Scoring a new structure requires the external DiscoTope-3.0 step "+
-      "on a service with a configured scorer.";
+    el.textContent=usesBioLib ? "BioLib returned no usable scores for this chain. All candidates are shown in generation order." :
+      "No stored scores matched this chain. All candidates are shown in generation order.";
   }
 }
 function buildList(){
@@ -590,9 +600,13 @@ async function checkService(){
     $("launch").hidden=!privatePilot;
     if(privatePilot) await refreshSession();
     const d=backendBase() ? await fetch(api("/health"),{cache:"no-store"}).then(r=>r.ok?r.json():{}) : own;
-    $("provider").textContent=d.biolib ? "Enabling ranking sends your uploaded structure to BioLib. " :
-      d.biolib===false ? "Ranking uses scores available on the processing service. " :
-      "A BioLib-enabled service sends your structure to BioLib for ranking. ";
+    usesBioLib=d.biolib===true;
+    discoAvailable=d.disco_available ?? usesBioLib;
+    if(!discoAvailable) $("disco").checked=false;
+    $("provider").textContent=usesBioLib ? "Checking this option sends the selected protein chain to BioLib when you generate candidates. Ranking can take several minutes." :
+      discoAvailable ? "This service uses stored DiscoTope scores for matching structures." :
+      "DiscoTope ranking is unavailable on this service.";
+    syncControls();
     renderConn(d.service==="episcaf");
   }catch(e){ renderConn(false); }
 }
