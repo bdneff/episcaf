@@ -14,18 +14,24 @@ composite's `AFclashes` term. `AFclashes_strict` is the same count with the shad
 from __future__ import annotations
 
 import numpy as np
-from scipy.spatial.distance import cdist
 
 from episcaf_service.rfd4.config import DEFAULT, ClashConfig
 from episcaf_service.rfd4.geom import apply_transform, kabsch
 
 
 def _min_dist(points: np.ndarray, others: np.ndarray) -> np.ndarray:
-    """Per-point minimum distance to any row of `others`. inf where `others` is empty."""
+    """Per-point minimum distance to any row of `others` (numpy-only). inf where `others` is empty."""
     points = np.asarray(points, float)
     if others is None or len(others) == 0:
         return np.full(len(points), np.inf)
-    return cdist(points, np.asarray(others, float)).min(axis=1)
+    others = np.asarray(others, float)
+    # chunk over points to bound memory on large antibody sets
+    out = np.empty(len(points))
+    for i in range(0, len(points), 512):
+        block = points[i:i + 512]
+        d2 = ((block[:, None, :] - others[None, :, :]) ** 2).sum(axis=2)
+        out[i:i + 512] = np.sqrt(d2.min(axis=1))
+    return out
 
 
 def count_clashing_residues(design_epitope_bb: np.ndarray, native_epitope_bb: np.ndarray,
