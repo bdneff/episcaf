@@ -11,7 +11,7 @@ from google.api_core.exceptions import NotFound, PreconditionFailed
 
 from episcaf_service import cloud
 
-READY = "awaiting Brandon’s submission"
+READY = "queued for cluster"
 
 
 def bundle_blob(owner, record):
@@ -79,8 +79,10 @@ def status(owner, r):
                 r = cloud.owned(owner, rid)
     if r["backend"] == "manual-review":
         return r
-    # Only the operator can write result objects. Completion is published last.
-    for marker in ("terminal", "receipt"):
+    # Only the cluster worker can write result objects, so Cloud Run reads the live marker here:
+    # terminal.json (immutable, final) wins, then the mutable status.json the data-mover worker
+    # rewrites each poll (submitted -> queued on cluster -> running), then the legacy receipt.json.
+    for marker in ("terminal", "status", "receipt"):
         blob = cloud.outputs().blob(f"{rid}/{marker}.json")
         update = cloud.read(blob)
         if update:

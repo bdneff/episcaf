@@ -27,6 +27,11 @@ tr.pass td:first-child{box-shadow:inset 3px 0 0 var(--good)}
 tr.na td:first-child{box-shadow:inset 3px 0 0 #bbb}
 tr.na td{color:#777}
 td.good{color:var(--good)}td.bad{color:var(--bad)}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.01em;text-transform:capitalize}
+.pill.ok{background:#e4f4ea;color:var(--good);border:1px solid #a9ddba}
+.pill.bad{background:#fdecea;color:var(--bad);border:1px solid #f0bbb4}
+.pill.go{background:#e5effb;color:#1b4a86;border:1px solid #b6d1f0}
+.pill.wait{background:#fdf3e0;color:#8a5a00;border:1px solid #f0d9a8}
 .msg{font-size:12.5px;padding:8px 11px;border-radius:5px;margin:8px 0;background:#fdecea;border:1px solid #f5c6c0;color:#a0241a;display:none}
 .empty{font-size:13px;color:#444;background:#f6f8fb;border:1px dashed #c9d4e5;border-radius:6px;padding:14px 16px;margin:10px 0;line-height:1.55}
 .empty code{background:#eef2f8;padding:0 3px;border-radius:2px}
@@ -133,6 +138,7 @@ const LABELS={design_id:"design",id:"design",target:"target",epitope:"epitope",s
   composite:"composite score",is_pass:"reported pass (input file)",rank_in_group:"rank",
   epitope_chunk_rmsd:"epitope RMSD (Å)",overall_rmsd:"overall RMSD (Å)",mean_pae:"mean PAE (Å)",
   epitope_pae:"epitope PAE (Å)",scaffold_pae:"scaffold PAE (Å)",ptm:"pTM",plddt:"pLDDT",
+  structure_file:"coordinate file",route:"epitope source",
   s_p1_free:"raw occupancy",sequence:"design sequence",af3_n_clash_res:"antibody clashes",aomclash_pred:"AOMclash (legacy)",binding_pred:"binding score"};
 const DEFS={
   epitope_chunk_rmsd:"Backbone deviation from the reference epitope after alignment, in Å. Lower values indicate a closer match.",
@@ -233,19 +239,25 @@ function shown(){
   }
   return r;
 }
+function showMetricControls({filters=true,ranking=true}={}){
+  $("passonly").closest("label").hidden=!filters;
+  $("screenhelp").hidden=!filters;
+  $("rankby").closest("label").hidden=!ranking;
+  $("dl").hidden=!ranking;
+}
 function render(){
   const rs=shown();
+  const rawBackbones=ROWS.length>0 && ROWS.every(r=>r.source==="cloud-rfd3");
   const backboneOnly=ROWS.length>0 && ROWS.every(r=>["cloud-backbone","gemini-backbone"].includes(r.source));
   const budgetOnly=ROWS.length>0 && ROWS.every(r=>r.source==="simulated");
-  $("passonly").closest("label").hidden=budgetOnly || backboneOnly;
-  $("screenhelp").hidden=budgetOnly || backboneOnly;
+  showMetricControls({filters:!budgetOnly && !backboneOnly && !rawBackbones,ranking:!rawBackbones});
   const th=$("tbl").tHead, tb=$("tbl").tBodies[0];
   th.innerHTML="<tr>"+COLS.map(c=>`<th data-c="${escA(c)}" title="${escA(DEFS[c]||c)}" class="${c===sortCol?'sorted':''}">${esc(LABELS[c]||c)}`+
     (c===sortCol?` <span class="ar">${sortDir<0?'▼':'▲'}</span>`:"")+"</th>").join("")+"</tr>";
   th.querySelectorAll("th").forEach(h=>h.onclick=()=>{const c=h.dataset.c;
     pcMode=false; if(sortCol===c) sortDir*=-1; else {sortCol=c; sortDir=-1;}
     const sel=$("rankby"); if([...sel.options].some(o=>o.value===c)) sel.value=c; render();});
-  tb.innerHTML=rs.map(r=>"<tr class='"+(r.__cls||"")+"'>"+COLS.map(c=>{
+  tb.innerHTML=rs.map(r=>"<tr class='"+(rawBackbones?"":r.__cls||"")+"'>"+COLS.map(c=>{
     let cls=""; const g=GOODCELL[c], n=num(r[c]);
     if(g&&n!==null) cls=g(n)?"good":"bad";
     return `<td class="${cls}">${esc(r[c]??"")}</td>`;}).join("")+"</tr>").join("");
@@ -256,7 +268,8 @@ function render(){
   const tgtKey=COLS.includes("id")?"id":(COLS.includes("target")?"target":null);
   const ntgt=tgtKey?new Set(ROWS.map(r=>r[tgtKey])).size:"—";
   $("empty").style.display = ROWS.length ? "none" : "block";
-  if(backboneOnly){$("stats").textContent=rs.length+" retained backbones"; return;}
+  if(rawBackbones){$("stats").textContent=rs.length+" RFdiffusion3 backbones"; return;}
+  if(backboneOnly){$("stats").textContent=rs.length+(rs.length===1?" retained backbone":" retained backbones"); return;}
   if(budgetOnly){
     $("stats").textContent=ROWS.length+" selected regions";
     return;
@@ -278,6 +291,7 @@ function loadTable(text, title){
       $("origin").textContent=title;
       pcMode = COLS.includes("composite");        // default scheme: filter status first, then composite
       sortCol = pcMode ? null : (["cloud-backbone","gemini-backbone"].includes(ROWS[0]?.source)?"s_p1_free":COLS.includes("is_pass")?"is_pass":COLS[0]); sortDir=-1;
+      if(ROWS.every(r=>r.source==="cloud-rfd3")) sortCol=null;
       $("rankby").value = pcMode ? "__pc" : (sortCol||"");
       $("msg").style.display="none"; $("msg").title=""; $("dl").disabled=false; render();
     }catch(e){ $("msg").textContent=e.message; $("msg").title=e.detail||""; $("msg").style.display="block"; }
@@ -319,7 +333,9 @@ function showHistory(runs){
     if(run.id===selectedRun)row.setAttribute("aria-current","true");
     row.insertCell().textContent=run.filename+" · chain "+run.chain;
     const status=row.insertCell();
-    status.textContent=run.stage;
+    const stageClass=s=>s==="completed"?"ok":(s==="failed"||s==="submit error")?"bad":s==="running"?"go":"wait";
+    const pill=document.createElement("span"); pill.className="pill "+stageClass(run.stage); pill.textContent=run.stage;
+    status.append(pill);
     if(run.job_id && run.backend && run.backend!=="simulated")status.append(document.createElement("br"),(run.backend==="cloud-lysozyme"?"Google Batch job ":"Slurm job ")+run.job_id);
     if(run.reason)status.append(document.createElement("br"),run.reason);
     if(run.estimated_start)status.append(document.createElement("br"),"Estimated start "+date(run.estimated_start));
@@ -340,7 +356,8 @@ async function showRuns(runs){
   const run=runs.find(r=>r.id===selectedRun);
   $("csvintro").hidden=true;
   const testRun=run && (!run.backend || run.backend==="simulated");
-  $("result-title").textContent=run ? (testRun?"Test run · ":"Design run · ")+run.filename+" · chain "+run.chain : "Run";
+  const rawRun=run?.workflow==="rfd3-backbones-v1";
+  $("result-title").textContent=run ? (testRun?"Test run · ":rawRun?"Backbone run · ":"Design run · ")+run.filename+" · chain "+run.chain : "Run";
   if(!run){
     $("request-files").hidden=true;
     clearPrivateResults();
@@ -355,6 +372,7 @@ async function showRuns(runs){
   }
   if(privateLoaded)return;
   if(run.stage!=="completed"){
+    showMetricControls({filters:false,ranking:false});
     $("origin").textContent=run.reason || (run.stage==="awaiting lab review"
       ? "Your upload is saved for lab review. The lab can inspect the structure and selected regions."
       : "Run status: "+run.stage+". Results will appear here when available.");
@@ -365,15 +383,18 @@ async function showRuns(runs){
   try{
     const text=await (await pilotRequest(path)).text();
     if(current!==loadVersion)return;
-    if(["cloud-lysozyme","manual-gemini"].includes(run.backend) && !parseCSV(text).length){
+    if(rawRun){
+      loadTable(text,"RFdiffusion3 backbone coordinates are ready. The CSV lists each backbone, its selected epitope and its file in the ZIP.");
+    }else if(["cloud-lysozyme","manual-gemini"].includes(run.backend) && !parseCSV(text).length){
       clearPrivateResults();
       $("origin").textContent=run.reason+" The archive contains the score for each attempt.";
       $("empty").style.display="none";
     }else loadTable(text,testRun ? "Completed · simulated results. Each row shows the backbone trial budget for one selected region." :
       ["cloud-lysozyme","manual-gemini"].includes(run.backend) ? run.reason+" Download the backbone coordinates and filter scores below." : "Completed · scored design sequences and predicted structures.");
-    $("original").textContent=testRun?"Download simulated CSV":"Download scores CSV";
+    $("original").textContent=rawRun?"Download backbone list (CSV)":testRun?"Download simulated CSV":"Download scores CSV";
     $("models").href="/pilot/runs/"+encodeURIComponent(run.id)+"/designs.zip"; $("models").hidden=testRun;
-    $("models").textContent=["cloud-lysozyme","manual-gemini"].includes(run.backend)?"Download retained backbones and all filter scores (ZIP)":"Download designs and scores (ZIP)";
+    $("models").textContent=rawRun?"Download backbone coordinates (ZIP)":
+      ["cloud-lysozyme","manual-gemini"].includes(run.backend)?"Download retained backbones and all filter scores (ZIP)":"Download designs and scores (ZIP)";
     privateLoaded=true;
     $("original").href="/pilot/"+path+"?download=true"; $("original").hidden=false;
   }catch(e){if(current===loadVersion)$("origin").textContent=e.message;}

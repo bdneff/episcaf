@@ -1,0 +1,15 @@
+# episcaf data-mover worker schedule (Slurm scrontab).
+# Install on the Gemini data mover:  scrontab episcaf_service/gcloud/worker.scrontab
+# Each entry below submits run_worker.sh to the `data-mover` partition every 5 minutes. scrontab
+# does NOT start a new iteration while the previous one is still queued or running, so ticks never
+# overlap. scron jobs run from $HOME; --output is therefore relative to it.
+#
+# Edit nothing here except the paths if your checkout is not ~/episcaf-advisor. All buckets, the
+# service-account key and the cloud-sdk image path are configured in ~/.episcaf-pilot/worker.env.
+
+#SCRON --partition=data-mover
+#SCRON --time=00:10:00
+#SCRON --job-name=episcaf-worker
+#SCRON --open-mode=append
+#SCRON --output=.episcaf-pilot/worker.log
+*/5 * * * * $HOME/episcaf-advisor/episcaf_service/gcloud/run_worker.sh

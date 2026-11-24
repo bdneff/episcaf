@@ -1,4 +1,5 @@
 """Run the private web and worker contracts with local GCS, Batch and GPU stand-ins."""
+from collections import Counter
 import csv
 import gzip
 import io
@@ -53,6 +54,9 @@ class Blob:
         self.reload()
         return self.objects[self.key][1]
 
+    def upload_from_filename(self, name, **kwargs):
+        self.upload_from_string(Path(name).read_bytes(), **kwargs)
+
     def upload_from_string(self, value, if_generation_match=None, **kwargs):
         generation = self.objects.get(self.key, (0,None))[0]
         if if_generation_match is not None and if_generation_match != generation:
@@ -94,22 +98,27 @@ class CloudPilot(unittest.TestCase):
     def test_private_paths(self):
         for route in ["growpatch","antibody"]:
             pdb = self.alice.get("/pilot/reference.pdb?route="+route).text
-            region = worker.contact_region() if route=="antibody" else "Y:20-34"
-            plan = self.review(route,pdb,[region]).json()
-            self.assertEqual(plan["regions"],[region])
-            self.assertEqual(sum(r["backbone_trials"] for r in plan["contigs"]),16)
-            self.assertEqual(plan["retained_limit"],8)
+            regions = [worker.contact_region()] if route=="antibody" else ["Y:20-34", "Y:31-40", "Y:40-52"]
+            plan = self.review(route,pdb,regions).json()
+            self.assertEqual(plan["regions"],regions)
+            self.assertEqual(plan["workflow"], worker.CLOUD_WORKFLOW)
+            self.assertEqual(plan["total"],8*len(regions))
+            self.assertNotIn("retained_limit",plan)
+            for region in regions:
+                self.assertEqual(sum(r["backbone_trials"] for r in plan["contigs"] if r["growpatch_epitope"]==region),8)
             url = "/pilot/runs/"+plan["id"]
             self.assertEqual(self.bob.post(url).status_code,404)
             self.assertEqual(self.alice.post(url).status_code,200)
             self.assertEqual(self.alice.post(url).status_code,200)
             spec = self.jobs["ep-"+plan["id"]]["taskGroups"][0]["taskSpec"]
             self.assertEqual(spec["maxRetryCount"],0)
-            self.assertEqual(spec["runnables"][0]["container"]["commands"][:4],["--route",route,"--region",region])
+            command = spec["runnables"][0]["container"]["commands"]
+            self.assertEqual(command[:2],["--route",route])
+            self.assertEqual([value for flag, value in zip(command,command[1:]) if flag=="--region"],regions)
             self.assertNotIn("ATOM",json.dumps(spec))
-            self.results.blob(plan["id"]+"/retained.csv").upload_from_string("design_id\na\n")
+            self.results.blob(plan["id"]+"/backbones.csv").upload_from_string("design_id\na\n")
             self.results.blob(plan["id"]+"/designs.zip").upload_from_string(b"zip fixture")
-            cloud.write(self.results.blob(plan["id"]+"/done.json"),{"attempted":16,"retained":8,"completed":12345})
+            cloud.write(self.results.blob(plan["id"]+"/done.json"),{"workflow":worker.CLOUD_WORKFLOW,"generated":plan["total"],"completed":12345})
             with patch("time.time",return_value=9999999999):
                 self.assertEqual(self.alice.get(url).json()["stage"],"completed")
             for suffix in ("","/results","/designs.zip"):
@@ -119,6 +128,31 @@ class CloudPilot(unittest.TestCase):
         self.assertEqual(self.bob.get("/pilot/runs").json(),[])
         cloud.write(self.store.blob("testers/alice"),{"digest":None})
         self.assertEqual(self.alice.get("/pilot/runs").status_code,401)
+
+    def test_older_cloud_records(self):
+        plan = self.review("growpatch",reference.reference_pdb(),["Y:20-34"]).json()
+        url = "/pilot/runs/"+plan["id"]
+        blob = cloud.record_blob("alice",plan["id"])
+        record = cloud.read(blob)
+        del record["workflow"]
+        cloud.write(blob,record)
+        self.assertEqual(self.alice.post(url).status_code,409)
+        self.assertFalse(self.jobs)
+        record.update(stage="queued",submitted=1,updated=1)
+        cloud.write(blob,record)
+        cloud.write(self.results.blob(plan["id"]+"/done.json"),{"attempted":16,"retained":8,"completed":100})
+        self.results.blob(plan["id"]+"/retained.csv").upload_from_string("old result")
+        self.assertEqual(self.alice.get(url).json()["reason"],"8 of 16 backbones retained.")
+        self.assertEqual(self.alice.get(url+"/results").text,"old result")
+
+    def test_incomplete_publication_is_not_a_completed_run(self):
+        plan = self.review("growpatch",reference.reference_pdb(),["Y:20-34"]).json()
+        url = "/pilot/runs/"+plan["id"]
+        self.alice.post(url)
+        cloud.write(self.results.blob(plan["id"]+"/done.json"),{"workflow":worker.CLOUD_WORKFLOW,"generated":7,"completed":100})
+        with patch("time.time",return_value=9999999999):
+            self.assertEqual(self.alice.get(url).json()["stage"],"failed")
+            self.assertEqual(self.alice.get(url+"/designs.zip").status_code,409)
 
     def test_manual_gemini_handoff(self):
         from episcaf_service import handoff_job
@@ -131,12 +165,15 @@ class CloudPilot(unittest.TestCase):
                 self.assertEqual(plan["total"],16)
                 self.assertEqual(self.bob.post(url).status_code,404)
                 for _ in range(2):
-                    self.assertEqual(self.alice.post(url).json()["stage"],"awaiting Brandon’s submission")
+                    self.assertEqual(self.alice.post(url).json()["stage"],"queued for cluster")
                 bundle = self.store.blob("inbox/alice/"+rid+"/reference.zip")
                 data = bundle.download_as_bytes()
                 self.assertEqual(bundle.generation,1)
                 response = self.alice.get(url+"/request.zip")
                 self.assertEqual(response.content, data)
+                with patch.dict(os.environ, {"EPISCAF_PILOT_MODE":cloud.MODE}):
+                    self.assertEqual(self.alice.get(url+"/request.zip").content,data)
+                    self.assertEqual(self.bob.get(url+"/request.zip").status_code,404)
                 self.assertIn("attachment", response.headers["content-disposition"])
                 self.assertEqual(self.bob.get(url+"/request.zip").status_code,404)
                 cloud.write(self.results.blob(rid+"/receipt.json"),{"stage":"queued","job_id":"12345"})
@@ -192,8 +229,9 @@ class CloudPilot(unittest.TestCase):
 
     def test_budget_and_target_enforced_on_server(self):
         pdb = reference.reference_pdb()
-        self.assertEqual(self.review("growpatch",pdb,["Y:15-24","Y:31-40"]).status_code,422)
+        self.assertEqual(self.review("growpatch",pdb,["Y:15-24","Y:31-40","Y:41-50","Y:51-60"]).status_code,422)
         self.assertEqual(self.review("growpatch",pdb,["Y:130-140"]).status_code,422)
+        self.assertEqual(self.review("growpatch",pdb,["Y:15-24","Y:15-24"]).status_code,422)
         changed = pdb.replace("ATOM  ","ATOM X",1)
         plan = self.review("growpatch",changed,["Y:20-34"]).json()
         self.assertEqual(self.alice.post("/pilot/runs/"+plan["id"]).json()["stage"],"awaiting lab review")
@@ -203,8 +241,8 @@ class CloudPilot(unittest.TestCase):
             self.assertEqual(self.alice.get("/pilot/runs").status_code,404)
 
 
-class ReferenceFilter(unittest.TestCase):
-    def test_reference_and_contact_scores(self):
+class ReferenceWorker(unittest.TestCase):
+    def setUp(self):
         # CPU geometry control. The RFd3 stand-in only rearranges native coordinates.
         # Every other step, including mmCIF conversion, raw occupancy and ZIP export, is real.
         atoms = {}
@@ -228,8 +266,48 @@ class ReferenceFilter(unittest.TestCase):
             out.mkdir()
             for i in range(int(flags["diffusion_batch_size"])):
                 (out/f"model_{i}.cif.gz").write_bytes(gzip.compress(stream.getvalue().encode()))
+        self.enterContext(patch.object(worker.subprocess,"run",side_effect=fixture))
+
+    def test_raw_backbones(self):
+        for route, regions in [("growpatch",["Y:20-34","Y:31-40","Y:40-52"]), ("antibody",[worker.contact_region()])]:
+            with self.subTest(route=route), tempfile.TemporaryDirectory() as tmp:
+                directory = Path(tmp)
+                self.assertEqual(worker.generate_raw(directory,route,regions),8*len(regions))
+                with ZipFile(directory/"designs.zip") as archive:
+                    rows = list(csv.DictReader(archive.read("backbones.csv").decode().splitlines()))
+                    self.assertEqual(Counter(r["epitope"] for r in rows),{region:8 for region in regions})
+                    self.assertEqual(len({r["design_id"] for r in rows}),len(rows))
+                    self.assertEqual(archive.read("backbones.csv"),(directory/"backbones.csv").read_bytes())
+                    self.assertEqual(set(archive.namelist()),{"backbones.csv",*(r["structure_file"] for r in rows)})
+                    for row in rows:
+                        self.assertEqual(row["source"],"cloud-rfd3")
+                        self.assertIn(b"_atom_site.", gzip.decompress(archive.read(row["structure_file"])))
+
+    def test_worker_entrypoint_publishes_after_generation(self):
+        bucket = Bucket()
+        rid = "a"*32
+        with patch("google.cloud.storage.Client") as client, patch.object(sys, "argv", [
+                "worker", "--route", "growpatch", "--region", "Y:20-34", "--region", "Y:31-40",
+                "--run", rid, "--bucket", "test-results"]):
+            client.return_value.bucket.return_value = bucket
+            worker.main()
+        self.assertEqual(list(bucket.objects),[f"{rid}/backbones.csv", f"{rid}/designs.zip", f"{rid}/done.json"])
+        marker = cloud.read(bucket.blob(f"{rid}/done.json"))
+        self.assertEqual(marker["workflow"], worker.CLOUD_WORKFLOW)
+        self.assertEqual(marker["generated"], 16)
+        with ZipFile(io.BytesIO(bucket.blob(f"{rid}/designs.zip").download_as_bytes())) as archive:
+            self.assertEqual(archive.read("backbones.csv"),bucket.blob(f"{rid}/backbones.csv").download_as_bytes())
+
+    def test_missing_gpu_output(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(worker.subprocess,"run"):
+            directory = Path(tmp)
+            with self.assertRaisesRegex(ValueError, "output count"):
+                worker.generate_raw(directory,"growpatch",["Y:20-34"])
+            self.assertFalse((directory/"backbones.csv").exists())
+
+    def test_reference_and_contact_scores(self):
         for route, region in [("growpatch","Y:20-34"),("antibody",worker.contact_region())]:
-            with tempfile.TemporaryDirectory() as tmp, patch.object(worker.subprocess,"run",fixture):
+            with tempfile.TemporaryDirectory() as tmp:
                 directory = Path(tmp)
                 self.assertEqual(worker.generate(directory,route,region),8)
                 with ZipFile(directory/"designs.zip") as z:
