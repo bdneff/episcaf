@@ -25,9 +25,33 @@ coords+sequence+epitope positions) is a TODO pinned to a real motif run's output
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from episcaf_service.rfd4.config import DEFAULT, PROTEIN_LENGTH, GenerationConfig
 from episcaf_service.rfd4.topology import Island, Topology, plan_topology
+
+_CIF_SUFFIXES = (".cif", ".bcif", ".cif.gz", ".bcif.gz", ".cif.zst", ".bcif.zst")
+
+
+def ensure_cif(path, out_dir=None) -> str:
+    """RFD4 only reads CIF/BinaryCIF. Return `path` if it's already CIF, else convert a PDB to CIF
+    via atomworks (lazy import — present in the RFD4 venv; keeps this module numpy-only elsewhere)."""
+    p = str(path)
+    if any(p.lower().endswith(s) for s in _CIF_SUFFIXES):
+        return p
+    from atomworks.io import parse
+    from atomworks.io.utils.atom_array_plus import as_atom_array_plus
+    from atomworks.io.utils.io_utils import to_cif_file
+    try:
+        from rfproteina.utils.parse_presets import RCSB_WITH_METALS
+        parsed = parse(p, config=RCSB_WITH_METALS)
+    except Exception:
+        parsed = parse(p)
+    aa = as_atom_array_plus(parsed["assemblies"]["1"][0])
+    out = Path(out_dir or Path(p).parent) / (Path(p).stem + ".cif")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    to_cif_file(aa, str(out))
+    return str(out)
 
 
 def _residue_range(island: Island) -> str:

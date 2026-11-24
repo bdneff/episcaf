@@ -125,7 +125,8 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, oracle, nativ
     native = read.read_pdb(native_path or antigen_path)
     n = num_replicates or cfg.generation.pilot_denovo_jobs * cfg.generation.designs_per_job
 
-    spec = generate.condition_spec(antigen_path, epitope, cfg.generation)
+    antigen_cif = generate.ensure_cif(antigen_path, out)   # RFD4 needs CIF; converts a PDB upload
+    spec = generate.condition_spec(antigen_cif, epitope, cfg.generation)
     spec_path = out / "spec.yaml"
     generate.write_spec(spec, spec_path)
     gen_out = out / "rfd4"
