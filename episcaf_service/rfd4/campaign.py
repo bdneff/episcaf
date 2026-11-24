@@ -94,17 +94,27 @@ def backbone_prefilter_clashes(design: read.RFD4Design, native: read.Structure,
 
 def evaluate_design(design: read.RFD4Design, native: read.Structure, af2_struct: read.Structure,
                     mean_pae: float, antibody_chains, epitope_native: list, cfg: EngineConfig = DEFAULT,
-                    af2_chain: str = "A", af2_offset: int = 1) -> dict:
-    """The four metrics + composite for one AF2-folded design. Pure (no I/O)."""
-    _dbb, nbb, used = _paired_epitope_backbone(design, native, epitope_native)
-    af2_epi_bb = af2_struct.backbone_xyz(af2_chain, [s + af2_offset for s in used])
+                    af2_chain: str = "A") -> dict:
+    """The four metrics + composite for one AF2-folded design. Pure (no I/O).
 
+    The AF2 model and the design fold the SAME residue sequence, so pair them by ordinal position
+    (i-th residue <-> i-th residue) rather than residue-number arithmetic -- correct whether the
+    design CIF is 0- or 1-indexed and whatever the AF2 numbering is."""
+    _dbb, nbb, used = _paired_epitope_backbone(design, native, epitope_native)
+    af2_resnums = sorted({a.seq_id for a in af2_struct.atoms if a.chain == af2_chain})
+    ordinal = {sid: i for i, sid in enumerate(design.seq_ids)}
+
+    def af2_res(sid):
+        i = ordinal.get(sid)
+        return af2_resnums[i] if i is not None and i < len(af2_resnums) else None
+
+    af2_epi_bb = af2_struct.backbone_xyz(af2_chain, [r for r in (af2_res(s) for s in used) if r is not None])
     epitope_rmsd = score.epitope_backbone_rmsd(af2_epi_bb, nbb) if len(nbb) and af2_epi_bb.shape == nbb.shape else float("nan")
     overall_rmsd = score.overall_ca_rmsd(af2_struct.ca_xyz([af2_chain]), design.ca_xyz())
 
     # clash on the AF2 model: align its epitope backbone onto native, test scaffold heavy vs antibody
-    scaffold_ids = [s + af2_offset for s in design.scaffold_seq_ids]
-    sc_atoms = [a for a in af2_struct.atoms if a.chain == af2_chain and a.seq_id in set(scaffold_ids)
+    scaffold_af2 = {r for r in (af2_res(s) for s in design.scaffold_seq_ids) if r is not None}
+    sc_atoms = [a for a in af2_struct.atoms if a.chain == af2_chain and a.seq_id in scaffold_af2
                 and a.element.upper() != "H"]
     sc_xyz = np.array([a.xyz for a in sc_atoms], float) if sc_atoms else np.empty((0, 3))
     sc_resid = np.array([a.seq_id for a in sc_atoms])
