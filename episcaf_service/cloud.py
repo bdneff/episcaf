@@ -59,36 +59,42 @@ def record_blob(owner, rid):
     return store().blob(f"runs/{owner}/{rid}")
 
 
+RFD4_WORKFLOW = "rfd4-scaffold-v1"
+
+
 def review(s, owner):
     route = s.route
-    enabled = matches_reference(s.structure, route, s.chain)
     regions = s.regions
     mode = pilot.mode()
     manual = mode == "manual-gemini"
-    if enabled:
-        try:
-            if manual:
-                if len(regions) != 1:
-                    raise ValueError("Choose one region per manual Gemini reference run.")
-                worker.region_for(route, regions[0])
-            else:
-                worker.validate_cloud_regions(route, regions)
-        except ValueError as exc:
-            raise HTTPException(422, str(exc)) from exc
-    plan = pilot.prepare(s, trials=worker.ATTEMPTS if enabled and manual else worker.CLOUD_TRIALS_PER_REGION)
     rid = uuid.uuid4().hex
-    backend = mode if enabled else ("manual-review" if manual else PENDING)
-    record = dict(id=rid, filename=s.filename, chain=s.chain, route=route, regions=regions, backend=backend,
+    record = dict(id=rid, filename=s.filename, chain=s.chain, route=route, regions=regions,
                   stage="review", submitted=None, updated=None, job_id=None, reason=None,
                   completed=None, estimated_start=None)
-    if backend == "manual-gemini":
-        plan["retained_limit"] = worker.LIMIT
-        record["plan"] = worker.reference_plan(regions)
-    elif backend == MODE:
-        plan["workflow"] = record["workflow"] = worker.CLOUD_WORKFLOW
-    # Keep the uploaded bytes private. The worker can only read its checked-in reference.
+    if manual:
+        # RFD4 epitope-scaffolding: any antigen + epitope islands becomes a real Gemini run (not a
+        # 3HFM-locked reference). The worker fires handoff_rfd4.sbatch -> the campaign engine.
+        if not regions:
+            raise HTTPException(422, "Select at least one epitope region.")
+        plan = pilot.prepare(s, trials=worker.ATTEMPTS)   # cosmetic (shown in the UI); the engine ignores it
+        backend = "manual-gemini"
+        record.update(backend=backend, workflow=RFD4_WORKFLOW,
+                      antibody_chains=list(getattr(s, "antibody_chains", None) or []))
+    else:
+        enabled = matches_reference(s.structure, route, s.chain)
+        if enabled:
+            try:
+                worker.validate_cloud_regions(route, regions)
+            except ValueError as exc:
+                raise HTTPException(422, str(exc)) from exc
+        plan = pilot.prepare(s, trials=worker.CLOUD_TRIALS_PER_REGION)
+        backend = mode if enabled else PENDING
+        record["backend"] = backend
+        if backend == MODE:
+            plan["workflow"] = record["workflow"] = worker.CLOUD_WORKFLOW
+    # Keep the uploaded bytes private.
     store().blob(f"uploads/{owner}/{rid}").upload_from_string(s.structure, if_generation_match=0)
-    write(record_blob(owner,rid), record, if_generation_match=0)
+    write(record_blob(owner, rid), record, if_generation_match=0)
     return dict(**plan, id=rid, backend=backend)
 
 

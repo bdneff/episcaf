@@ -32,18 +32,15 @@ def download(owner, rid):
 
 
 def bundle(record, owner, upload):
-    ref = record["backend"] == "manual-gemini"
+    rfd4 = bool(record.get("workflow"))   # RFD4 scaffold run (vs the legacy 3HFM RFd3 reference)
     manifest = {key: record[key] for key in ("id", "filename", "chain", "route", "regions", "backend")}
-    manifest.update(owner=owner, sha256=hashlib.sha256(upload).hexdigest(),
-                    attempts=cloud.worker.ATTEMPTS if ref else None,
-                    retained_limit=cloud.worker.LIMIT if ref else None)
+    manifest.update(owner=owner, sha256=hashlib.sha256(upload).hexdigest())
+    if rfd4:
+        manifest.update(workflow=record["workflow"], antibody_chains=record.get("antibody_chains", []))
     stream = io.BytesIO()
     with ZipFile(stream, "w", compression=ZIP_DEFLATED) as archive:
         archive.writestr("request.json", json.dumps(manifest, indent=2))
         archive.writestr("upload", upload)
-        if ref:
-            archive.writestr("plan.json", json.dumps(record["plan"], indent=2))
-            archive.write(Path(__file__).with_name("handoff.sbatch"), "handoff.sbatch")
     return stream.getvalue()
 
 

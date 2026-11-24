@@ -45,6 +45,7 @@ def execute(inbox, workspace, job):
     if not regions:
         raise ValueError("No epitope regions in the staged request.")
     epitope = ";".join(regions)
+    antibody_chains = tuple(manifest.get("antibody_chains") or ())
 
     antigen = directory / "antigen.pdb"
     antigen.write_bytes(upload)
@@ -53,6 +54,7 @@ def execute(inbox, workspace, job):
                                colabfold_bin=os.environ["EPISCAF_COLABFOLD"], cfg=DEFAULT.oracle)
     results = campaign.run_campaign(
         str(antigen), epitope, str(directory), oracle=oracle, native_path=str(antigen),
+        antibody_chains=antibody_chains,
         rfd4_cmd=tuple(shlex.split(os.environ.get("EPISCAF_RFD4_CMD", "rfd4-generate"))),
         num_replicates=manifest.get("num_replicates"), cfg=DEFAULT)
 

@@ -63,7 +63,7 @@ RESULT_BUCKET = os.environ.get("EPISCAF_RESULT_BUCKET", "")
 GCLOUD = shlex.split(os.environ.get("EPISCAF_GCLOUD", "gcloud"))
 INBOX = Path(os.environ.get("EPISCAF_INBOX", str(Path.home() / ".episcaf-pilot" / "inbox")))
 SBATCH = Path(os.environ.get(
-    "EPISCAF_SBATCH", str(Path.home() / "episcaf-advisor" / "episcaf_service" / "handoff.sbatch")))
+    "EPISCAF_SBATCH", str(Path.home() / "episcaf-advisor" / "episcaf_service" / "handoff_rfd4.sbatch")))
 GRACE_SECONDS = float(os.environ.get("EPISCAF_GRACE_SECONDS", "900"))
 
 DRY_RUN = False
@@ -135,17 +135,25 @@ def gs_upload_once(path, uri):
 # --- result-artifact validation (mirrors pilot_transfer.publish; keep the two in sync) ----------
 
 def validate_designs(run_dir, rid, job):
-    """Assert terminal.json matches this run+job and the retained table agrees with designs.zip."""
+    """Assert terminal.json matches this run+job and the published table agrees with designs.zip.
+
+    Shape-agnostic across backends: the RFd3 reference packs retained.csv + backbones/<id>.pdb (<=8);
+    the RFD4 engine packs final_results.csv + designs/<id>.pdb (variable count). We check that the
+    published retained.csv equals a CSV inside the archive and that every row's design_id has a
+    structure in it."""
     record = json.loads((run_dir / "terminal.json").read_text())
     if record.get("id") != rid or str(record.get("job_id")) != str(job) or record.get("stage") != "completed":
         raise RuntimeError("terminal.json does not match this run and Slurm receipt")
+    published = (run_dir / "retained.csv").read_bytes()
     with ZipFile(run_dir / "designs.zip") as archive:
-        retained = archive.read("retained.csv")
-        models = list(csv.DictReader(io.StringIO(retained.decode())))
-        if (retained != (run_dir / "retained.csv").read_bytes() or len(models) > 8 or
-                sorted("backbones/" + row["design_id"] + ".pdb" for row in models) !=
-                sorted(name for name in archive.namelist() if name.startswith("backbones/"))):
-            raise RuntimeError("the retained table and structure archive disagree")
+        names = archive.namelist()
+        if not any(name.endswith(".csv") and archive.read(name) == published for name in names):
+            raise RuntimeError("the results table in the archive does not match the published CSV")
+        structures = {Path(name).stem for name in names if name.endswith(".pdb")}
+        models = list(csv.DictReader(io.StringIO(published.decode())))
+        missing = [m["design_id"] for m in models if m.get("design_id") not in structures]
+        if missing:
+            raise RuntimeError(f"designs missing structures in the archive: {missing[:3]}")
 
 
 # --- Slurm ---------------------------------------------------------------------------------------
