@@ -38,9 +38,12 @@ def _structures():
     return design, native, af2
 
 
+EPI_NATIVE = [("A", 10), ("A", 11)]   # the epitope string's ordered native residues
+
+
 def test_evaluate_perfect_design():
     design, native, af2 = _structures()
-    m = C.evaluate_design(design, native, af2, mean_pae=3.0, antibody_chains=())
+    m = C.evaluate_design(design, native, af2, mean_pae=3.0, antibody_chains=(), epitope_native=EPI_NATIVE)
     assert m["epitope_rmsd"] < 1e-6, m["epitope_rmsd"]
     assert m["overall_rmsd"] < 1e-6, m["overall_rmsd"]
     assert m["af_clashes"] == 0, m["af_clashes"]
@@ -49,7 +52,7 @@ def test_evaluate_perfect_design():
 
 def test_backbone_prefilter_no_antibody():
     design, native, _ = _structures()
-    assert C.backbone_prefilter_clashes(design, native, antibody_chains=()) == 0
+    assert C.backbone_prefilter_clashes(design, native, antibody_chains=(), epitope_native=EPI_NATIVE) == 0
 
 
 def test_write_results_ranks_by_composite():

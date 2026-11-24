@@ -20,8 +20,24 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 import numpy as np
 
-from episcaf_service.rfd4 import clash, generate, read, score
+from episcaf_service.rfd4 import clash, generate, read, score, topology
 from episcaf_service.rfd4.config import DEFAULT, EngineConfig
+
+
+def epitope_native_residues(epitope) -> list:
+    """Ordered [(chain, resnum)] the epitope string names, matching RFD4's src label order."""
+    out = []
+    for isl in topology.parse_islands(epitope) if isinstance(epitope, str) else epitope:
+        out.extend((isl.chain, r) for r in range(isl.start, isl.end + 1))
+    return out
+
+
+def _src_to_native(design: "read.RFD4Design", epitope_native: list) -> dict:
+    """Map RFD4's (possibly renumbered) src residue numbers -> the real native (chain, resnum).
+    atomworks may renumber the epitope on PDB->CIF; the src residues sorted still correspond to the
+    epitope residues in input order, so zip them."""
+    src_sorted = sorted({rn for _ch, rn in design.native_of.values()})
+    return {src: epitope_native[i] for i, src in enumerate(src_sorted) if i < len(epitope_native)}
 
 
 @dataclass
@@ -38,15 +54,21 @@ class DesignResult:
     model_pdb: str
 
 
-def _paired_epitope_backbone(design: read.RFD4Design, native: read.Structure):
-    """design & native epitope backbones paired atom-for-atom (N,CA,C,O per residue), + the seq_ids used."""
+def _paired_epitope_backbone(design: read.RFD4Design, native: read.Structure, epitope_native: list):
+    """design & native epitope backbones paired atom-for-atom (N,CA,C,O per residue), + the seq_ids
+    used. `epitope_native` is the ordered [(chain, resnum)] from the epitope string, used to remap
+    RFD4's (possibly renumbered) src residues onto the real native structure."""
+    remap = _src_to_native(design, epitope_native)
     dbb, nbb, used = [], [], []
     for s in sorted(design.epitope_seq_ids):
         if s not in design.native_of:
             continue
-        ch, rn = design.native_of[s]
+        _ch, src_rn = design.native_of[s]
+        if src_rn not in remap:
+            continue
+        nchain, nresnum = remap[src_rn]
         d = design.backbone_xyz([s])
-        n = native.backbone_xyz(ch, [rn])
+        n = native.backbone_xyz(nchain, [nresnum])
         if d.shape == (4, 3) and n.shape == (4, 3):
             dbb.append(d)
             nbb.append(n)
@@ -57,9 +79,9 @@ def _paired_epitope_backbone(design: read.RFD4Design, native: read.Structure):
 
 
 def backbone_prefilter_clashes(design: read.RFD4Design, native: read.Structure,
-                               antibody_chains, cfg: EngineConfig = DEFAULT) -> int:
+                               antibody_chains, epitope_native: list, cfg: EngineConfig = DEFAULT) -> int:
     """Clash count on the RFD4 backbone (pre-AF2), aligning the design epitope onto the native."""
-    dbb, nbb, _ = _paired_epitope_backbone(design, native)
+    dbb, nbb, _ = _paired_epitope_backbone(design, native, epitope_native)
     if len(dbb) == 0:
         return 0
     scaffold_xyz, scaffold_resid = design.heavy_xyz_with_resid(design.scaffold_seq_ids)
@@ -71,10 +93,10 @@ def backbone_prefilter_clashes(design: read.RFD4Design, native: read.Structure,
 
 
 def evaluate_design(design: read.RFD4Design, native: read.Structure, af2_struct: read.Structure,
-                    mean_pae: float, antibody_chains, cfg: EngineConfig = DEFAULT,
+                    mean_pae: float, antibody_chains, epitope_native: list, cfg: EngineConfig = DEFAULT,
                     af2_chain: str = "A", af2_offset: int = 1) -> dict:
     """The four metrics + composite for one AF2-folded design. Pure (no I/O)."""
-    _dbb, nbb, used = _paired_epitope_backbone(design, native)
+    _dbb, nbb, used = _paired_epitope_backbone(design, native, epitope_native)
     af2_epi_bb = af2_struct.backbone_xyz(af2_chain, [s + af2_offset for s in used])
 
     epitope_rmsd = score.epitope_backbone_rmsd(af2_epi_bb, nbb) if len(nbb) and af2_epi_bb.shape == nbb.shape else float("nan")
@@ -125,6 +147,7 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, oracle, nativ
     native = read.read_pdb(native_path or antigen_path)
     n = num_replicates or cfg.generation.pilot_denovo_jobs * cfg.generation.designs_per_job
 
+    epitope_native = epitope_native_residues(epitope)      # ordered native residues for src remapping
     antigen_cif = generate.ensure_cif(antigen_path, out)   # RFD4 needs CIF; converts a PDB upload
     spec = generate.condition_spec(antigen_cif, epitope, cfg.generation)
     spec_path = out / "spec.yaml"
@@ -137,12 +160,12 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, oracle, nativ
     for cif in sorted(gen_out.glob("inference_samples/*/*_generated.cif")):
         design = read.read_rfd4_cif(str(cif))
         did = cif.parent.name
-        bb_clash = backbone_prefilter_clashes(design, native, antibody_chains, cfg)
+        bb_clash = backbone_prefilter_clashes(design, native, antibody_chains, epitope_native, cfg)
         if not clash.passes_backbone_prefilter(bb_clash, cfg.clash):
             continue
         fold = oracle.predict(design.sequence, did, str(out / "af2"))
         af2_struct = read.read_pdb(fold.model_pdb)
-        m = evaluate_design(design, native, af2_struct, fold.mean_pae, antibody_chains, cfg)
+        m = evaluate_design(design, native, af2_struct, fold.mean_pae, antibody_chains, epitope_native, cfg)
         results.append(DesignResult(design_id=did, sequence=design.sequence, backbone_clashes=bb_clash,
                                     model_pdb=fold.model_pdb, **m))
     write_results(out, results)
