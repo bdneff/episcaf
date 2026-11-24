@@ -134,8 +134,6 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
     <div class="card" id="formcard">
       <div class="row">
         <div class="fld"><label for="file">Antigen structure (PDB or mmCIF)</label><input type="file" disabled id="file" accept=".pdb,.ent,.cif,.mmcif"></div>
-        <div class="fld"><label for="sasa">Minimum relative solvent accessibility</label><input type="number" id="sasa" value="0.2" step="0.05" min="0" max="1"><span class="hint">Residues at or above this threshold are treated as surface residues.</span></div>
-        <div class="fld"><label for="topk">Maximum candidate count</label><input type="number" id="topk" value="0" step="10" min="0" title="0 keeps every candidate"><span class="hint">Returns this many top-ranked candidates. Leave at 0 to keep every candidate.</span></div>
         <div class="fld" id="discofld"><label for="disco">Candidate ranking</label>
           <label class="chk"><input type="checkbox" id="disco"><span>Rank by DiscoTope-3.0</span></label>
           <span class="hint" id="provider">Checking for a scoring provider…</span>
@@ -197,13 +195,9 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
     </div>
   </div>
 
-  <div class="note"><b>Sequence segments and gap filling.</b> A candidate can contain several sequence
-  segments that are adjacent in the folded antigen. growPatch fills short sequence gaps so the scaffold
-  includes the backbone connecting nearby surface residues: the segments sent to scaffold design are the
-  gap-filled ranges, and candidates are ranked by the total DiscoTope score over those residues. Structure processing does
-  not establish that an antigen or candidate region is suitable for the intended experiment. Preparing
-  design inputs writes the design specifications and run configuration; it does not start RFdiffusion3,
-  ProteinMPNN, or AlphaFold&nbsp;3. <b>Data source:</b> <code>episcaf_analysis/growpatch</code>.</div>
+  <div class="note" id="gap-help"><b>Sequence segments.</b> A candidate can contain several segments that
+  meet on the folded antigen. growPatch fills short sequence gaps between exposed residues. The listed
+  ranges include those connecting residues.</div>
 </div>
 
 <script src="pilot.js"></script>
@@ -219,8 +213,10 @@ const $=id=>document.getElementById(id);
 // Backend base URL. Lets the static GitHub Pages copy talk to a hosted backend (Render/Gemini) while
 // the same code stays same-origin ("") when the backend serves the UI itself. Resolution order:
 // a ?backend=<url> query param (saved for next time), else a saved value, else same-origin.
-let discoAvailable=false, usesBioLib=false;
+let discoAvailable=false, usesBioLib=false, usesLocalDisco=false;
 let cloudPilot=false, antibodyRoute=false, privatePilot=false, reviewed=null, revision=0, signedIn=false;
+let batchDemo=false;
+const batchRegionLimit=3;
 function backendBase(){
   if(privatePilot) return "";
   try{
@@ -278,13 +274,11 @@ function busyDone(){ if(_busyTimer){clearInterval(_busyTimer);_busyTimer=null;} 
 // Re-enabled when the run settles (via syncControls).
 function setRunning(on){
   const f=$("file"); if(f) f.disabled=on; $("chain").disabled=on;
-  if(on){ $("disco").disabled=true; $("disco-type").disabled=true; $("topk").disabled=true; } else { syncControls(); }
+  if(on){ $("disco").disabled=true; $("disco-type").disabled=true; } else { syncControls(); }
 }
-// The "max candidate count" only truncates a ranked list, so it applies only when ranking is on.
 function syncControls(){
   $("disco").disabled=!discoAvailable;
-  $("topk").disabled=!discoAvailable || !$("disco").checked;
-  $("disco-type-label").hidden=!usesBioLib || !$("disco").checked;
+  $("disco-type-label").hidden=!(usesBioLib || usesLocalDisco) || !$("disco").checked;
   $("disco-type").disabled=$("disco-type-label").hidden;
 }
 const fileFmt=()=>/\.(mm)?cif$/i.test($("file").files[0]?.name || "")?"cif":"pdb";
@@ -312,7 +306,8 @@ $("file").onchange=()=>{
       }else if(d.is_complex){
         $("guess").innerHTML=`Chain ${esc(d.antigen_chain)} has contacts with ${esc(d.partner_chains.join(", "))}. `+
           `For an antibody contact epitope, use `+
-          `<a href="scaffold.html">Scaffold a selected epitope</a>.`;
+          (cloudPilot ? '<a href="growpatch_tool.html?route=antibody">Find antibody contacts</a>.' :
+            '<a href="scaffold.html">Scaffold a selected epitope</a>.');
       }else{
         $("guess").innerHTML=`No antibody partner was detected.`;
       }
@@ -330,16 +325,22 @@ syncControls();
 // auto-re-ranks when it lands (skipped when ranking is off). The run button and file input stay
 // locked until both phases settle, so the request can't be corrupted mid-flight.
 async function enumerateReq(disco){
-  const qs=new URLSearchParams({chain:selectedChain(), sasa_cut:$("sasa").value,
-    top_k: disco ? $("topk").value : 0,   // phase 1 keeps all; ranking truncates
+  const qs=new URLSearchParams({chain:selectedChain(),
     mode:antibodyRoute?"antibody":"growpatch", fmt:fileFmt(), structure_type:$("disco-type").value, disco:disco?1:0});
-  const res=await fetch(api("/enumerate?"+qs.toString()),{method:"POST",body:state.pdbText});
+  const options={method:"POST",body:state.pdbText};
+  const res=disco && batchDemo && usesLocalDisco
+    ? await pilotRequest("enumerate?"+qs,options)
+    : await fetch(api("/enumerate?"+qs),options);
   const data=await res.json();
   if(!res.ok||data.error) throw new Error(data.error||("HTTP "+res.status));
   return data;
 }
 $("run").onclick=async()=>{
   if(!state.pdbText){msg("Choose a PDB file first.","err");return;}
+  if(batchDemo && usesLocalDisco && !antibodyRoute && $("disco").checked && !signedIn){
+    $("authmsg").textContent="Sign in to rank candidates with DiscoTope, or turn off ranking to see the regions.";
+    $("token").focus();return;
+  }
   clearSelection(); resetView();
   const disco=!antibodyRoute && $("disco").checked;
   state.discoRequested=disco;
@@ -363,7 +364,7 @@ $("run").onclick=async()=>{
   // Phase 2: DiscoTope ranking in the background; candidates already visible and marked "not ranked yet".
   state.ranking=true; rankHdr();
   busy("Ranking candidates by DiscoTope-3.0…",
-       "This can take up to 5 minutes. The candidates below are not ranked yet. Keep this tab open.");
+       "You can inspect the regions while scoring runs. Keep this tab open to receive the ranking.");
   try{
     const data=await enumerateReq(true);
     const keepSel=state.sel, present=new Set(data.patches.map(p=>p.i));
@@ -400,9 +401,7 @@ function rankHdr(){
   el.hidden=false;
   if(state.ranking){
     el.className="rankhdr unavail";
-    el.innerHTML="<b>Ranking in progress.</b> DiscoTope-3.0 is scoring this antigen (this can take up to "+
-      "~5 minutes). The candidates below are in generation order and are <b>not ranked yet</b> &mdash; "+
-      "they reorder by score automatically when it finishes. You can already inspect and select them.";
+    el.textContent="Scoring the antigen with DiscoTope-3.0. Candidates will be sorted by score when it finishes.";
     return;
   }
   if(hasDisco()){
@@ -419,7 +418,7 @@ function rankHdr(){
       "To order them by epitope likelihood, enable <b>Rank by DiscoTope-3.0</b> above and generate again.";
   }else{
     el.className="rankhdr unavail";
-    el.textContent=usesBioLib ? "BioLib returned no usable scores for this chain. All candidates are shown in generation order." :
+    el.textContent=usesBioLib || usesLocalDisco ? "DiscoTope returned no usable scores for this chain. Candidates are in generation order." :
       "No stored scores matched this chain. All candidates are shown in generation order.";
   }
 }
@@ -440,7 +439,7 @@ function buildList(){
       `<span class="ep">${esc(p.epitope)}</span>`+discoBadge(p)+
       `<span class="rowmeta">candidate ${Number(p.i)} &middot; ${Number(p.n_res)} residues &middot; ${segText(p.n_isl)}</span>`;
     row.querySelector(".pick").onclick=e=>{e.stopPropagation();
-      if(e.target.checked && cloudPilot){
+      if(e.target.checked && cloudPilot && !batchDemo){
         state.picked.clear();
         for(const input of el.querySelectorAll(".pick")) input.checked=input===e.target;
       }
@@ -455,7 +454,11 @@ function updateStageSel(){
   invalidate();
   const el=$("stagesel"); if(!el) return;
   const n=state.picked.size;
-  el.textContent=n ? n+" regions selected." : "Select at least one region to prepare a run.";
+  el.textContent=n ? n+(n===1?" region selected.":" regions selected.") : "Select at least one region to prepare a run.";
+  if(batchDemo && !antibodyRoute){
+    el.textContent+=" Choose up to "+batchRegionLimit+" regions per demo run.";
+    for(const box of $("plist").querySelectorAll(".pick")) box.disabled=!box.checked && n>=batchRegionLimit;
+  }
   $("stage").disabled=!n;
 }
 const patchById=i=>state.D.patches.find(p=>p.i===i);
@@ -575,17 +578,26 @@ async function checkService(){
     privatePilot=own.service==="episcaf" && ["simulated","gemini-lysozyme","cloud-lysozyme","manual-gemini"].includes(own.pilot_mode);
     $("live-note").hidden=own.pilot_mode!=="gemini-lysozyme";
     cloudPilot=["cloud-lysozyme","manual-gemini"].includes(own.pilot_mode);
+    batchDemo=own.pilot_mode==="cloud-lysozyme";
     if(cloudPilot){
       antibodyRoute=new URLSearchParams(location.search).get("route")==="antibody";
       const note=$("live-note"), link=document.createElement("a");
       link.href="/pilot/reference.pdb?route="+(antibodyRoute?"antibody":"growpatch"); link.download="";
       link.textContent=antibodyRoute?"3HFM antibody–lysozyme complex":"3HFM lysozyme";
-      note.hidden=false; note.replaceChildren("For a GPU run, upload the ",link," and choose one region on chain Y. Other uploads go to lab review.");
+      note.hidden=false;
+      if(batchDemo){
+        const selection=antibodyRoute?"use its antibody contacts":"select up to "+batchRegionLimit+" regions";
+        note.replaceChildren("For the Google Cloud demo, upload the ",link," and "+selection+" on chain Y. RFdiffusion3 generates backbone coordinates. Other uploads go to lab review.");
+      }else{
+        note.replaceChildren("For a Gemini run, upload the ",link," and choose one region on chain Y. Other uploads go to lab review.");
+      }
       if(antibodyRoute){
         document.querySelector("h1").textContent="Find the antibody contact epitope";
+        document.querySelector('label[for="file"]').textContent="Antibody–antigen complex (PDB or mmCIF)";
         document.querySelector(".lede").textContent="Choose the antigen chain. The contact epitope contains its residues within 4 Å of a bound partner. For 3HFM the antibody chains are H and L.";
         $("run").textContent="Find contact residues";
-        for(const id of ["disco","sasa","topk"]) $(id).closest(".fld").hidden=true;
+        $("disco").closest(".fld").hidden=true;
+        $("gap-help").hidden=true;
       }
     }
     if(!privatePilot){
@@ -601,9 +613,14 @@ async function checkService(){
     if(privatePilot) await refreshSession();
     const d=backendBase() ? await fetch(api("/health"),{cache:"no-store"}).then(r=>r.ok?r.json():{}) : own;
     usesBioLib=d.biolib===true;
-    discoAvailable=d.disco_available ?? usesBioLib;
-    if(!discoAvailable) $("disco").checked=false;
+    usesLocalDisco=d.discotope_local===true;
+    discoAvailable=d.disco_available ?? (usesBioLib || usesLocalDisco);
+    $("disco").checked=batchDemo && !antibodyRoute && discoAvailable && usesLocalDisco && !usesBioLib;
+    if(batchDemo && usesLocalDisco && !antibodyRoute){
+      $("formcard").prepend($("pilot-auth"));
+    }
     $("provider").textContent=usesBioLib ? "Checking this option sends the selected protein chain to BioLib when you generate candidates. Ranking can take several minutes." :
+      usesLocalDisco ? "DiscoTope scores the selected chain on the episcaf service. "+(batchDemo?"Sign in to use ranking.":"") :
       discoAvailable ? "This service uses stored DiscoTope scores for matching structures." :
       "DiscoTope ranking is unavailable on this service.";
     syncControls();
@@ -635,7 +652,7 @@ async function prepareReview(){
       ". Total: "+plan.total+" backbone attempts across all contig variants. One round, no partial diffusion."+
       (privatePilot?"":" Staging mode. Download your prepared inputs below.");
     if(plan.backend==="cloud-lysozyme"){
-      $("reviewtext").append(" Google Cloud retains the half with the lowest raw occupancy scores, up to "+plan.retained_limit+" backbones. Download their coordinates and scores in My runs.");
+      $("reviewtext").append(" Google Batch runs RFdiffusion3 and returns all generated backbone coordinates in My runs.");
       $("launch").textContent="Start cloud run";
     }else if(plan.backend==="manual-gemini"){
       $("reviewtext").append(" Brandon will review this request and submit it on Gemini. The filter retains up to 8 backbones with the lowest raw occupancy scores.");
@@ -644,7 +661,7 @@ async function prepareReview(){
       $("reviewtext").append(" Gemini will design and score "+plan.sequence_predictions+" sequences from these backbones.");
       $("launch").textContent="Start Gemini run";
     }else if(["gemini-reviewed","cloud-reviewed","manual-review"].includes(plan.backend)){
-      $("reviewtext").append(" The lab will review this upload before scheduling compute.");
+      $("reviewtext").append(" Submitting saves the structure and selected regions for the lab to review. A GPU job starts only if the lab approves and schedules it.");
       $("launch").textContent="Request lab review";
     }
     $("launch").disabled=false; $("review").hidden=false;

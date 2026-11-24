@@ -1,9 +1,13 @@
 steps:
 - name: gcr.io/cloud-builders/docker
-  args: [build, -t, '${_WEB}', .]
+  env: ['DOCKER_BUILDKIT=1']
+  args: [build, --target, web, -t, '${_WEB}', .]
+- name: gcr.io/cloud-builders/docker
+  env: ['DOCKER_BUILDKIT=1']
+  args: [build, --target, web-discotope, -t, '${_DEMO}', .]
 - name: gcr.io/cloud-builders/docker
   args: [build, -f, episcaf_service/Dockerfile.backbones, -t, '${_GPU}', .]
-images: ['${_WEB}', '${_GPU}']
+images: ['${_WEB}', '${_DEMO}', '${_GPU}']
 timeout: 5400s
 options:
   diskSizeGb: 200

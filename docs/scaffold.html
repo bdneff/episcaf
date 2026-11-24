@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Scaffold a selected epitope · episcaf</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <link rel="stylesheet" href="site.css">
 <style>
@@ -149,9 +147,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 <div class="page">
   <h1>Configure scaffold design</h1>
   <p id="cloud-link" hidden><a href="growpatch_tool.html?route=antibody">Request backbones for the antibody contact epitope</a></p>
-  <p class="lede">Define the epitope from an antibody&ndash;antigen complex or select antigen residues
-  directly. Configure backbone generation, sequence design, structure prediction, and ranking below.</p>
-  <p class="note"><b>Without a connected service, this page simulates a run.</b> Use a staging service to prepare inputs for an uploaded structure. The viewer shows your selection; the table below uses example design metrics.</p>
+  <p class="lede">Upload a structure or choose an example. Select antigen residues directly or use a bound antibody to identify the epitope.</p>
 
   <hr>
 
@@ -159,8 +155,8 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     <div class="tcard-h">Structure and epitope</div>
     <div class="tcard-top">
       <span class="tlab">Epitope selection:</span>
-      <label class="radio"><input type="radio" name="epi" value="antibody" checked> Use antibody contact residues &mdash; derive the contact epitope from the antibody (on an uploaded complex, tune the cutoff &amp; gap&#8209;fill)</label>
-      <label class="radio"><input type="radio" name="epi" value="manual"> Select antigen residues &mdash; specify the epitope residues on the structure</label>
+      <label class="radio"><input type="radio" name="epi" value="antibody" checked> Use antibody contacts</label>
+      <label class="radio"><input type="radio" name="epi" value="manual"> Select antigen residues</label>
       <div class="help" style="margin-top:3px">No antibody and no known site? <a href="growpatch_tool.html">Generate candidate surface regions &rsaquo;</a></div>
     </div>
     <div class="tcard-b">
@@ -175,8 +171,8 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         </select>
         <div class="help" id="targethint"></div>
         <div class="field" style="margin-top:7px"><label for="pdbfile">Upload a PDB or mmCIF file</label>
-          <input type="file" id="pdbfile" accept=".pdb,.ent,.cif"></div>
-        <div class="help" id="uploadnote">PDB or mmCIF. The viewer loads it. With the local server it auto-detects the antibody and epitope; from anywhere, use the sequence below to pick the antibody chain yourself.</div>
+          <input type="file" id="pdbfile" accept=".pdb,.ent,.cif,.mmcif"></div>
+        <div class="help" id="uploadnote">Uploads are inspected by the episcaf service when you open this page there. You can also select residues in the sequence viewer.</div>
       </div>
       <div class="cpreview">
         <div class="cvwrap">
@@ -197,11 +193,6 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <button type="button" id="modechain" class="modebtn on" aria-pressed="true">Select antibody chains</button>
         <button type="button" id="moderes" class="modebtn" aria-pressed="false">Select antibody residues</button>
       </div>
-      <div class="seqparams">
-        <label for="cutoff">Heavy-atom contact cutoff (&Aring;) <input type="number" id="cutoff" value="4.0" min="2" max="12" step="0.5"></label>
-        <label for="gapfill">Maximum sequence gap to fill (residues) <input type="number" id="gapfill" value="0" min="0" max="20" step="1"></label>
-        <span class="phelp">Fill sequence gaps up to this length between selected antigen residues. Set to 0 to leave the gaps unchanged.</span>
-      </div>
       <div id="chainpills" class="chainpills" role="group" aria-label="Chains"></div>
       <p id="residue-help" class="help" hidden>Click a letter to toggle it, or drag across a chain to select a range. Start on a selected letter to remove a range. Shift-click extends from your last selection.</p>
       <div id="seqstatus" class="seqstatus"></div>
@@ -211,106 +202,21 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   </section>
 
   <form id="form" autocomplete="off">
-    <h2>Design protocol</h2>
-    <p class="sub" style="color:#666;margin:-4px 0 10px">Configure the design steps below. The simulation and submission-script preview update with the supported settings.</p>
-
-    <section class="step">
-      <div class="steph"><span class="stepn">1</span> Generate backbones &mdash; RFdiffusion3</div>
-      <div class="stepb">
-        <p class="sub" style="margin:0 0 8px">RFdiffusion3 generates <i>de novo</i> backbones &mdash; the scaffold&rsquo;s 3D shape, before any amino-acid sequence is assigned &mdash; that hold the epitope in its native geometry.</p>
-        <div class="field"><label for="rfd3n">Backbones per epitope</label>
-          <input type="number" id="rfd3n" value="8" min="1" max="64">
-          <div class="sub">Number of candidate backbones requested for each epitope. Each retained backbone proceeds to sequence design.</div></div>
-        <div class="field"><label for="helix">Helix bias</label>
-          <input type="range" id="helix" min="-1" max="1" step="0.05" value="0" disabled style="vertical-align:middle;width:140px">
-          <span id="helixv" style="color:#9aa3ad;font-variant-numeric:tabular-nums">0.00</span>
-          <div class="sub">Planned setting. Helix bias is not connected to the current generation workflow.</div></div>
-        <label class="radio"><input type="checkbox" id="ipd"> Generate additional rounds by partial diffusion</label>
-        <div class="sub" style="margin:2px 0 0 22px">Use selected designs from one round to generate variants for the next round. Each round also includes independently generated backbones. <a href="methods.html#generate">How the loop works &rsaquo;</a></div>
-        <div class="field" id="ipdwrap" hidden><label for="ipdrounds">Maximum design rounds</label>
-          <input type="number" id="ipdrounds" value="4" min="1" max="10">
-          <div class="sub">Upper limit on the number of rounds. An epitope can stop earlier under the configured improvement criterion.</div></div>
-      </div>
-    </section>
-
-    <section class="step" id="step-filter">
-      <div class="steph"><span class="stepn">2</span> Backbone obstruction filter</div>
-      <div class="stepb">
-        <p class="sub" style="margin:0 0 8px">AOMclash estimates whether a generated backbone could obstruct antibody binding. Candidates with lower obstruction scores are prioritized before sequence design.</p>
-        <label class="radio"><input type="checkbox" id="prefilter" checked> Filter backbones before sequence design</label>
-        <div class="sub" style="margin:2px 0 0 22px">Uses AOMclash to estimate obstruction from an antibody-occupancy map, before sequence design (ProteinMPNN) and structure prediction (AlphaFold&nbsp;3). <a href="aomclash.html">AOMclash calculation and validation &rsaquo;</a></div>
-        <div class="field" id="prefwrap">
-          <label for="keepfrac">Percentage of backbones to retain</label>
-          <div class="sub" style="margin:2px 0 5px">Backbones are ranked separately for each epitope by AOMclash score (<code>s_p1_free</code>; lower is less obstruction). The selected percentage with the lowest scores continues to ProteinMPNN and AlphaFold&nbsp;3; the rest are discarded.</div>
-          <input type="number" id="keepfrac" value="50" min="5" max="100" step="5"> %
-          <div class="sub" id="keepexample" style="margin-top:4px"></div></div>
-      </div>
-    </section>
-
-    <section class="step">
-      <div class="steph"><span class="stepn">3</span> Design sequences &mdash; ProteinMPNN</div>
-      <div class="stepb">
-        <p class="sub" style="margin:0 0 8px">ProteinMPNN assigns an amino-acid sequence to each kept backbone, holding the epitope positions fixed so the epitope keeps its native identity while the rest of the scaffold is free.</p>
-        <div class="field"><label for="mpnnn">Sequences per backbone</label>
-          <input type="number" id="mpnnn" value="8" min="1" max="32">
-          <div class="sub">Number of sequence candidates generated for each retained backbone. Each sequence is evaluated by structure prediction.</div></div>
-      </div>
-    </section>
-
-    <section class="step">
-      <div class="steph"><span class="stepn">4</span> Predict structure &mdash; AlphaFold3</div>
-      <div class="stepb"><p class="fixed-note">AlphaFold&nbsp;3 predicts a structure for each sequence. The predicted structure is compared with the intended design and reference epitope. Single-sequence input (a self-only MSA); templates disabled; seed 1.</p></div>
-    </section>
-
-    <section class="step">
-      <div class="steph"><span class="stepn">5</span> Design ranking and selection</div>
-      <div class="stepb">
-        <div class="field"><label for="strategy">Ranking method</label>
-          <div class="sub" style="margin:2px 0 4px">Choose the score used to rank the predicted designs. Model definitions and evaluation results are available in the linked documentation. Default: logistic regression, based on the documented validation comparison.</div>
-          <select id="strategy">
-            <option value="logistic">Logistic regression</option>
-            <option value="composite">Composite structural score</option>
-            <option value="gbt">Gradient-boosted trees</option>
-            <option value="dl">Neural-network comparison</option>
-          </select>
-          <div class="stratbox" id="stratbox"></div></div>
-        <div class="field"><label>Selection rule</label>
-          <div class="radios">
-            <label class="radio"><input type="radio" name="mode" value="threshold" checked> Return designs that pass the structural filters (epitope RMSD, overall RMSD, mean PAE, antibody clashes)</label>
-            <label class="radio"><input type="radio" name="mode" value="topn"> Return the highest-ranked designs up to the requested count, within the time limit</label>
-          </div></div>
-        <div class="field"><label for="ndes">Requested design count</label>
-          <input type="number" id="ndes" value="20" min="1" max="500">
-          &nbsp;&nbsp;<label for="runtime">Time limit (minutes)</label>
-          <input type="number" id="runtime" value="60" min="1" max="1440"></div>
-      </div>
-    </section>
-
-    <div class="field">
-      <label for="backend">Service URL</label>
-      <input type="text" id="backend" placeholder="http://127.0.0.1:8808" style="width:240px">
-      <span class="help">Enter the service URL to prepare inputs for an uploaded structure. Example targets use the simulation mode.</span>
-      <div class="help">Input preparation applies to uploaded structures; the built-in example targets always run the simulation.</div>
-    </div>
-
-    <div class="field">
-      <div class="demobadge">Simulation uses example numbers. To prepare a Gemini job, upload a structure and enter the staging service URL.</div>
-      <div><button type="submit" id="runbtn" class="btn-primary">Simulate a run</button>
-      <span class="help" id="runnote"></span></div>
-    </div>
+    <button type="submit" id="runbtn" class="btn-primary">Simulate a run</button>
+    <p class="help" id="runnote"></p>
   </form>
 
   <hr>
 
-  <h2>Run log</h2>
+  <section id="simulation" hidden>
+  <h2>Simulated run log</h2>
   <pre id="log"></pre>
   <p id="summary"></p>
 
   <section id="recorded" hidden>
     <h2>Recorded 8PWW design</h2>
     <p class="note"><b>Recorded result from a completed run.</b> This example comes from a completed run for
-    the PfRH5 epitope in 8PWW. Its structure and metrics are fixed and do not change with the protocol
-    settings. Metrics come from the ranked run table
+    the PfRH5 epitope in 8PWW. Its structure and metrics are fixed and describe that run. Metrics come from the ranked run table
     (<code>results/dp4_C2_single_island_ranked.csv</code>).</p>
     <div class="tablewrap"><table>
       <thead><tr><th>design</th><th>epitope RMSD (&Aring;)</th><th>overall RMSD (&Aring;)</th><th>mean PAE</th><th>antibody clashes</th><th>four-filter</th></tr></thead>
@@ -342,18 +248,19 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
   <p><button id="cmdbtn" type="button" class="btn-secondary">Copy submission script</button></p>
   <p class="help">Example Gemini submission template. Preparing inputs saves a run-specific copy for the operator to complete.</p>
 
+  </section>
+
   <div id="stagedwrap" hidden>
     <h2>Prepared job</h2>
+    <div id="staged-results" class="tablewrap" hidden><table>
+      <thead><tr><th>#</th><th>Design</th><th>Epitope RMSD (&Aring;)</th><th>Antibody clashes</th><th>Score</th><th>Status</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
     <pre id="staged"></pre>
     <p><button id="fetchres" type="button" hidden class="btn-secondary">Load completed results</button>
        <span class="help" id="fetchnote"></span></p>
   </div>
 
-  <hr>
-  <p class="foot"><b>Running real jobs.</b> With a service URL, preparing a job writes the input files and
-  submission script to the configured workspace. It does not start RFdiffusion3 or AlphaFold&nbsp;3;
-  complete the submission template before running it on Gemini. See
-  <code>episcaf_service/README.md</code> for setup and the SSH tunnel.</p>
 </div>
 
 <script>
@@ -569,49 +476,19 @@ function loadComplex(){
     _pdbCache[file]=txt;renderPDB(txt);
   }).catch(()=>useImgFallback());
 }
-/* scoring-method card (equation + one-line description), from the DP4 findings */
-const FEAT15='<u>Design metrics (9):</u> cylinder clashes, epitope RMSD, overall RMSD, epitope PAE, scaffold PAE, mean PAE, pTM, AF3 clashes, island index<br><u>Secondary structure of the epitope (3):</u> helix fraction, strand fraction, number of islands<br><u>Static antigen context (3):</u> intra-epitope electrostatic sum, scaffold-to-epitope size ratio, local antigen crowding';
-const STRAT_INFO={
-  logistic:{tex:'p(\\text{bind})=\\sigma(\\mathbf{w}\\cdot\\mathbf{x}+b),\\quad \\sigma(z)=\\dfrac{1}{1+e^{-z}}',
-    arch:'Logistic regression &middot; 15 features &middot; <b>16 fitted weights</b>',
-    desc:'Logistic regression that ranks designs from their structural and epitope features. It is fitted to the DP4 binding assay and evaluated with cross-validation grouped by epitope, reaching ROC-AUC 0.817. Applied as a re-ranking layer, the top 10% of designs bind at about 33% against an 8% assay-wide rate. It is the default ranking method.',
-    more:'<u>Features (15):</u><br>'+FEAT15+'<br>Fit by L2-regularized logistic regression on median-imputed, standardized, class-balanced features, and evaluated by repeated cross-validation grouped by epitope (all designs from an epitope held out together) on 2,720 assayed designs across 56 epitopes (217 binders). The current feature set uses static antigen-context descriptors in place of the earlier bound-state dynamics descriptors; the paired, held-out evaluation reported a ROC-AUC increase of 0.013 (95% CI 0.008&ndash;0.018). The class-balanced output is used as a ranking score, not a calibrated binding probability.'},
-  gbt:{tex:'F(\\mathbf{x})=\\sum_{m=1}^{M}\\gamma_m\\,h_m(\\mathbf{x})',
-    arch:'Histogram gradient boosting &middot; ~100 trees, depth &le; 3',
-    desc:'Gradient-boosted trees over the same feature set, evaluated for comparison on the same split. In the recorded evaluation it reaches ROC-AUC 0.796 &plusmn; 0.019, close to logistic regression (0.810) and random forest (0.811).',
-    more:'<u>Features (15):</u><br>'+FEAT15+'<br>The model settings, feature list, and validation results are documented in the model comparison. On the recorded evaluation the gradient-boosted model reaches ROC-AUC 0.796 &plusmn; 0.019; logistic regression and random forest reach 0.810 and 0.811 on the same split.'},
-  composite:{tex:'S=\\sum_i w_i\\,\\sigma\\!\\left(\\dfrac{x_i-m_i}{s_i}\\right)+\\text{pass bonus}',
-    arch:'Weighted structural score &middot; preset weights &middot; <b>weights fixed</b>',
-    desc:'A weighted sum of sigmoid-transformed structural metrics, with weights set by the selected preset rather than fit to the current binding-assay dataset. Each metric passes through a saturating sigmoid, is multiplied by a preset weight, and summed, with a fixed promotion for designs clearing the structural filters. It requires no assay data to apply.',
-    more:'Weights (episcaf_analysis/presets.py, ANTIBODY_SOFTGATE) act on sigmoid-transformed metrics: <u>antibody clashes 0.45</u>, <u>epitope RMSD 0.25</u>, overall RMSD 0.20, epitope PAE 0.10.<br>Designs clearing the structural filters (epitope RMSD &le; 1 &Aring;, overall RMSD &le; 2 &Aring;, mean PAE &lt; 5 &Aring;, no clashes) receive a fixed promotion. The preset defines the included metrics, their transformations, the weights, and the promotion; none of these values is fit to the assay.'},
-  dl:{tex:'\\mathbf{x}_{15}\\;\\rightarrow\\;32\\rightarrow16\\;\\rightarrow\\;\\hat{y}',
-    arch:'Multilayer perceptron &middot; 2 hidden layers (32, 16)',
-    desc:'A multilayer perceptron over the same feature set, evaluated for comparison with the other ranking methods. In the recorded evaluation it is the least accurate method (ROC-AUC &asymp; 0.65), and its validation performance does not improve as feature blocks are added.',
-    more:'The analysis record reports the network architecture, training settings, and validation performance. On the recorded evaluation the network reaches ROC-AUC 0.672 on the design metrics and 0.646&ndash;0.654 as the further feature blocks are added, below every simpler model on the same progression &mdash; consistent with overfitting a flexible model on a limited dataset (2,720 designs, 56 epitopes).'}
-};
-function setStratBox(){const i=STRAT_INFO[state.strategy];let eq="";
-  try{if(window.katex)eq=katex.renderToString(i.tex,{displayMode:true,throwOnError:false});}catch(e){}
-  if(!eq)eq='<span style="font-family:monospace;font-size:13px">'+i.tex+'</span>';
-  // progressive disclosure: show the plain-language description by default; tuck the equation and the
-  // deep detail behind a collapsed expander so the math only appears when asked for.
-  $("#stratbox").innerHTML='<div class="arch">'+i.arch+'</div><div class="d">'+i.desc+'</div>'+
-    '<details><summary>Equation and details</summary><div class="eq">'+eq+'</div><div class="morec">'+i.more+'</div></details>';}
 function initCViewer(){
   if(typeof $3Dmol==="undefined" || !webglOK()){useImgFallback();return;}
   try{cviewer=$3Dmol.createViewer("cviewer",{backgroundColor:"white",ambientOcclusion:{strength:0.9}});
     loadComplex();}
   catch(e){cviewer=null;useImgFallback();}
 }
+let stagingAvailable=false;
+function canStage(){return stagingAvailable && state.target==="__upload";}
 function updateRunBtn(){
-  const b=$("#runbtn"); if(!b) return;
-  b.textContent = (apiBase() && uploadText) ? "Prepare design inputs" : "Simulate a run";
-}
-function updateKeepExample(){
-  const el=$("#keepexample"); if(!el) return;
-  const n=state.rfd3n, keep=Math.max(1,Math.round(n*state.keepfrac)), pct=Math.round(state.keepfrac*100);
-  el.innerHTML="At "+pct+"%, if "+n+" backbone"+(n===1?"":"s")+" are generated for an epitope, the <b>"+keep+
-    "</b> with the lowest obstruction score"+(keep===1?"":"s")+" continue; the other "+(n-keep)+
-    " are discarded before ProteinMPNN and AlphaFold3.";
+  $("#runbtn").textContent=canStage() ? "Prepare design inputs" : "Simulate a run";
+  $("#runnote").textContent=canStage()
+    ? "The service prepares input files with the default settings. The lab submits the job separately."
+    : "Shows example results using the default settings.";
 }
 // Show the chain-selection panel for the example complexes too, not just uploads/manual mode, so the
 // antibody (and thus the antigen + contact epitope) can be picked on any target. buildSeqPanel hides
@@ -619,16 +496,19 @@ function updateKeepExample(){
 function panelWanted(){ return true; }
 function syncHints(){
   $("#targethint").textContent = (state.target==="__upload" && !uploadDetected)
-    ? "uploaded structure; the epitope was not detected (needs the local service). Showing the raw structure."
+    ? "Choose the antibody or select antigen residues below."
     : (state.epi==="antibody"
-      ? "antibody present: antigen (grey), antibody (blue), contact epitope (red). Mark the antibody below, and tune the distance and gap-fill."
+      ? "Antigen in grey, antibody in blue and contact residues in red."
       : "Select the epitope residues in the sequence below.");
+  $("#simulation").hidden=true;
+  $("#stagedwrap").hidden=true;
+  $("#staged-results").hidden=true;
+  $("#fetchres").hidden=true;
+  lastRunId=null;
   $("#recorded").hidden = state.target!=="8PWW";
   if(!panelWanted()){const sp=$("#seqpanel"); if(sp) sp.hidden=true;}
   updateRunBtn();
-  $("#runnote").textContent = state.mode==="threshold"
-    ? `will stop early if ${state.n} pass before ${state.runtime} min`
-    : `will return the best ${state.n} after up to ${state.runtime} min`;
+
 }
 $$('input[name=epi]').forEach(r=>r.addEventListener("change",()=>{
   state.epi=document.querySelector('input[name=epi]:checked').value; uploadDetected=true;
@@ -637,22 +517,7 @@ $$('input[name=epi]').forEach(r=>r.addEventListener("change",()=>{
   syncHints();
   if(cviewer) loadComplex(); else updateCaption();
 }));
-$$('input[name=mode]').forEach(r=>r.addEventListener("change",()=>{state.mode=document.querySelector('input[name=mode]:checked').value;syncHints();}));
 $("#target").addEventListener("change",e=>{state.target=e.target.value;panelDirty=true;syncHints();loadComplex();});
-$("#strategy").addEventListener("change",e=>{state.strategy=e.target.value;setStratBox();});
-function rerun(){paint(computeJob(state),false);}
-const clamp=(v,lo,hi,d)=>Math.max(lo,Math.min(hi,+v||d));
-$("#ndes").addEventListener("input",e=>{state.n=clamp(e.target.value,1,500,1);syncHints();rerun();});
-$("#runtime").addEventListener("input",e=>{state.runtime=clamp(e.target.value,1,1440,1);syncHints();rerun();});
-$("#rfd3n").addEventListener("input",e=>{state.rfd3n=clamp(e.target.value,1,64,8);updateKeepExample();rerun();});
-$("#helix").addEventListener("input",e=>{state.helix=+e.target.value;$("#helixv").textContent=state.helix.toFixed(2);rerun();});
-$("#ipd").addEventListener("change",e=>{state.ipd=e.target.checked;$("#ipdwrap").hidden=!state.ipd;rerun();});
-$("#ipdrounds").addEventListener("input",e=>{state.ipdrounds=clamp(e.target.value,1,10,4);rerun();});
-$("#prefilter").addEventListener("change",e=>{state.prefilter=e.target.checked;$("#prefwrap").style.display=state.prefilter?"":"none";rerun();});
-$("#keepfrac").addEventListener("input",e=>{state.keepfrac=Math.max(0.05,Math.min(1,(+e.target.value||50)/100));updateKeepExample();rerun();});
-$("#mpnnn").addEventListener("input",e=>{state.mpnnn=clamp(e.target.value,1,32,8);rerun();});
-$("#backend").addEventListener("input",updateRunBtn);
-
 /* --- PDB upload: load into the viewer; with the local server, auto-detect the epitope --- */
 let uploadText=null, uploadFmt="pdb", uploadDetected=true;
 function epiResids(spec){const out=[];String(spec||"").split(";").forEach(tok=>{
@@ -708,14 +573,13 @@ function parseModelResidues(){                          // fallback (e.g. mmCIF)
   return chains;
 }
 function getResidues(){
-  if(uploadFmt==="pdb" && uploadText){const c=parsePDBResidues(uploadText); if(Object.keys(c).length) return c;}
+  if(state.target==="__upload" && uploadFmt==="pdb" && uploadText){const c=parsePDBResidues(uploadText); if(Object.keys(c).length) return c;}
   return parseModelResidues();   // examples (and mmCIF uploads) come from the loaded 3Dmol model
 }
 function largestChain(chains){
   let best=null,bn=-1; for(const c of Object.keys(chains)){ if(chains[c].order.length>bn){bn=chains[c].order.length;best=c;} } return best;
 }
-function readCut2(){const v=parseFloat(($("#cutoff")||{}).value); const c=(isNaN(v)||v<=0)?4.0:v; return c*c;}
-function readGap(){const v=parseInt(($("#gapfill")||{}).value,10); return (isNaN(v)||v<0)?0:v;}
+const CONTACT_DISTANCE_ANGSTROMS=4;
 function abSelected(){ return selMode==="residue" ? abRes.size>0 : abSet.size>0; }
 function isAbResidue(c,resi){ return selMode==="residue" ? abRes.has(c+":"+resi) : abSet.has(c); }
 function pickAntigen(chains){
@@ -737,16 +601,7 @@ function computeSeqEpitope(){
     const byChain={};
     for(const k of abRes){const i=k.indexOf(":"),c=k.slice(0,i),ri=+k.slice(i+1);(byChain[c]||(byChain[c]=[])).push(ri);}
     let ag=null,bn=-1; for(const c in byChain){ if(byChain[c].length>bn){bn=byChain[c].length;ag=c;} }
-    let epi=byChain[ag].slice().sort((a,b)=>a-b);
-    const gap=readGap();                               // optional: bridge short gaps in the selection
-    if(gap>0 && seqChains[ag]){
-      const order=seqChains[ag].order.map(k=>seqChains[ag].res[k].resi), sel=new Set(epi);
-      const idx=[]; for(let i=0;i<order.length;i++) if(sel.has(order[i])) idx.push(i);
-      const filled=new Set(epi);
-      for(let a=0;a<idx.length-1;a++){ if(idx[a+1]-idx[a]-1<=gap) for(let j=idx[a]+1;j<idx[a+1];j++) filled.add(order[j]); }
-      epi=[...filled].sort((a,b)=>a-b);
-    }
-    return {ag:ag, epi:epi};
+    return {ag, epi:byChain[ag].sort((a,b)=>a-b)};
   }
   const ag=pickAntigen(seqChains);
   if(!ag || !abSelected()) return {ag:ag,epi:[]};
@@ -755,7 +610,7 @@ function computeSeqEpitope(){
     const r=seqChains[c].res[k]; if(isAbResidue(c,r.resi)) for(const p of r.atoms) abPts.push(p);
   }
   if(!abPts.length) return {ag:ag,epi:[]};
-  const cut2=readCut2(), order=seqChains[ag].order, contact=new Array(order.length).fill(false);
+  const cut2=CONTACT_DISTANCE_ANGSTROMS**2, order=seqChains[ag].order, contact=new Array(order.length).fill(false);
   for(let o=0;o<order.length;o++){
     const r=seqChains[ag].res[order[o]];
     if(selMode==="residue" && abRes.has(ag+":"+r.resi)) continue;   // antibody residues aren't epitope
@@ -764,10 +619,6 @@ function computeSeqEpitope(){
       for(let j=0;j<abPts.length;j++){const q=abPts[j],dx=p[0]-q[0],dy=p[1]-q[1],dz=p[2]-q[2];
         if(dx*dx+dy*dy+dz*dz<=cut2){hit=true;break;}}}
     contact[o]=hit;
-  }
-  const gap=readGap();                                   // bridge short sequence gaps between contacts
-  if(gap>0){ let last=-1;
-    for(let o=0;o<order.length;o++){ if(contact[o]){ if(last>=0 && o-last-1<=gap) for(let j=last+1;j<o;j++) contact[j]=true; last=o; } }
   }
   const epi=[]; for(let o=0;o<order.length;o++) if(contact[o]) epi.push(seqChains[ag].res[order[o]].resi);
   return {ag:ag,epi:epi};
@@ -840,11 +691,10 @@ function applySeqSelection(){
 function syncPanelMode(){                                  // show/hide controls that only apply to one mode
   const manual=(state.epi==="manual");
   const sm=$("#selmode"); if(sm) sm.style.display = manual ? "none" : "";
-  const cut=$("#cutoff"); if(cut){ const lab=cut.closest("label"); if(lab) lab.style.display = manual ? "none" : ""; }
   const head=document.querySelector(".seqhead");
   if(head) head.innerHTML = manual
-    ? "Select the <b>epitope</b> residues in the sequence. Where a contact epitope is known it is pre-filled; add or remove residues. Gap-fill can bridge short gaps."
-    : "Mark the <b>antibody</b>; the largest remaining chain is treated as the antigen, and its residues within the contact cutoff (heavy atoms) become the epitope. Computed in your browser.";
+    ? "Select the <b>epitope</b> residues in the sequence. If contacts are already selected, add or remove residues as needed."
+    : `Mark the <b>antibody</b>. The viewer selects residues on the largest remaining chain with a heavy atom within ${CONTACT_DISTANCE_ANGSTROMS} Å of the antibody.`;
 }
 function setSelMode(m){
   selMode=m;
@@ -871,11 +721,9 @@ function buildSeqPanel(seedAb){
   syncPanelMode(); panel.hidden=false; applySeqSelection();
 }
 (function wireSeqPanel(){
-  const mc=$("#modechain"), mr=$("#moderes"), cut=$("#cutoff"), gap=$("#gapfill"), body=$("#seqbody");
+  const mc=$("#modechain"), mr=$("#moderes"), body=$("#seqbody");
   if(mc) mc.addEventListener("click",()=>setSelMode("chain"));
   if(mr) mr.addEventListener("click",()=>setSelMode("residue"));
-  if(cut) cut.addEventListener("input",()=>{ if(seqChains) applySeqSelection(); });
-  if(gap) gap.addEventListener("input",()=>{ if(seqChains) applySeqSelection(); });
   let drag=null;
   function endpoints(letter,extend){
     const letters=Array.from(letter.parentElement.children);
@@ -932,8 +780,8 @@ $("#pdbfile").addEventListener("change",e=>{
   const f=e.target.files[0]; if(!f) return;
   const rd=new FileReader();
   rd.onload=async()=>{
-    uploadText=rd.result; uploadFmt=f.name.toLowerCase().endsWith(".cif")?"cif":"pdb";
-    const name=f.name.replace(/\.(pdb|ent|cif)$/i,""); DESCS["__upload"]=name;
+    uploadText=rd.result; uploadFmt=/\.(mm)?cif$/i.test(f.name)?"cif":"pdb";
+    const name=f.name.replace(/\.(pdb|ent|cif|mmcif)$/i,""); DESCS["__upload"]=name;
     const sel=$("#target");
     if(![...sel.options].some(o=>o.value==="__upload")){const o=document.createElement("option");o.value="__upload";sel.appendChild(o);}
     [...sel.options].forEach(o=>{if(o.value==="__upload")o.textContent="uploaded: "+name;});
@@ -941,7 +789,7 @@ $("#pdbfile").addEventListener("change",e=>{
     $("#uploadnote").textContent="Loaded "+f.name+". Detecting the epitope…";
     showLoading("Detecting the epitope…");
     try{
-      const res=await fetch(apiBase()+"/inspect?fmt="+uploadFmt,{method:"POST",body:uploadText});
+      const res=await fetch("/inspect?fmt="+uploadFmt,{method:"POST",body:uploadText});
       const d=await res.json(); if(!res.ok||d.error) throw new Error(d.error||("HTTP "+res.status));
       uploadDetected=true;
       CFG["__upload"]={ag:d.antigen_chain,ab:d.partner_chains||[],epi:epiResids(d.epitope)};
@@ -954,30 +802,29 @@ $("#pdbfile").addEventListener("change",e=>{
       // detection could not run (no local service / no service URL): do NOT assume "no antibody".
       uploadDetected=false;
       CFG["__upload"]={ag:firstChain(uploadText),ab:[],epi:[]};
-      $("#uploadnote").textContent="Loaded "+f.name+". Automatic contact detection is unavailable. Select antigen residues on the structure or enter the processing service URL.";
+      $("#uploadnote").textContent="Loaded "+f.name+". Automatic contact detection is unavailable. Select antigen residues on the structure or choose the antibody chains below.";
     }
     syncHints(); loadComplex();
     buildSeqPanel((CFG["__upload"]&&CFG["__upload"].ab)||[]);   // sequence strip + manual chain assignment
-    rerun();
+
   };
   rd.readAsText(f);
 });
 
 $("#form").addEventListener("submit",e=>{
   e.preventDefault(); const b=$("#runbtn"); b.disabled=true;
-  if(apiBase() && uploadText){                       // live backend + an uploaded structure -> stage for real
+  if(canStage()){                       // live backend + an uploaded structure -> stage for real
     stageReal().finally(()=>{b.disabled=false;});
   }else{                                             // demo: simulate, and print the (now-correct) command
+    $("#simulation").hidden=false;
     paint(computeJob(state),true);
     setTimeout(()=>b.disabled=false, reduced?0:1500);
   }
 });
 
 /* --- live backend: stage a real job, then fetch its scored results --- */
-function apiBase(){const el=$("#backend");return el?el.value.trim().replace(/\/$/,""):"";}
 let lastRunId=null;
 async function stageReal(){
-  const base=apiBase();
   const name=(DESCS["__upload"]||"antigen").toLowerCase().replace(/[^a-z0-9_.-]/g,"_");
   // this page stages a known or user-specified epitope; the surface scan is a separate tool
   const mode="antibody";
@@ -985,7 +832,10 @@ async function stageReal(){
                                         : ((CFG["__upload"]&&CFG["__upload"].ag) || "A");
   const chain = epiChain;
   $("#stagedwrap").hidden=false; const box=$("#staged"); box.textContent="Preparing design inputs…";
-  let capNote="";
+  $("#fetchres").hidden=true;
+  $("#staged-results").hidden=true;
+  $("#fetchnote").textContent="";
+  lastRunId=null;
   try{
     const epiList = state.epi==="manual" ? (MANUAL.epi||[]) : ((CFG["__upload"]&&CFG["__upload"].epi)||[]);
     const epis = epiSpec(epiChain, epiList);
@@ -995,12 +845,12 @@ async function stageReal(){
       +"&helix_bias="+state.helix+"&ipd="+(state.ipd?"true":"false")+"&ipdrounds="+state.ipdrounds
       +"&prefilter="+(state.prefilter?"true":"false")+"&keepfrac="+state.keepfrac+"&topn="+state.n
       +"&model="+encodeURIComponent(state.strategy)+"&selection="+state.mode+"&runtime="+state.runtime;
-    const r=await fetch(base+q,{method:"POST",body:uploadText});
+    const r=await fetch(q,{method:"POST",body:uploadText});
     const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||("submit HTTP "+r.status));
     lastRunId=d.run_id;
     box.textContent="Prepared "+d.n_contigs+" design specification"+(d.n_contigs===1?"":"s")+" for "+d.n_epitopes
-      +" epitope"+(d.n_epitopes===1?"":"s")+capNote+".\n"+d.run_dir+"\n\n# submit this on the cluster:\n"+d.submit_sh;
-    $("#cmd").textContent=d.submit_sh;
+      +" epitope"+(d.n_epitopes===1?"":"s")+".\n"+d.run_dir+"\n\n# submit this on the cluster:\n"+d.submit_sh;
+
     $("#fetchres").hidden=false;
     $("#fetchnote").textContent="Inputs for run "+d.run_id+" are ready. Submit the script on the cluster before loading results.";
   }catch(err){
@@ -1008,18 +858,19 @@ async function stageReal(){
   }
 }
 async function fetchResults(){
-  const base=apiBase(); if(!base||!lastRunId) return;
+  if(!lastRunId) return;
   const note=$("#fetchnote"); note.textContent="Loading results for "+lastRunId+"…";
   try{
     const preset=state.epi==="antibody"?"antibody_softgate":"twelvemer";
-    const r=await fetch(base+"/results/"+lastRunId+"?preset="+preset+"&topk="+state.n+"&model="+encodeURIComponent(state.strategy));
+    const r=await fetch("/results/"+lastRunId+"?preset="+preset+"&topk="+state.n+"&model="+encodeURIComponent(state.strategy));
     if(r.status===409){ note.textContent="Results are not ready. The run has not produced the required metrics file."; return; }
     const d=await r.json(); if(!r.ok||d.error) throw new Error(d.error||("HTTP "+r.status));
+    $("#staged-results").hidden=false;
     fillRealResults(d); note.textContent="Loaded "+d.rows.length+" designs, ranked by "+d.info.ranked_by+".";
   }catch(err){ console.warn("results:",err); note.textContent="Could not load the results. Check the service connection."; }
 }
 function fillRealResults(d){
-  const tb=$("#rbody"); tb.innerHTML="";
+  const tb=$("#staged-results tbody"); tb.replaceChildren();
   const col=c=>d.columns.includes(c)?c:null;
   const idc=col("design_id")||col("id")||d.columns[0];
   const rmsdc=col("epitope_chunk_rmsd");               // the column heading is "epitope RMSD"; bind it, don't substitute overall
@@ -1031,7 +882,7 @@ function fillRealResults(d){
      scorec?(+row[scorec]).toFixed(3):"—","scored"].forEach(c=>{
        const td=document.createElement("td");td.textContent=c;tr.appendChild(td);});
     tb.appendChild(tr);});
-  $("#tablecap").textContent="Live results from the backend ("+d.info.n_designs+" designs scored; ranked by "+d.info.ranked_by+").";
+
 }
 $("#fetchres").addEventListener("click",fetchResults);
 
@@ -1080,14 +931,18 @@ $("#zipbtn").addEventListener("click",async()=>{
   b.disabled=false;b.textContent=o;
 });
 
-/* boot: show a completed example at rest */
+/* Initialize the structure picker. */
 syncHints();
-setStratBox();
-updateKeepExample();
 updateCaption();
-paint(computeJob(state),false);
 if(document.readyState==="complete") initCViewer(); else window.addEventListener("load",initCViewer);
 </script>
-<script>fetch("/health").then(r=>r.json()).then(d=>{document.getElementById("cloud-link").hidden=!["cloud-lysozyme","manual-gemini"].includes(d.pilot_mode);}).catch(()=>{});</script>
+<script>
+fetch("/health").then(r=>r.json()).then(d=>{
+  if(d.service!=="episcaf")return;
+  stagingAvailable=d.pilot_mode==="staging" && !d.pilot_url;
+  document.getElementById("cloud-link").hidden=!["cloud-lysozyme","manual-gemini"].includes(d.pilot_mode);
+  updateRunBtn();
+}).catch(()=>{});
+</script>
 </body>
 </html>

@@ -3,6 +3,7 @@ import csv
 import logging
 import math
 import os
+import subprocess
 from pathlib import Path
 import tempfile
 
@@ -14,7 +15,7 @@ from episcaf_analysis.growpatch import read as reader
 
 
 def available():
-    return bool(os.getenv("EPISCAF_DISCOTOPE_SCORED_PDB") or os.getenv("EPISCAF_DISCOTOPE") == "biolib")
+    return bool(os.getenv("EPISCAF_DISCOTOPE_SCORED_PDB") or os.getenv("EPISCAF_DISCOTOPE") in {"biolib", "local"})
 
 
 def _residues(path, chain):
@@ -41,8 +42,7 @@ def _from_scored_pdb(path, uploaded, chain):
     return {_label(r): r["CA"].bfactor / scale for r in scored if math.isfinite(r["CA"].bfactor)} or None
 
 
-def _from_biolib(struct_path, chain, structure_type):
-    import biolib
+def _score_chain(struct_path, chain, structure_type, predict):
 
     # The provider accepts PDB and returns a per-chain CSV. Send one chain with
     # simple IDs so relative and PDB-numbered outputs map to the same residues,
@@ -62,10 +62,7 @@ def _from_biolib(struct_path, chain, structure_type):
         writer = PDBIO()
         writer.set_structure(selected)
         writer.save(str(pdb))
-        job = biolib.load("DTU/DiscoTope-3").cli(args=["-f", str(pdb), "--struc_type", structure_type])
-        if job.get_exit_code() != 0:
-            raise ValueError("DiscoTope exited unsuccessfully")
-        job.save_files(tmp)
+        predict(pdb, structure_type, Path(tmp))
         result, = Path(tmp).rglob("*discotope3.csv")
         raw = {}
         with result.open(newline="") as fh:
@@ -82,6 +79,33 @@ def _from_biolib(struct_path, chain, structure_type):
     return {key: (v - lo) / (hi - lo) if hi > lo else 0.0 for key, v in raw.items()}
 
 
+def _run_biolib(pdb, structure_type, directory):
+    import biolib
+
+    job = biolib.load("DTU/DiscoTope-3").cli(args=["-f", str(pdb), "--struc_type", structure_type])
+    if job.get_exit_code() != 0:
+        raise ValueError("DiscoTope exited unsuccessfully")
+    job.save_files(str(directory))
+
+
+def _run_local(pdb, structure_type, directory):
+    installation = Path(os.environ.get("EPISCAF_DISCOTOPE_HOME", "/opt/discotope"))
+    subprocess.run(
+        [str(installation / "venv/bin/python"), "-m", "discotope3.main",
+         "-f", str(pdb), "--struc_type", structure_type, "--cpu_only",
+         "--models_dir", str(installation / "models"), "--out_dir", str(directory / "scores")],
+        cwd=directory, check=True, timeout=780, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+
+
+def _from_biolib(path, chain, structure_type):
+    return _score_chain(path, chain, structure_type, _run_biolib)
+
+
+def _from_local(path, chain, structure_type):
+    return _score_chain(path, chain, structure_type, _run_local)
+
+
 def score_cif(cif_path, chain, structure_type="solved"):
     if structure_type not in {"solved", "alphafold"}:
         raise ValueError("Select solved or AlphaFold for DiscoTope.")
@@ -93,9 +117,10 @@ def score_cif(cif_path, chain, structure_type="solved"):
                 return values
         except (OSError, ValueError, KeyError, StopIteration):
             logging.getLogger(__name__).warning("Configured DiscoTope score file unavailable")
-    if os.getenv("EPISCAF_DISCOTOPE") == "biolib":
+    provider = {"biolib": _from_biolib, "local": _from_local}.get(os.getenv("EPISCAF_DISCOTOPE"))
+    if provider:
         try:
-            return _from_biolib(cif_path, chain, structure_type)
+            return provider(cif_path, chain, structure_type)
         except Exception as exc:
             # Never log uploaded coordinates, provider response bodies or credentials.
             logging.getLogger(__name__).warning("DiscoTope ranking unavailable (%s)", type(exc).__name__)

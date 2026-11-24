@@ -1,9 +1,11 @@
 """Bounded Google Batch job for the two 3HFM lysozyme reference routes."""
 import argparse
 import csv
+from collections import Counter
 from functools import lru_cache
 import json
 import math
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -14,8 +16,12 @@ from episcaf_analysis.growpatch.read import detect_complex
 from episcaf_pipeline.build_growpatch_designs import parse_epitope
 from episcaf_service import lysozyme_job as lysozyme
 from scripts.stage03_mpnn_fixed_pdbs import cif_to_fixed_pdb, fixed_from_contig
-from scripts.aomclash_prefilter import keep_mask
 
+CLOUD_WORKFLOW = "rfd3-backbones-v1"
+CLOUD_TRIALS_PER_REGION = 8
+CLOUD_MAX_REGIONS = 3
+
+# Existing manual Gemini requests include these values in their frozen manifests.
 ATTEMPTS = 16
 LIMIT = 8
 
@@ -38,13 +44,67 @@ def region_for(route, region):
     return region
 
 
-def reference_plan(regions):
+def reference_plan(regions, trials=ATTEMPTS):
     from episcaf_service.staging import candidate_plan
-    return candidate_plan("lysozyme", "A", [r.replace("Y:", "A:") for r in regions], trials=ATTEMPTS)
+    return candidate_plan("lysozyme", "A", [r.replace("Y:", "A:") for r in regions], trials=trials)
+
+
+def run_contig(directory, row):
+    key = lysozyme.design_key(row)
+    attempts = row["backbone_trials"]
+    out = directory / key
+    subprocess.run(["rfd3", "design", f"++inputs={directory / 'inputs' / (key+'.json')}",
+                    f"++out_dir={out}", "n_batches=1", f"diffusion_batch_size={attempts}"],
+                   cwd=directory, check=True)
+    structures = sorted(out.rglob("*.cif.gz"))
+    if len(structures) != attempts:
+        raise ValueError("RFdiffusion3 output count did not match the fixed trial budget.")
+    return structures
+
+
+def validate_cloud_regions(route, regions):
+    if not 1 <= len(regions) <= CLOUD_MAX_REGIONS:
+        raise ValueError(f"Choose between one and {CLOUD_MAX_REGIONS} regions per Google Cloud run.")
+    for region in regions:
+        region_for(route, region)
+    if len(set(regions)) != len(regions):
+        raise ValueError("Choose distinct regions.")
+
+
+def generate_raw(directory, route, regions):
+    import gemmi
+    validate_cloud_regions(route, regions)
+    plan = reference_plan(regions, trials=CLOUD_TRIALS_PER_REGION)
+    lysozyme.prepare(directory, regions, plan=plan)
+    manifest = []
+    with ZipFile(directory / "designs.zip", "x") as archive:
+        for row in plan["contigs"]:
+            key = lysozyme.design_key(row)
+            region = row["growpatch_epitope"].replace("A:", "Y:")
+            for index, model in enumerate(run_contig(directory, row)):
+                structure = gemmi.read_structure(str(model))
+                if not len(structure) or not structure[0].count_atom_sites():
+                    raise ValueError(f"RFdiffusion3 returned an empty structure for {key}.")
+                name = f"{key}_model_{index}"
+                path = f"backbones/{name}.cif.gz"
+                archive.write(model, path)
+                manifest.append(dict(source="cloud-rfd3", design_id=name, epitope=region,
+                                     route=route, structure_file=path))
+        counts = Counter(r["epitope"] for r in manifest)
+        if counts != {region: CLOUD_TRIALS_PER_REGION for region in regions}:
+            raise ValueError("RFdiffusion3 returned an incomplete set of backbones.")
+        table = directory / "backbones.csv"
+        with table.open("x", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=list(manifest[0]))
+            writer.writeheader()
+            writer.writerows(manifest)
+        archive.write(table, table.name)
+    return len(manifest)
 
 
 def generate(directory, route, region, source="cloud-backbone"):
     from episcaf_analysis.aomclash import score as raw
+    from scripts.aomclash_prefilter import keep_mask
     from scripts.stage04_af3_emit_jsons import extract_sequence_from_pdb
 
     regions = [region_for(route, region)]
@@ -61,14 +121,7 @@ def generate(directory, route, region, source="cloud-backbone"):
     motif = "".join(sequence[a-1:b] for _, a, b in parse_epitope(region))
     for row in rows:
         key = lysozyme.design_key(row)
-        attempts = row["backbone_trials"]
-        out = directory / key
-        subprocess.run(["rfd3", "design", f"++inputs={directory / 'inputs' / (key+'.json')}",
-                        f"++out_dir={out}", "n_batches=1", f"diffusion_batch_size={attempts}"],
-                       cwd=directory, check=True)
-        structures = sorted(out.rglob("*.cif.gz"))
-        if len(structures) != attempts:
-            raise ValueError("RFdiffusion3 output count did not match the fixed trial budget.")
+        structures = run_contig(directory, row)
         fixed = fixed_from_contig(row["contig_string"])
         for i, structure in enumerate(structures):
             name = f"{key}_model_{i}"
@@ -102,10 +155,9 @@ def generate(directory, route, region, source="cloud-backbone"):
 
 def main():
     from google.cloud import storage
-    import re
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--route", required=True, choices=("antibody", "growpatch"))
-    parser.add_argument("--region", required=True)
+    parser.add_argument("--region", required=True, action="append")
     parser.add_argument("--run", required=True)
     parser.add_argument("--bucket", required=True)
     args = parser.parse_args()
@@ -114,11 +166,11 @@ def main():
     bucket = storage.Client().bucket(args.bucket)
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        count = generate(root, args.route, args.region)
-        for name in ("retained.csv", "designs.zip"):
+        count = generate_raw(root, args.route, args.region)
+        for name in ("backbones.csv", "designs.zip"):
             bucket.blob(f"{args.run}/{name}").upload_from_filename(str(root/name), if_generation_match=0)
         bucket.blob(f"{args.run}/done.json").upload_from_string(
-            json.dumps({"attempted": ATTEMPTS, "retained": count, "completed": time.time()}), if_generation_match=0)
+            json.dumps({"workflow": CLOUD_WORKFLOW, "generated": count, "completed": time.time()}), if_generation_match=0)
 
 
 if __name__ == "__main__":

@@ -48,6 +48,7 @@ try{
   let page=await browser.newPage();
   await page.goto(origin+'/growpatch_tool.html?backend=https://unconfigured.invalid');
   assert.equal(await page.locator('#file').inputValue(),'');
+  assert.equal(await page.locator('#sasa,#topk').count(),0);
   // Strip partners from the checked-in fixture to exercise the lone-antigen path.
   const fixture=await readFile('docs/pdb/8PWW.pdb','utf8');
   assert.equal(await page.locator('#structure').isVisible(),false);

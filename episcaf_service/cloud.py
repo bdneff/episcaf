@@ -63,25 +63,29 @@ def review(s, owner):
     route = s.route
     enabled = matches_reference(s.structure, route, s.chain)
     regions = s.regions
+    mode = pilot.mode()
+    manual = mode == "manual-gemini"
     if enabled:
-        if len(regions) != 1:
-            raise HTTPException(422, "Choose one region per reference run.")
         try:
-            worker.region_for(route, regions[0])
+            if manual:
+                if len(regions) != 1:
+                    raise ValueError("Choose one region per manual Gemini reference run.")
+                worker.region_for(route, regions[0])
+            else:
+                worker.validate_cloud_regions(route, regions)
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
-    plan = pilot.prepare(s, trials=worker.ATTEMPTS if enabled else 8)
-    if enabled:
-        plan["retained_limit"] = worker.LIMIT
+    plan = pilot.prepare(s, trials=worker.ATTEMPTS if enabled and manual else worker.CLOUD_TRIALS_PER_REGION)
     rid = uuid.uuid4().hex
-    backend = pilot.mode() if enabled else PENDING
-    if not enabled and pilot.mode() == "manual-gemini":
-        backend = "manual-review"
+    backend = mode if enabled else ("manual-review" if manual else PENDING)
     record = dict(id=rid, filename=s.filename, chain=s.chain, route=route, regions=regions, backend=backend,
                   stage="review", submitted=None, updated=None, job_id=None, reason=None,
                   completed=None, estimated_start=None)
     if backend == "manual-gemini":
+        plan["retained_limit"] = worker.LIMIT
         record["plan"] = worker.reference_plan(regions)
+    elif backend == MODE:
+        plan["workflow"] = record["workflow"] = worker.CLOUD_WORKFLOW
     # Keep the uploaded bytes private. The worker can only read its checked-in reference.
     store().blob(f"uploads/{owner}/{rid}").upload_from_string(s.structure, if_generation_match=0)
     write(record_blob(owner,rid), record, if_generation_match=0)
@@ -109,9 +113,12 @@ def batch_request(method, suffix="", **kwargs):
 
 
 def job_spec(r):
+    commands = ["--route", r["route"]]
+    for region in r["regions"]:
+        commands.extend(["--region", region])
+    commands.extend(["--run", r["id"], "--bucket", os.environ["EPISCAF_RESULT_BUCKET"]])
     spec = {"runnables":[{"container":{"imageUri":os.environ["EPISCAF_GPU_IMAGE"],
-                "commands":["--route",r["route"],"--region",r["regions"][0],"--run",r["id"],
-                            "--bucket",os.environ["EPISCAF_RESULT_BUCKET"]], "options":"--gpus all"}}],
+                "commands":commands, "options":"--gpus all"}}],
             "maxRunDuration":"3600s","maxRetryCount":0,
             "computeResource":{"cpuMilli":4000,"memoryMib":14000}}
     instance = {"installGpuDrivers":True,"policy":{"machineType":"g2-standard-8",
@@ -138,11 +145,15 @@ def launch(owner, rid):
         raise HTTPException(404, "Run unavailable.")
     generation = blob.generation
     if r["backend"] in {"manual-gemini", "manual-review"}:
+        if r["stage"] == "review" and pilot.mode() != "manual-gemini":
+            raise HTTPException(409, "The pilot now uses Google Cloud. Prepare a new review.")
         from episcaf_service import handoff
         return handoff.launch(owner, r, blob)
     if r["stage"] == "review" and pilot.mode() != MODE:
         raise HTTPException(409, "Prepare a new review for manual Gemini submission.")
     if r["stage"] == "review":
+        if r["backend"] == MODE and r.get("workflow") != worker.CLOUD_WORKFLOW:
+            raise HTTPException(409, "The demo settings changed. Prepare a new review to confirm the backbone count.")
         now = time.time()
         r.update(submitted=now, updated=now, stage="submitting" if r["backend"]==MODE else "awaiting lab review")
         try:
@@ -156,13 +167,24 @@ def stamp(value, fallback):
     return datetime.fromisoformat(value.replace("Z","+00:00")).timestamp() if value else fallback
 
 
+def finish(r, done, raw):
+    if raw:
+        expected = worker.CLOUD_TRIALS_PER_REGION * len(r["regions"])
+        if done.get("workflow") != worker.CLOUD_WORKFLOW or done.get("generated") != expected:
+            r.update(stage="failed", completed=done["completed"],
+                     reason="The number of generated backbones differs from the reviewed budget.")
+            return
+        reason = f"{expected} RFdiffusion3 backbones generated."
+    else:
+        reason = f"{done['retained']} of {done['attempted']} backbones retained."
+    r.update(stage="completed", completed=done["completed"], reason=reason)
+
+
 def status(owner, r):
     from google.api_core.exceptions import PreconditionFailed
     if r["backend"] in {"manual-gemini", "manual-review"}:
         from episcaf_service import handoff
         return handoff.status(owner, r)
-    if pilot.mode() != MODE and r["stage"] == "submitting":
-        return dict(r, reason="Check the earlier Google Batch submission with the operator.")
     if r["stage"] in ("completed","failed","awaiting lab review"):
         return r
     blob = record_blob(owner, r["id"])
@@ -177,10 +199,12 @@ def status(owner, r):
     job_id = "ep-"+r["id"]
     now = time.time()
     done = read(outputs().blob(r["id"]+"/done.json"))
+    raw = r.get("workflow") == worker.CLOUD_WORKFLOW
     if done is not None:
-        r.update(stage="completed", completed=done["completed"],
-                 reason=f"{done['retained']} of {done['attempted']} backbones retained.")
-    elif r["stage"] == "submitting" and now-r["submitted"] < 86400:
+        finish(r, done, raw)
+    elif pilot.mode() != MODE:
+        return dict(r, reason="Check this Google Batch job with the operator while the pilot uses Gemini.")
+    elif raw and r["stage"] == "submitting" and now-r["submitted"] < 86400:
         res = batch_request("POST", params={"jobId":job_id, "requestId":str(uuid.UUID(r["id"]))},
                             json=job_spec(r))
         if res.status_code in (400,403,404):
@@ -201,12 +225,18 @@ def status(owner, r):
             if state in {"FAILED","CANCELLED","DELETION_IN_PROGRESS","SUCCEEDED"}:
                 events = info.get("statusEvents",[])
                 reason = events[-1].get("description") if events else None
-                if state == "SUCCEEDED":
-                    reason = "The job ended before publishing its CSV and structure archive."
-                r.update(stage="failed", reason=reason or f"Google Batch reported {state}. Check the job log.",
-                         completed=stamp(job.get("updateTime"),now))
+                # The worker may have published between our first bucket read and this Batch poll.
+                done = read(outputs().blob(r["id"]+"/done.json")) if state == "SUCCEEDED" else None
+                if done is not None:
+                    finish(r, done, raw)
+                else:
+                    if state == "SUCCEEDED":
+                        reason = "The job ended before publishing its CSV and structure archive."
+                    r.update(stage="failed", reason=reason or f"Google Batch reported {state}. Check the job log.",
+                             completed=stamp(job.get("updateTime"),now))
             else:
-                r["stage"] = "generating and filtering backbones" if state == "RUNNING" else "queued"
+                running = "generating backbones" if raw else "generating and filtering backbones"
+                r["stage"] = running if state == "RUNNING" else "queued"
     r.update(job_id=job_id,updated=now)
     try:
         write(blob, r, if_generation_match=generation)
@@ -225,6 +255,8 @@ def result(owner, rid, name, download):
     r = status(owner,owned(owner,rid))
     if r["stage"] != "completed":
         raise HTTPException(409,r["reason"] or "Results are pending.")
+    if name == "retained.csv" and r.get("workflow") == worker.CLOUD_WORKFLOW:
+        name = "backbones.csv"
     content = outputs().blob(rid+"/"+name).download_as_bytes()
     headers = {"Content-Disposition":f'attachment; filename="{rid}-{name}"'} if download else {}
     return Response(content, media_type="text/csv" if name.endswith(".csv") else "application/zip", headers=headers)

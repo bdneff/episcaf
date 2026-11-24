@@ -7,6 +7,7 @@ import json
 import os
 import secrets
 import sqlite3
+import tempfile
 import time
 import uuid
 from dataclasses import dataclass
@@ -14,9 +15,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Literal, Protocol
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from episcaf_service import staging
 
@@ -130,6 +132,34 @@ def prepare(s: RegionSelection, trials=8):
         return staging.candidate_plan(s.filename, s.chain, s.regions, trials)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+@router.post("/enumerate")
+async def enumerate_candidates(
+        request: Request, name=Depends(owner),
+        fmt: str = Query("pdb"), chain: str = Query("A"),
+        sasa_cut: float = Query(0.2), footprint_radius: float = Query(14.0),
+        methods: str = Query("growpatch"), top_k: int = Query(0),
+        mode: str = Query("growpatch"), disco: int = Query(1),
+        structure_type: str = Query("solved", pattern="^(solved|alphafold)$")):
+    """Candidate enumeration and DiscoTope ranking for a signed-in tester.
+
+    Identical enumeration to the public /enumerate, but behind tester authentication. On the cloud demo
+    DiscoTope runs on our own CPU, so ranking is tied to a signed-in owner instead of offered to
+    anonymous callers; Depends(owner) raises 401 when the tester cookie is missing, invalid, or revoked.
+    """
+    body = await request.body()
+    tmp = tempfile.NamedTemporaryFile(suffix=".cif" if fmt == "cif" else ".pdb", delete=False, mode="wb")
+    tmp.write(body)
+    tmp.close()
+    try:
+        ms = tuple(m for m in methods.split(",") if m)
+        return await run_in_threadpool(staging.viewer_data, tmp.name, chain or "A",
+                                       sasa_cut, footprint_radius, ms, top_k, mode, bool(disco), structure_type)
+    except Exception as exc:
+        return JSONResponse(status_code=400, content={"error": f"{type(exc).__name__}: {exc}"})
+    finally:
+        os.unlink(tmp.name)
 
 
 @router.get("/reference.pdb")
@@ -302,7 +332,7 @@ def results(rid: str, download: bool = False, name=Depends(owner)):
 
 @router.get("/runs/{rid}/request.zip")
 def request_files(rid: str, name=Depends(owner)):
-    if mode() != "manual-gemini":
+    if mode() not in HOSTED:
         raise HTTPException(404)
     from episcaf_service import handoff
     return handoff.download(name, rid)

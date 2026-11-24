@@ -160,6 +160,7 @@ def health():
     return {"ok": True, "service": "episcaf", "ws": ws, "ws_exists": os.path.isdir(ws),
             "pilot_mode": pilot.mode(), "pilot_url": os.getenv("EPISCAF_PILOT_URL", ""),
             "disco_available": discotope.available(),
+            "discotope_local": os.getenv("EPISCAF_DISCOTOPE") == "local",
             "biolib": os.getenv("EPISCAF_DISCOTOPE") == "biolib",
             "slurm": bool(shutil.which("squeue"))}
 
@@ -184,6 +185,11 @@ async def enumerate_patches(request: Request, fmt: str = Query("pdb"), chain: st
                             methods: str = Query("growpatch"), top_k: int = Query(0),
                             mode: str = Query("growpatch"), disco: int = Query(1),
                             structure_type: str = Query("solved", pattern="^(solved|alphafold)$")):
+    # On the hosted demo DiscoTope runs on our own CPU, so ranking is gated behind a signed-in tester at
+    # /pilot/enumerate. Anonymous callers of this public endpoint keep unranked candidate scanning; the
+    # explicit BioLib opt-in on other deployments is untouched.
+    if disco and os.getenv("EPISCAF_DISCOTOPE") == "local" and pilot.mode() in pilot.HOSTED:
+        disco = 0
     body = await request.body()
     path = _tmp_structure(body, fmt)
     try:
