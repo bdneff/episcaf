@@ -95,6 +95,12 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 .viewctrls button:hover{background:#f2f6fc}
 .viewmsg{font-size:12px;min-height:1.2em;margin:0 0 6px;color:#555}
 .viewmsg.err{color:#a0241a}
+.picklist{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 2px}
+.pcell{position:relative;border:1px solid #cfd8e6;background:#eef3f9;border-radius:6px;padding:7px 28px 7px 10px;min-width:124px}
+.pcell .ep{display:block;font-weight:bold;color:#1b4a86;font-family:"Courier New",Courier,monospace;font-size:12px}
+.pcell .meta{display:block;color:#555;font-size:11px;margin-top:2px}
+.pcell .x{position:absolute;top:3px;right:4px;border:0;background:none;color:#8a94a6;cursor:pointer;font-size:15px;line-height:1;padding:2px 4px}
+.pcell .x:hover{color:#e5543f}
 @media(max-width:640px){.listwrap{max-width:none}#viewer{height:360px}}
 </style>
 </head>
@@ -186,6 +192,7 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
     <button id="signout" hidden>Sign out</button>
     <p id="authmsg" role="status"></p>
       </div>
+      <div class="picklist" id="picklist" aria-label="selected candidates"></div>
       <button id="stage" disabled>Prepare design inputs</button>
       <div style="font-size:12px;color:#555;margin-top:8px" id="stagesel"></div>
       <div id="stagemsg" role="status"></div>
@@ -450,8 +457,28 @@ function buildList(){
   });
   updateStageSel();
 }
+function renderPicklist(){
+  const el=$("picklist"); if(!el) return;
+  el.innerHTML="";
+  // One rectangular cell per picked candidate, in the order they were added.
+  for(const i of state.picked){
+    const p=patchById(i); if(!p) continue;
+    const cell=document.createElement("div"); cell.className="pcell"; cell.dataset.i=p.i;
+    cell.innerHTML=`<span class="ep">${esc(p.epitope)}</span>`+
+      `<span class="meta">candidate ${Number(p.i)} &middot; ${Number(p.n_res)} residues &middot; ${segText(p.n_isl)}</span>`+
+      `<button class="x" type="button" aria-label="Remove candidate ${Number(p.i)}">&times;</button>`;
+    cell.querySelector(".x").onclick=()=>{
+      state.picked.delete(p.i);
+      const box=$("plist").querySelector(`.prow[data-i="${p.i}"] .pick`);
+      if(box) box.checked=false;
+      updateStageSel();
+    };
+    el.appendChild(cell);
+  }
+}
 function updateStageSel(){
   invalidate();
+  renderPicklist();
   const el=$("stagesel"); if(!el) return;
   const n=state.picked.size;
   el.textContent=n ? n+(n===1?" region selected.":" regions selected.") : "Select at least one region to prepare a run.";

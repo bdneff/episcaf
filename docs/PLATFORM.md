@@ -32,7 +32,8 @@ engine**: RFD4-Proteina → clash pre-filter → AF2 (ColabFold) → composite �
 |---|---|---|---|
 | `home.html` | Epitope scaffolds… | Landing. Two CTAs: **Find antibody contacts → `scaffold.html`**, **candidate regions → `growpatch_tool.html`** | scaffold, growpatch_tool |
 | `scaffold.html` | Configure scaffold design | **Antibody-contacts avenue.** Upload + 3D viewer + sequence panel; auto-detect (`/inspect`) or manual antibody chain/residue selection; in-browser contact epitope with adjustable **cutoff** + **gap-fill** controls; **Run on Gemini** (token sign-in + submit to RFD4 pilot). Also a local "simulate / prepare inputs" path when connected to the local staging server. | growpatch_tool (candidate regions), results.html#myruns |
-| `growpatch_tool.html` | Find candidate regions | **growPatch avenue.** Upload lone antigen → enumerate candidate patches (DiscoTope-rankable) → pick regions → review → **launch to the RFD4 pilot**. (`?route=antibody` is a legacy simplified antibody flow — superseded by scaffold.html for the entry links.) | scaffold.html, results.html#myruns |
+| `growpatch_tool.html` | Find candidate regions | **growPatch avenue.** Upload lone antigen → enumerate candidate patches (DiscoTope-rankable) → pick regions (each checked candidate shows as a
+removable cell in the "Prepare scaffold-design inputs" box) → review → **launch to the RFD4 pilot**. (`?route=antibody` is a legacy simplified antibody flow — superseded by scaffold.html for the entry links.) | scaffold.html, results.html#myruns |
 | `results.html` | Results | **My runs** (token sign-in → live run list with status pills) + a results viewer: loads a run's ranked CSV, sortable/filterable table, downloads designs.zip + CSV. | growpatch_tool |
 | `methods.html` | Methods | Docs / methods writeup. | aomclash, growpatch_tool |
 | `pipeline.html` | Design workflow | Pipeline blueprint. | aomclash |
