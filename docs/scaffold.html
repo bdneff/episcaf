@@ -194,6 +194,11 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <button type="button" id="modechain" class="modebtn on" aria-pressed="true">Select antibody chains</button>
         <button type="button" id="moderes" class="modebtn" aria-pressed="false">Select antibody residues</button>
       </div>
+      <div id="seqparams" class="seqparams">
+        <label>Contact cutoff <input id="cutoff" type="number" min="3" max="8" step="0.5" value="4"> &Aring;</label>
+        <label>Gap fill <input id="gapfill" type="number" min="0" max="6" step="1" value="0"> residues</label>
+        <span class="phelp">antigen residues within the cutoff of the antibody; gaps &le; this many are filled</span>
+      </div>
       <div id="chainpills" class="chainpills" role="group" aria-label="Chains"></div>
       <p id="residue-help" class="help" hidden>Click a letter to toggle it, or drag across a chain to select a range. Start on a selected letter to remove a range. Shift-click extends from your last selection.</p>
       <div id="seqstatus" class="seqstatus"></div>
@@ -594,7 +599,9 @@ function getResidues(){
 function largestChain(chains){
   let best=null,bn=-1; for(const c of Object.keys(chains)){ if(chains[c].order.length>bn){bn=chains[c].order.length;best=c;} } return best;
 }
-const CONTACT_DISTANCE_ANGSTROMS=4;
+let CONTACT_DISTANCE_ANGSTROMS=4;   // default; the #cutoff control overrides it via contactCutoff()
+function contactCutoff(){ const v=parseFloat((document.getElementById("cutoff")||{}).value); return v>0?v:4; }
+function gapFill(){ const v=parseInt((document.getElementById("gapfill")||{}).value,10); return v>0?v:0; }
 function abSelected(){ return selMode==="residue" ? abRes.size>0 : abSet.size>0; }
 function isAbResidue(c,resi){ return selMode==="residue" ? abRes.has(c+":"+resi) : abSet.has(c); }
 function pickAntigen(chains){
@@ -625,7 +632,7 @@ function computeSeqEpitope(){
     const r=seqChains[c].res[k]; if(isAbResidue(c,r.resi)) for(const p of r.atoms) abPts.push(p);
   }
   if(!abPts.length) return {ag:ag,epi:[]};
-  const cut2=CONTACT_DISTANCE_ANGSTROMS**2, order=seqChains[ag].order, contact=new Array(order.length).fill(false);
+  const cut2=contactCutoff()**2, order=seqChains[ag].order, contact=new Array(order.length).fill(false);
   for(let o=0;o<order.length;o++){
     const r=seqChains[ag].res[order[o]];
     if(selMode==="residue" && abRes.has(ag+":"+r.resi)) continue;   // antibody residues aren't epitope
@@ -634,6 +641,15 @@ function computeSeqEpitope(){
       for(let j=0;j<abPts.length;j++){const q=abPts[j],dx=p[0]-q[0],dy=p[1]-q[1],dz=p[2]-q[2];
         if(dx*dx+dy*dy+dz*dz<=cut2){hit=true;break;}}}
     contact[o]=hit;
+  }
+  const gap=gapFill();
+  if(gap>0){ let last=-1;
+    for(let o=0;o<order.length;o++){ if(contact[o]){
+      if(last>=0 && o-last-1<=gap) for(let k=last+1;k<o;k++){
+        const rr=seqChains[ag].res[order[k]];
+        if(!(selMode==="residue" && abRes.has(ag+":"+rr.resi))) contact[k]=true;   // fill the gap, never the antibody
+      }
+      last=o; } }
   }
   const epi=[]; for(let o=0;o<order.length;o++) if(contact[o]) epi.push(seqChains[ag].res[order[o]].resi);
   return {ag:ag,epi:epi};
@@ -706,6 +722,7 @@ function applySeqSelection(){
 function syncPanelMode(){                                  // show/hide controls that only apply to one mode
   const manual=(state.epi==="manual");
   const sm=$("#selmode"); if(sm) sm.style.display = manual ? "none" : "";
+  const sp=$("#seqparams"); if(sp) sp.style.display = manual ? "none" : "";   // cutoff/gap-fill: antibody mode only
   const head=document.querySelector(".seqhead");
   if(head) head.innerHTML = manual
     ? "Select the <b>epitope</b> residues in the sequence. If contacts are already selected, add or remove residues as needed."
@@ -739,6 +756,7 @@ function buildSeqPanel(seedAb){
   const mc=$("#modechain"), mr=$("#moderes"), body=$("#seqbody");
   if(mc) mc.addEventListener("click",()=>setSelMode("chain"));
   if(mr) mr.addEventListener("click",()=>setSelMode("residue"));
+  ["cutoff","gapfill"].forEach(id=>$("#"+id)?.addEventListener("input",()=>{ if(seqChains) applySeqSelection(); }));
   let drag=null;
   function endpoints(letter,extend){
     const letters=Array.from(letter.parentElement.children);
