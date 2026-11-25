@@ -133,7 +133,10 @@
     els["lg-nat"].hidden=!S.native; els["lg-ab"].hidden=!S.ab; els["lg-aom"].hidden=!S.aom;
     viewer.render();
   }
-  function fit(){ if(!viewer) return; viewer.zoomTo(); viewer.zoom(0.9); viewer.render(); }  // frame the whole complex, not just the scaffold
+  // frame the whole complex (wide zoom), but set the rotation centre on the design so it pivots about
+  // what you're looking at, not the Fab-heavy whole-complex centroid.
+  function fit(){ if(!viewer) return; viewer.zoomTo(); viewer.zoom(0.9);
+    if(CFG&&CFG.scaffoldChain) viewer.center({chain:CFG.scaffoldChain},0); viewer.render(); }
   function seqHtml(){
     var q=(CFG.sequence||""), e={}, c={}, h="", i;
     (CFG.epitopeScaffold||[]).forEach(function(r){e[r]=1;}); (CFG.clash||[]).forEach(function(r){c[r]=1;});
