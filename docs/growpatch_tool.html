@@ -134,8 +134,7 @@ button:hover{background:#21568f} button:disabled{background:#9bb6e6;border-color
 
   <div class="conn" id="conn" role="status" aria-live="polite">Checking the structure-processing service&hellip;</div>
 
-  <p id="live-note" hidden>Upload your antigen to request a design run from the lab.
-    For the automatic Gemini reference run, upload the <a href="/pilot/reference.pdb" download>3HFM lysozyme PDB</a> and select chain Y.</p>
+  <p id="live-note" hidden>Upload your antigen to request a design run from the lab.</p>
   <div class="upload-layout">
     <div class="card" id="formcard">
       <div class="row">
@@ -614,20 +613,24 @@ async function checkService(){
     batchDemo=own.pilot_mode==="cloud-lysozyme";
     if(cloudPilot){
       antibodyRoute=new URLSearchParams(location.search).get("route")==="antibody";
-      const note=$("live-note"), link=document.createElement("a");
-      link.href="/pilot/reference.pdb?route="+(antibodyRoute?"antibody":"growpatch"); link.download="";
-      link.textContent=antibodyRoute?"3HFM antibody–lysozyme complex":"3HFM lysozyme";
-      note.hidden=false;
-      if(batchDemo){
-        const selection=antibodyRoute?"use its antibody contacts":"select up to "+batchRegionLimit+" regions";
-        note.replaceChildren("For the Google Cloud demo, upload the ",link," and "+selection+" on chain Y. RFdiffusion3 generates backbone coordinates. Other uploads go to lab review.");
-      }else{
-        note.replaceChildren("For a Gemini run, upload the ",link," and choose one region on chain Y. Other uploads go to lab review.");
+      const lysozyme=own.pilot_mode==="gemini-lysozyme"||own.pilot_mode==="cloud-lysozyme";
+      const note=$("live-note"); note.hidden=false;
+      if(lysozyme){                                   // the deprecated lysozyme demos use a fixed 3HFM reference
+        const link=document.createElement("a");
+        link.href="/pilot/reference.pdb?route="+(antibodyRoute?"antibody":"growpatch"); link.download="";
+        link.textContent=antibodyRoute?"3HFM antibody–lysozyme complex":"3HFM lysozyme";
+        if(batchDemo){
+          const selection=antibodyRoute?"use its antibody contacts":"select up to "+batchRegionLimit+" regions";
+          note.replaceChildren("For the Google Cloud demo, upload the ",link," and "+selection+" on chain Y. RFdiffusion3 generates backbone coordinates. Other uploads go to lab review.");
+        }else{
+          note.replaceChildren("For a Gemini run, upload the ",link," and choose one region on chain Y. Other uploads go to lab review.");
+        }
       }
+      // RFD4 pilot (manual-gemini): any antigen; the generic note from the markup stays.
       if(antibodyRoute){
         document.querySelector("h1").textContent="Find the antibody contact epitope";
         document.querySelector('label[for="file"]').textContent="Antibody–antigen complex (PDB or mmCIF)";
-        document.querySelector(".lede").textContent="Choose the antigen chain. The contact epitope contains its residues within 4 Å of a bound partner. For 3HFM the antibody chains are H and L.";
+        document.querySelector(".lede").textContent="Choose the antigen chain. The contact epitope contains its residues within 4 Å of a bound partner.";
         $("run").textContent="Find contact residues";
         $("disco").closest(".fld").hidden=true;
         $("gap-help").hidden=true;
