@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from episcaf_service.rfd4.config import DEFAULT, PROTEIN_LENGTH, GenerationConfig
-from episcaf_service.rfd4.topology import Island, Topology, plan_topology
+from episcaf_service.rfd4.topology import Island, Topology, compact_islands, parse_islands, plan_topology
 
 _CIF_SUFFIXES = (".cif", ".bcif", ".cif.gz", ".bcif.gz", ".cif.zst", ".bcif.zst")
 
@@ -90,6 +90,32 @@ class ConditionSpec:
     contig: str
     crdgrp: dict            # {group_id(int): [select_str, ...]}
     seq_fixed: list         # [select_str, ...] held under C_SEQ true  (empty -> omit C_SEQ)
+
+
+def write_compact_antigen(native_pdb_path, islands, out_path, gap: int = 9, chain: str = "A"):
+    """Write a single-chain antigen holding ONLY the epitope residues, renumbered from 1 with `gap`
+    residues between islands (topology.compact_islands). Side chains are kept — RFD4 needs the motif's
+    full atoms. Returns the compact Island list. Used when the native epitope spans several chains or
+    has very high residue numbers; the native structure is still used unchanged for clash/RMSD."""
+    islands = parse_islands(islands) if isinstance(islands, str) else tuple(islands)
+    compact = compact_islands(islands, gap, chain)
+    remap = {}                                   # (orig_chain, orig_resnum) -> compact_resnum
+    for isl, cisl in zip(islands, compact):
+        for off, rn in enumerate(range(isl.start, isl.end + 1)):
+            remap[(isl.chain, rn)] = cisl.start + off
+    out_lines = []
+    for ln in Path(native_pdb_path).read_text().splitlines():
+        if ln[:6] not in ("ATOM  ", "HETATM"):
+            continue
+        try:
+            key = (ln[21], int(ln[22:26]))
+        except ValueError:
+            continue
+        if key not in remap:
+            continue
+        out_lines.append(ln[:21] + chain + "%4d" % remap[key] + ln[26:])   # cols 22 (chain) + 23-26 (resSeq)
+    Path(out_path).write_text("\n".join(out_lines) + "\nEND\n")
+    return compact
 
 
 def condition_spec(antigen_input: str, epitope, cfg: GenerationConfig = DEFAULT.generation,

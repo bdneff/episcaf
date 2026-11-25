@@ -84,6 +84,27 @@ def parse_islands(epitope: str) -> tuple[Island, ...]:
     return tuple(islands)
 
 
+def compact_islands(islands, gap: int = 9, chain: str = "A") -> tuple[Island, ...]:
+    """Renumber epitope islands onto ONE chain from residue 1 with `gap` residues between them, so RFD4
+    reads a single-chain motif. Needed when the epitope spans several chains or has very high residue
+    numbers (John §1.1/§2.1). The gap keeps islands separate — consecutive numbering would merge two
+    islands into one and every design would come out short. Island order and lengths are preserved, so
+    the motif map still maps back to the native epitope by order (scoring is unchanged)."""
+    out: list[Island] = []
+    pos = 1
+    for isl in islands:
+        out.append(Island(chain=chain, start=pos, end=pos + isl.length - 1))
+        pos += isl.length + gap
+    return tuple(out)
+
+
+def needs_compact_input(islands, max_resnum: int = 9999) -> bool:
+    """Auto-decide compact input: the epitope spans >1 chain, or any residue number exceeds the 4-column
+    PDB field (`max_resnum`). Single-chain, normally-numbered epitopes use the native structure directly."""
+    islands = tuple(islands)
+    return len({i.chain for i in islands}) > 1 or any(i.end > max_resnum for i in islands)
+
+
 def even_split(total: int, n: int) -> tuple[int, ...]:
     """Split `total` into `n` parts as evenly as possible, extra residues to the leading parts.
 

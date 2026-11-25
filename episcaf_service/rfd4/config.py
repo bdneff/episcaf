@@ -73,6 +73,12 @@ class GenerationConfig:
     max_scaffolds: int = 128            # upper bound the UI allows for N (for now)
     max_generation_tries: int = 128     # hard cap on RFD4 designs generated per run (cheap stage)
 
+    # Compact input (John §1.1/§2.1): feed RFD4 a single-chain antigen with the epitope residues alone,
+    # renumbered from 1 with `compact_gap` between islands. None = auto (on for multi-chain / high-resnum
+    # epitopes, off otherwise); True/False forces it. Transparent to scoring (motif map remaps by order).
+    compact_input: bool | None = None
+    compact_gap: int = 9
+
 
 # --- structure-prediction step (a pluggable foundation-model seam; §1.4) ---
 # The backend is swappable: AF2/ColabFold (validate the port against John here — the composite is

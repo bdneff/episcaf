@@ -237,8 +237,18 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
     max_tries = max(target_n, gen.max_generation_tries)
 
     epitope_native = epitope_native_residues(epitope)      # ordered native residues for src remapping
-    antigen_cif = generate.ensure_cif(antigen_path, out)   # RFD4 needs CIF; converts a PDB upload
-    spec = generate.condition_spec(antigen_cif, epitope, gen)
+    islands = topology.parse_islands(epitope)
+    compact = gen.compact_input if gen.compact_input is not None else topology.needs_compact_input(islands)
+    if compact:
+        # multi-chain / high-resnum epitope -> feed RFD4 a single-chain, renumbered motif. Scoring still
+        # uses the original native structure + epitope string (the motif map remaps by order).
+        compact_islands = generate.write_compact_antigen(
+            antigen_path, islands, out / "compact_antigen.pdb", gen.compact_gap)
+        antigen_cif = generate.ensure_cif(str(out / "compact_antigen.pdb"), out)
+        spec = generate.condition_spec(antigen_cif, compact_islands, gen)
+    else:
+        antigen_cif = generate.ensure_cif(antigen_path, out)   # RFD4 needs CIF; converts a PDB upload
+        spec = generate.condition_spec(antigen_cif, epitope, gen)
     spec_path = out / "spec.yaml"
     generate.write_spec(spec, spec_path)
     gen_out = out / "rfd4"

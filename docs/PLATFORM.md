@@ -150,8 +150,10 @@ New, from John's updated spec (commit 9a38b52, §1.1/§1.4):
 - **Antibody auto-detection** — engine currently *requires* `antibody_chains`; add SAbDab annotation +
   contact fallback (≥10 heavy-atom pairs <4.5 Å; partner ≥20) + `require_antibody_detection`. Needed by
   the pilot path and the viewer. Supersedes the "wire `antibody_chains` from the UI" item.
-- **Compact input** (`rfd4-compact-input`) — multi-chain / high-residue-number epitopes need the
-  renumber-from-1, gap-9 path; single-chain works today.
+- **Compact input — DONE** (`generation.compact_input`, auto for multi-chain / high-resnum epitopes):
+  `generate.write_compact_antigen` feeds RFD4 a single-chain antigen with the epitope renumbered from 1,
+  gap 9 between islands; scoring still uses the original native (motif map remaps by order).
+  `tests/test_rfd4_compact.py`.
 
 Carried:
 - **AOMclash** for the no-antibody avenue (currently clash = 0 without an antibody); real AOM occupancy

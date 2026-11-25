@@ -5,8 +5,8 @@
 #
 #SBATCH --job-name=episcaf-rfd4
 #SBATCH --partition=gpu-a100
-#SBATCH --gres=gpu:1            # concurrent folding: raise to gpu:N AND set EPISCAF_FOLD_WORKERS=N below
-#SBATCH --cpus-per-task=8
+#SBATCH --gres=gpu:4            # gpu-a100 nodes have 4 A100s; fold 4 designs at once (dial to gpu:1 if queueing)
+#SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --time=02:00:00         # <=2h -> axshort QOS; raise + set the right QOS for large campaigns
 #SBATCH --no-requeue
@@ -21,11 +21,13 @@ export TORCH_COMPILE_CACHE_BLOB="$TGEN/weights/rfd4_compile_cache.blob"
 export EPISCAF_COLABFOLD="$TGEN/tools/localcolabfold/colabfold-conda/bin/colabfold_batch"
 export EPISCAF_AF2_DATA="$TGEN/tools/localcolabfold/colabfold"
 export EPISCAF_RFD4_CMD="rfd4-generate"
-# AF2 is ~95% of the run and per-design independent. Fold N designs at once: set --gres=gpu:N above and
-# EPISCAF_FOLD_WORKERS=N here (each colabfold pins to one GPU). Default 1 = serial; the worker still
-# tracks this one job. Match N to the GPUs on a gpu-a100 node. (Cross-node scaling beyond one node's
-# GPUs is a future SLURM-array step; this uses the GPUs in this one allocation.)
-export EPISCAF_FOLD_WORKERS="${EPISCAF_FOLD_WORKERS:-1}"
+# AF2 is ~95% of the run and per-design independent. Fold N designs at once, one colabfold per GPU, so
+# this must match --gres=gpu:N above. gpu-a100 nodes are 4-GPU -> 4 here. The data-mover worker still
+# tracks this one job. (Cross-node scaling beyond one node's 4 GPUs is a future SLURM-array step.)
+export EPISCAF_FOLD_WORKERS="${EPISCAF_FOLD_WORKERS:-4}"
+# REVISIT (Brandon 2026-11-25): folds are short, so gpu-v100 is a lower-contention alternative to the
+# in-demand gpu-a100 (slower per fold, but likely shorter queue). To try: --partition=gpu-v100 + the
+# right QOS, keep --gres=gpu:N to this node type's GPU count.
 
 cd "$HOME/episcaf-advisor"
 exec python -m episcaf_service.handoff_rfd4_job
