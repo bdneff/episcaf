@@ -189,7 +189,7 @@ const DEFS={
   af_clashes:"Scaffold residues overlapping the reference antibody (shadow-rule criterion). The filter requires 0.",
   af_clashes_strict:"Scaffold residues overlapping the reference antibody under the strict criterion.",
   backbone_clashes:"Clashing residues on the pre-prediction RFD4 backbone, used for the pre-filter.",
-  aom_s_p1_free:"AOMclash antibody-occupancy score for the no-antibody case: the map read over the design's free scaffold atoms. Lower is more accessible. (How it enters the composite is still TBD.)",
+  aom_s_p1_free:"AOMclash antibody-occupancy score for the no-antibody case: the map read over the design's free scaffold atoms. Lower is more accessible. Replaces the antibody-clash count in the composite (same 0.45 weight).",
   source:"Method used to define the candidate region."};
 
 // ranking schemes offered in the dropdown, label -> column (or the passes+composite special)

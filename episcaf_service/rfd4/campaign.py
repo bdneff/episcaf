@@ -350,6 +350,12 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
                 aom = round(float(s), 4) if s is not None else None
             except Exception:
                 aom = None
+        if aom is not None:
+            # No antibody -> the clash term is meaningless (af_clashes is 0). Put the AOMclash score in
+            # place of the clash count in the composite (Brandon's call, John §3.5): same 0.45 weight,
+            # and every design is ranked by its accessibility. af_clashes stays the (0) antibody count.
+            m = {**m, "composite": score.composite(aom, m["epitope_rmsd"], m["overall_rmsd"],
+                                                   m["overall_pae"], cfg.composite)}
         with done_lock:
             done[0] += 1
             _p(f"predicting structures {done[0]}/{n_total}")

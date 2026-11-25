@@ -161,12 +161,13 @@ New, from John's updated spec (commit 9a38b52, §1.1/§1.4):
   `tests/test_rfd4_compact.py`.
 
 Carried:
-- **AOMclash no-antibody accessibility — WIRED (reported, not yet in the composite)**: when no Fab is
-  detected, the campaign reads the vendored occupancy map (`episcaf_analysis/aomclash`, numpy/scipy +
-  `aom_map.pkl`, ~3 ms/design) and stores `aom_s_p1_free` per design (lower = more accessible); surfaced
-  as a results column. **TBD with John:** how `s_p1_free` enters the composite for the no-antibody case
-  (target: the isotonic s_p1_free→clash-count calibration, John §3.5 — needs the DP training df to fit).
-  Still a placeholder: the real AOM occupancy shells in the viewer mesh (currently a sphere).
+- **AOMclash no-antibody term — DONE**: when no Fab is detected, the campaign reads the vendored
+  occupancy map (`episcaf_analysis/aomclash`, numpy/scipy + `aom_map.pkl`, ~3 ms/design) and computes
+  `aom_s_p1_free` per design (lower = more accessible); it **replaces the clash count in the composite**
+  (same 0.45 weight, John §3.5), so lone-antigen designs are ranked by accessibility (aom 0.26→comp 1.02,
+  146→0.37). Surfaced as a results column. Remaining: the real AOM occupancy shells in the viewer mesh
+  (currently a sphere). A future calibration (isotonic s_p1_free→clash-count) could put it on a count
+  scale, but the raw score ranks identically (monotone).
 - Phase 3: seeded partial-diffusion rounds. **Decision logic DONE + tested** (`rfd4/rounds.py`:
   `select_seeds` / `should_stop` / `plan_children` / `dedupe_children`, dials in GenerationConfig;
   `tests/test_rfd4_rounds.py`). **Remaining:** the round loop that generates children via RFD4 partial
