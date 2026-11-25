@@ -56,13 +56,18 @@ def execute(inbox, workspace, job):
     workers = max(1, int(os.environ.get("EPISCAF_FOLD_WORKERS", "1") or "1"))
     cfg = dataclasses.replace(DEFAULT, predictor=dataclasses.replace(DEFAULT.predictor, fold_workers=workers))
 
+    def progress(label):                                   # step-aware status -> inbox/progress.json
+        tmp = inbox / "progress.json.tmp"
+        tmp.write_text(json.dumps({"label": label, "updated": time.time()}))
+        tmp.replace(inbox / "progress.json")
+
     predictor = fold.ColabFoldAF2(data_dir=os.environ["EPISCAF_AF2_DATA"],
                                   colabfold_bin=os.environ["EPISCAF_COLABFOLD"], cfg=cfg.predictor)
     results = campaign.run_campaign(
         str(antigen), epitope, str(directory), predictor=predictor, native_path=str(antigen),
         antibody_chains=antibody_chains,
         rfd4_cmd=tuple(shlex.split(os.environ.get("EPISCAF_RFD4_CMD", "rfd4-generate"))),
-        num_replicates=manifest.get("num_replicates"), cfg=cfg)
+        num_replicates=manifest.get("num_replicates"), cfg=cfg, progress=progress)
 
     # publish under the names the data-mover worker already handles
     shutil.copyfile(directory / "final_results.csv", inbox / "retained.csv")

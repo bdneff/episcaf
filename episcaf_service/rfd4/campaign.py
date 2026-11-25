@@ -220,7 +220,8 @@ def fold_selected(selected, fold_one, workers: int, gpus: list) -> list:
 
 def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, native_path: str = None,
                  antibody_chains=(), rfd4_cmd=("rfd4-generate",), num_replicates: int = None,
-                 cfg: EngineConfig = DEFAULT, recorder: "timing.Recorder" = None) -> list[DesignResult]:
+                 cfg: EngineConfig = DEFAULT, recorder: "timing.Recorder" = None,
+                 progress=None) -> list[DesignResult]:
     """Full single-pass run on Gemini. Writes final_results.csv + designs.zip under out_dir.
 
     `predictor` is a fold.StructurePredictor (AF2/ColabFold by default). A timing.Recorder times every
@@ -229,6 +230,14 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     rec = recorder or timing.Recorder()
+
+    def _p(label):                                          # step-aware status for the My-runs pill
+        if progress:
+            try:
+                progress(label)
+            except Exception:
+                pass
+
     native = read.read_pdb(native_path or antigen_path)
     gen = cfg.generation
     # The user asks for `target_n` scaffolds (clamped to the UI cap). Backbone-clashing designs are
@@ -268,6 +277,7 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
 
     # --- generation budget: waves of RFD4 + backbone pre-filter until N clash-free backbones (or the
     # try cap). Clashers don't count against N; we only pay the structure-prediction step on N. ---
+    _p("generating scaffolds")
     pool: list[Candidate] = []
     n_generated = 0
     wave = 0
@@ -297,6 +307,10 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
     # so it runs serially (fold_workers=1, default) or concurrently across the job's GPUs (one colabfold
     # subprocess per GPU). This is the stage the future cross-node SLURM array would shard instead. ---
     view_lock = threading.Lock()
+    n_total = len(selected)
+    done = [0]
+    done_lock = threading.Lock()
+    _p(f"predicting structures 0/{n_total}")
 
     def fold_and_score(cand: Candidate, gpu=None) -> DesignResult:
         design, did, bb_clash = cand.design, cand.design_id, cand.backbone_clashes
@@ -315,6 +329,9 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
         with view_lock:
             viewer.write_viewer_files(out, did, native_path or antigen_path, fold.model_pdb,
                                       epitope, antibody_chains or None)
+        with done_lock:
+            done[0] += 1
+            _p(f"predicting structures {done[0]}/{n_total}")
         return DesignResult(design_id=did, sequence=design.sequence, backbone_clashes=bb_clash,
                             model_pdb=fold.model_pdb, **m)
 

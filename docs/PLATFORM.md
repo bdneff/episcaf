@@ -141,7 +141,10 @@ In-flight this round (engine done where noted; wiring outward):
   records (timing fix). **Remaining:** cross-node **SLURM array** for scaling beyond one node's GPUs
   (gen → array fold+score over the `select_scaffolds` output → gather) — needs the gpu-a100 node GPU
   count to choose in-job-N vs array. Memory `af2-parallelization-plan`.
-- **Step-aware status UX** — My-runs pills: queued → generating → prediction *k*/N → scoring → done.
+- **Step-aware status UX — DONE (pending a cluster run to watch it)**: the campaign emits progress
+  ("generating scaffolds" → "predicting structures k/N") via a `progress` callback; `handoff_rfd4_job`
+  writes it to `inbox/progress.json`; the worker surfaces it as the My-runs stage while the job runs.
+  results.html already renders `run.stage`. Engine + worker compile-clean; validate on a live run.
 - **Per-design viewer — DONE** (`rfd4/viewer.py` emits `viewer/` into designs.zip; `docs/designview.js`
   docked 3Dmol panel wired into results.html on row-click). Verified on the benchmark: epitope RMSD
   reproduces the CSV exactly, Fab auto-detected (L+H). Memory `results-viewer-plan`.

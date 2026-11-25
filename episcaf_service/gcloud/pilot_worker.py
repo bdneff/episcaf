@@ -310,6 +310,13 @@ def poll(owner, rid):
             log(f"run {rid} completed; awaiting result bundle ({int(age)}s)")
         return
     stage = {"pending": "queued on cluster", "running": "running"}.get(phase, "submitted")
+    if phase == "running":                                  # step-aware status the compute job emits
+        try:
+            label = json.loads((run_dir / "progress.json").read_text()).get("label")
+            if label:
+                stage = label
+        except (OSError, ValueError):
+            pass
     if DRY_RUN:
         log(f"DRY-RUN run {rid} -> {stage} (Slurm {raw or phase})")
         return
