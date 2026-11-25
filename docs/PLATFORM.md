@@ -113,5 +113,8 @@ pipeline (`scripts/`, `episcaf_pipeline/`) is separate research code, not the we
 - Wire `antibody_chains` from the submit UI → real-antibody clash on the antibody avenue.
 - **AOMclash** for the no-antibody avenue (currently clash = 0 without an antibody).
 - Phase 3: seeded partial-diffusion rounds (budget + early-stop) for *passing* designs at scale.
+- **Parallelize the AF2 fold step** — gen is fast but fold is serial (the 2h-cap bottleneck); fan it
+  out as a SLURM array (gen → `--dependency=afterok` → array fold+score → gather). Near-prerequisite
+  for Phase 3. Captured in memory `af2-parallelization-plan`.
 - Output-presentation pass on results.html for the RFD4 composite schema.
 - Optional: antigen upload > 103-residue epitope guardrails; AF3/Boltz oracle backends.
