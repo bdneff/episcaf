@@ -18,9 +18,28 @@ import platform
 import re
 import statistics
 import subprocess
+import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
+
+
+def visible_gpus() -> list[str]:
+    """GPU ids the job can use, for pinning concurrent folds (CUDA_VISIBLE_DEVICES set by SLURM, else
+    the full nvidia-smi index list). Empty when none are discoverable."""
+    cvd = os.environ.get("CUDA_VISIBLE_DEVICES")
+    if cvd:
+        return [x for x in cvd.split(",") if x != ""]
+    try:
+        out = subprocess.run(["nvidia-smi", "--query-gpu=index", "--format=csv,noheader"],
+                             capture_output=True, text=True, timeout=15)
+        if out.returncode == 0:
+            ids = [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
+            if ids:
+                return ids
+    except Exception:
+        pass
+    return []
 
 
 def gpu_context() -> dict:
@@ -72,15 +91,17 @@ class Recorder:
         self.gpu = gpu_context()
         self._start = time.time()
         self.counts: dict = {}   # free-form run facts (n_generated, n_folded, ...)
+        self._lock = threading.Lock()   # events appended from concurrent fold workers
 
     def record(self, name: str, seconds: float, design_id: str | None = None, **extra):
         """Append one timed event directly (use when the duration is measured by the caller, e.g. to
-        attach a parsed MSA/model split to a fold)."""
+        attach a parsed MSA/model split to a fold). Thread-safe for concurrent folding."""
         ev = {"stage": name, "seconds": round(seconds, 3)}
         if design_id is not None:
             ev["design_id"] = design_id
         ev.update(extra)
-        self.events.append(ev)
+        with self._lock:
+            self.events.append(ev)
 
     @contextmanager
     def stage(self, name: str, design_id: str | None = None, **extra):

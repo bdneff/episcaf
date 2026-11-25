@@ -15,6 +15,7 @@ import csv
 import json
 import math
 import subprocess
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -195,6 +196,28 @@ def wave_size(target_n: int, n_passed: int, n_generated: int,
     return min(max(size, designs_per_job), remaining)
 
 
+def fold_selected(selected, fold_one, workers: int, gpus: list) -> list:
+    """Run `fold_one(cand, gpu)` over `selected`, serially when workers<=1 (gpu=None) or concurrently
+    across `workers` GPUs otherwise. Returns results in input order. Each concurrently-running task
+    holds a distinct GPU id from `gpus` (or its worker index when fewer gpus than workers are known),
+    returned to the pool when it finishes — so no two live folds share a GPU."""
+    if workers <= 1 or len(selected) <= 1:
+        return [fold_one(c, None) for c in selected]
+    import concurrent.futures
+    import queue as _queue
+    gpu_q = _queue.Queue()
+    for i in range(workers):
+        gpu_q.put(gpus[i] if i < len(gpus) else str(i))
+    def worker(c):
+        g = gpu_q.get()
+        try:
+            return fold_one(c, g)
+        finally:
+            gpu_q.put(g)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+        return list(ex.map(worker, selected))
+
+
 def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, native_path: str = None,
                  antibody_chains=(), rfd4_cmd=("rfd4-generate",), num_replicates: int = None,
                  cfg: EngineConfig = DEFAULT, recorder: "timing.Recorder" = None) -> list[DesignResult]:
@@ -247,29 +270,35 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
     selected = select_scaffolds(pool, target_n)
     n_passed = sum(1 for c in pool if c.passes)
 
-    # --- structure-prediction step on the selected N, then score. (This per-design loop is the unit
-    # the SLURM array will shard; everything above is one cheap up-front task.) ---
-    results: list[DesignResult] = []
-    for cand in selected:
+    # --- structure-prediction step on the selected N, then score. The per-design fold is independent,
+    # so it runs serially (fold_workers=1, default) or concurrently across the job's GPUs (one colabfold
+    # subprocess per GPU). This is the stage the future cross-node SLURM array would shard instead. ---
+    view_lock = threading.Lock()
+
+    def fold_and_score(cand: Candidate, gpu=None) -> DesignResult:
         design, did, bb_clash = cand.design, cand.design_id, cand.backbone_clashes
         t0 = time.perf_counter()                            # timed by hand so the fold event carries
-        fold = predictor.predict(design.sequence, did, str(out / "af2"))   # the MSA/model split
+        fold = predictor.predict(design.sequence, did, str(out / "af2"), gpu=gpu)   # the MSA/model split
         elapsed = time.perf_counter() - t0
         detail = timing.parse_colabfold_log(Path(fold.out_dir) / "log.txt") if fold.out_dir else {"log_found": False}
         if "model_seconds" in detail:                       # MSA = stage wall - model inference
             detail["msa_seconds"] = round(max(0.0, elapsed - detail["model_seconds"]), 3)
-        rec.record("structure_prediction", elapsed, did, **detail)
+        rec.record("structure_prediction", elapsed, did, gpu=gpu, **detail)
         with rec.stage("scoring", did):
             af2_struct = read.read_pdb(fold.model_pdb)
             m = evaluate_design(design, native, af2_struct, fold.mean_pae, antibody_chains, epitope_native, cfg)
-        results.append(DesignResult(design_id=did, sequence=design.sequence, backbone_clashes=bb_clash,
-                                    model_pdb=fold.model_pdb, **m))
         # viewer assets: AF2 model aligned onto the native epitope + native antigen/antibody (detected
-        # if antibody_chains is empty) -> viewer/<id>.pdb + .json, bundled into designs.zip by write_results.
-        viewer.write_viewer_files(out, did, native_path or antigen_path, fold.model_pdb,
-                                  epitope, antibody_chains or None)
+        # if antibody_chains is empty). Serialised: all designs share one viewer/native.pdb.
+        with view_lock:
+            viewer.write_viewer_files(out, did, native_path or antigen_path, fold.model_pdb,
+                                      epitope, antibody_chains or None)
+        return DesignResult(design_id=did, sequence=design.sequence, backbone_clashes=bb_clash,
+                            model_pdb=fold.model_pdb, **m)
+
+    workers = max(1, cfg.predictor.fold_workers)
+    results = fold_selected(selected, fold_and_score, workers, timing.visible_gpus())
     rec.note(target_scaffolds=target_n, n_generated=n_generated, n_passed_prefilter=n_passed,
-             n_selected=len(selected), n_folded=len(results), n_scored=len(results))
+             n_selected=len(selected), n_folded=len(results), n_scored=len(results), fold_workers=workers)
     (out / "campaign.json").write_text(json.dumps(
         {"antigen": antigen_path, "epitope": epitope, "target_scaffolds": target_n,
          "n_generated": n_generated, "n_passed_prefilter": n_passed, "n_scored": len(results)}, indent=2))

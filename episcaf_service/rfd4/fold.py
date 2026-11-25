@@ -86,7 +86,7 @@ def ingest_af2(out_dir: str, name: str) -> FoldResult:
 class StructurePredictor:
     """Interface: predict(sequence, name, workdir) -> FoldResult. Backends implement _run()."""
 
-    def predict(self, sequence: str, name: str, workdir: str) -> FoldResult:
+    def predict(self, sequence: str, name: str, workdir: str, gpu: int | str | None = None) -> FoldResult:
         raise NotImplementedError
 
 
@@ -96,7 +96,8 @@ class ColabFoldAF2(StructurePredictor):
     colabfold_bin: str = "colabfold_batch"
     cfg: PredictorConfig = DEFAULT.predictor
 
-    def predict(self, sequence: str, name: str, workdir: str) -> FoldResult:
+    def predict(self, sequence: str, name: str, workdir: str, gpu: int | str | None = None) -> FoldResult:
+        import os
         import subprocess
         work = Path(workdir)
         work.mkdir(parents=True, exist_ok=True)
@@ -104,7 +105,10 @@ class ColabFoldAF2(StructurePredictor):
         fasta.write_text(f">{name}\n{sequence}\n")
         out = work / f"{name}_af2"
         argv = af2_argv(str(fasta), str(out), self.data_dir, self.colabfold_bin, self.cfg)
-        subprocess.run(argv, check=True)
+        env = None
+        if gpu is not None:                                # pin this fold to one GPU (concurrent folding)
+            env = dict(os.environ, CUDA_VISIBLE_DEVICES=str(gpu))
+        subprocess.run(argv, check=True, env=env)
         return ingest_af2(str(out), name)
 
 

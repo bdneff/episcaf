@@ -89,6 +89,10 @@ class PredictorConfig:
     use_msa: bool = True
     template_mode: str = "none"
     choose_best: bool = True            # keep rank_001
+    # Fold the selected N designs concurrently across this many GPUs in the one SLURM job (each design's
+    # colabfold subprocess pinned to a GPU). 1 = serial (default; unchanged behavior). Set > 1 only when
+    # the job is allocated that many GPUs (--gres=gpu:N); the data-mover worker still tracks one job.
+    fold_workers: int = 1
 
 
 @dataclass(frozen=True)

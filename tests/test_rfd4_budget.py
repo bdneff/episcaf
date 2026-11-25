@@ -75,6 +75,37 @@ def test_wave_at_least_one_job():
 def test_config_defaults():
     g = DEFAULT.generation
     assert g.target_scaffolds == 32 and g.max_scaffolds == 128 and g.max_generation_tries == 128
+    assert DEFAULT.predictor.fold_workers == 1
+
+
+def test_fold_selected_serial():
+    seen = []
+    def f(c, gpu): seen.append((c, gpu)); return ("r", c)
+    out = campaign.fold_selected(["a", "b", "c"], f, 1, [])
+    assert out == [("r", "a"), ("r", "b"), ("r", "c")]
+    assert [g for _, g in seen] == [None, None, None]        # serial -> no GPU pinning
+
+
+def test_fold_selected_concurrent_distinct_gpus():
+    import threading, time
+    active = set(); used = []; clash = []; lock = threading.Lock()
+    def f(c, gpu):
+        with lock:
+            if gpu in active: clash.append(gpu)             # two live folds on one GPU = bug
+            active.add(gpu); used.append(gpu)
+        time.sleep(0.02)
+        with lock: active.discard(gpu)
+        return c
+    out = campaign.fold_selected(list(range(8)), f, 3, ["0", "1", "2"])
+    assert out == list(range(8))                            # results in input order
+    assert not clash                                        # never shared a GPU while live
+    assert set(used) == {"0", "1", "2"}                     # all three GPUs used, none invented
+
+
+def test_fold_selected_more_workers_than_known_gpus():
+    def f(c, gpu): return gpu
+    out = campaign.fold_selected([1, 2, 3, 4], f, 2, [])    # no GPU ids known -> worker-index strings
+    assert set(out) <= {"0", "1"}
 
 
 if __name__ == "__main__":

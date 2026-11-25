@@ -134,11 +134,13 @@ pipeline (`scripts/`, `episcaf_pipeline/`) is separate research code, not the we
 In-flight this round (engine done where noted; wiring outward):
 - **Scaffold-count knob** — engine done (`target_scaffolds`/budget routine, tested). TODO: surface the
   N input (default 32, max 128) in the submit UI → carry as `num_replicates` through the request bundle.
-- **AF2-fold SLURM array** — gen is one cheap up-front task; fold is 95% of cost and per-design
-  independent (benchmark §6). Fan out: gen → `--dependency=afterok` → array fold+score over the
-  selected N → gather. The `select_scaffolds` output is exactly the array's shard list. Fix the
-  ColabFold log parse first so the next run records the MSA-vs-model split (the outlier is likely MSA).
-  Memory `af2-parallelization-plan`.
+- **AF2-fold parallelization** — in-job concurrent folding is DONE: `campaign.fold_selected` folds the
+  selected N across the job's GPUs (one colabfold per GPU, pinned via `CUDA_VISIBLE_DEVICES`),
+  thread-safe timing, serial by default. Enable by setting `--gres=gpu:N` + `EPISCAF_FOLD_WORKERS=N` in
+  `handoff_rfd4.sbatch`; the worker still tracks the one job. The ColabFold MSA-vs-model split now
+  records (timing fix). **Remaining:** cross-node **SLURM array** for scaling beyond one node's GPUs
+  (gen → array fold+score over the `select_scaffolds` output → gather) — needs the gpu-a100 node GPU
+  count to choose in-job-N vs array. Memory `af2-parallelization-plan`.
 - **Step-aware status UX** — My-runs pills: queued → generating → prediction *k*/N → scoring → done.
 - **Per-design viewer — DONE** (`rfd4/viewer.py` emits `viewer/` into designs.zip; `docs/designview.js`
   docked 3Dmol panel wired into results.html on row-click). Verified on the benchmark: epitope RMSD

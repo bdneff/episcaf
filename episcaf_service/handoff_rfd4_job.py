@@ -50,13 +50,19 @@ def execute(inbox, workspace, job):
     antigen = directory / "antigen.pdb"
     antigen.write_bytes(upload)
 
+    # Concurrent folding across the job's GPUs: set EPISCAF_FOLD_WORKERS in the sbatch (with a matching
+    # --gres=gpu:N). Default 1 = serial. The data-mover worker still tracks this one job + terminal.json.
+    import dataclasses
+    workers = max(1, int(os.environ.get("EPISCAF_FOLD_WORKERS", "1") or "1"))
+    cfg = dataclasses.replace(DEFAULT, predictor=dataclasses.replace(DEFAULT.predictor, fold_workers=workers))
+
     predictor = fold.ColabFoldAF2(data_dir=os.environ["EPISCAF_AF2_DATA"],
-                                  colabfold_bin=os.environ["EPISCAF_COLABFOLD"], cfg=DEFAULT.predictor)
+                                  colabfold_bin=os.environ["EPISCAF_COLABFOLD"], cfg=cfg.predictor)
     results = campaign.run_campaign(
         str(antigen), epitope, str(directory), predictor=predictor, native_path=str(antigen),
         antibody_chains=antibody_chains,
         rfd4_cmd=tuple(shlex.split(os.environ.get("EPISCAF_RFD4_CMD", "rfd4-generate"))),
-        num_replicates=manifest.get("num_replicates"), cfg=DEFAULT)
+        num_replicates=manifest.get("num_replicates"), cfg=cfg)
 
     # publish under the names the data-mover worker already handles
     shutil.copyfile(directory / "final_results.csv", inbox / "retained.csv")
