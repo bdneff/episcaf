@@ -163,6 +163,10 @@ New, from John's updated spec (commit 9a38b52, §1.1/§1.4):
 Carried:
 - **AOMclash** for the no-antibody avenue (currently clash = 0 without an antibody); real AOM occupancy
   shells (`aom_shells.py`) into the viewer mesh.
-- Phase 3: seeded partial-diffusion rounds. §6 eval panel shows 9/24 epitopes only pass *with* rounds —
-  argues for prioritizing. §6.1 gives a 24-epitope validation set (8PWW: 70 passing, best composite 2.94).
+- Phase 3: seeded partial-diffusion rounds. **Decision logic DONE + tested** (`rfd4/rounds.py`:
+  `select_seeds` / `should_stop` / `plan_children` / `dedupe_children`, dials in GenerationConfig;
+  `tests/test_rfd4_rounds.py`). **Remaining:** the round loop that generates children via RFD4 partial
+  diffusion (`task=existing-structure`, noise 0.3/0.5/0.8) and folds them — needs the partial-diffusion
+  generation spec + a cluster run. §6 eval panel shows 9/24 epitopes only pass *with* rounds; §6.1 is a
+  24-epitope validation set (8PWW: 70 passing, best composite 2.94).
 - Optional: antigen upload > 103-residue epitope guardrails; AF3/Boltz predictor backends.

@@ -61,8 +61,15 @@ class GenerationConfig:
     unindex_motif: bool = True          # model places the islands (C_CRDGRP, not absolute coords)
     fix_motif_sequence: bool = True     # keep the native epitope sequence (C_SEQ)
     refold_designs: bool = False        # RFD4's own refolder off; AF2 is the structure-prediction step
-    noise_levels: tuple[float, ...] = (0.3, 0.5, 0.8)   # partial-diffusion children (phase 3)
-    max_rounds: int = 5                 # phase 3
+    # --- phase 3: seeded partial-diffusion rounds (John §1.3/§2.3). The round-loop generation needs RFD4
+    # partial diffusion (cluster); the seed/stop/child decision logic is in rfd4/rounds.py and tested. ---
+    noise_levels: tuple[float, ...] = (0.3, 0.5, 0.8)   # partial-diffusion noise per child
+    max_rounds: int = 5                 # stop after this many rounds
+    n_seeds_max: int = 5                # seeds carried to the next round (best-scoring)
+    seed_min_composite: float = 0.5     # a design must beat this to seed
+    seed_min_separation: float = 1.0    # seeds must be >= this CA RMSD apart (Å)
+    dedupe_rmsd: float = 0.3            # drop a child within this CA RMSD of a kept design (Å)
+    af2_cap_per_round: int = 100        # most designs scored per seeded round
 
     # --- scaffold budget (the user-facing knob) ---
     # The user asks for N scaffolds to carry into the structure-prediction step (AF2, ~95% of cost).
