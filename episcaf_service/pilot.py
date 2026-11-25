@@ -125,6 +125,7 @@ class RegionSelection(BaseModel):
 class Selection(RegionSelection):
     route: Literal["growpatch", "antibody"] = "growpatch"
     structure: str = Field(min_length=1)
+    num_scaffolds: int = Field(default=32, ge=1, le=128)   # N designs folded (AF2); UI knob, cap 128
 
 
 def prepare(s: RegionSelection, trials=8):

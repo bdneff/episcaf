@@ -36,7 +36,8 @@ def bundle(record, owner, upload):
     manifest = {key: record[key] for key in ("id", "filename", "chain", "route", "regions", "backend")}
     manifest.update(owner=owner, sha256=hashlib.sha256(upload).hexdigest())
     if rfd4:
-        manifest.update(workflow=record["workflow"], antibody_chains=record.get("antibody_chains", []))
+        manifest.update(workflow=record["workflow"], antibody_chains=record.get("antibody_chains", []),
+                        num_replicates=record.get("num_replicates", 32))
     stream = io.BytesIO()
     with ZipFile(stream, "w", compression=ZIP_DEFLATED) as archive:
         archive.writestr("request.json", json.dumps(manifest, indent=2))

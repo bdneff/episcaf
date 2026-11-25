@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import subprocess
 import time
 from dataclasses import dataclass
@@ -152,6 +153,44 @@ def write_results(out_dir: Path, results: list[DesignResult]):
     return csv_path, ranked
 
 
+@dataclass
+class Candidate:
+    """One RFD4 backbone before the structure-prediction step: its id, the parsed design, its
+    backbone clash count, and whether it cleared the pre-filter."""
+    design_id: str
+    design: "read.RFD4Design"
+    backbone_clashes: int
+    passes: bool
+
+
+def select_scaffolds(pool: list[Candidate], target_n: int) -> list[Candidate]:
+    """Pick exactly `target_n` scaffolds to carry into the structure-prediction step (AF2 — the
+    expensive stage). Clash-free backbones come first (fewest clashes first); if fewer than N pass,
+    fill with the lowest-clash of the rest so AF2 always runs on N. Returns fewer than N only when
+    fewer than N were generated."""
+    ordered = sorted(pool, key=lambda c: (not c.passes, c.backbone_clashes))
+    return ordered[:target_n]
+
+
+def wave_size(target_n: int, n_passed: int, n_generated: int,
+              designs_per_job: int, max_tries: int) -> int:
+    """How many backbones to request in the next generation wave. The passer shortfall inflated by
+    the survival rate seen so far (x1.2 margin), at least one job, clamped to the remaining try
+    budget. Returns 0 when N passers already exist or the try budget is spent -- the loop's stop
+    condition. Backbone-clashing designs don't count against N, so a low survival rate just sizes a
+    bigger next wave, up to `max_tries` total (then `select_scaffolds` fills the rest)."""
+    remaining = max_tries - n_generated
+    want = target_n - n_passed
+    if want <= 0 or remaining <= 0:
+        return 0
+    if n_generated == 0:
+        size = target_n
+    else:
+        survival = max(n_passed, 1) / n_generated
+        size = math.ceil(want / survival * 1.2)
+    return min(max(size, designs_per_job), remaining)
+
+
 def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, native_path: str = None,
                  antibody_chains=(), rfd4_cmd=("rfd4-generate",), num_replicates: int = None,
                  cfg: EngineConfig = DEFAULT, recorder: "timing.Recorder" = None) -> list[DesignResult]:
@@ -164,41 +203,65 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
     out.mkdir(parents=True, exist_ok=True)
     rec = recorder or timing.Recorder()
     native = read.read_pdb(native_path or antigen_path)
-    n = num_replicates or cfg.generation.pilot_denovo_jobs * cfg.generation.designs_per_job
+    gen = cfg.generation
+    # The user asks for `target_n` scaffolds (clamped to the UI cap). Backbone-clashing designs are
+    # cheap to throw away, so they don't count against N: over-generate up to `max_tries` RFD4 designs.
+    target_n = max(1, min(num_replicates or gen.target_scaffolds, gen.max_scaffolds))
+    max_tries = max(target_n, gen.max_generation_tries)
 
     epitope_native = epitope_native_residues(epitope)      # ordered native residues for src remapping
     antigen_cif = generate.ensure_cif(antigen_path, out)   # RFD4 needs CIF; converts a PDB upload
-    spec = generate.condition_spec(antigen_cif, epitope, cfg.generation)
+    spec = generate.condition_spec(antigen_cif, epitope, gen)
     spec_path = out / "spec.yaml"
     generate.write_spec(spec, spec_path)
     gen_out = out / "rfd4"
-    argv = list(rfd4_cmd) + generate.generate_argv(str(spec_path), str(gen_out), n)[1:]
-    with rec.stage("generation", n_requested=n):           # RFD4-Proteina: all n designs in one call
-        subprocess.run(argv, check=True)
 
+    # --- generation budget: waves of RFD4 + backbone pre-filter until N clash-free backbones (or the
+    # try cap). Clashers don't count against N; we only pay the structure-prediction step on N. ---
+    pool: list[Candidate] = []
+    n_generated = 0
+    wave = 0
+    while True:
+        n_passed = sum(1 for c in pool if c.passes)
+        batch = wave_size(target_n, n_passed, n_generated, gen.designs_per_job, max_tries)
+        if batch <= 0:
+            break
+        wave_out = gen_out / f"wave_{wave}"
+        argv = list(rfd4_cmd) + generate.generate_argv(str(spec_path), str(wave_out), batch)[1:]
+        with rec.stage("generation", wave=wave, n_requested=batch):
+            subprocess.run(argv, check=True)
+        for cif in sorted(wave_out.glob("inference_samples/*/*_generated.cif")):
+            design = read.read_rfd4_cif(str(cif))
+            did = f"scaffold_{n_generated}"                 # global id across waves (unique for AF2)
+            n_generated += 1
+            with rec.stage("backbone_prefilter", did):
+                bb_clash = backbone_prefilter_clashes(design, native, antibody_chains, epitope_native, cfg)
+            pool.append(Candidate(did, design, bb_clash,
+                                  clash.passes_backbone_prefilter(bb_clash, cfg.clash)))
+        wave += 1
+
+    selected = select_scaffolds(pool, target_n)
+    n_passed = sum(1 for c in pool if c.passes)
+
+    # --- structure-prediction step on the selected N, then score. (This per-design loop is the unit
+    # the SLURM array will shard; everything above is one cheap up-front task.) ---
     results: list[DesignResult] = []
-    n_generated = n_folded = 0
-    for cif in sorted(gen_out.glob("inference_samples/*/*_generated.cif")):
-        design = read.read_rfd4_cif(str(cif))
-        did = cif.parent.name
-        n_generated += 1
-        with rec.stage("backbone_prefilter", did):
-            bb_clash = backbone_prefilter_clashes(design, native, antibody_chains, epitope_native, cfg)
-        if not clash.passes_backbone_prefilter(bb_clash, cfg.clash):
-            continue
+    for cand in selected:
+        design, did, bb_clash = cand.design, cand.design_id, cand.backbone_clashes
         t0 = time.perf_counter()                            # timed by hand so the fold event carries
         fold = predictor.predict(design.sequence, did, str(out / "af2"))   # the MSA/model split
         detail = timing.parse_colabfold_log(Path(fold.out_dir) / "log.txt") if fold.out_dir else {}
         rec.record("structure_prediction", time.perf_counter() - t0, did, **detail)
-        n_folded += 1
         with rec.stage("scoring", did):
             af2_struct = read.read_pdb(fold.model_pdb)
             m = evaluate_design(design, native, af2_struct, fold.mean_pae, antibody_chains, epitope_native, cfg)
         results.append(DesignResult(design_id=did, sequence=design.sequence, backbone_clashes=bb_clash,
                                     model_pdb=fold.model_pdb, **m))
-    rec.note(n_requested=n, n_generated=n_generated, n_folded=n_folded, n_scored=len(results))
+    rec.note(target_scaffolds=target_n, n_generated=n_generated, n_passed_prefilter=n_passed,
+             n_selected=len(selected), n_folded=len(results), n_scored=len(results))
     (out / "campaign.json").write_text(json.dumps(
-        {"antigen": antigen_path, "epitope": epitope, "n_requested": n, "n_scored": len(results)}, indent=2))
+        {"antigen": antigen_path, "epitope": epitope, "target_scaffolds": target_n,
+         "n_generated": n_generated, "n_passed_prefilter": n_passed, "n_scored": len(results)}, indent=2))
     rec.write(out / "timings.json")                        # before write_results so it lands in the zip
     write_results(out, results)
     return results
@@ -213,7 +276,9 @@ def main():
     p.add_argument("--native", help="full native complex for clash/RMSD (default: --antigen)")
     p.add_argument("--antibody-chains", default="", help="comma-separated antibody chain ids")
     p.add_argument("--out", required=True)
-    p.add_argument("--num-replicates", type=int)
+    p.add_argument("--num-replicates", "--num-scaffolds", dest="num_replicates", type=int,
+                   help="N scaffolds to fold (default 32, UI cap 128); RFD4 over-generates to find N "
+                        "clash-free backbones, so this is not the number of RFD4 designs made")
     p.add_argument("--rfd4-cmd", default="rfd4-generate", help="generator command (shlex-split)")
     p.add_argument("--colabfold", default="colabfold_batch")
     p.add_argument("--af2-data", required=True, help="ColabFold params dir (--data)")

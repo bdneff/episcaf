@@ -79,7 +79,8 @@ def review(s, owner):
         plan = pilot.prepare(s, trials=worker.ATTEMPTS)   # cosmetic (shown in the UI); the engine ignores it
         backend = "manual-gemini"
         record.update(backend=backend, workflow=RFD4_WORKFLOW,
-                      antibody_chains=list(getattr(s, "antibody_chains", None) or []))
+                      antibody_chains=list(getattr(s, "antibody_chains", None) or []),
+                      num_replicates=int(getattr(s, "num_scaffolds", None) or 32))
     else:
         enabled = matches_reference(s.structure, route, s.chain)
         if enabled:

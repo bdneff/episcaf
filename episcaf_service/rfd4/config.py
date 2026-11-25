@@ -61,9 +61,17 @@ class GenerationConfig:
     unindex_motif: bool = True          # model places the islands (C_CRDGRP, not absolute coords)
     fix_motif_sequence: bool = True     # keep the native epitope sequence (C_SEQ)
     refold_designs: bool = False        # RFD4's own refolder off; AF2 is the structure-prediction step
-    pilot_denovo_jobs: int = 4          # round-1 de novo jobs for the pilot (4*8 = 32 designs)
     noise_levels: tuple[float, ...] = (0.3, 0.5, 0.8)   # partial-diffusion children (phase 3)
     max_rounds: int = 5                 # phase 3
+
+    # --- scaffold budget (the user-facing knob) ---
+    # The user asks for N scaffolds to carry into the structure-prediction step (AF2, ~95% of cost).
+    # RFD4 generation is cheap, so backbone-clashing designs are NOT counted against N: we over-generate
+    # until N clash-free backbones exist, capped at `max_generation_tries` RFD4 designs. If fewer than N
+    # pass within the cap, we fill up to N with the lowest-clash backbones so AF2 always runs on N.
+    target_scaffolds: int = 32          # default N (user-chosen; folded by the structure-prediction step)
+    max_scaffolds: int = 128            # upper bound the UI allows for N (for now)
+    max_generation_tries: int = 128     # hard cap on RFD4 designs generated per run (cheap stage)
 
 
 # --- structure-prediction step (a pluggable foundation-model seam; §1.4) ---

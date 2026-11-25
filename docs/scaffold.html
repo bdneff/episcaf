@@ -220,6 +220,12 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
         <button type="submit">Sign in</button>
         <button type="button" id="signout" hidden>Sign out</button></form>
       <p id="authmsg" class="help" role="status"></p>
+      <div id="nscafwrap" hidden style="margin:0 0 9px">
+        <label style="font-size:13px">Number of scaffolds
+          <input id="nscaf" type="number" min="1" max="128" step="1" value="32"
+            style="width:64px;font:inherit;font-size:13px;padding:3px 5px;border:1px solid #999;margin-left:4px"></label>
+        <span class="help" style="display:inline;margin-left:7px">designs folded &amp; scored &middot; max 128</span>
+      </div>
       <button type="button" id="gemini" class="btn-primary" hidden>Launch on Gemini</button>
       <a id="myruns" href="results.html#myruns" hidden style="margin-left:10px">My runs &rsaquo;</a>
       <p id="pilotmsg" class="help" role="status"></p>
@@ -981,6 +987,7 @@ function updatePilot(){
   sec.hidden=!pilotConnected;
   const ready=epitopeReady();
   document.getElementById("gemini").hidden=!(signedIn && ready);
+  document.getElementById("nscafwrap").hidden=!(signedIn && ready);
   document.getElementById("myruns").hidden=!signedIn;
   const msg=document.getElementById("pilotmsg");
   if(msg) msg.textContent = !pilotConnected ? "" : !signedIn ? ""
@@ -992,8 +999,9 @@ async function launchGemini(){
   if(!epis){ msg.textContent="No epitope selected yet."; return; }
   g.disabled=true; msg.textContent="Submitting to Gemini…";
   try{
+    const nscaf=Math.max(1,Math.min(128,parseInt(document.getElementById("nscaf").value,10)||32));
     const payload={filename:(DESCS[state.target]||"antigen").replace(/[^A-Za-z0-9_.-]/g,"_")+".pdb",
-      chain:ag, regions:epis.split(";"), structure:uploadText, route:"antibody"};
+      chain:ag, regions:epis.split(";"), structure:uploadText, route:"antibody", num_scaffolds:nscaf};
     const plan=await (await pilotRequest("reviews",{method:"POST",
       headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)})).json();
     if(!plan || !plan.id) throw new Error("Could not prepare the run.");

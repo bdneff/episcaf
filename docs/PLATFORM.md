@@ -3,7 +3,7 @@
 **Keep this current.** Update it in the same change whenever a page, link, endpoint, feature, or the
 engine changes. It's the single source of truth for *what the platform is and where things live*.
 
-_Last updated: 2026-11-24 (RFD4 engine live; both design avenues wired to click-to-submit)._
+_Last updated: 2026-11-25 (RFD4 engine live; scaffold-count budget; benchmark timing in hand)._
 
 ---
 
@@ -82,6 +82,22 @@ epitope regions + `workflow=rfd4-scaffold-v1`) → data-mover worker (`gcloud/pi
 fetches, `sbatch`es `handoff_rfd4.sbatch` on gpu-a100 → `handoff_rfd4_job.py` runs `campaign` →
 writes `retained.csv`/`designs.zip`/`terminal.json` → worker publishes to the result bucket → My runs.
 
+**Scaffold-count budget (the user knob):** the submit UI asks for **N scaffolds** (`num_replicates` in
+the request manifest; default **32**, UI cap **128**). N is the number carried into the
+structure-prediction step — AF2, ~95% of run cost — *not* the number of RFD4 designs made. RFD4
+generation is cheap, so backbone-clashing designs don't count against N: `campaign.run_campaign`
+over-generates in waves (`wave_size`) applying the backbone pre-filter, until N clash-free backbones
+exist or **128 RFD4 tries** are spent, then `select_scaffolds` hands AF2 exactly N — clash-free first,
+filled with the lowest-clash of the rest if fewer than N pass. So cost scales with N (AF2 runs), while
+clash-filtering is free. `campaign.json` records `target_scaffolds` / `n_generated` /
+`n_passed_prefilter` / `n_scored`; the two helpers are pure and unit-tested (`tests/test_rfd4_budget.py`).
+
+**Benchmark (2026-11-25, 1× A100-40GB, 32 designs serial):** 85.8 min wall = 1.43 GPU-hr. Split:
+**structure prediction 95.5%** (1.37 GPU-hr, 154 s/design mean, one 1064 s outlier), generation 3.6%
+(one 188 s batched call), prefilter + scoring + startup <1%. Composite recomputes to the stored value
+exactly on all 32 real rows (parity gate passed on real data). → fold is the whole cost and is
+per-design independent, so the SLURM-array fan-out (§10) is the high-leverage parallelization.
+
 ## 7. Cluster / infra (Gemini)
 
 - **gpu-a100**: where RFD4-Proteina + ColabFold run. **data-mover** (`gemini-data1`): the worker (GCS +
@@ -112,12 +128,29 @@ pipeline (`scripts/`, `episcaf_pipeline/`) is separate research code, not the we
 
 ## 10. Known gaps / TODO
 
-- Wire `antibody_chains` from the submit UI → real-antibody clash on the antibody avenue.
-- **AOMclash** for the no-antibody avenue (currently clash = 0 without an antibody).
-- Phase 3: seeded partial-diffusion rounds (budget + early-stop) for *passing* designs at scale.
-- **Parallelize the AF2 fold step** — gen is fast but fold is serial (the 2h-cap bottleneck); fan it
-  out as a SLURM array (gen → `--dependency=afterok` → array fold+score → gather). Near-prerequisite
-  for Phase 3. Captured in memory `af2-parallelization-plan`. A run now emits `timings.json`
-  (GPU-hours per task type, incl. the MSA-vs-model split) to size this from real numbers.
-- Output-presentation pass on results.html for the RFD4 composite schema.
-- Optional: antigen upload > 103-residue epitope guardrails; AF3/Boltz oracle backends.
+In-flight this round (engine done where noted; wiring outward):
+- **Scaffold-count knob** — engine done (`target_scaffolds`/budget routine, tested). TODO: surface the
+  N input (default 32, max 128) in the submit UI → carry as `num_replicates` through the request bundle.
+- **AF2-fold SLURM array** — gen is one cheap up-front task; fold is 95% of cost and per-design
+  independent (benchmark §6). Fan out: gen → `--dependency=afterok` → array fold+score over the
+  selected N → gather. The `select_scaffolds` output is exactly the array's shard list. Fix the
+  ColabFold log parse first so the next run records the MSA-vs-model split (the outlier is likely MSA).
+  Memory `af2-parallelization-plan`.
+- **Step-aware status UX** — My-runs pills: queued → generating → prediction *k*/N → scoring → done.
+- **Per-design viewer** (`rfd4/viewer.py` + results.html docked panel) — emit combined aligned PDB +
+  config per design (align_design.py prototype, 0.22 Å on 8pww); site-idiom 3Dmol with toggles.
+  Memory `results-viewer-plan`.
+
+New, from John's updated spec (commit 9a38b52, §1.1/§1.4):
+- **Antibody auto-detection** — engine currently *requires* `antibody_chains`; add SAbDab annotation +
+  contact fallback (≥10 heavy-atom pairs <4.5 Å; partner ≥20) + `require_antibody_detection`. Needed by
+  the pilot path and the viewer. Supersedes the "wire `antibody_chains` from the UI" item.
+- **Compact input** (`rfd4-compact-input`) — multi-chain / high-residue-number epitopes need the
+  renumber-from-1, gap-9 path; single-chain works today.
+
+Carried:
+- **AOMclash** for the no-antibody avenue (currently clash = 0 without an antibody); real AOM occupancy
+  shells (`aom_shells.py`) into the viewer mesh.
+- Phase 3: seeded partial-diffusion rounds. §6 eval panel shows 9/24 epitopes only pass *with* rounds —
+  argues for prioritizing. §6.1 gives a 24-epitope validation set (8PWW: 70 passing, best composite 2.94).
+- Optional: antigen upload > 103-residue epitope guardrails; AF3/Boltz predictor backends.
