@@ -121,3 +121,4 @@ build/
 
 # Epitope Scaffolder: served complex structures for the 3D viewer
 !docs/pdb/*.pdb
+spec/*.pdf
