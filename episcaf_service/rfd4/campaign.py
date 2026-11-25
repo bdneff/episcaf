@@ -238,6 +238,19 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
 
     epitope_native = epitope_native_residues(epitope)      # ordered native residues for src remapping
     islands = topology.parse_islands(epitope)
+
+    # Antibody auto-detection (John §1.4 contact fallback): no antibody chains given, but the uploaded
+    # complex may contain a Fab -> detect it and score clashes against it (method=antibody). A true lone
+    # antigen detects nothing -> the no-antibody path (AOMclash/zero). Keeps scored clashes consistent
+    # with the viewer, and lets the growPatch avenue score accessibility when a complex is uploaded.
+    if not antibody_chains:
+        nat_atoms = viewer.parse_pdb(native_path or antigen_path)
+        antigen_chains = list(dict.fromkeys(i.chain for i in islands))
+        epi_set = set(epitope_native)
+        epi_heavy = np.array([[a["x"], a["y"], a["z"]] for a in nat_atoms
+                              if (a["chain"], a["resi"]) in epi_set and a["elem"].upper() != "H"], float)
+        antibody_chains = tuple(viewer.detect_antibody_chains(nat_atoms, antigen_chains, epi_heavy))
+
     compact = gen.compact_input if gen.compact_input is not None else topology.needs_compact_input(islands)
     if compact:
         # multi-chain / high-resnum epitope -> feed RFD4 a single-chain, renumbered motif. Scoring still
@@ -311,7 +324,8 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
              n_selected=len(selected), n_folded=len(results), n_scored=len(results), fold_workers=workers)
     (out / "campaign.json").write_text(json.dumps(
         {"antigen": antigen_path, "epitope": epitope, "target_scaffolds": target_n,
-         "n_generated": n_generated, "n_passed_prefilter": n_passed, "n_scored": len(results)}, indent=2))
+         "antibody_chains": list(antibody_chains), "n_generated": n_generated,
+         "n_passed_prefilter": n_passed, "n_scored": len(results)}, indent=2))
     rec.write(out / "timings.json")                        # before write_results so it lands in the zip
     write_results(out, results)
     return results

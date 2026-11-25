@@ -147,9 +147,11 @@ In-flight this round (engine done where noted; wiring outward):
   reproduces the CSV exactly, Fab auto-detected (L+H). Memory `results-viewer-plan`.
 
 New, from John's updated spec (commit 9a38b52, §1.1/§1.4):
-- **Antibody auto-detection** — engine currently *requires* `antibody_chains`; add SAbDab annotation +
-  contact fallback (≥10 heavy-atom pairs <4.5 Å; partner ≥20) + `require_antibody_detection`. Needed by
-  the pilot path and the viewer. Supersedes the "wire `antibody_chains` from the UI" item.
+- **Antibody auto-detection — DONE (contact fallback)**: when `antibody_chains` is empty, the campaign
+  detects the Fab from the complex (`viewer.detect_antibody_chains`: ≥10 heavy-atom pairs <4.5 Å of the
+  epitope) and scores clashes against it; a true lone antigen detects nothing → no-antibody path. So
+  scored clashes match the viewer. `tests/test_rfd4_viewer.py`. **Future:** SAbDab-annotation-first +
+  the VL/VH partner rule + `require_antibody_detection` (needs the SAbDab table).
 - **Compact input — DONE** (`generation.compact_input`, auto for multi-chain / high-resnum epitopes):
   `generate.write_compact_antigen` feeds RFD4 a single-chain antigen with the epitope renumbered from 1,
   gap 9 between islands; scoring still uses the original native (motif map remaps by order).
