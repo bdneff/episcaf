@@ -90,9 +90,10 @@ writes `retained.csv`/`designs.zip`/`terminal.json` → worker publishes to the 
 
 ## 8. Deployment
 
-- **Pilot (Cloud Run)**: in Cloud Shell, `cd ~/episcaf-manual-pilot && git pull --ff-only origin
-  <branch> && bash episcaf_service/gcloud/deploy.sh`. Rebuilds the web image (UI + backend) + redeploys.
-  Safe to run while a Gemini job is in flight (different layer).
+- **Single Cloud Run service** (`episcaf-pilot`): in Cloud Shell, `cd ~/episcaf-manual-pilot && git
+  pull --ff-only origin <branch> && bash episcaf_service/gcloud/deploy.sh`. Builds + deploys the one
+  service (UI + backend). Safe to run while a Gemini job is in flight (different layer). **The pilot URL
+  is the only entry point** — the former public `episcaf` landing service was retired (2026-11-24).
 - **Worker (Gemini)**: `cd ~/episcaf-advisor && git pull --ff-only origin <branch>`; next scrontab tick
   uses it. Branch currently: `rfd4-engine`.
 
@@ -103,7 +104,8 @@ click-to-submit; scaffold.html is the antibody page; results.html shows the comp
 
 **Deprecated / superseded:** the 3HFM-locked RFd3 reference pilot (`handoff.sbatch`/`handoff_job.py`,
 `cloud_backbones.py` RFd3 path) — replaced by the general RFD4 path; `growpatch_tool.html?route=antibody`
-simplified antibody flow — superseded by scaffold.html for entry links. The RFd3→MPNN→AF3 manuscript
+simplified antibody flow — superseded by scaffold.html for entry links; the public `episcaf` landing
+service (mode=staging, the "Open the private pilot" invite) — retired, so there is one URL. The RFd3→MPNN→AF3 manuscript
 pipeline (`scripts/`, `episcaf_pipeline/`) is separate research code, not the web platform.
 
 ## 10. Known gaps / TODO

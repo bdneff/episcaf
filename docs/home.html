@@ -211,7 +211,7 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
 </div>
 <script>
 fetch("/health").then(r=>r.json()).then(d=>{
-  if(d.pilot_url && new URL(d.pilot_url).protocol==="https:"){
+  if(d.pilot_url && new URL(d.pilot_url).protocol==="https:" && new URL(d.pilot_url).origin!==location.origin){
     const p=document.getElementById("invite"); p.hidden=false; p.querySelector("a").href=new URL("/home.html",d.pilot_url);
   }
   if(["cloud-lysozyme","manual-gemini"].includes(d.pilot_mode)){

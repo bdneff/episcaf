@@ -10,8 +10,6 @@ case ${1:-manual-gemini} in
 esac
 project=$(gcloud config get-value project)
 region=us-central1
-# Fail before creating resources if the expected public service is absent.
-gcloud run services describe episcaf --region="$region" --project="$project" --format='value(status.url)' >/dev/null
 number=$(gcloud projects describe "$project" --format='value(projectNumber)')
 web="$web_account@$project.iam.gserviceaccount.com"
 requests="episcaf-requests-$number"
@@ -81,5 +79,4 @@ fi
 gcloud run deploy episcaf-pilot --image="$web_image" --region="$region" --service-account="$web" --allow-unauthenticated \
   --min-instances=0 "${web_resources[@]}" --set-env-vars="$env_vars"
 pilot_url=$(gcloud run services describe episcaf-pilot --region="$region" --format='value(status.url)')
-gcloud run services update episcaf --region="$region" --image="$repo/web:$tag" --update-env-vars="EPISCAF_PILOT_MODE=staging,EPISCAF_PILOT_URL=$pilot_url"
-printf 'Pilot: %s/home.html\n' "$pilot_url"
+printf 'episcaf: %s/home.html\n' "$pilot_url"
