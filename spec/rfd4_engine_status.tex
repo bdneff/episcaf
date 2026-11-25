@@ -61,6 +61,11 @@ ones, so cost scales with \emph{N} (the designs AF2 folds), not with how many ar
 \begin{itemize}
   \item \textbf{Two ways to define the epitope:} \emph{antibody contacts} (upload a complex; residues
         within 4\,\AA\ of the bound partner) or \emph{candidate regions} (growPatch on a lone antigen).
+  \item \textbf{Candidate ranking (optional, candidate-regions avenue):} rank growPatch patches by
+        \textbf{DiscoTope-3.0} B-cell epitope likelihood, with a structure-type switch ---
+        \emph{experimental structure} vs \emph{AlphaFold model}, so DiscoTope reads the model's
+        per-residue confidence correctly. This runs on the web-service CPU (Cloud Run) at selection
+        time, before any GPU work; no solved structure is required.
   \item \textbf{Number of scaffolds:} user-set, default 32, max 128 --- the number AF2 folds.
   \item \textbf{Design length} 103; multi-chain / high-residue-number epitopes handled via compact input.
 \end{itemize}
@@ -106,10 +111,11 @@ and is independent per design, so we fold 4 at a time on the 4-GPU A100 nodes.
 \hspace{0.03\linewidth}
 \begin{tikzpicture}
 \begin{axis}[
-  width=0.46\linewidth,height=3.1cm,ybar,ymin=0,ymax=100,
-  bar width=22pt,enlarge x limits=0.55,axis y line*=left,axis x line*=bottom,
+  width=0.46\linewidth,height=3.1cm,ybar,ymin=0,ymax=100,clip=false,
+  bar width=22pt,enlarge x limits=0.5,axis y line*=left,axis x line*=bottom,
+  every axis plot/.append style={bar shift=0pt},
   ylabel={\footnotesize wall time (min), N=32},
-  symbolic x coords={1 GPU,4 GPUs},xtick=data,
+  symbolic x coords={1 GPU,4 GPUs},xtick={1 GPU,4 GPUs},
   x tick label style={font=\scriptsize},y tick label style={font=\scriptsize},
   nodes near coords,every node near coord/.append style={font=\scriptsize},
 ]
@@ -131,13 +137,17 @@ layer toggles, pan, spin, and an antibody-occupancy mesh. The epitope aligns ont
 the viewer's epitope RMSD matches the scored value.
 
 \section*{Status}
-\textbf{Live now:} both epitope avenues; click-to-submit on Gemini; the scaffold-count knob; 4$\times$
-folding; compact input; antibody auto-detection; AOMclash accessibility; the per-design viewer;
-step-aware run status; composite-ranked results with downloads.
+\textbf{Live now:} both epitope avenues; DiscoTope candidate ranking; click-to-submit on Gemini; the
+scaffold-count knob; 4$\times$ folding; compact input; antibody auto-detection; AOMclash accessibility;
+the per-design viewer; step-aware run status; composite-ranked results with downloads.
+
+\textbf{Current limits:} one epitope region per submission (multi-region fan-out not yet wired);
+\textbf{single-pass only} --- no seeded partial-diffusion child rounds yet (the round decision logic is
+in place; the child generation is the piece that's left).
 
 \textbf{Next:} seeded partial-diffusion rounds (adaptive multi-round --- the biggest quality lever for
-hard epitopes; decision logic is in place, child generation is the remaining piece); cross-node scaling
-beyond 4 GPUs if large batches need it; the real occupancy-shell mesh in the viewer.
+hard epitopes); cross-node scaling beyond 4 GPUs if large batches need it; the real occupancy-shell mesh
+in the viewer.
 
 \vspace{4pt}
 \rule{\linewidth}{0.4pt}
