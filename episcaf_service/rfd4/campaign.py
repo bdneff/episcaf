@@ -254,8 +254,11 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
         design, did, bb_clash = cand.design, cand.design_id, cand.backbone_clashes
         t0 = time.perf_counter()                            # timed by hand so the fold event carries
         fold = predictor.predict(design.sequence, did, str(out / "af2"))   # the MSA/model split
-        detail = timing.parse_colabfold_log(Path(fold.out_dir) / "log.txt") if fold.out_dir else {}
-        rec.record("structure_prediction", time.perf_counter() - t0, did, **detail)
+        elapsed = time.perf_counter() - t0
+        detail = timing.parse_colabfold_log(Path(fold.out_dir) / "log.txt") if fold.out_dir else {"log_found": False}
+        if "model_seconds" in detail:                       # MSA = stage wall - model inference
+            detail["msa_seconds"] = round(max(0.0, elapsed - detail["model_seconds"]), 3)
+        rec.record("structure_prediction", elapsed, did, **detail)
         with rec.stage("scoring", did):
             af2_struct = read.read_pdb(fold.model_pdb)
             m = evaluate_design(design, native, af2_struct, fold.mean_pae, antibody_chains, epitope_native, cfg)

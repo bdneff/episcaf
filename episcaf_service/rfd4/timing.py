@@ -41,27 +41,26 @@ def gpu_context() -> dict:
     return ctx
 
 
-# ColabFold writes a per-run log.txt; these pull the MSA cost and per-model inference cost out of it.
-# Best-effort and version-tolerant: a miss just leaves the field absent (the stage total is always
-# reliable from the wall-clock around the subprocess).
-_MODEL_TOOK = re.compile(r"\b(model_\d+(?:_[\w.]+)?)\b.*?\btook\s+([\d.]+)s", re.I)
-_MSA_TOOK = re.compile(r"\b(?:getting msa|running msa|msa generation|pairing)\b.*?([\d.]+)s", re.I)
+# ColabFold writes a per-run log.txt. The reliable, version-stable signal is the per-model inference
+# line ("model_1 took 12.3s (3 recycles) with pLDDT ..."); we sum those for model_seconds. The MSA
+# cost is NOT consistently logged as a single line, so the caller computes msa_seconds = fold-stage
+# wall - model_seconds (where it has the wall time) rather than regexing a flaky MSA line. `log_found`
+# lets a run self-diagnose a missing/mislocated log instead of silently dropping the split.
+_MODEL_TOOK = re.compile(r"\b(model_\d+(?:_[\w.]+)?)\b[^\n]*?\btook\s+([\d.]+)\s*s", re.I)
 
 
 def parse_colabfold_log(log_path: str | Path) -> dict:
-    """Pull {msa_seconds?, models:[{name,seconds}], model_seconds} from a ColabFold log.txt."""
+    """Pull {log_found, models:[{name,seconds}]?, model_seconds?} from a ColabFold log.txt. The stage
+    total is always reliable from the wall-clock around the subprocess; this just splits it."""
     try:
         text = Path(log_path).read_text(errors="replace")
     except OSError:
-        return {}
+        return {"log_found": False}
     models = [{"name": m.group(1), "seconds": float(m.group(2))} for m in _MODEL_TOOK.finditer(text)]
-    out: dict = {}
+    out: dict = {"log_found": True}
     if models:
         out["models"] = models
         out["model_seconds"] = round(sum(m["seconds"] for m in models), 3)
-    msa = _MSA_TOOK.search(text)
-    if msa:
-        out["msa_seconds"] = float(msa.group(1))
     return out
 
 
