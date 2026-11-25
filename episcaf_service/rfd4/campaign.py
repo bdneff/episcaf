@@ -22,7 +22,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 import numpy as np
 
-from episcaf_service.rfd4 import clash, generate, read, score, timing, topology
+from episcaf_service.rfd4 import clash, generate, read, score, timing, topology, viewer
 from episcaf_service.rfd4.config import DEFAULT, EngineConfig
 
 
@@ -150,6 +150,10 @@ def write_results(out_dir: Path, results: list[DesignResult]):
         for r in ranked:
             if r.model_pdb and Path(r.model_pdb).is_file():
                 z.write(r.model_pdb, f"designs/{r.design_id}.pdb")
+            for ext in ("pdb", "json"):                # per-design viewer assets (if emitted)
+                vf = out_dir / "viewer" / f"{r.design_id}.{ext}"
+                if vf.is_file():
+                    z.write(vf, f"viewer/{r.design_id}.{ext}")
     return csv_path, ranked
 
 
@@ -257,6 +261,10 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
             m = evaluate_design(design, native, af2_struct, fold.mean_pae, antibody_chains, epitope_native, cfg)
         results.append(DesignResult(design_id=did, sequence=design.sequence, backbone_clashes=bb_clash,
                                     model_pdb=fold.model_pdb, **m))
+        # viewer assets: AF2 model aligned onto the native epitope + native antigen/antibody (detected
+        # if antibody_chains is empty) -> viewer/<id>.pdb + .json, bundled into designs.zip by write_results.
+        viewer.write_viewer_files(out, did, native_path or antigen_path, fold.model_pdb,
+                                  epitope, antibody_chains or None)
     rec.note(target_scaffolds=target_n, n_generated=n_generated, n_passed_prefilter=n_passed,
              n_selected=len(selected), n_folded=len(results), n_scored=len(results))
     (out / "campaign.json").write_text(json.dumps(

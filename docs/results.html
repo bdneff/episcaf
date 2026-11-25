@@ -27,6 +27,7 @@ tr.pass td:first-child{box-shadow:inset 3px 0 0 var(--good)}
 tr.na td:first-child{box-shadow:inset 3px 0 0 #bbb}
 tr.na td{color:#777}
 td.good{color:var(--good)}td.bad{color:var(--bad)}
+tr.dv-row{cursor:pointer}tr.dv-row:hover td{background:#f2f7ff}
 .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.01em;text-transform:capitalize}
 .pill.ok{background:#e4f4ea;color:var(--good);border:1px solid #a9ddba}
 .pill.bad{background:#fdecea;color:var(--bad);border:1px solid #f0bbb4}
@@ -125,11 +126,40 @@ label.ck[hidden]{display:none}
 </div>
 
 <script src="pilot.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="designview.js"></script>
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
 let ROWS=[], COLS=[], sortCol=null, sortDir=-1, pcMode=false;
+// Per-design structure viewer (RFD4 runs): lazily fetch + unzip the run's designs.zip, then open the
+// aligned scaffold + shared native.pdb in the docked DesignView panel on row click.
+const DVIEW={enabled:false, rid:null, zip:null, native:null};
+async function openDesign(did){
+  if(!DVIEW.enabled || !did || typeof JSZip==="undefined" || typeof window.DesignView==="undefined") return;
+  try{
+    if(!DVIEW.zip){
+      const buf=await (await pilotRequest("runs/"+encodeURIComponent(DVIEW.rid)+"/designs.zip")).arrayBuffer();
+      DVIEW.zip=await JSZip.loadAsync(buf);
+      const nf=DVIEW.zip.file("viewer/native.pdb");
+      DVIEW.native=nf ? await nf.async("string") : null;
+    }
+    const sf=DVIEW.zip.file("viewer/"+did+".pdb"), cf=DVIEW.zip.file("viewer/"+did+".json");
+    if(!sf || !cf){ $("msg").style.display="block"; $("msg").textContent="This run's archive has no 3D viewer for "+did+" (older runs predate the viewer)."; return; }
+    const scaffold=await sf.async("string"), cfg=JSON.parse(await cf.async("string"));
+    const r=ROWS.find(x=>(x.design_id||x.id)===did)||{};
+    const n=k=>{const v=num(r[k]); return v===null?null:v;};
+    DesignView.open({native:DVIEW.native, scaffold, cfg, title:"Design "+did, metrics:{
+      epitope_rmsd:n("epitope_rmsd")??n("epitope_chunk_rmsd"), overall_rmsd:n("overall_rmsd"),
+      overall_pae:n("overall_pae")??n("mean_pae"), backbone_clashes:n("backbone_clashes"), composite:n("composite")}});
+  }catch(e){ $("msg").style.display="block"; $("msg").textContent="Could not load the design viewer for this run."; }
+}
 
+document.getElementById("tbl").tBodies[0].addEventListener("click",e=>{
+  if(!DVIEW.enabled) return;
+  const tr=e.target.closest("tr[data-did]"); if(tr) openDesign(tr.getAttribute("data-did"));
+});
 // imported CSV text is untrusted: escape before it ever reaches innerHTML
 const esc=s=>(""+(s??"")).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 const escA=s=>esc(s).replace(/"/g,"&quot;");
@@ -264,10 +294,13 @@ function render(){
   th.querySelectorAll("th").forEach(h=>h.onclick=()=>{const c=h.dataset.c;
     pcMode=false; if(sortCol===c) sortDir*=-1; else {sortCol=c; sortDir=-1;}
     const sel=$("rankby"); if([...sel.options].some(o=>o.value===c)) sel.value=c; render();});
-  tb.innerHTML=rs.map(r=>"<tr class='"+(rawBackbones?"":r.__cls||"")+"'>"+COLS.map(c=>{
-    let cls=""; const g=GOODCELL[c], n=num(r[c]);
-    if(g&&n!==null) cls=g(n)?"good":"bad";
-    return `<td class="${cls}">${esc(r[c]??"")}</td>`;}).join("")+"</tr>").join("");
+  tb.innerHTML=rs.map(r=>{
+    const did=r.design_id||r.id||"";
+    const open=`<tr${DVIEW.enabled&&did?` data-did="${escA(did)}" class="${((rawBackbones?"":r.__cls||"")+" dv-row").trim()}"`:` class='${rawBackbones?"":r.__cls||""}'`}>`;
+    return open+COLS.map(c=>{
+      let cls=""; const g=GOODCELL[c], n=num(r[c]);
+      if(g&&n!==null) cls=g(n)?"good":"bad";
+      return `<td class="${cls}">${esc(r[c]??"")}</td>`;}).join("")+"</tr>";}).join("");
   const npass=ROWS.filter(r=>r.__cls==="pass").length;
   const nfail=ROWS.filter(r=>r.__cls==="fail").length;
   const nna=ROWS.filter(r=>r.__cls==="na").length;
@@ -403,11 +436,14 @@ async function showRuns(runs){
     $("models").textContent=rawRun?"Download backbone coordinates (ZIP)":
       ["cloud-lysozyme","manual-gemini"].includes(run.backend)?"Download retained backbones and all filter scores (ZIP)":"Download designs and scores (ZIP)";
     privateLoaded=true;
+    DVIEW.enabled=(run.workflow==="rfd4-scaffold-v1"); DVIEW.rid=run.id; DVIEW.zip=null; DVIEW.native=null;
+    if(DVIEW.enabled) $("origin").textContent=($("origin").textContent?$("origin").textContent+" ":"")+"Select a design row to open its 3D structure.";
     $("original").href="/pilot/"+path+"?download=true"; $("original").hidden=false;
   }catch(e){if(current===loadVersion)$("origin").textContent=e.message;}
 }
 function clearPrivateResults(){
   ++loadVersion;privateLoaded=false; $("csvintro").hidden=false;
+  DVIEW.enabled=false; DVIEW.zip=null; DVIEW.native=null; if(window.DesignView) DesignView.close();
   ROWS=[]; COLS=[]; render(); $("stats").replaceChildren(); $("rankby").replaceChildren();
   $("rankby").disabled=true; $("dl").disabled=true; $("original").hidden=true; $("models").hidden=true;
   $("result-title").textContent="Design results";

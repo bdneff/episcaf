@@ -34,7 +34,7 @@ engine**: RFD4-Proteina → clash pre-filter → AF2 (ColabFold) → composite �
 | `scaffold.html` | Configure scaffold design | **Antibody-contacts avenue.** Upload + 3D viewer + sequence panel; auto-detect (`/inspect`) or manual antibody chain/residue selection; in-browser contact epitope with adjustable **cutoff** + **gap-fill** controls; **Run on Gemini** (token sign-in + submit to RFD4 pilot). Also a local "simulate / prepare inputs" path when connected to the local staging server. | growpatch_tool (candidate regions), results.html#myruns |
 | `growpatch_tool.html` | Find candidate regions | **growPatch avenue.** Upload lone antigen → enumerate candidate patches (DiscoTope-rankable) → pick regions (each checked candidate shows as a
 removable cell in the "Prepare scaffold-design inputs" box) → review → **launch to the RFD4 pilot**. (`?route=antibody` is a legacy simplified antibody flow — superseded by scaffold.html for the entry links.) | scaffold.html, results.html#myruns |
-| `results.html` | Results | **My runs** (token sign-in → live run list with status pills) + a results viewer: loads a run's ranked CSV, sortable/filterable table, downloads designs.zip + CSV. | growpatch_tool |
+| `results.html` | Results | **My runs** (token sign-in → live run list with status pills) + a results viewer: loads a run's ranked CSV, sortable/filterable table, downloads designs.zip + CSV. For an RFD4 run, **clicking a design row** lazy-fetches + unzips designs.zip (JSZip) and opens a docked **3D structure viewer** (`designview.js`: 3Dmol, scaffold/native/epitope/antibody/steric-clash/AOM toggles, pan pad). | growpatch_tool |
 | `methods.html` | Methods | Docs / methods writeup. | aomclash, growpatch_tool |
 | `pipeline.html` | Design workflow | Pipeline blueprint. | aomclash |
 | `aomclash.html` | AOMclash | Explains AOMclash (predicted antibody obstruction). | scaffold.html |
@@ -74,8 +74,11 @@ Port of John Altin's RFD4 pipeline (see `~/Downloads/RFD4_pipeline_description.p
 (Kabsch), `clash` (strict + §3.3 shadow; AOMclash fallback planned), `score` (4 metrics + composite),
 `generate` (antigen+islands → RFD4 YAML spec; PDB→CIF via atomworks), `fold` (pluggable
 **structure-prediction step**; AF2/ColabFold now, AF3/Boltz later), `read` (RFD4 annotated-CIF + PDB
-readers), `timing` (per-stage wall-clock → GPU-hours per task type), `campaign` (orchestrate
-single-pass → ranked `final_results.csv` + `designs.zip` + `timings.json`).
+readers), `timing` (per-stage wall-clock → GPU-hours per task type), `viewer` (per design: align the
+AF2 model onto the native epitope frame → scaffold PDB + config JSON, with one shared `native.pdb`
+(antigen + antibody, Fab auto-detected by contact) → `viewer/` in designs.zip; epitope RMSD reproduces
+the CSV's), `campaign` (orchestrate single-pass → ranked `final_results.csv` + `designs.zip` +
+`timings.json` + `viewer/`).
 
 **Request lifecycle:** web `POST /pilot/reviews` → `cloud.review` stages a bundle (antigen upload +
 epitope regions + `workflow=rfd4-scaffold-v1`) → data-mover worker (`gcloud/pilot_worker.py`) polls,
@@ -137,9 +140,9 @@ In-flight this round (engine done where noted; wiring outward):
   ColabFold log parse first so the next run records the MSA-vs-model split (the outlier is likely MSA).
   Memory `af2-parallelization-plan`.
 - **Step-aware status UX** — My-runs pills: queued → generating → prediction *k*/N → scoring → done.
-- **Per-design viewer** (`rfd4/viewer.py` + results.html docked panel) — emit combined aligned PDB +
-  config per design (align_design.py prototype, 0.22 Å on 8pww); site-idiom 3Dmol with toggles.
-  Memory `results-viewer-plan`.
+- **Per-design viewer — DONE** (`rfd4/viewer.py` emits `viewer/` into designs.zip; `docs/designview.js`
+  docked 3Dmol panel wired into results.html on row-click). Verified on the benchmark: epitope RMSD
+  reproduces the CSV exactly, Fab auto-detected (L+H). Memory `results-viewer-plan`.
 
 New, from John's updated spec (commit 9a38b52, §1.1/§1.4):
 - **Antibody auto-detection** — engine currently *requires* `antibody_chains`; add SAbDab annotation +
