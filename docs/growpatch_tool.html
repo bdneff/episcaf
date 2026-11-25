@@ -306,7 +306,7 @@ $("file").onchange=()=>{
       }else if(d.is_complex){
         $("guess").innerHTML=`Chain ${esc(d.antigen_chain)} has contacts with ${esc(d.partner_chains.join(", "))}. `+
           `For an antibody contact epitope, use `+
-          (cloudPilot ? '<a href="growpatch_tool.html?route=antibody">Find antibody contacts</a>.' :
+          (cloudPilot ? '<a href="scaffold.html">Find antibody contacts</a>.' :
             '<a href="scaffold.html">Scaffold a selected epitope</a>.');
       }else{
         $("guess").innerHTML=`No antibody partner was detected.`;

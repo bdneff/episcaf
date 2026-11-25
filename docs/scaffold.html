@@ -6,6 +6,7 @@
 <title>Scaffold a selected epitope · episcaf</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="pilot.js"></script>
 <link rel="stylesheet" href="site.css">
 <style>
 .page{max-width:730px;margin:0 auto}
@@ -205,6 +206,20 @@ code{font-family:"Courier New",Courier,monospace;font-size:12px;background:#f0f0
     <button type="submit" id="runbtn" class="btn-primary">Simulate a run</button>
     <p class="help" id="runnote"></p>
   </form>
+
+  <section id="pilot" class="tcard" hidden style="margin-top:14px">
+    <div class="tcard-h">Run on Gemini</div>
+    <div class="stepb">
+      <form id="signin" style="margin:0 0 7px"><label>Tester token
+        <input id="token" type="password" autocomplete="off" style="font:inherit;font-size:13px;padding:3px 5px;border:1px solid #999"></label>
+        <button type="submit">Sign in</button>
+        <button type="button" id="signout" hidden>Sign out</button></form>
+      <p id="authmsg" class="help" role="status"></p>
+      <button type="button" id="gemini" class="btn-primary" hidden>Launch on Gemini</button>
+      <a id="myruns" href="results.html#myruns" hidden style="margin-left:10px">My runs &rsaquo;</a>
+      <p id="pilotmsg" class="help" role="status"></p>
+    </div>
+  </section>
 
   <hr>
 
@@ -937,11 +952,54 @@ updateCaption();
 if(document.readyState==="complete") initCViewer(); else window.addEventListener("load",initCViewer);
 </script>
 <script>
+/* --- RFD4 pilot: submit the computed antibody-contact epitope to Gemini --- */
+let pilotConnected=false, signedIn=false;
+function epitopeReady(){
+  const cfg=CFG[state.target]||{};
+  return state.epi==="antibody" && cfg.ag && Array.isArray(cfg.epi) && cfg.epi.length>0 && !!uploadText;
+}
+function updatePilot(){
+  const sec=document.getElementById("pilot"); if(!sec) return;
+  sec.hidden=!pilotConnected;
+  const ready=epitopeReady();
+  document.getElementById("gemini").hidden=!(signedIn && ready);
+  document.getElementById("myruns").hidden=!signedIn;
+  const msg=document.getElementById("pilotmsg");
+  if(msg) msg.textContent = !pilotConnected ? "" : !signedIn ? ""
+    : !ready ? "Mark the antibody (or select epitope residues) above, then launch." : "";
+}
+async function launchGemini(){
+  const g=document.getElementById("gemini"), msg=document.getElementById("pilotmsg");
+  const cfg=CFG[state.target]||{}, ag=cfg.ag, epis=epiSpec(ag, cfg.epi||[]);
+  if(!epis){ msg.textContent="No epitope selected yet."; return; }
+  g.disabled=true; msg.textContent="Submitting to Gemini…";
+  try{
+    const payload={filename:(DESCS[state.target]||"antigen").replace(/[^A-Za-z0-9_.-]/g,"_")+".pdb",
+      chain:ag, regions:epis.split(";"), structure:uploadText, route:"antibody"};
+    const plan=await (await pilotRequest("reviews",{method:"POST",
+      headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)})).json();
+    if(!plan || !plan.id) throw new Error("Could not prepare the run.");
+    const run=await (await pilotRequest("runs/"+plan.id,{method:"POST"})).json();
+    location.assign("results.html?run="+encodeURIComponent(run.id)+"#result-title");
+  }catch(e){ msg.textContent=e.message||"Submission failed."; g.disabled=false; }
+}
+document.getElementById("gemini").addEventListener("click", launchGemini);
+// re-check the launch button whenever the epitope selection changes
+["change","click","pointerup"].forEach(ev=>document.getElementById("seqbody")?.addEventListener(ev,()=>setTimeout(updatePilot,0)));
+$$('input[name=epi]').forEach(r=>r.addEventListener("change",()=>setTimeout(updatePilot,0)));
+document.getElementById("target")?.addEventListener("change",()=>setTimeout(updatePilot,0));
+document.getElementById("pdbfile")?.addEventListener("change",()=>setTimeout(updatePilot,400));
+
+const refreshRuns=(typeof pilotSession!=="undefined")
+  ? pilotSession(()=>{signedIn=true;updatePilot();}, ()=>{signedIn=false;updatePilot();}) : null;
+
 fetch("/health").then(r=>r.json()).then(d=>{
   if(d.service!=="episcaf")return;
   stagingAvailable=d.pilot_mode==="staging" && !d.pilot_url;
-  document.getElementById("cloud-link").hidden=!["cloud-lysozyme","manual-gemini"].includes(d.pilot_mode);
-  updateRunBtn();
+  pilotConnected=["cloud-lysozyme","manual-gemini"].includes(d.pilot_mode);
+  updateRunBtn();   // cloud-link stays hidden — the Run-on-Gemini section below supersedes it
+  updatePilot();
+  if(refreshRuns) refreshRuns();   // pick up an existing signed-in session (shared cookie)
 }).catch(()=>{});
 </script>
 </body>

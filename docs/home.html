@@ -216,7 +216,7 @@ fetch("/health").then(r=>r.json()).then(d=>{
   }
   if(["cloud-lysozyme","manual-gemini"].includes(d.pilot_mode)){
     const link=document.getElementById("selected-path");
-    link.href="growpatch_tool.html?route=antibody";link.textContent="Find antibody contacts";
+    link.href="scaffold.html";link.textContent="Find antibody contacts";
   }
 }).catch(()=>{});
 </script>
