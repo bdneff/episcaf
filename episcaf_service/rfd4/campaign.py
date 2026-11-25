@@ -55,6 +55,7 @@ class DesignResult:
     composite: float
     backbone_clashes: int
     model_pdb: str
+    aom_s_p1_free: float = None     # no-antibody accessibility (AOMclash); None when an antibody is used
 
 
 def _paired_epitope_backbone(design: read.RFD4Design, native: read.Structure, epitope_native: list):
@@ -132,7 +133,7 @@ def evaluate_design(design: read.RFD4Design, native: read.Structure, af2_struct:
 
 
 _CSV_COLS = ["design_id", "sequence", "epitope_rmsd", "overall_rmsd", "overall_pae",
-             "af_clashes", "af_clashes_strict", "composite", "backbone_clashes"]
+             "af_clashes", "af_clashes_strict", "composite", "backbone_clashes", "aom_s_p1_free"]
 
 
 def write_results(out_dir: Path, results: list[DesignResult]):
@@ -260,6 +261,18 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
                               if (a["chain"], a["resi"]) in epi_set and a["elem"].upper() != "H"], float)
         antibody_chains = tuple(viewer.detect_antibody_chains(nat_atoms, antigen_chains, epi_heavy))
 
+    # No-antibody accessibility (AOMclash): no Fab -> read the occupancy map so each design still gets an
+    # accessibility score (aom_s_p1_free) instead of nothing. Scorer is numpy/scipy + the vendored
+    # aom_map.pkl (fast, local). How this feeds the composite is a separate call (discuss w/ John); here
+    # we only compute + report it. Graceful: any failure (deps/map/frame) just leaves it None.
+    aom_mod = aom_target = None
+    if not antibody_chains:
+        try:
+            from episcaf_analysis.aomclash import score as aom_mod  # noqa: PLC0415
+            aom_target = aom_mod.build_target(native_path or antigen_path, epitope)
+        except Exception:
+            aom_mod = aom_target = None
+
     compact = gen.compact_input if gen.compact_input is not None else topology.needs_compact_input(islands)
     if compact:
         # multi-chain / high-resnum epitope -> feed RFD4 a single-chain, renumbered motif. Scoring still
@@ -327,13 +340,21 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, na
         # viewer assets: AF2 model aligned onto the native epitope + native antigen/antibody (detected
         # if antibody_chains is empty). Serialised: all designs share one viewer/native.pdb.
         with view_lock:
-            viewer.write_viewer_files(out, did, native_path or antigen_path, fold.model_pdb,
-                                      epitope, antibody_chains or None)
+            cfg_v = viewer.write_viewer_files(out, did, native_path or antigen_path, fold.model_pdb,
+                                              epitope, antibody_chains or None)
+        aom = None
+        if aom_target is not None and cfg_v is not None:   # no-antibody accessibility for this design
+            try:
+                epi_pos = cfg_v.get("epitopeScaffoldOrdered") or cfg_v["epitopeScaffold"]
+                s = aom_mod.aomclash_score(aom_target, fold.model_pdb, epi_pos)
+                aom = round(float(s), 4) if s is not None else None
+            except Exception:
+                aom = None
         with done_lock:
             done[0] += 1
             _p(f"predicting structures {done[0]}/{n_total}")
         return DesignResult(design_id=did, sequence=design.sequence, backbone_clashes=bb_clash,
-                            model_pdb=fold.model_pdb, **m)
+                            model_pdb=fold.model_pdb, aom_s_p1_free=aom, **m)
 
     workers = max(1, cfg.predictor.fold_workers)
     results = fold_selected(selected, fold_and_score, workers, timing.visible_gpus())

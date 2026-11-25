@@ -178,7 +178,8 @@ def align_design(native, design, epitope, antibody_chains=None):
         aom_center = epi_c.tolist()
 
     cfg = dict(scaffoldChain=SCAFFOLD_CHAIN, antigenChains=antigen_chains, antibodyChains=ab_chains,
-               epitopeScaffold=sorted(epi_design), epitopeNative=epi_native, clash=sorted(clash),
+               epitopeScaffold=sorted(epi_design), epitopeScaffoldOrdered=list(epi_design),
+               epitopeNative=epi_native, clash=sorted(clash),
                aomCenter=[round(v, 2) for v in aom_center], aomRadius=13.0,
                epitopeRMSD=round(rmsd, 3), sequence=des_seq, length=len(des_seq),
                nativePdb="native.pdb")
