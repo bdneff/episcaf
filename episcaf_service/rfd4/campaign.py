@@ -3,7 +3,7 @@
 partial-diffusion round loop (phase 3) layers on top of evaluate_design + the generate/fold calls.
 
 evaluate_design() is pure (structures in, metrics out) and unit-tested. run_campaign() adds the
-subprocess calls to rfd4-generate and the oracle, which only run on Gemini.
+subprocess calls to rfd4-generate and the structure-prediction step, which only run on Gemini.
 
 Residue-numbering note (validate on first real run): the design CIF is 0-indexed (label_seq_id);
 ColabFold PDBs are 1-indexed, so af2_resnum = design_seq_id + af2_offset (default 1). Native residues
@@ -14,13 +14,14 @@ from __future__ import annotations
 import csv
 import json
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import numpy as np
 
-from episcaf_service.rfd4 import clash, generate, read, score, topology
+from episcaf_service.rfd4 import clash, generate, read, score, timing, topology
 from episcaf_service.rfd4.config import DEFAULT, EngineConfig
 
 
@@ -142,18 +143,26 @@ def write_results(out_dir: Path, results: list[DesignResult]):
             w.writerow({c: getattr(r, c) for c in _CSV_COLS})
     with ZipFile(out_dir / "designs.zip", "w", compression=ZIP_DEFLATED) as z:
         z.write(csv_path, "final_results.csv")
+        for extra in ("timings.json", "campaign.json"):   # ship the benchmark breakdown in the bundle
+            if (out_dir / extra).is_file():
+                z.write(out_dir / extra, extra)
         for r in ranked:
             if r.model_pdb and Path(r.model_pdb).is_file():
                 z.write(r.model_pdb, f"designs/{r.design_id}.pdb")
     return csv_path, ranked
 
 
-def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, oracle, native_path: str = None,
+def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, predictor, native_path: str = None,
                  antibody_chains=(), rfd4_cmd=("rfd4-generate",), num_replicates: int = None,
-                 cfg: EngineConfig = DEFAULT) -> list[DesignResult]:
-    """Full single-pass run on Gemini. Writes final_results.csv + designs.zip under out_dir."""
+                 cfg: EngineConfig = DEFAULT, recorder: "timing.Recorder" = None) -> list[DesignResult]:
+    """Full single-pass run on Gemini. Writes final_results.csv + designs.zip under out_dir.
+
+    `predictor` is a fold.StructurePredictor (AF2/ColabFold by default). A timing.Recorder times every
+    stage (generation, per-design backbone prefilter, structure prediction, scoring) -> timings.json,
+    so a benchmark run reports GPU-hours per task type for the parallelization work."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
+    rec = recorder or timing.Recorder()
     native = read.read_pdb(native_path or antigen_path)
     n = num_replicates or cfg.generation.pilot_denovo_jobs * cfg.generation.designs_per_job
 
@@ -164,23 +173,34 @@ def run_campaign(antigen_path: str, epitope: str, out_dir: str, *, oracle, nativ
     generate.write_spec(spec, spec_path)
     gen_out = out / "rfd4"
     argv = list(rfd4_cmd) + generate.generate_argv(str(spec_path), str(gen_out), n)[1:]
-    subprocess.run(argv, check=True)
+    with rec.stage("generation", n_requested=n):           # RFD4-Proteina: all n designs in one call
+        subprocess.run(argv, check=True)
 
     results: list[DesignResult] = []
+    n_generated = n_folded = 0
     for cif in sorted(gen_out.glob("inference_samples/*/*_generated.cif")):
         design = read.read_rfd4_cif(str(cif))
         did = cif.parent.name
-        bb_clash = backbone_prefilter_clashes(design, native, antibody_chains, epitope_native, cfg)
+        n_generated += 1
+        with rec.stage("backbone_prefilter", did):
+            bb_clash = backbone_prefilter_clashes(design, native, antibody_chains, epitope_native, cfg)
         if not clash.passes_backbone_prefilter(bb_clash, cfg.clash):
             continue
-        fold = oracle.predict(design.sequence, did, str(out / "af2"))
-        af2_struct = read.read_pdb(fold.model_pdb)
-        m = evaluate_design(design, native, af2_struct, fold.mean_pae, antibody_chains, epitope_native, cfg)
+        t0 = time.perf_counter()                            # timed by hand so the fold event carries
+        fold = predictor.predict(design.sequence, did, str(out / "af2"))   # the MSA/model split
+        detail = timing.parse_colabfold_log(Path(fold.out_dir) / "log.txt") if fold.out_dir else {}
+        rec.record("structure_prediction", time.perf_counter() - t0, did, **detail)
+        n_folded += 1
+        with rec.stage("scoring", did):
+            af2_struct = read.read_pdb(fold.model_pdb)
+            m = evaluate_design(design, native, af2_struct, fold.mean_pae, antibody_chains, epitope_native, cfg)
         results.append(DesignResult(design_id=did, sequence=design.sequence, backbone_clashes=bb_clash,
                                     model_pdb=fold.model_pdb, **m))
-    write_results(out, results)
+    rec.note(n_requested=n, n_generated=n_generated, n_folded=n_folded, n_scored=len(results))
     (out / "campaign.json").write_text(json.dumps(
         {"antigen": antigen_path, "epitope": epitope, "n_requested": n, "n_scored": len(results)}, indent=2))
+    rec.write(out / "timings.json")                        # before write_results so it lands in the zip
+    write_results(out, results)
     return results
 
 
@@ -200,9 +220,9 @@ def main():
     args = p.parse_args()
 
     import shlex
-    oracle = fold.ColabFoldAF2(data_dir=args.af2_data, colabfold_bin=args.colabfold, cfg=DEFAULT.oracle)
+    predictor = fold.ColabFoldAF2(data_dir=args.af2_data, colabfold_bin=args.colabfold, cfg=DEFAULT.predictor)
     ab = tuple(c for c in args.antibody_chains.split(",") if c)
-    results = run_campaign(args.antigen, args.epitope, args.out, oracle=oracle, native_path=args.native,
+    results = run_campaign(args.antigen, args.epitope, args.out, predictor=predictor, native_path=args.native,
                            antibody_chains=ab, rfd4_cmd=tuple(shlex.split(args.rfd4_cmd)),
                            num_replicates=args.num_replicates, cfg=DEFAULT)
     ranked = sorted((r for r in results if r.composite is not None), key=lambda r: -r.composite)

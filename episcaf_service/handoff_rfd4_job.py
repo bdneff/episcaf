@@ -50,10 +50,10 @@ def execute(inbox, workspace, job):
     antigen = directory / "antigen.pdb"
     antigen.write_bytes(upload)
 
-    oracle = fold.ColabFoldAF2(data_dir=os.environ["EPISCAF_AF2_DATA"],
-                               colabfold_bin=os.environ["EPISCAF_COLABFOLD"], cfg=DEFAULT.oracle)
+    predictor = fold.ColabFoldAF2(data_dir=os.environ["EPISCAF_AF2_DATA"],
+                                  colabfold_bin=os.environ["EPISCAF_COLABFOLD"], cfg=DEFAULT.predictor)
     results = campaign.run_campaign(
-        str(antigen), epitope, str(directory), oracle=oracle, native_path=str(antigen),
+        str(antigen), epitope, str(directory), predictor=predictor, native_path=str(antigen),
         antibody_chains=antibody_chains,
         rfd4_cmd=tuple(shlex.split(os.environ.get("EPISCAF_RFD4_CMD", "rfd4-generate"))),
         num_replicates=manifest.get("num_replicates"), cfg=DEFAULT)

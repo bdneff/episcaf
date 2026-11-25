@@ -1,9 +1,9 @@
-"""The structure-prediction oracle — a pluggable foundation-model seam (Brandon's call).
+"""The structure-prediction step — a pluggable foundation-model seam (Brandon's call).
 
 One interface, swappable backends: AF2/ColabFold (default; the composite is calibrated to it, so we
 validate the port here), then AF3 (already on Gemini) or Boltz-2 (Apache, commercial-safe). The
-backend is a `config.OracleConfig` dial; swapping it needs the composite dials re-validated for that
-oracle's PAE/confidence scale.
+backend is a `config.PredictorConfig` dial; swapping it needs the composite dials re-validated for
+that backend's PAE/confidence scale.
 
 AF2 backend = localcolabfold `colabfold_batch` (5 models, 3 recycles, no relax, MSA on, no templates).
 Output per query (confirmed on Gemini 2026-11-24):
@@ -20,7 +20,7 @@ from pathlib import Path
 
 import numpy as np
 
-from episcaf_service.rfd4.config import DEFAULT, OracleConfig
+from episcaf_service.rfd4.config import DEFAULT, PredictorConfig
 
 
 @dataclass(frozen=True)
@@ -29,10 +29,11 @@ class FoldResult:
     mean_pae: float         # overall_pAE for the composite
     plddt: float            # mean pLDDT (diagnostic)
     ptm: float              # diagnostic
+    out_dir: str = ""       # the colabfold_batch output dir (holds log.txt: MSA vs model timing)
 
 
 def af2_argv(fasta_path: str, out_dir: str, data_dir: str, colabfold_bin: str = "colabfold_batch",
-             cfg: OracleConfig = DEFAULT.oracle) -> list[str]:
+             cfg: PredictorConfig = DEFAULT.predictor) -> list[str]:
     """The `colabfold_batch` command. MSA on by default; num_relax=0 => no --amber; templates off."""
     argv = [colabfold_bin,
             "--num-models", str(cfg.num_models),
@@ -78,10 +79,11 @@ def ingest_af2(out_dir: str, name: str) -> FoldResult:
     plddt_raw = scores.get("plddt")
     plddt = float(np.mean(plddt_raw)) if isinstance(plddt_raw, (list, tuple)) else float(plddt_raw or "nan")
     ptm = float(scores.get("ptm", float("nan")))
-    return FoldResult(model_pdb=str(pdb), mean_pae=_mean_pae(out, name, scores), plddt=plddt, ptm=ptm)
+    return FoldResult(model_pdb=str(pdb), mean_pae=_mean_pae(out, name, scores), plddt=plddt, ptm=ptm,
+                      out_dir=str(out))
 
 
-class Oracle:
+class StructurePredictor:
     """Interface: predict(sequence, name, workdir) -> FoldResult. Backends implement _run()."""
 
     def predict(self, sequence: str, name: str, workdir: str) -> FoldResult:
@@ -89,10 +91,10 @@ class Oracle:
 
 
 @dataclass
-class ColabFoldAF2(Oracle):
+class ColabFoldAF2(StructurePredictor):
     data_dir: str
     colabfold_bin: str = "colabfold_batch"
-    cfg: OracleConfig = DEFAULT.oracle
+    cfg: PredictorConfig = DEFAULT.predictor
 
     def predict(self, sequence: str, name: str, workdir: str) -> FoldResult:
         import subprocess
@@ -106,8 +108,9 @@ class ColabFoldAF2(Oracle):
         return ingest_af2(str(out), name)
 
 
-def get_oracle(cfg: OracleConfig = DEFAULT.oracle, **kwargs) -> Oracle:
-    """Factory: the oracle backend named by cfg.backend. af3/boltz are future plug-ins."""
+def get_predictor(cfg: PredictorConfig = DEFAULT.predictor, **kwargs) -> StructurePredictor:
+    """Factory: the structure-prediction backend named by cfg.backend. af3/boltz are future plug-ins."""
     if cfg.backend == "af2":
         return ColabFoldAF2(cfg=cfg, **kwargs)
-    raise NotImplementedError(f"oracle backend {cfg.backend!r} not implemented yet (af3/boltz are planned)")
+    raise NotImplementedError(f"structure-prediction backend {cfg.backend!r} not implemented yet "
+                              "(af3/boltz are planned)")

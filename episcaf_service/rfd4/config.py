@@ -60,19 +60,19 @@ class GenerationConfig:
     sampling_effort: str = "thinking_high"   # thinking_low|medium|high
     unindex_motif: bool = True          # model places the islands (C_CRDGRP, not absolute coords)
     fix_motif_sequence: bool = True     # keep the native epitope sequence (C_SEQ)
-    refold_designs: bool = False        # RFD4's own refolder off; AF2 is the oracle
+    refold_designs: bool = False        # RFD4's own refolder off; AF2 is the structure-prediction step
     pilot_denovo_jobs: int = 4          # round-1 de novo jobs for the pilot (4*8 = 32 designs)
     noise_levels: tuple[float, ...] = (0.3, 0.5, 0.8)   # partial-diffusion children (phase 3)
     max_rounds: int = 5                 # phase 3
 
 
-# --- structure-prediction ORACLE (a pluggable foundation-model seam; §1.4) ---
-# The oracle is swappable: AF2/ColabFold (validate the port against John here — the composite is
+# --- structure-prediction step (a pluggable foundation-model seam; §1.4) ---
+# The backend is swappable: AF2/ColabFold (validate the port against John here — the composite is
 # AF2-CALIBRATED), then AF3 (better; already on Gemini; non-commercial only) or Boltz-2 (Apache,
 # commercial-safe). Swapping the backend needs the composite dials above re-validated for that
-# oracle's PAE/confidence scale — a tuning pass, not a code change.
+# backend's PAE/confidence scale — a tuning pass, not a code change.
 @dataclass(frozen=True)
-class OracleConfig:
+class PredictorConfig:
     backend: str = "af2"                # "af2" | "af3" | "boltz"
     # AF2/ColabFold settings (John's §1.4): 5 models, 3 recycles, no relax, MSA on, no templates
     num_models: int = 5
@@ -89,7 +89,7 @@ class EngineConfig:
     clash: ClashConfig = field(default_factory=ClashConfig)
     composite: CompositeConfig = field(default_factory=CompositeConfig)
     generation: GenerationConfig = field(default_factory=GenerationConfig)
-    oracle: OracleConfig = field(default_factory=OracleConfig)
+    predictor: PredictorConfig = field(default_factory=PredictorConfig)
 
 
 DEFAULT = EngineConfig()

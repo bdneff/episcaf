@@ -71,9 +71,10 @@ Pilot modes (`EPISCAF_PILOT_MODE`): `manual-gemini` (**the RFD4 pilot** — any 
 Port of John Altin's RFD4 pipeline (see `~/Downloads/RFD4_pipeline_description.pdf`). Modules:
 `config` (tunable dials; composite is Brandon's), `topology` (islands → 103-mer layout), `geom`
 (Kabsch), `clash` (strict + §3.3 shadow; AOMclash fallback planned), `score` (4 metrics + composite),
-`generate` (antigen+islands → RFD4 YAML spec; PDB→CIF via atomworks), `fold` (pluggable oracle;
-AF2/ColabFold now, AF3/Boltz later), `read` (RFD4 annotated-CIF + PDB readers), `campaign`
-(orchestrate single-pass → ranked `final_results.csv` + `designs.zip`).
+`generate` (antigen+islands → RFD4 YAML spec; PDB→CIF via atomworks), `fold` (pluggable
+**structure-prediction step**; AF2/ColabFold now, AF3/Boltz later), `read` (RFD4 annotated-CIF + PDB
+readers), `timing` (per-stage wall-clock → GPU-hours per task type), `campaign` (orchestrate
+single-pass → ranked `final_results.csv` + `designs.zip` + `timings.json`).
 
 **Request lifecycle:** web `POST /pilot/reviews` → `cloud.review` stages a bundle (antigen upload +
 epitope regions + `workflow=rfd4-scaffold-v1`) → data-mover worker (`gcloud/pilot_worker.py`) polls,
@@ -115,6 +116,7 @@ pipeline (`scripts/`, `episcaf_pipeline/`) is separate research code, not the we
 - Phase 3: seeded partial-diffusion rounds (budget + early-stop) for *passing* designs at scale.
 - **Parallelize the AF2 fold step** — gen is fast but fold is serial (the 2h-cap bottleneck); fan it
   out as a SLURM array (gen → `--dependency=afterok` → array fold+score → gather). Near-prerequisite
-  for Phase 3. Captured in memory `af2-parallelization-plan`.
+  for Phase 3. Captured in memory `af2-parallelization-plan`. A run now emits `timings.json`
+  (GPU-hours per task type, incl. the MSA-vs-model split) to size this from real numbers.
 - Output-presentation pass on results.html for the RFD4 composite schema.
 - Optional: antigen upload > 103-residue epitope guardrails; AF3/Boltz oracle backends.
